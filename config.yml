@@ -1,0 +1,25 @@
+data:
+   obs_config_path: './config/'
+   write_path: './sim/'
+sn_gen:
+    n_sn: 10
+    randseed: 1234
+    model: 
+    z_range: [0.02,0.1]
+    v_cmb: 0
+    ra_cmb:
+    dec_cmb:
+    M0: -19.365
+cosmology:
+    Om: 0.3
+    H0: 70
+salt2_gen:
+    alpha: 0.14
+    beta: 3.1
+    mean_x1: 0
+    mean_c: 0
+    sig_x1: 0.1
+    sig_c: 0.1
+vpec_gen:
+    mean_vpec: 0
+    sig_vpec: 300
