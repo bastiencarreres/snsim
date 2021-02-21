@@ -11,6 +11,7 @@ from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
 
 c_light_kms = cst.c.to('km/s').value
+snc_mag_offset = 10.5020699 #just an offset
 
 class sn_sim :
     def __init__(self,sim_yaml):
@@ -158,7 +159,7 @@ class sn_sim :
         self.mag_smear = 0
         self.sim_mu = 5*np.log10((1+self.zcos)*(1+self.z2cmb)*pw((1+self.zpec),2)*self.cosmo.comoving_distance(self.zcos).value)+25
         self.sim_mB = self.sim_mu + self.M0 + self.mag_smear
-        self.sim_x0 = pw(10,-0.4*(self.sim_mB-10.5020699)) #10.5020699 is an offset
+        self.sim_x0 = np.array([self.x0_to_mB(m,1) for m in self.sim_mB])
         return
 
     def gen_flux(self,obs,params):
@@ -169,13 +170,13 @@ class sn_sim :
     def plot_simlc(self,lc_id,mag=False):
         '''Plot the lc_id lightcurve'''
         sim_flux = self.sim_flux[lc_id][0]
-        sim_flux['fluxnorm'] = sim_flux['flux']*pw(10,0.4*(25-sim_flux['zp']))
         z = sim_flux.meta['z']
         x0 = sim_flux.meta['x0']
         x1 = sim_flux.meta['x1']
         c = sim_flux.meta['c']
         t0 = sim_flux.meta['t0']
-        mb = -2.5*np.log10(x0)+10.5020699
+        mb = self.x0_to_mB(x0,0)
+
         title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
 
         self.model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
@@ -202,3 +203,15 @@ class sn_sim :
         plt.legend()
         plt.show()
         return
+
+    def norm_flux(flux_table,zp):
+        '''Taken on sncosmo -> set the flux to the same zero-point'''
+        norm_factor = pw(10,0.4*(zp-flux_table['zp']))
+        flux_norm=flux_table*norm_factor
+        return flux_norm
+
+    def x0_to_mB(par,inv):
+        if inv == 0:
+            return -2.5*np.log10(par)+snc_mag_offset
+        else:
+            return pw(10,-0.4*(par-snc_mag_offset))
