@@ -101,6 +101,7 @@ class sn_sim :
         self.gen_sn_mag()
 
         #self.sim_t0=np.zeros(self.n_sn)
+        #Total fake for the moment....
         self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
         self.params = [{'z': z,
                   't0': peak,
@@ -165,23 +166,39 @@ class sn_sim :
         self.sim_flux.append(snc.realize_lcs(obs, self.model, [params],scatter=False))
         return
 
-    def plot_simlc(self,lc_id):
+    def plot_simlc(self,lc_id,mag=False):
         '''Plot the lc_id lightcurve'''
         sim_flux = self.sim_flux[lc_id][0]
+        sim_flux['fluxnorm'] = sim_flux['flux']*pw(10,0.4*(25-sim_flux['zp']))
         z = sim_flux.meta['z']
         x0 = sim_flux.meta['x0']
         x1 = sim_flux.meta['x1']
         c = sim_flux.meta['c']
+        t0 = sim_flux.meta['t0']
         mb = -2.5*np.log10(x0)+10.5020699
         title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
+
+        self.model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
+        time = np.linspace(t0-15, t0+30,100)
+        ms = snc.get_magsystem('ab')
+
         plt.figure()
         plt.title(title)
-        plt.xlabel('Redshift')
+        plt.xlabel('Time to peak')
         plt.ylabel('Flux')
-        sigma=0.1
+        sigma=0.1 #MUST BE CHANGE BY A TRUE ERROR
         for b in self.bands:
             sim_flux_b = sim_flux[sim_flux['band']==b]
-            plt.errorbar(sim_flux_b['time'],sim_flux_b['flux'],yerr=sigma,label=b)
+            if mag:
+                sim_flux_b = sim_flux_b[sim_flux_b['fluxnorm']>0] #Delte < 0 pts
+                plot = -2.5*np.log10(sim_flux_b['fluxnorm'])
+                err = 2.5/np.log(10)*1/sim_flux_b['fluxnorm']*sigma
+            else:
+                th=self.model.bandflux(b,time,zp=25.,zpsys='ab')
+                plot = sim_flux_b['fluxnorm']
+                err = sigma
+            plt.errorbar(sim_flux_b['time'],plot,yerr=err,label=b,fmt='o')
+            plt.plot(time,th)
         plt.legend()
         plt.show()
         return
