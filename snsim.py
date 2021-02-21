@@ -4,9 +4,11 @@ import astropy.units as u
 from numpy import power as pw
 from astropy.table import Table
 from astropy import constants as cst
+from astropy.io import fits
 import yaml
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
+import matplotlib.pyplot as plt
 
 c_light_kms = cst.c.to('km/s').value
 
@@ -17,6 +19,8 @@ class sn_sim :
         self.dec_cmb = 48.253
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
+        source = snc.SALT2Source(modeldir='./SALT2/SALT2.P18_UV2IR')
+        self.model=snc.Model(source=source)
 
         with open(sim_yaml, "r") as ymlfile:
            self.sim_cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
@@ -26,7 +30,8 @@ class sn_sim :
         self.obs_cfg_path = self.data_cfg['obs_config_path']
 
         self.sn_gen = self.sim_cfg['sn_gen']
-        self.n_sn =  int(self.sn_gen['n_sn'])
+        self.n_sn = int(self.sn_gen['n_sn'])
+        self.bands = self.sn_gen['bands']
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
@@ -41,12 +46,19 @@ class sn_sim :
         #Vpec parameters
         self.vpec_gen = self.sim_cfg['vpec_gen']
 
-    def open_obs(self):
-        return
+        self.open_obs_header()
+
 
     def simulate(self):
         '''Simulation routine'''
+        #Generate z, x0, x1, c
         self.gen_param_array()
+        #Simulate for each obs
+        self.sim_flux=[]
+        for i in range(self.n_sn):
+            obs=Table.read('obs_file.fits', hdu=i+1)
+            obs.convert_bytestring_to_unicode()
+            self.gen_flux(obs,self.params[i])
         return
 
     def gen_param_array(self):
@@ -82,20 +94,27 @@ class sn_sim :
         self.gen_coord()
         self.gen_z2cmb()
         self.gen_z_pec()
-        self.zobs = (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb)
+        self.zobs = (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb)-1.
 
         #SALT2 params generation
         self.gen_sn_par()
         self.gen_sn_mag()
 
         #self.sim_t0=np.zeros(self.n_sn)
-        self.sim_t0=np.array([56188]*self.n_sn)
+        self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
         self.params = [{'z': z,
                   't0': peak,
                   'x0': x0,
                   'x1': x1,
                   'c': c
                   } for z,peak,x0,x1,c in zip(self.zobs,self.sim_t0,self.sim_x0,self.sim_x1,self.sim_c)]
+
+
+    def open_obs_header(self):
+        ''' Open the fits obs file'''
+        with fits.open(self.obs_cfg_path,'readonly') as obs_fits:
+            self.obs_header_main = obs_fits[0].header
+        return
 
     def gen_redshift_cos(self):
         self.zcos = np.random.default_rng(self.randseeds['z_seed']).uniform(low=self.z_range[0],high=self.z_range[1],size=self.n_sn)
@@ -141,12 +160,28 @@ class sn_sim :
         self.sim_x0 = pw(10,-0.4*(self.sim_mB-10.5020699)) #10.5020699 is an offset
         return
 
-    def gen_flux(self):
-        obs = Table({'time': [56176.19, 56188.254, 56207.172],
-             'band': ['desg', 'desr', 'desi'],
-             'gain': [1., 1., 1.],
-             'skynoise': [191.27, 147.62, 160.40],
-             'zp': [30., 30., 30.],
-             'zpsys':['ab', 'ab', 'ab']})
-        model=snc.Model(source='salt2-extended')
-        return snc.realize_lcs(obs, model, self.params)
+    def gen_flux(self,obs,params):
+        ''' Generate simulated flux '''
+        self.sim_flux.append(snc.realize_lcs(obs, self.model, [params],scatter=False))
+        return
+
+    def plot_simlc(self,lc_id):
+        '''Plot the lc_id lightcurve'''
+        sim_flux = self.sim_flux[lc_id][0]
+        z = sim_flux.meta['z']
+        x0 = sim_flux.meta['x0']
+        x1 = sim_flux.meta['x1']
+        c = sim_flux.meta['c']
+        mb = -2.5*np.log10(x0)+10.5020699
+        title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
+        plt.figure()
+        plt.title(title)
+        plt.xlabel('Redshift')
+        plt.ylabel('Flux')
+        sigma=0.1
+        for b in self.bands:
+            sim_flux_b = sim_flux[sim_flux['band']==b]
+            plt.errorbar(sim_flux_b['time'],sim_flux_b['flux'],yerr=sigma,label=b)
+        plt.legend()
+        plt.show()
+        return
