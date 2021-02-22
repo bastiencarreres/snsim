@@ -21,4 +21,4 @@ salt2_gen:
     sig_c: 0.1
 vpec_gen:
     mean_vpec: 0
-    sig_vpec: 300
+    sig_vpec: 0
