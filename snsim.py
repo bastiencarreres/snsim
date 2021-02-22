@@ -143,7 +143,7 @@ class sn_sim :
 
         ss = np.sin(self.dec_gal)*np.sin(self.dec_cmb*np.pi/180)
         ccc = np.cos(self.dec_gal)*np.cos(self.dec_cmb*np.pi/180)*np.cos(self.ra_gal-self.ra_cmb*np.pi/180)
-        self.z2cmb = (1+self.zcos)*(1-self.v_cmb*(ss+ccc)/c_light_kms)-1.
+        self.z2cmb = (1-self.v_cmb*(ss+ccc)/c_light_kms)-1.
         return
 
     def gen_z_pec(self):
