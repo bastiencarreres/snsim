@@ -11,7 +11,7 @@ from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
 
 c_light_kms = cst.c.to('km/s').value
-snc_mag_offset = 10.5020699 #just an offset
+snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
 
 class sn_sim :
     def __init__(self,sim_yaml):
@@ -216,5 +216,7 @@ class sn_sim :
             return -2.5*np.log10(par)+snc_mag_offset
         else:
             return pw(10,-0.4*(par-snc_mag_offset))
+
+    def fit_lc
 
     def
