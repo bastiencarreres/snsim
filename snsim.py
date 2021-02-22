@@ -113,7 +113,7 @@ class sn_sim :
 
 
     def open_obs_header(self):
-        ''' Open the fits obs file'''
+        ''' Open the fits obs file header'''
         with fits.open(self.obs_cfg_path,'readonly') as obs_fits:
             self.obs_header_main = obs_fits[0].header
         return
@@ -156,9 +156,10 @@ class sn_sim :
 
     def gen_sn_mag(self):
         ''' Generate x0/mB parameters for SALT2 '''
-        self.mag_smear = 0
+        self.mag_smear = 0 # To change
         self.sim_mu = 5*np.log10((1+self.zcos)*(1+self.z2cmb)*pw((1+self.zpec),2)*self.cosmo.comoving_distance(self.zcos).value)+25
-        self.sim_mB = self.sim_mu + self.M0 + self.mag_smear
+        #Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 + beta*c : scattering due to color and stretch} + {intrinsic smearing}
+        self.sim_mB = self.sim_mu + self.M0 - self.alpha*x1 + self.beta*c + self.mag_smear
         self.sim_x0 = np.array([self.x0_to_mB(m,1) for m in self.sim_mB])
         return
 
@@ -177,12 +178,12 @@ class sn_sim :
         t0 = sim_flux.meta['t0']
         mb = self.x0_to_mB(x0,0)
 
+        sim_flux_b['fluxnorm'] = self.norm_flux(sim_flux,25.)
+
         title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
 
         self.model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
         time = np.linspace(t0-15, t0+30,100)
-        ms = snc.get_magsystem('ab')
-
         plt.figure()
         plt.title(title)
         plt.xlabel('Time to peak')
@@ -215,3 +216,5 @@ class sn_sim :
             return -2.5*np.log10(par)+snc_mag_offset
         else:
             return pw(10,-0.4*(par-snc_mag_offset))
+
+    def
