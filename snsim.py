@@ -119,6 +119,7 @@ class sn_sim :
         ''' Open the fits obs file header'''
         with fits.open(self.obs_cfg_path,'readonly') as obs_fits:
             self.obs_header_main = obs_fits[0].header
+            self.bands = self.obs_header_main['bands'].split()
         return
 
     def gen_redshift_cos(self):

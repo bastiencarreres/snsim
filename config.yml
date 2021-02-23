@@ -2,7 +2,6 @@ data:
    obs_config_path: './obs_file.fits'
    write_path: './sim/'
 sn_gen:
-    bands: ['ztfg','ztfr','ztfi']
     n_sn: 5
     randseed: 1234
     model:

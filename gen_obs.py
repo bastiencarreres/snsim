@@ -11,6 +11,10 @@ def gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='
              ('zp',np.dtype('f8')),
              ('zpsys',np.dtype('U25'))]
 
+    bands_str=''
+    for b in bands:
+        bands_str += b+' '
+
     obs_hdu_list=[]
     mjd = mjdstart
     skynoise = 0.
@@ -25,5 +29,5 @@ def gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='
         obs_array=np.asarray(obs_array,dtype=dtype)
         tab = Table(data=obs_array, meta={'ra': ra ,'dec': dec, 'n_epochs': n_epochs_b*len(bands)})
         obs_hdu_list.append(fits.table_to_hdu(tab))
-    hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': n_obs}))]+obs_hdu_list)
+    hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': n_obs, 'bands': bands_str}))]+obs_hdu_list)
     hdu_list.writeto('obs_file.fits',overwrite=True)
