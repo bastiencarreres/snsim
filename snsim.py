@@ -60,7 +60,7 @@ class sn_sim :
         #Simulate for each obs
         self.sim_flux=[]
         for i in range(self.n_sn):
-            obs=Table.read('obs_file.fits', hdu=i+1)
+            obs=Table.read(self.obs_cfg_path, hdu=i+1)
             obs.convert_bytestring_to_unicode()
             self.gen_flux(obs,self.params[i])
         return
