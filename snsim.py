@@ -22,9 +22,6 @@ class sn_sim :
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
 
-        source = snc.SALT2Source(modeldir='./SALT2/SALT2.P18_UV2IR')
-        self.model=snc.Model(source=source)
-
         with open(sim_yaml, "r") as ymlfile:
            self.sim_cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
@@ -46,7 +43,10 @@ class sn_sim :
         self.salt2_gen = self.sim_cfg['salt2_gen']
         self.alpha = self.salt2_gen['alpha']
         self.beta = self.salt2_gen['beta']
-
+        self.salt2_dir = self.salt2_gen['salt2_dir']
+        
+        source = snc.SALT2Source(modeldir=self.salt2_dir)
+        self.model=snc.Model(source=source)
         #Vpec parameters
         self.vpec_gen = self.sim_cfg['vpec_gen']
 
