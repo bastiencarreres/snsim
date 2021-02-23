@@ -59,14 +59,19 @@ class sn_sim :
     def simulate(self):
         '''Simulation routine'''
         start_time = time.time()
-        #Generate z, x0, x1, c
-        self.gen_param_array()
-        #Simulate for each obs
-        self.sim_flux=[]
+
+        self.obs=[]
         for i in range(self.n_sn):
             obs=Table.read(self.obs_cfg_path, hdu=i+1)
             obs.convert_bytestring_to_unicode()
-            self.gen_flux(obs,self.params[i])
+            self.obs.append(obs)
+            
+        #Generate z, x0, x1, c
+        self.gen_param_array()
+
+        #Simulate for each obs
+        self.gen_flux()
+
         self.write_sim()
         print(f'----- {self.n_sn} SN lcs generated in {time.time() - start_time:.1f} seconds -----')
         return
@@ -145,7 +150,7 @@ class sn_sim :
         self.ra = []
         self.dec = []
         for i in range(self.n_sn):
-            obs=Table.read(self.obs_cfg_path, hdu=i+1)
+            obs=self.obs[i]
             self.ra.append(obs.meta['RA'])
             self.dec.append(obs.meta['DEC'])
 
@@ -188,9 +193,9 @@ class sn_sim :
         self.sim_x0 = self.x0_to_mB(self.sim_mB,1)
         return
 
-    def gen_flux(self,obs,params):
+    def gen_flux(self):
         ''' Generate simulated flux '''
-        self.sim_flux.append(snc.realize_lcs(obs, self.model, [params],scatter=False)[0])
+        self.sim_flux=[snc.realize_lcs(obs, self.model, [params],scatter=False)[0] for obs,params in zip(self.obs,self.params)]
         return
 
     def plot_simlc(self,lc_id,zp=25.,mag=False):
