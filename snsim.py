@@ -66,16 +66,18 @@ class sn_sim :
     def gen_param_array(self):
         #Init randseed in order to reproduce SNs
         self.randseed = int(self.sn_gen['randseed'])
-        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=6)
+        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=7)
         self.randseeds = {'z_seed': randseeds[0],
                           'x0_seed': randseeds[1],
                           'x1_seed': randseeds[2],
                           'c_seed': randseeds[3],
                           'coord_seed': randseeds[4],
-                          'vpec_seed': randseeds[5]
+                          'vpec_seed': randseeds[5],
+                          'smearM_seed': randseeds[6]
                           }
         #Init z range
         self.z_range = self.sn_gen['z_range']
+        self.sigmaM = self.sn_gen['mag_smear'] # To change
 
         #Init vpec_gen
         self.mean_vpec = self.vpec_gen['mean_vpec']
@@ -90,6 +92,7 @@ class sn_sim :
 
         self.mean_c = self.salt2_gen['mean_c']
         self.sig_c = self.salt2_gen['sig_c']
+
 
         #Redshift generation
         self.gen_redshift_cos()
@@ -165,7 +168,7 @@ class sn_sim :
 
     def gen_sn_mag(self):
         ''' Generate x0/mB parameters for SALT2 '''
-        self.mag_smear = 0 # To change
+        self.mag_smear =  np.random.default_rng(self.randseeds['smearM_seed']).normal(loc=0,scale=self.sigmaM,size=self.n_sn)
         self.sim_mu = 5*np.log10((1+self.zcos)*(1+self.z2cmb)*pw((1+self.zpec),2)*self.cosmo.comoving_distance(self.zcos).value)+25
         #Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 + beta*c : scattering due to color and stretch} + {intrinsic smearing}
         self.sim_mB = self.sim_mu + self.M0 - self.alpha*self.sim_x1 + self.beta*self.sim_c + self.mag_smear

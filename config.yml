@@ -4,10 +4,10 @@ data:
 sn_gen:
     n_sn: 5
     randseed: 1234
-    model:
     z_range: [0.02,0.1]
     v_cmb: 0
     M0: -19.365
+    mag_smear: 0.
 cosmology:
     Om: 0.3
     H0: 70
