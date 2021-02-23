@@ -186,7 +186,7 @@ class sn_sim :
         self.sim_flux.append(snc.realize_lcs(obs, self.model, [params],scatter=False)[0])
         return
 
-    def plot_simlc(self,lc_id,mag=False):
+    def plot_simlc(self,lc_id,zp=25.,mag=False):
         '''Plot the lc_id lightcurve
            Use mag=True to plot magnitude'''
         sim_flux = self.sim_flux[lc_id]
@@ -197,8 +197,7 @@ class sn_sim :
         t0 = sim_flux.meta['t0']
         mb = self.x0_to_mB(x0,0)
 
-        sim_flux_norm, time = self.norm_flux(sim_flux,25.)
-
+        sim_flux_norm, sim_fluxerr_norm, time = self.norm_flux(sim_flux,zp)
         title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
 
         self.model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
@@ -207,25 +206,23 @@ class sn_sim :
         plt.figure()
         plt.title(title)
         plt.xlabel('Time to peak')
-        sigma=0.1 #MUST BE CHANGE BY A TRUE ERROR
         for b in self.bands:
             band_mask = sim_flux['band']==b
             sim_flux_b = sim_flux_norm[band_mask]
             time_b = time[band_mask]
-
             if mag:
+                plt.gca().invert_yaxis()
                 plt.ylabel('Mag')
                 sim_flux_b = sim_flux_b[sim_flux_b>0] #Delete < 0 pts
                 time_b=time_b[sim_flux_b>0]
-                plot = -2.5*np.log10(sim_flux_b)+25.
-                err = 2.5/np.log(10)*1/sim_flux_b*sigma
+                plot = -2.5*np.log10(sim_flux_b)+zp
+                err = 2.5/np.log(10)*1/sim_flux_b*sim_fluxerr_norm
                 plot_th = self.model.bandmag(b,'ab',time_th)
-                plt.gca().invert_yaxis()
             else:
                 plt.ylabel('Flux')
                 plot = sim_flux_b
-                err = sigma
-                plot_th=self.model.bandflux(b,time_th,zp=25.,zpsys='ab')
+                err = sim_fluxerr_norm
+                plot_th=self.model.bandflux(b,time_th,zp=zp,zpsys='ab')
             p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o')
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
         plt.legend()
@@ -236,7 +233,8 @@ class sn_sim :
         '''Taken on sncosmo -> set the flux to the same zero-point'''
         norm_factor = pw(10,0.4*(zp-flux_table['zp']))
         flux_norm=flux_table['flux']*norm_factor
-        return flux_norm,flux_table['time']
+        fluxerr_norm = flux_table['fluxerr']*norm_factor
+        return flux_norm,fluxerr_norm,flux_table['time']
 
     def x0_to_mB(self,par,inv):
         if inv == 0:
