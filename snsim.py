@@ -138,7 +138,7 @@ class sn_sim :
         self.ra = []
         self.dec = []
         for i in range(self.n_sn):
-            obs=Table.read('obs_file.fits', hdu=i+1)
+            obs=Table.read(self.obs_cfg_path, hdu=i+1)
             self.ra.append(obs.meta['RA'])
             self.dec.append(obs.meta['DEC'])
 
