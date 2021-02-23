@@ -210,7 +210,6 @@ class sn_sim :
         mb = self.x0_to_mB(x0,0)
 
         sim_flux_norm, sim_fluxerr_norm, time = self.norm_flux(sim_flux,zp)
-        print(sim_fluxerr_norm)
         title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
 
         self.model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
