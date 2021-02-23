@@ -221,6 +221,7 @@ class sn_sim :
         for b in self.bands:
             band_mask = sim_flux['band']==b
             sim_flux_b = sim_flux_norm[band_mask]
+            sim_fluxerr_b = sim_flux_norm[band_mask]
             time_b = time[band_mask]
             if mag:
                 plt.gca().invert_yaxis()
@@ -228,12 +229,12 @@ class sn_sim :
                 sim_flux_b = sim_flux_b[sim_flux_b>0] #Delete < 0 pts
                 time_b=time_b[sim_flux_b>0]
                 plot = -2.5*np.log10(sim_flux_b)+zp
-                err = 2.5/np.log(10)*1/sim_flux_b*sim_fluxerr_norm
+                err = 2.5/np.log(10)*1/sim_flux_b*sim_fluxerr_b
                 plot_th = self.model.bandmag(b,'ab',time_th)
             else:
                 plt.ylabel('Flux')
                 plot = sim_flux_b
-                err = sim_fluxerr_norm
+                err = sim_fluxerr_b
                 plot_th=self.model.bandflux(b,time_th,zp=zp,zpsys='ab')
             p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o')
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
