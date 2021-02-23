@@ -65,7 +65,7 @@ class sn_sim :
             obs=Table.read(self.obs_cfg_path, hdu=i+1)
             obs.convert_bytestring_to_unicode()
             self.obs.append(obs)
-            
+
         #Generate z, x0, x1, c
         self.gen_param_array()
 
@@ -262,7 +262,18 @@ class sn_sim :
         return
 
     def write_sim(self):
-        lc_hdu_list = [fits.table_to_hdu(tab) for tab in self.sim_flux]
+        '''Write the simulated lc in a fits file'''
+        lc_hdu_list = []
+        for i,tab in enumerate(self.sim_flux):
+            tab.meta['vpec'] = self.vpec[i]
+            tab.meta['zcos'] = self.zcos[i]
+            tab.meta['zpec'] = self.zpec[i]
+            tab.meta['z2cmb'] = self.z2cmb[i]
+            tab.meta['zCMB'] = self.zCMB[i]
+            tab.meta['ra'] = self.ra[i]
+            tab.meta['dec'] = self.dec[i]
+            lc_hdu_list.append(fits.table_to_hdu(tab))
+
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))]+lc_hdu_list)
         hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
         return
