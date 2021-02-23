@@ -210,6 +210,7 @@ class sn_sim :
         mb = self.x0_to_mB(x0,0)
 
         sim_flux_norm, sim_fluxerr_norm, time = self.norm_flux(sim_flux,zp)
+        print(sim_fluxerr_norm)
         title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
 
         self.model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
@@ -221,7 +222,7 @@ class sn_sim :
         for b in self.bands:
             band_mask = sim_flux['band']==b
             sim_flux_b = sim_flux_norm[band_mask]
-            sim_fluxerr_b = sim_flux_norm[band_mask]
+            sim_fluxerr_b = sim_fluxerr_norm[band_mask]
             time_b = time[band_mask]
             if mag:
                 plt.gca().invert_yaxis()
