@@ -103,7 +103,7 @@ class sn_sim :
         self.gen_sn_mag()
 
         #self.sim_t0=np.zeros(self.n_sn)
-        #Total fake for the moment....lc
+        #Total fake for the moment....
         self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
         self.params = [{'z': z,
                   't0': peak,
@@ -142,7 +142,7 @@ class sn_sim :
 
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
-        coordfk5 = SkyCoord(self.ra*u.rad, self.dec*u.rad, frame='fk5') #coord in fk5 frame
+        coordfk5 = SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5') #coord in fk5 frame
         galac_coord = coordfk5.transform_to('galactic')
         self.ra_gal=galac_coord.l.rad-2*np.pi*np.sign(galac_coord.l.rad)*(abs(galac_coord.l.rad)>np.pi)
         self.dec_gal=galac_coord.b.rad
