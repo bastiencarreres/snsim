@@ -32,8 +32,6 @@ class sn_sim :
 
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
-        self.bands = self.sn_gen['bands']
-
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
@@ -105,7 +103,7 @@ class sn_sim :
         self.gen_sn_mag()
 
         #self.sim_t0=np.zeros(self.n_sn)
-        #Total fake for the moment....
+        #Total fake for the moment....lc
         self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
         self.params = [{'z': z,
                   't0': peak,
@@ -128,11 +126,18 @@ class sn_sim :
 
     def gen_coord(self):
         # extract ra dec from obs config
-        seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
-        self.randseeds['ra_seed'] = seeds[0]
-        self.randseeds['dec_seed']=seeds[1]
-        self.ra = np.random.default_rng(self.randseeds['ra_seed']).uniform(low=0,high=2*np.pi,size=self.n_sn)
-        self.dec = np.random.default_rng(self.randseeds['dec_seed']).uniform(low=-np.pi/2,high=np.pi/2,size=self.n_sn)
+        self.ra = []
+        self.dec = []
+        for i in range(self.n_sn):
+            obs=Table.read('obs_file.fits', hdu=i+1)
+            self.ra.append(obs.meta['RA'])
+            self.dec.append(obs.meta['DEC'])
+
+        #seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
+        #self.randseeds['ra_seed'] = seeds[0]
+        #self.randseeds['dec_seed']=seeds[1]
+        #self.ra = np.random.default_rng(self.randseeds['ra_seed']).uniform(low=0,high=2*np.pi,size=self.n_sn)
+        #self.dec = np.random.default_rng(self.randseeds['dec_seed']).uniform(low=-np.pi/2,high=np.pi/2,size=self.n_sn)
         return
 
     def gen_z2cmb(self):
