@@ -70,8 +70,8 @@ class sn_sim :
         if 'randseed' in self.sn_gen:
             self.randseed = int(self.sn_gen['randseed'])
         else:
-            self.randseed = np.random.uniform(low=1000,hight=10000)
-        
+            self.randseed = np.random.randint(low=1000,high=10000)
+
         randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=7)
         self.randseeds = {'z_seed': randseeds[0],
                           'x0_seed': randseeds[1],

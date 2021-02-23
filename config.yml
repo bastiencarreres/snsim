@@ -3,7 +3,6 @@ data:
    write_path: './sim/'
 sn_gen:
     n_sn: 5
-    randseed: 1234
     z_range: [0.02,0.1]
     v_cmb: 0
     M0: -19.365
