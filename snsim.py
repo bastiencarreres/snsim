@@ -17,9 +17,11 @@ class sn_sim :
     def __init__(self,sim_yaml):
         '''Initialisation of the simulation class with the config file'''
         #Default values
+        #CMB values
         self.dec_cmb = 48.253
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
+
         source = snc.SALT2Source(modeldir='./SALT2/SALT2.P18_UV2IR')
         self.model=snc.Model(source=source)
 
@@ -65,7 +67,11 @@ class sn_sim :
 
     def gen_param_array(self):
         #Init randseed in order to reproduce SNs
-        self.randseed = int(self.sn_gen['randseed'])
+        if 'randseed' in self.sn_gen:
+            self.randseed = int(self.sn_gen['randseed'])
+        else:
+            self.randseed = np.random.uniform(low=1000,hight=10000)
+        
         randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=7)
         self.randseeds = {'z_seed': randseeds[0],
                           'x0_seed': randseeds[1],
