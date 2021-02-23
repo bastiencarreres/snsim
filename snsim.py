@@ -29,6 +29,8 @@ class sn_sim :
         #Simulation parameters
         self.data_cfg = self.sim_cfg['data']
         self.obs_cfg_path = self.data_cfg['obs_config_path']
+        self.write_path = self.data_cfg['write_path']
+        self.sim_name = self.data_cfg['sim_name']
 
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
@@ -65,6 +67,7 @@ class sn_sim :
             obs=Table.read(self.obs_cfg_path, hdu=i+1)
             obs.convert_bytestring_to_unicode()
             self.gen_flux(obs,self.params[i])
+        self.write_sim()
         print(f'----- {self.n_sn} SN lcs generated in {time.time() - start_time:.1f} seconds -----')
         return
 
@@ -251,4 +254,10 @@ class sn_sim :
         for i in range(self.n_sn):
             self.model.set(z=self.sim_flux[i].meta['z'])  # set the model's redshift.
             self.fit_results.append(snc.fit_lc(self.sim_flux[i], self.model, ['t0', 'x0', 'x1', 'c']))
+        return
+
+    def write_sim(self):
+        lc_hdu_list = [fits.table_to_hdu(tab) for tab in self.sim_flux]
+        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))]+lc_hdu_list)
+        hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
         return
