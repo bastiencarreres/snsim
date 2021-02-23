@@ -9,6 +9,7 @@ import yaml
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
+import time
 
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
@@ -44,7 +45,7 @@ class sn_sim :
         self.alpha = self.salt2_gen['alpha']
         self.beta = self.salt2_gen['beta']
         self.salt2_dir = self.salt2_gen['salt2_dir']
-        
+
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model=snc.Model(source=source)
         #Vpec parameters
@@ -55,6 +56,7 @@ class sn_sim :
 
     def simulate(self):
         '''Simulation routine'''
+        start_time = time.time()
         #Generate z, x0, x1, c
         self.gen_param_array()
         #Simulate for each obs
@@ -63,6 +65,7 @@ class sn_sim :
             obs=Table.read(self.obs_cfg_path, hdu=i+1)
             obs.convert_bytestring_to_unicode()
             self.gen_flux(obs,self.params[i])
+        print(f'----- {self.n_sn} SN lcs generated in {time.time() - start_time:.1f} seconds -----')
         return
 
     def gen_param_array(self):
@@ -105,6 +108,7 @@ class sn_sim :
         self.gen_coord()
         self.gen_z2cmb()
         self.gen_z_pec()
+        self.zCMB = (1+self.zcos)*(1+self.zpec)-1.
         self.zobs = (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb)-1.
 
         #SALT2 params generation
