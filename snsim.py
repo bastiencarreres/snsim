@@ -13,6 +13,11 @@ import time
 
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
+def box_output(sep,line):
+    l = len(sep)-len(line)-2
+    space1 = ' '*(l//2)
+    space2 = ' '*(l//2+l%2)
+    return '#'+space1+line+space2+'#'
 
 class sn_sim :
     def __init__(self,sim_yaml):
@@ -74,25 +79,30 @@ class sn_sim :
             for hdu in hduf[1:]:
                 self.obs.append(hdu.data)
                 self.obs_header.append(hdu.header)
-
-        print(f'#############################################')
-        print(f'#        OBS FILE read in {time.time()-start_time:.1f} seconds       #')
-        print(f'#               ------------                #')
-
+        sep='###############################################'
+        sep2 =box_output(sep,'------------')
+        line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
+        print(sep)
+        print(box_output(sep,line))
+        print(sep2)
         sim_time = time.time()
         #Generate z, x0, x1, c
         self.gen_param_array()
         #Simulate for each obs
         self.gen_flux()
-        print(f'#    {self.n_sn} SN lcs generated in {time.time() - sim_time:.1f} seconds    #')
+
+        l=f'{self.n_sn} SN lcs generated in {time.time() - sim_time:.1f} seconds'
+        print(box_output(sep,l))
+        print(sep2)
 
         write_time = time.time()
         self.write_sim()
-        print(f'#               ------------                #')
-        print(f'#       Sim file write in {time.time() - write_time:.1f} seconds       #')
-        print(f'#               ------------                #')
-        print(f'#    SIMULATION TERMINATED in {time.time() - start_time:.1f} second    #')
-        print(f'#############################################')
+        l=f'Sim file write in {time.time() - write_time:.1f} seconds'
+        print(box_output(sep,l))
+        print(sep2)
+        l=f'SIMULATION TERMINATED in {time.time() - start_time:.1f} seconds'
+        print(box_output(sep,l))
+        print(sep)
         return
 
     def gen_param_array(self):
