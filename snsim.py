@@ -18,6 +18,7 @@ class sn_sim :
     def __init__(self,sim_yaml):
         '''Initialisation of the simulation class with the config file'''
         #Default values
+        self.yml_path = sim_yaml
         #CMB values
         self.dec_cmb = 48.253
         self.ra_cmb = 266.81
@@ -58,6 +59,13 @@ class sn_sim :
 
     def simulate(self):
         '''Simulation routine'''
+        
+        print('-----------------------------------')
+        print(f'SIM NAME : {self.sim_name}')
+        print(f'CONFIG FILE: {self.yml_path}')
+        print(f'OBS FILE : {self.obs_cfg_path}')
+        print(f'SIM WRITE DIRECTORY : {self.write_path}')
+        print(f'----------------------------------\n')
         start_time = time.time()
 
         self.obs=[]
@@ -66,15 +74,25 @@ class sn_sim :
             for hdu in hduf[1:]:
                 self.obs.append(hdu.data)
                 self.obs_header.append(hdu.header)
-            #obs.convert_bytestring_to_unicode()
+
+        print(f'#############################################')
+        print(f'#        OBS FILE read in {time.time()-start_time:.1f} seconds       #')
+        print(f'#               ------------                #')
+
+        sim_time = time.time()
         #Generate z, x0, x1, c
         self.gen_param_array()
-
         #Simulate for each obs
         self.gen_flux()
+        print(f'#    {self.n_sn} SN lcs generated in {time.time() - sim_time:.1f} seconds    #')
 
+        write_time = time.time()
         self.write_sim()
-        print(f'----- {self.n_sn} SN lcs generated in {time.time() - start_time:.1f} seconds -----')
+        print(f'#               ------------                #')
+        print(f'#       Sim file write in {time.time() - write_time:.1f} seconds       #')
+        print(f'#               ------------                #')
+        print(f'#    SIMULATION TERMINATED in {time.time() - start_time:.1f} second    #')
+        print(f'#############################################')
         return
 
     def gen_param_array(self):
