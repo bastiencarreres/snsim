@@ -59,13 +59,13 @@ class sn_sim :
 
     def simulate(self):
         '''Simulation routine'''
-        
+
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
-        print(f'CONFIG FILE: {self.yml_path}')
+        print(f'CONFIG FILE : {self.yml_path}')
         print(f'OBS FILE : {self.obs_cfg_path}')
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
-        print(f'----------------------------------\n')
+        print(f'-----------------------------------\n')
         start_time = time.time()
 
         self.obs=[]
