@@ -61,11 +61,12 @@ class sn_sim :
         start_time = time.time()
 
         self.obs=[]
-        for i in range(self.n_sn):
-            obs=Table.read(self.obs_cfg_path, hdu=i+1)
-            obs.convert_bytestring_to_unicode()
-            self.obs.append(obs)
-
+        self.obs_header=[]
+        with fits.open(self.obs_cfg_path) as hduf:
+            for hdu in hduf[1:]:
+                self.obs.append(hdu.data)
+                self.obs_header.append(hdu.header)
+            #obs.convert_bytestring_to_unicode()
         #Generate z, x0, x1, c
         self.gen_param_array()
 
@@ -142,6 +143,7 @@ class sn_sim :
         return
 
     def gen_redshift_cos(self):
+        '''Function to get zcos, to be updated'''
         self.zcos = np.random.default_rng(self.randseeds['z_seed']).uniform(low=self.z_range[0],high=self.z_range[1],size=self.n_sn)
         return
 
@@ -150,9 +152,9 @@ class sn_sim :
         self.ra = []
         self.dec = []
         for i in range(self.n_sn):
-            obs=self.obs[i]
-            self.ra.append(obs.meta['RA'])
-            self.dec.append(obs.meta['DEC'])
+            obs=self.obs_header[i]
+            self.ra.append(obs['RA'])
+            self.dec.append(obs['DEC'])
 
         #seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
         #self.randseeds['ra_seed'] = seeds[0]
@@ -249,7 +251,7 @@ class sn_sim :
         fluxerr_norm = flux_table['fluxerr']*norm_factor
         return flux_norm,fluxerr_norm,flux_table['time']
 
-    def x0_to_mB(self,par,inv):
+    def x0_to_mB(self,par,inv): #Faire 2 fonctions
         if inv == 0:
             return -2.5*np.log10(par)+snc_mag_offset
         else:
