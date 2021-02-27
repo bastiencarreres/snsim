@@ -2,7 +2,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.io import fits
 
-def gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000):
+def gen_obs(n_obs,n_epochs_b,bands,zp,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000):
     '''Write the obs file in fits format'''
     dtype = [('time',np.dtype('f8')),
              ('band',np.dtype('U25')),
@@ -17,7 +17,7 @@ def gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='
 
     obs_hdu_list=[]
     mjd = mjdstart
-    skynoise = 0.
+    skynoise = 1./5*10**(0.4*(mean_depth-20.5))
     for i in range(n_obs):
         ra = ra_list[i]
         dec = dec_list[i]
