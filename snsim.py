@@ -36,10 +36,12 @@ def plot_lc(flux_table,bands,zp=25.,mag=False,model=None):
 
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
-    x0 = flux_table.meta['x0']
-    mb = x0_to_mB(flux_table.meta['x0'],0)
-    x1 = flux_table.meta['x1']
-    c = flux_table.meta['c']
+    if salt2_par is None:
+        x0 = flux_table.meta['x0']
+        mb = x0_to_mB(flux_table.meta['x0'],0)
+        x1 = flux_table.meta['x1']
+        c = flux_table.meta['c']
+    else :
 
     if model is not None:
         time_th = np.linspace(t0-20, t0+30,100)
@@ -329,18 +331,20 @@ class open_sim:
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model=snc.Model(source=source)
 
-        self.lc_data=[]
-        self.lc_meta=[]
+        self.lc=[]
+
         with fits.open(sim_file) as sf:
             self.n_sn=sf[0].header['N_OBS']
             for hdu in sf[1:]:
-                self.lc_data.append(hdu.data)
-                self.lc_meta.append(hdu.header)
+                data=hdu.data
+                tab= Table(data)
+                tab.meta=hdu.header
+                self.lc.append(tab)
         return
 
     def fit_lc(self):
         self.fit_res=[]
         for i in range(self.n_sn):
-            self.model.set(z=self.lc_meta[i]['z'])  # set the model's redshift.
-            self.fit_res.append(snc_fit(self.lc_data[i],self.model))
+            self.model.set(z=self.lc[i].meta['z'])  # set the model's redshift.
+            self.fit_res.append(snc_fit(self.lc[i],self.model))
         return
