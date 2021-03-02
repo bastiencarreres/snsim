@@ -17,7 +17,7 @@ def gen_obs(n_obs,n_epochs_b,bands,zp,mjdstart,ra_list,dec_list,magsys='ab',gain
 
     obs_hdu_list=[]
     mjd = mjdstart
-    skynoise = 1./5*10**(0.4*(mean_depth-20.5))
+    skynoise = 1./5*10**(0.4*(zp-20.5))
     for i in range(n_obs):
         ra = ra_list[i]
         dec = dec_list[i]
@@ -25,7 +25,7 @@ def gen_obs(n_obs,n_epochs_b,bands,zp,mjdstart,ra_list,dec_list,magsys='ab',gain
         for j in range(n_epochs_b):
             mjd+=1.5
             for k,b in enumerate(bands):
-                obs_array.append((mjd,b,gain,skynoise,mean_depth,magsys))
+                obs_array.append((mjd,b,gain,skynoise,zp,magsys))
         obs_array=np.asarray(obs_array,dtype=dtype)
         tab = Table(data=obs_array, meta={'ra': ra ,'dec': dec, 'n_epochs': n_epochs_b*len(bands)})
         obs_hdu_list.append(fits.table_to_hdu(tab))

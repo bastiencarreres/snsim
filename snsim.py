@@ -29,28 +29,27 @@ def box_output(sep,line):
 def snc_fit(lc,model):
     return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'])
 
-def plot_lc(flux_table,bands,zp=25.,mag=False,model=None):
-
+def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
+    bands = find_filters(flux_table['band'])
     flux_norm, fluxerr_norm = norm_flux(flux_table,zp)
     time = flux_table['time']
 
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
-    if salt2_par is None:
+
+    time_th = np.linspace(t0-20, t0+30,100)
+
+    if sim_model is not None:
         x0 = flux_table.meta['x0']
         mb = x0_to_mB(flux_table.meta['x0'],0)
         x1 = flux_table.meta['x1']
         c = flux_table.meta['c']
-    else :
 
-    if model is not None:
-        time_th = np.linspace(t0-20, t0+30,100)
-        model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
+        sim_model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
 
-    title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
-
+    #title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
     plt.figure()
-    plt.title(title)
+    #plt.title(title)
     plt.xlabel('Time to peak')
 
 
@@ -66,20 +65,34 @@ def plot_lc(flux_table,bands,zp=25.,mag=False,model=None):
             time_b=time_b[flux_b>0]
             plot = -2.5*np.log10(flux_b)+zp
             err = 2.5/np.log(10)*1/flux_b*fluxerr_b
-            if model is not None:
-                plot_th = model.bandmag(b,'ab',time_th)
+            if sim_model is not None:
+                plot_th = sim_model.bandmag(b,'ab',time_th)
+            if fit_model is not None:
+                plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
         else:
             plt.ylabel('Flux')
             plot = flux_b
             err = fluxerr_b
-            if model is not None:
-                plot_th=model.bandflux(b,time_th,zp=zp,zpsys='ab')
+            if sim_model is not None:
+                plot_th = sim_model.bandflux(b,time_th,zp=zp,zpsys='ab')
+            if fit_model is not None:
+                plot_fit = fit_model.bandflux(b,time_th,zp=zp,zpsys='ab')
+
         p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o')
-        if model is not None:
+        if sim_model is not None:
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
+        if fit_model is not None:
+            plt.plot(time_th-t0, plot_fit,color=p[0].get_color())
+
     plt.legend()
     plt.show()
     return
+def find_filters(filter_table):
+    filter_list = []
+    for f in filter_table:
+        if f not in filter_list:
+            filter_list.append(f)
+    return filter_list
 
 def norm_flux(flux_table,zp):
     '''Taken from sncosmo -> set the flux to the same zero-point'''
@@ -297,11 +310,11 @@ class sn_sim :
         self.sim_lc=[snc.realize_lcs(obs, self.model, [params],scatter=False)[0] for obs,params in zip(self.obs,self.params)]
         return
 
-    def plot_simlc(self,lc_id,zp=25.,mag=False):
-        plot_lc(self.sim_lc[lc_id],['ztfg','ztfr','ztfi'],zp=zp,mag=mag,model=self.model)
+    def plot_lc(self,lc_id,zp=25.,mag=False):
+        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
         return
 
-    def fit_lcs(self):
+    def fit_lc(self):
         self.fit_res = []
         for i in range(self.n_sn):
             self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
@@ -348,3 +361,9 @@ class open_sim:
             self.model.set(z=self.lc[i].meta['z'])  # set the model's redshift.
             self.fit_res.append(snc_fit(self.lc[i],self.model))
         return
+
+    def plot_lc(self,lc_id,zp=25.,mag=False,fit=True):
+        if fit:
+            plot_lc(self.lc[lc_id],zp=zp,mag=mag,fit_model=self.fit_res[lc_id][1])
+        else:
+            plot_lc(self.lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
