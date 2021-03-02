@@ -39,7 +39,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
 
-    time_th = np.linspace(t0-20, t0+30,100)
+    time_th = np.linspace(t0-20, t0+50,100)
 
     if sim_model is not None:
         x0 = flux_table.meta['x0']
@@ -73,6 +73,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
                 plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
         else:
             plt.ylabel('Flux')
+            plt.ylim(-10,np.max(flux_norm)+50)
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
@@ -415,7 +416,7 @@ class sn_sim :
 
 
         for t0,ra,dec in zip(self.sim_t0,self.ra,self.dec):
-            epochs_selec = (t0 - self.obs_dic['expMJD'] < 30)*(t0 + self.obs_dic['expMJD'] > 65) #time selection
+            epochs_selec = (t0 - self.obs_dic['expMJD'] < 20)*(self.obs_dic['expMJD'] - t0 < 50) #time selection
             epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra)
             epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec)
 
@@ -426,11 +427,11 @@ class sn_sim :
             for i in range(len(filter)):
                 filter[i]='ztf'+filter[i]
 
-            skynoise = pw(10,0.4*(self.zp-mlim5))/5
+            skynoise = pw(10.,0.4*(self.zp-mlim5))/5
             obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
                         'band': filter,
                         'gain': [self.gain]*np.sum(epochs_selec),
-                        'skynoise': [0]*np.sum(epochs_selec),
+                        'skynoise': skynoise,
                         'zp': [self.zp]*np.sum(epochs_selec),
                         'zpsys': ['ab']*np.sum(epochs_selec)}
                         )
