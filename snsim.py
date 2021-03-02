@@ -10,6 +10,8 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
 import time
+import sqlite3
+
 
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
@@ -87,6 +89,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
     plt.legend()
     plt.show()
     return
+
 def find_filters(filter_table):
     filter_list = []
     for f in filter_table:
@@ -103,7 +106,37 @@ def norm_flux(flux_table,zp):
 
 class sn_sim :
     def __init__(self,sim_yaml):
-        '''Initialisation of the simulation class with the config file'''
+        '''Initialisation of the simulation class with the config file
+        config.yml
+
+        -------------------------------------------------------------------------------
+        | data :                                                                      |
+        |    obs_config_path: '/PATH/TO/OBS/FILE'                                     |
+        |    write_path: '/PATH/TO/OUTPUT'                                            |
+        |    sim_name: 'NAME OF SIMULATION'                                           |
+        | sn_gen:                                                                     |
+        |    n_sn: NUMBER OF SN TO GENERATE                                           |
+        | z_range: [ZMIN,ZMAX]                                                        |
+        |    v_cmb: OUR PECULIAR VELOCITY (optional, default = 369.82 km/s)           |
+        |    M0: SN ABSOLUT MAGNITUDE                                                 |
+        |    mag_smear: SN INTRINSIC SMEARING                                         |
+        | cosmology:                                                                  |
+        |    Om: MATTER DENSITY                                                       |
+        |    H0: HUBBLE CONSTANT                                                      |
+        | salt2_gen:                                                                  |
+        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                       |
+        |     alpha: STRETCH CORRECTION = alpha*x1                                    |
+        |     beta: COLOR CORRECTION = -beta*c                                        |
+        |     mean_x1: MEAN X1 VALUE                                                  |
+        |     mean_c: MEAN C VALUE                                                    |
+        |     sig_x1: SIGMA X1                                                        |
+        |     sig_c: SIGMA C                                                          |
+        | vpec_gen:                                                                   |
+        |     mean_vpec: MEAN SN PECULIAR VEL                                         |
+        |     sig_vpec: SIGMA VPEC                                                    |
+        |                                                                             |
+        -------------------------------------------------------------------------------
+        '''
         #Default values
         self.yml_path = sim_yaml
         #CMB values
@@ -116,7 +149,17 @@ class sn_sim :
 
         #Simulation parameters
         self.data_cfg = self.sim_cfg['data']
-        self.obs_cfg_path = self.data_cfg['obs_config_path']
+
+        condition=False
+        if condition:
+            self.obs_cfg_path = self.data_cfg['obs_config_path']
+            self.open_obs_header()
+        else:
+            self.db_cfg = self.sim_cfg['db_config']
+            self.db_file= self.db_cfg['dbfile_path']
+            self.zp = self.db_cfg['zp']
+            self.gain= self.db_cfg['gain']
+
         self.write_path = self.data_cfg['write_path']
         self.sim_name = self.data_cfg['sim_name']
 
@@ -141,7 +184,6 @@ class sn_sim :
         #Vpec parameters
         self.vpec_gen = self.sim_cfg['vpec_gen']
 
-        self.open_obs_header()
 
 
     def simulate(self):
@@ -150,17 +192,26 @@ class sn_sim :
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
-        print(f'OBS FILE : {self.obs_cfg_path}')
+        condition = False
+        if condition:
+            print(f'OBS FILE : {self.obs_cfg_path}')
+        else:
+            print(f'DB FILE : {self.db_file}')
+
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
         print(f'-----------------------------------\n')
         start_time = time.time()
 
         self.obs=[]
-        self.obs_header=[]
-        with fits.open(self.obs_cfg_path) as hduf:
-            for hdu in hduf[1:]:
-                self.obs.append(hdu.data)
-                self.obs_header.append(hdu.header)
+        if condition:
+            self.obs_header=[]
+            with fits.open(self.obs_cfg_path) as hduf:
+                for hdu in hduf[1:]:
+                    self.obs.append(hdu.data)
+                    self.obs_header.append(hdu.header)
+        else:
+            self.extract_from_db()
+
         sep='###############################################'
         sep2 =box_output(sep,'------------')
         line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
@@ -194,14 +245,15 @@ class sn_sim :
         else:
             self.randseed = np.random.randint(low=1000,high=10000)
 
-        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=7)
+        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=8)
         self.randseeds = {'z_seed': randseeds[0],
-                          'x0_seed': randseeds[1],
-                          'x1_seed': randseeds[2],
-                          'c_seed': randseeds[3],
-                          'coord_seed': randseeds[4],
-                          'vpec_seed': randseeds[5],
-                          'smearM_seed': randseeds[6]
+                          't0_seed': randseeds[1],
+                          'x0_seed': randseeds[2],
+                          'x1_seed': randseeds[3],
+                          'c_seed': randseeds[4],
+                          'coord_seed': randseeds[5],
+                          'vpec_seed': randseeds[6],
+                          'smearM_seed': randseeds[7]
                           }
         #Init z range
         self.z_range = self.sn_gen['z_range']
@@ -221,10 +273,15 @@ class sn_sim :
         self.mean_c = self.salt2_gen['mean_c']
         self.sig_c = self.salt2_gen['sig_c']
 
-
         #Redshift generation
         self.gen_redshift_cos()
-        self.gen_coord()
+
+        condition = False
+        if condition:
+            self.gen_coord()
+        else:
+            self.db_to_obs()
+
         self.gen_z2cmb()
         self.gen_z_pec()
         self.zCMB = (1+self.zcos)*(1+self.zpec)-1.
@@ -236,7 +293,7 @@ class sn_sim :
 
         #self.sim_t0=np.zeros(self.n_sn)
         #Total fake for the moment....
-        self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
+        #self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
         self.params = [{'z': z,
                   't0': peak,
                   'x0': x0,
@@ -337,6 +394,60 @@ class sn_sim :
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))]+lc_hdu_list)
         hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
         return
+
+    def db_to_obs(self):
+        '''Use a cadence db file to produce obs '''
+        field_size=np.sqrt(47)/2
+        ra_seed, dec_seed, choice_seed = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=3)
+
+        self.ra=[]
+        self.dec=[]
+
+        for i in range(self.n_sn):
+            field_id = np.random.default_rng(choice_seed).integers(0,len(self.obs_dic['fieldRA'])) #Choice one field
+            #Gen ra and dec
+            ra = self.obs_dic['fieldRA'][field_id] + np.random.default_rng(ra_seed).uniform(-field_size,field_size)
+            dec =  self.obs_dic['fieldDec'][field_id] + np.random.default_rng(dec_seed).uniform(-field_size,field_size)
+            self.ra.append(ra)
+            self.dec.append(dec)
+
+        self.sim_t0 = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn)
+
+
+        for t0,ra,dec in zip(self.sim_t0,self.ra,self.dec):
+            epochs_selec = (t0 - self.obs_dic['expMJD'] < 30)*(t0 + self.obs_dic['expMJD'] > 65) #time selection
+            epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra)
+            epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec)
+
+            mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
+            filter = self.obs_dic['filter'][epochs_selec].astype('U27')
+
+            #TO CHANGE
+            for i in range(len(filter)):
+                filter[i]='ztf'+filter[i]
+
+            skynoise = pw(10,0.4*(self.zp-mlim5))/5
+            obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
+                        'band': filter,
+                        'gain': [self.gain]*np.sum(epochs_selec),
+                        'skynoise': [0]*np.sum(epochs_selec),
+                        'zp': [self.zp]*np.sum(epochs_selec),
+                        'zpsys': ['ab']*np.sum(epochs_selec)}
+                        )
+
+            self.obs.append(obs)
+        return
+
+    def extract_from_db(self):
+        dbf = sqlite3.connect(self.db_file)
+        self.obs_dic={}
+        keys=['expMJD', 'filter', 'fieldRA','fieldDec','fiveSigmaDepth']
+        for k in keys:
+            sql_com = f'SELECT {k} from Summary;'
+            values = dbf.execute(sql_com)
+            self.obs_dic[k] = np.array([a[0] for a in values])
+        return
+
 
 class open_sim:
     def __init__(self,sim_file,SALT2_dir):
