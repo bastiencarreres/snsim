@@ -66,9 +66,9 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
         if mag:
             plt.gca().invert_yaxis()
             plt.ylabel('Mag')
-            flux_b = flux_b[flux_b>0] #Delete < 0 pts
-            time_b=time_b[flux_b>0]
+            flux_b, fluxerr_b, time_b = flux_b[flux_b>0], fluxerr_b[flux_b>0], time_b[flux_b>0] #Delete < 0 pts
             plot = -2.5*np.log10(flux_b)+zp
+            plt.ylim(np.max(plot)+3,np.min(plot)-3)
             err = 2.5/np.log(10)*1/flux_b*fluxerr_b
             if sim_model is not None:
                 plot_th = sim_model.bandmag(b,'ab',time_th)
