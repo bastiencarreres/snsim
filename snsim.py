@@ -105,6 +105,14 @@ def norm_flux(flux_table,zp):
     fluxerr_norm = flux_table['fluxerr']*norm_factor
     return flux_norm,fluxerr_norm
 
+def add_filter():
+    for band in self.band_cfg:
+        table = np.loadtxt(band[1])
+        name= band[0]
+        band = snc.Bandpass(wavelength, transmission, name=name)
+        snc.register(band)
+    return
+
 class sn_sim :
     def __init__(self,sim_yaml):
         '''Initialisation of the simulation class with the config file
@@ -112,38 +120,46 @@ class sn_sim :
 
         NOTE : obs_file and db_file are optional but you must set one of the two!!!
 
-        -------------------------------------------------------------------------------
-        | data :                                                                      |
-        |    write_path: '/PATH/TO/OUTPUT'                                            |
-        |    sim_name: 'NAME OF SIMULATION'                                           |
-        |    obs_config_path: '/PATH/TO/OBS/FILE' (Optional -> use db_file)           |
-        | db_config: (Optional -> use obs_file)                                       |
-        |    dbfile_path: '/PATH/TO/FILE'                                             |
-        |    zp: 26                                                                   |
-        |    gain: 5.8                                                                |
-        | sn_gen:                                                                     |
-        |    n_sn: NUMBER OF SN TO GENERATE                                           |
-        | z_range: [ZMIN,ZMAX]                                                        |
-        |    v_cmb: OUR PECULIAR VELOCITY (optional, default = 369.82 km/s)           |
-        |    M0: SN ABSOLUT MAGNITUDE                                                 |
-        |    mag_smear: SN INTRINSIC SMEARING                                         |
-        | cosmology:                                                                  |
-        |    Om: MATTER DENSITY                                                       |
-        |    H0: HUBBLE CONSTANT                                                      |
-        | salt2_gen:                                                                  |
-        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                       |
-        |     alpha: STRETCH CORRECTION = alpha*x1                                    |
-        |     beta: COLOR CORRECTION = -beta*c                                        |
-        |     mean_x1: MEAN X1 VALUE                                                  |
-        |     mean_c: MEAN C VALUE                                                    |
-        |     sig_x1: SIGMA X1                                                        |
-        |     sig_c: SIGMA C                                                          |
-        | vpec_gen:                                                                   |
-        |     mean_vpec: MEAN SN PECULIAR VEL                                         |
-        |     sig_vpec: SIGMA VPEC                                                    |
-        |                                                                             |
-        -------------------------------------------------------------------------------
+        +--------------------------------------------------------------------------------+
+        | data :                                                                         |
+        |    write_path: '/PATH/TO/OUTPUT'                                               |
+        |    sim_name: 'NAME OF SIMULATION'                                              |
+        |    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in   |
+        | db/obs file doesn't correpond to those in sncosmo registery)                   |
+        |    band_cfg: [('band_name1', '/PATH/TO/BAND/FILE1'), ...] #(Optional if you    |
+        |  want to use your own bandpass -> compatible with band_dic )                   |
+        |    obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)             |
+        | db_config: #(Optional -> use obs_file)                                         |
+        |    dbfile_path: '/PATH/TO/FILE'                                                |
+        |    zp: 26                                                                      |
+        |    gain: 5.8                                                                   |
+        | sn_gen:                                                                        |
+        |    n_sn: NUMBER OF SN TO GENERATE                                              |
+        | z_range: [ZMIN,ZMAX]                                                           |
+        |    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)             |
+        |    M0: SN ABSOLUT MAGNITUDE                                                    |
+        |    mag_smear: SN INTRINSIC SMEARING                                            |
+        | cosmology:                                                                     |
+        |    Om: MATTER DENSITY                                                          |
+        |    H0: HUBBLE CONSTANT                                                         |
+        | salt2_gen:                                                                     |
+        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                          |
+        |     alpha: STRETCH CORRECTION = alpha*x1                                       |
+        |     beta: COLOR CORRECTION = -beta*c                                           |
+        |     mean_x1: MEAN X1 VALUE                                                     |
+        |     mean_c: MEAN C VALUE                                                       |
+        |     sig_x1: SIGMA X1                                                           |
+        |     sig_c: SIGMA C                                                             |
+        | vpec_gen:                                                                      |
+        |     mean_vpec: MEAN SN PECULIAR VEL                                            |
+        |     sig_vpec: SIGMA VPEC                                                       |
+        |                                                                                |
+        +--------------------------------------------------------------------------------+
         '''
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #----------------- DEFAULT VALUES -----------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+
         #Default values
         self.yml_path = sim_yaml
         #CMB values
@@ -153,6 +169,11 @@ class sn_sim :
 
         with open(sim_yaml, "r") as ymlfile:
            self.sim_cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
+
+
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #----------- data and db_config section -----------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         #Simulation parameters
         self.data_cfg = self.sim_cfg['data']
@@ -168,6 +189,7 @@ class sn_sim :
             else:
                 raise RuntimeError("Set a db_file or a obs_file -> type help(sn_sim) to print the syntax")
 
+        #Initialisation of db/obs_path
         if self.use_obs:
             self.obs_cfg_path = self.data_cfg['obs_config_path']
             self.open_obs_header()
@@ -180,15 +202,32 @@ class sn_sim :
         self.write_path = self.data_cfg['write_path']
         self.sim_name = self.data_cfg['sim_name']
 
+        #Band dic : band_name_obs/db_file -> band_name_sncosmo
+        if 'band_dic' in self.data_cfg:
+            self.band_dic = self.data_cfg['band_dic']
+        else:
+            self.band_dic = None
+
+
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
 
+
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #--------------- cosmomogy section ----------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+
         #Cosmology parameters
         self.cosmo_cfg = self.sim_cfg['cosmology']
         self.cosmo = FlatLambdaCDM(H0=self.cosmo_cfg['H0'], Om0=self.cosmo_cfg['Om'])
+
+
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #--------------- salt2_gen section ----------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         #Salt2 parameters
         self.salt2_gen = self.sim_cfg['salt2_gen']
@@ -198,7 +237,11 @@ class sn_sim :
 
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model=snc.Model(source=source)
-        #Vpec parameters
+
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #--------------- vpec_gen section -----------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+
         self.vpec_gen = self.sim_cfg['vpec_gen']
 
 
@@ -224,6 +267,9 @@ class sn_sim :
             self.obs_header=[]
             with fits.open(self.obs_cfg_path) as hduf:
                 for hdu in hduf[1:]:
+                    if self.band_dic is not None:
+                        for i,b in hdu['band']:
+                            hdu.data['band'][i] = self.band_dic[b]
                     self.obs.append(hdu.data)
                     self.obs_header.append(hdu.header)
         else:
@@ -439,9 +485,10 @@ class sn_sim :
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
 
-            #TO CHANGE
-            for i in range(len(filter)):
-                filter[i]='ztf'+filter[i]
+            #Change band name to correpond with sncosmo band
+            if self.band_dic is not None:
+                for i,f in enumerate(filter):
+                    filter[i] = self.band_dic[f]
 
             skynoise = pw(10.,0.4*(self.zp-mlim5))/5
             obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
@@ -449,13 +496,13 @@ class sn_sim :
                         'gain': [self.gain]*np.sum(epochs_selec),
                         'skynoise': skynoise,
                         'zp': [self.zp]*np.sum(epochs_selec),
-                        'zpsys': ['ab']*np.sum(epochs_selec)}
-                        )
-
+                        'zpsys': ['ab']*np.sum(epochs_selec)})
             self.obs.append(obs)
         return
 
     def extract_from_db(self):
+        '''Read db file and extract relevant information'''
+
         dbf = sqlite3.connect(self.db_file)
         self.obs_dic={}
         keys=['expMJD', 'filter', 'fieldRA','fieldDec','fiveSigmaDepth','moonPhase']
