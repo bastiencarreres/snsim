@@ -31,7 +31,7 @@ vpec_gen:
 ```
 ## Obs file:
 The obs file is in fits format and is generated with gen_obs.py
-gen_obs function : 
+gen_obs function :
 ```
 gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
 ```
