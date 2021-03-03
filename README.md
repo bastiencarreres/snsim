@@ -8,7 +8,7 @@ data :
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
-correpond to those in sncosmo registery)
+ correpond to those in sncosmo registery)
     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)
 db_config: #(Optional -> use obs_file)
     dbfile_path: '/PATH/TO/FILE'
