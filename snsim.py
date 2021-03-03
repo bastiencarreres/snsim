@@ -17,12 +17,15 @@ c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
 
 def x0_to_mB(x0):
+    '''Convert x0 to mB'''
     return -2.5*np.log10(x0)+snc_mag_offset
 
 def mB_to_x0(mB):
+    '''Convert mB to x0'''
     return pw(10,-0.4*(mB-snc_mag_offset))
 
 def box_output(sep,line):
+    '''Use for plotting simulation output'''
     l = len(sep)-len(line)-2
     space1 = ' '*(l//2)
     space2 = ' '*(l//2+l%2)
@@ -32,6 +35,7 @@ def snc_fit(lc,model):
     return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'])
 
 def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
+    '''General plot function'''
     bands = find_filters(flux_table['band'])
     flux_norm, fluxerr_norm = norm_flux(flux_table,zp)
     time = flux_table['time']
@@ -53,7 +57,6 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
     plt.figure()
     #plt.title(title)
     plt.xlabel('Time to peak')
-
 
     for b in bands:
         band_mask = flux_table['band']==b
@@ -92,6 +95,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
     return
 
 def find_filters(filter_table):
+    '''Take a list of obs filter and return the name of the different filters'''
     filter_list = []
     for f in filter_table:
         if f not in filter_list:
@@ -105,7 +109,7 @@ def norm_flux(flux_table,zp):
     fluxerr_norm = flux_table['fluxerr']*norm_factor
     return flux_norm,fluxerr_norm
 
-def add_filter():
+def add_filter():#Not implemented yet
     for band in self.band_cfg:
         table = np.loadtxt(band[1])
         name= band[0]
@@ -244,8 +248,7 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.vpec_gen = self.sim_cfg['vpec_gen']
-
-
+        return
 
     def simulate(self):
         '''Simulation routine :
@@ -308,8 +311,8 @@ class sn_sim :
         return
 
     def gen_param_array(self):
-        '''GENERATE Z,T0,SALT2 PARAMS
-        '''
+        '''GENERATE Z,T0,SALT2 PARAMS'''
+
         #Init randseed in order to reproduce SNs
         if 'randseed' in self.sn_gen:
             self.randseed = int(self.sn_gen['randseed'])
@@ -386,6 +389,7 @@ class sn_sim :
         return
 
     def gen_coord(self):
+        '''Extract ra and dec from obs file'''
         # extract ra dec from obs config
         self.ra = []
         self.dec = []
@@ -393,12 +397,6 @@ class sn_sim :
             obs=self.obs_header[i]
             self.ra.append(obs['RA'])
             self.dec.append(obs['DEC'])
-
-        #seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
-        #self.randseeds['ra_seed'] = seeds[0]
-        #self.randseeds['dec_seed']=seeds[1]
-        #self.ra = np.random.default_rng(self.randseeds['ra_seed']).uniform(low=0,high=2*np.pi,size=self.n_sn)
-        #self.dec = np.random.default_rng(self.randseeds['dec_seed']).uniform(low=-np.pi/2,high=np.pi/2,size=self.n_sn)
         return
 
     def gen_z2cmb(self):
@@ -445,10 +443,12 @@ class sn_sim :
         return
 
     def plot_lc(self,lc_id,zp=25.,mag=False):
+        '''Ploting the ligth curve of number 'lc_id' sn'''
         plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
         return
 
     def fit_lc(self):
+        '''Use sncosmo to fit sim lc'''
         self.fit_res = []
         for i in range(self.n_sn):
             self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
@@ -490,17 +490,16 @@ class sn_sim :
 
         self.sim_t0 = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn)
 
-
         for t0,ra,dec in zip(self.sim_t0,self.ra,self.dec):
-            epochs_selec = (t0 - self.obs_dic['expMJD'] < 20)*(self.obs_dic['expMJD'] - t0 < 50) #time selection
-            epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra)
-            epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec)
-            epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0)
+            epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime()) #time selection
+            epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
+            epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
+            epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
 
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
 
-            #Change band name to correpond with sncosmo band
+            #Change band name to correpond with sncosmo bands
             if self.band_dic is not None:
                 for i,f in enumerate(filter):
                     filter[i] = self.band_dic[f]
@@ -526,7 +525,6 @@ class sn_sim :
             values = dbf.execute(sql_com)
             self.obs_dic[k] = np.array([a[0] for a in values])
         return
-
 
 class open_sim:
     def __init__(self,sim_file,SALT2_dir):
