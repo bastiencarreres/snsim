@@ -16,11 +16,11 @@ import sqlite3
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
 
-def x0_to_mB(par,inv): #Faire 2 fonctions
-    if inv == 0:
-        return -2.5*np.log10(par)+snc_mag_offset
-    else:
-        return pw(10,-0.4*(par-snc_mag_offset))
+def x0_to_mB(x0):
+    return -2.5*np.log10(x0)+snc_mag_offset
+
+def mB_to_x0(mB):
+    return pw(10,-0.4*(mB-snc_mag_offset))
 
 def box_output(sep,line):
     l = len(sep)-len(line)-2
@@ -43,7 +43,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
 
     if sim_model is not None:
         x0 = flux_table.meta['x0']
-        mb = x0_to_mB(flux_table.meta['x0'],0)
+        mb = x0_to_mB(flux_table.meta['x0'])
         x1 = flux_table.meta['x1']
         c = flux_table.meta['c']
 
@@ -131,11 +131,12 @@ class sn_sim :
         |    obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)             |
         | db_config: #(Optional -> use obs_file)                                         |
         |    dbfile_path: '/PATH/TO/FILE'                                                |
-        |    zp: 26                                                                      |
-        |    gain: 5.8                                                                   |
+        |    zp: INSTRUMENTAL ZEROPOINT                                                  |
+        |    gain: CCD GAIN e-/ADU                                                       |
         | sn_gen:                                                                        |
         |    n_sn: NUMBER OF SN TO GENERATE                                              |
-        | z_range: [ZMIN,ZMAX]                                                           |
+        |    randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                      |
+        |    z_range: [ZMIN,ZMAX]                                                        |
         |    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)             |
         |    M0: SN ABSOLUT MAGNITUDE                                                    |
         |    mag_smear: SN INTRINSIC SMEARING                                            |
@@ -247,7 +248,12 @@ class sn_sim :
 
 
     def simulate(self):
-        '''Simulation routine'''
+        '''Simulation routine :
+        1- READ OBS/DB FILE
+        2- GEN REDSHIFT AND SALT2 PARAM
+        3- GEN LC FLUX WITH sncosmo
+        4- WRITE LC TO A FITS FILE
+        '''
 
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
@@ -302,13 +308,15 @@ class sn_sim :
         return
 
     def gen_param_array(self):
+        '''GENERATE Z,T0,SALT2 PARAMS
+        '''
         #Init randseed in order to reproduce SNs
         if 'randseed' in self.sn_gen:
             self.randseed = int(self.sn_gen['randseed'])
         else:
-            self.randseed = np.random.randint(low=1000,high=10000)
+            self.randseed = np.random.randint(low=1000,high=100000)
 
-        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=10000,size=8)
+        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=100000,size=9)
         self.randseeds = {'z_seed': randseeds[0],
                           't0_seed': randseeds[1],
                           'x0_seed': randseeds[2],
@@ -316,7 +324,8 @@ class sn_sim :
                           'c_seed': randseeds[4],
                           'coord_seed': randseeds[5],
                           'vpec_seed': randseeds[6],
-                          'smearM_seed': randseeds[7]
+                          'smearM_seed': randseeds[7],
+                          'sigflux_seed': randseeds[8]
                           }
         #Init z range
         self.z_range = self.sn_gen['z_range']
@@ -421,12 +430,18 @@ class sn_sim :
         self.sim_mu = 5*np.log10((1+self.zcos)*(1+self.z2cmb)*pw((1+self.zpec),2)*self.cosmo.comoving_distance(self.zcos).value)+25
         #Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 + beta*c : scattering due to color and stretch} + {intrinsic smearing}
         self.sim_mB = self.sim_mu + self.M0 - self.alpha*self.sim_x1 + self.beta*self.sim_c + self.mag_smear
-        self.sim_x0 = x0_to_mB(self.sim_mB,1)
+        self.sim_x0 = mB_to_x0(self.sim_mB)
         return
 
     def gen_flux(self):
         ''' Generate simulated flux '''
-        self.sim_lc=[snc.realize_lcs(obs, self.model, [params],scatter=False)[0] for obs,params in zip(self.obs,self.params)]
+        lc_seeds = np.random.default_rng(self.randseeds['sigflux_seed']).integers(low=1000,high=100000,size=self.n_sn)
+        self.sim_lc=[]
+        for obs,params,s in zip(self.obs,self.params,lc_seeds):
+            lc = snc.realize_lcs(obs, self.model, [params],scatter=False)[0]
+            lc['flux'] = np.random.default_rng(s).normal(loc=lc['flux'],scale=lc['fluxerr'])
+            self.sim_lc.append(lc)
+
         return
 
     def plot_lc(self,lc_id,zp=25.,mag=False):
