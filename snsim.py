@@ -110,11 +110,17 @@ class sn_sim :
         '''Initialisation of the simulation class with the config file
         config.yml
 
+        NOTE : obs_file and db_file are optional but you must set one of the two!!!
+
         -------------------------------------------------------------------------------
         | data :                                                                      |
-        |    obs_config_path: '/PATH/TO/OBS/FILE'                                     |
         |    write_path: '/PATH/TO/OUTPUT'                                            |
         |    sim_name: 'NAME OF SIMULATION'                                           |
+        |    obs_config_path: '/PATH/TO/OBS/FILE' (Optional -> use db_file)           |
+        | db_config: (Optional -> use obs_file)                                       |
+        |    dbfile_path: '/PATH/TO/FILE'                                             |
+        |    zp: 26                                                                   |
+        |    gain: 5.8                                                                |
         | sn_gen:                                                                     |
         |    n_sn: NUMBER OF SN TO GENERATE                                           |
         | z_range: [ZMIN,ZMAX]                                                        |
@@ -151,8 +157,18 @@ class sn_sim :
         #Simulation parameters
         self.data_cfg = self.sim_cfg['data']
 
-        condition=False
-        if condition:
+        #Condition to use obs_file or db_file
+        if 'db_config' in self.sim_cfg and 'obs_config_path' in self.data_cfg:
+            raise RuntimeError("The simulation can't run with obs file and db file, just set one of the two")
+        elif 'obs_config_path' in self.data_cfg:
+            self.use_obs = True
+        else:
+            if 'db_config' in self.sim_cfg:
+                self.use_obs = False
+            else:
+                raise RuntimeError("Set a db_file or a obs_file -> type help(sn_sim) to print the syntax")
+
+        if self.use_obs:
             self.obs_cfg_path = self.data_cfg['obs_config_path']
             self.open_obs_header()
         else:
@@ -193,8 +209,8 @@ class sn_sim :
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
-        condition = False
-        if condition:
+
+        if self.use_obs:
             print(f'OBS FILE : {self.obs_cfg_path}')
         else:
             print(f'DB FILE : {self.db_file}')
@@ -204,7 +220,7 @@ class sn_sim :
         start_time = time.time()
 
         self.obs=[]
-        if condition:
+        if self.use_obs:
             self.obs_header=[]
             with fits.open(self.obs_cfg_path) as hduf:
                 for hdu in hduf[1:]:
@@ -277,8 +293,7 @@ class sn_sim :
         #Redshift generation
         self.gen_redshift_cos()
 
-        condition = False
-        if condition:
+        if self.use_obs:
             self.gen_coord()
         else:
             self.db_to_obs()
@@ -419,6 +434,7 @@ class sn_sim :
             epochs_selec = (t0 - self.obs_dic['expMJD'] < 20)*(self.obs_dic['expMJD'] - t0 < 50) #time selection
             epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra)
             epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec)
+            epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0)
 
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
@@ -442,7 +458,7 @@ class sn_sim :
     def extract_from_db(self):
         dbf = sqlite3.connect(self.db_file)
         self.obs_dic={}
-        keys=['expMJD', 'filter', 'fieldRA','fieldDec','fiveSigmaDepth']
+        keys=['expMJD', 'filter', 'fieldRA','fieldDec','fiveSigmaDepth','moonPhase']
         for k in keys:
             sql_com = f'SELECT {k} from Summary;'
             values = dbf.execute(sql_com)
