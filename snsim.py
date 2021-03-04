@@ -68,7 +68,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
 
     #plt.title(title)
     plt.xlabel('Time to peak')
-
+    ylim = 0
     for b in bands:
         band_mask = flux_table['band']==b
         flux_b = flux_norm[band_mask]
@@ -87,13 +87,14 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
                 plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
         else:
             plt.ylabel('Flux')
-            plt.ylim(-10,np.max(flux_norm)+50)
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
                 plot_th = sim_model.bandflux(b,time_th,zp=zp,zpsys='ab')
             if fit_model is not None:
                 plot_fit = fit_model.bandflux(b,time_th,zp=zp,zpsys='ab')
+            ylim = ylim+(np.max(plot_th)-ylim)*(np.max(plot_th)>ylim)
+
 
         p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o')
         if sim_model is not None:
@@ -101,6 +102,8 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
         if fit_model is not None:
             plt.plot(time_th-t0, plot_fit,color=p[0].get_color())
 
+    plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
+    plt.axhline(0,ls='--',c='black',lw=1.5)
     plt.legend()
     plt.show()
     return
@@ -236,6 +239,12 @@ class sn_sim :
 
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
+
+        #Minimal nbr of epochs in LC
+        if 'nep_min' in self.sn_gen:
+            self.nep_min = int(self.sn_gen['nep_min'])
+        else:
+            self.nep_min = 1
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
@@ -456,7 +465,7 @@ class sn_sim :
         lc_seeds = np.random.default_rng(self.randseeds['sigflux_seed']).integers(low=1000,high=100000,size=self.n_sn)
         self.sim_lc=[]
         for obs,params,s in zip(self.obs,self.params,lc_seeds):
-            lc = snc.realize_lcs(obs, self.model, [params],scatter=False)[0]
+            lc = snc.realize_lcs(obs, self.model, [params], scatter=False)[0]
             lc['flux'] = np.random.default_rng(s).normal(loc=lc['flux'],scale=lc['fluxerr'])
             self.sim_lc.append(lc)
 
@@ -500,28 +509,38 @@ class sn_sim :
                 4- Capture the information (filter, noise) of these visits
                 5- Create sncosmo obs Table
          '''
-        field_size=np.sqrt(47)/2
-        ra_seed, dec_seed, choice_seed = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=3)
-
+        field_size=np.sqrt(47)/2*np.pi/180
+        ra_seeds, dec_seeds, choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(3,self.n_sn))
+        t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
         self.ra=[]
         self.dec=[]
-
+        self.sim_t0=[]
         for i in range(self.n_sn):
-            field_id = np.random.default_rng(choice_seed).integers(0,len(self.obs_dic['fieldRA'])) #Choice one field
-            #Gen ra and dec
-            ra = self.obs_dic['fieldRA'][field_id] + np.random.default_rng(ra_seed).uniform(-field_size,field_size)
-            dec =  self.obs_dic['fieldDec'][field_id] + np.random.default_rng(dec_seed).uniform(-field_size,field_size)
+            n_eps = 0
+            while n_eps < self.nep_min:#minimum of epochs
+                field_id = np.random.default_rng(choice_seeds[i]).integers(0,len(self.obs_dic['fieldRA'])) #Choice one field
+                #Gen ra and dec
+                ra = self.obs_dic['fieldRA'][field_id] + np.random.default_rng(ra_seeds[i]).uniform(-field_size,field_size)
+                dec =  self.obs_dic['fieldDec'][field_id] + np.random.default_rng(dec_seeds[i]).uniform(-field_size,field_size)
+
+
+                #Gen t0
+                t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
+
+                #Epochs selection
+                epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime()) #time selection
+                epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
+                epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
+                epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
+
+                n_eps = np.sum(epochs_selec)
+                if n_eps < self.nep_min : choice_seeds[i] = np.random.default_rng(choice_seeds[i]).integers(1000,100000)
+
             self.ra.append(ra)
             self.dec.append(dec)
+            self.sim_t0.append(t0)
 
-        self.sim_t0 = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn)
-
-        for t0,ra,dec in zip(self.sim_t0,self.ra,self.dec):
-            epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime()) #time selection
-            epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
-            epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
-            epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
-
+            #Capture noise and filter
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
 
@@ -529,8 +548,10 @@ class sn_sim :
             if self.band_dic is not None:
                 for i,f in enumerate(filter):
                     filter[i] = self.band_dic[f]
-
+            #Convert maglim to flux noise (ADU)
             skynoise = pw(10.,0.4*(self.zp-mlim5))/5
+
+            #Create obs table
             obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
                         'band': filter,
                         'gain': [self.gain]*np.sum(epochs_selec),
