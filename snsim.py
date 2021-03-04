@@ -151,25 +151,26 @@ class sn_sim :
 
         +--------------------------------------------------------------------------------+
         | data :                                                                         |
-        |    write_path: '/PATH/TO/OUTPUT'                                               |
-        |    sim_name: 'NAME OF SIMULATION'                                              |
-        |    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in   |
+        |     write_path: '/PATH/TO/OUTPUT'                                              |
+        |     sim_name: 'NAME OF SIMULATION'                                             |
+        |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in  |
         | db/obs file doesn't correpond to those in sncosmo registery)                   |
-        |    obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)             |
+        |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)            |
         | db_config: #(Optional -> use obs_file)                                         |
-        |    dbfile_path: '/PATH/TO/FILE'                                                |
-        |    zp: INSTRUMENTAL ZEROPOINT                                                  |
-        |    gain: CCD GAIN e-/ADU                                                       |
+        |     dbfile_path: '/PATH/TO/FILE'                                               |
+        |     zp: INSTRUMENTAL ZEROPOINT                                                 |
+        |     gain: CCD GAIN e-/ADU                                                      |
         | sn_gen:                                                                        |
-        |    n_sn: NUMBER OF SN TO GENERATE                                              |
-        |    randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                      |
-        |    z_range: [ZMIN,ZMAX]                                                        |
-        |    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)             |
-        |    M0: SN ABSOLUT MAGNITUDE                                                    |
-        |    mag_smear: SN INTRINSIC SMEARING                                            |
+        |     n_sn: NUMBER OF SN TO GENERATE                                             |
+        |     nep_min: MINIMAL NBR OF EPOCHS FOR EACH SN                                 |
+        |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                     |
+        |     z_range: [ZMIN,ZMAX]                                                       |
+        |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)            |
+        |     M0: SN ABSOLUT MAGNITUDE                                                   |
+        |     mag_smear: SN INTRINSIC SMEARING                                           |
         | cosmology:                                                                     |
-        |    Om: MATTER DENSITY                                                          |
-        |    H0: HUBBLE CONSTANT                                                         |
+        |     Om: MATTER DENSITY                                                         |
+        |     H0: HUBBLE CONSTANT                                                        |
         | salt2_gen:                                                                     |
         |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                          |
         |     alpha: STRETCH CORRECTION = alpha*x1                                       |
