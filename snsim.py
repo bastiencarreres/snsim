@@ -12,6 +12,12 @@ import matplotlib.pyplot as plt
 import time
 import sqlite3
 
+sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
+sn_sim_print+= '    /       ||  \ |  |        /       ||  | |   \/   | \n'
+sn_sim_print+= '   |   (----`|   \|  |       |   (----`|  | |  \  /  | \n'
+sn_sim_print+= '    \   \    |  . `  |        \   \    |  | |  |\/|  | \n'
+sn_sim_print+= '.----)   |   |  |\   |    .----)   |   |  | |  |  |  | \n'
+sn_sim_print+= '|_______/    |__| \__|    |_______/    |__| |__|  |__| \n'
 
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
@@ -53,8 +59,9 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
 
-    time_th = np.linspace(t0-20, t0+50,100)
+    time_th = np.linspace(t0-20, t0+50,500)
 
+    plt.figure()
     if sim_model is not None:
         x0 = flux_table.meta['x0']
         mb = x0_to_mB(flux_table.meta['x0'])
@@ -63,8 +70,8 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
 
         sim_model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
 
-    #title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
-    plt.figure()
+        title = f'z = {z:.3f} $m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
+        plt.title(title)
 
     #plt.title(title)
     plt.xlabel('Time to peak')
@@ -96,7 +103,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
             ylim = ylim+(np.max(plot_th)-ylim)*(np.max(plot_th)>ylim)
 
 
-        p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o')
+        p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
         if fit_model is not None:
@@ -237,6 +244,9 @@ class sn_sim :
         else:
             self.band_dic = None
 
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #----------------- sn_gen section -----------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
@@ -287,7 +297,7 @@ class sn_sim :
         3- GEN LC FLUX WITH sncosmo
         4- WRITE LC TO A FITS FILE
         '''
-
+        print(sn_sim_print)
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
