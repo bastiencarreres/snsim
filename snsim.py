@@ -32,10 +32,20 @@ def box_output(sep,line):
     return '#'+space1+line+space2+'#'
 
 def snc_fit(lc,model):
+    '''Fit the given lc with the given SALT2 model
+       Free parameters are : - The SN peak magnitude in B-band t0
+                             - The normalisation factor x0 (<=> mB)
+                             - The stretch parameter x1
+                             - The color parameter c
+    '''
     return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'])
 
 def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
-    '''General plot function'''
+    '''General plot function
+       Options : - zp = float, use the normalisation zero point that you want (default: 25.)
+                 - mag = boolean, plot magnitude (default = False)
+    '''
+
     bands = find_filters(flux_table['band'])
     flux_norm, fluxerr_norm = norm_flux(flux_table,zp)
     time = flux_table['time']
@@ -55,6 +65,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
 
     #title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
     plt.figure()
+
     #plt.title(title)
     plt.xlabel('Time to peak')
 
@@ -105,7 +116,7 @@ def find_filters(filter_table):
 def norm_flux(flux_table,zp):
     '''Taken from sncosmo -> set the flux to the same zero-point'''
     norm_factor = pw(10,0.4*(zp-flux_table['zp']))
-    flux_norm=flux_table['flux']*norm_factor
+    flux_norm = flux_table['flux']*norm_factor
     fluxerr_norm = flux_table['fluxerr']*norm_factor
     return flux_norm,fluxerr_norm
 
@@ -122,7 +133,9 @@ class sn_sim :
         '''Initialisation of the simulation class with the config file
         config.yml
 
-        NOTE : obs_file and db_file are optional but you must set one of the two!!!
+        NOTE : - obs_file and db_file are optional but you must set one of the two!!!
+               - If the name of bands in the obs/db file doesn't match sncosmo bands
+            you can use the key band_dic to translate filters names
 
         +--------------------------------------------------------------------------------+
         | data :                                                                         |
@@ -313,7 +326,7 @@ class sn_sim :
     def gen_param_array(self):
         '''GENERATE Z,T0,SALT2 PARAMS'''
 
-        #Init randseed in order to reproduce SNs
+        #Init randseed in order to reproduce SNs simulations
         if 'randseed' in self.sn_gen:
             self.randseed = int(self.sn_gen['randseed'])
         else:
@@ -473,7 +486,13 @@ class sn_sim :
         return
 
     def db_to_obs(self):
-        '''Use a cadence db file to produce obs '''
+        '''Use a cadence db file to produce obs :
+                1- Generate SN ra,dec in cadence fields
+                2- Generate SN t0 in the survey time
+                3- For each t0,ra,dec select visits that match
+                4- Capture the information (filter, noise) of these visits
+                5- Create sncosmo obs Table
+         '''
         field_size=np.sqrt(47)/2
         ra_seed, dec_seed, choice_seed = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=3)
 
