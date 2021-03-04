@@ -120,13 +120,22 @@ def norm_flux(flux_table,zp):
     fluxerr_norm = flux_table['fluxerr']*norm_factor
     return flux_norm,fluxerr_norm
 
-def add_filter():#Not implemented yet
-    for band in self.band_cfg:
+def add_filter(path):#Not implemented yet for later purpose
+    input_name={}
+    for band in bands:
         table = np.loadtxt(band[1])
         name= band[0]
         band = snc.Bandpass(wavelength, transmission, name=name)
-        snc.register(band)
-    return
+        try:
+            snc.register(band)
+        except (Exception):
+            band.name += '_temp'
+            snc.register(band,force=True)
+            input_name[band[0]] = band.name
+    if input_name == {}:
+        return None
+    else:
+        return input_name
 
 class sn_sim :
     def __init__(self,sim_yaml):
@@ -143,8 +152,6 @@ class sn_sim :
         |    sim_name: 'NAME OF SIMULATION'                                              |
         |    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in   |
         | db/obs file doesn't correpond to those in sncosmo registery)                   |
-        |    band_cfg: [('band_name1', '/PATH/TO/BAND/FILE1'), ...] #(Optional if you    |
-        |  want to use your own bandpass -> compatible with band_dic )                   |
         |    obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)             |
         | db_config: #(Optional -> use obs_file)                                         |
         |    dbfile_path: '/PATH/TO/FILE'                                                |
