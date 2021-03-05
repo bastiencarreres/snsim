@@ -392,7 +392,7 @@ class sn_sim :
         self.gen_redshift_cos()
 
         if self.use_obs:
-            self.gen_coord()
+            self.extract_coord()
         else:
             self.db_to_obs()
 
@@ -428,7 +428,7 @@ class sn_sim :
         self.zcos = np.random.default_rng(self.randseeds['z_seed']).uniform(low=self.z_range[0],high=self.z_range[1],size=self.n_sn)
         return
 
-    def gen_coord(self):
+    def extract_coord(self):
         '''Extract ra and dec from obs file'''
         # extract ra dec from obs config
         self.ra = []
@@ -438,6 +438,15 @@ class sn_sim :
             self.ra.append(obs['RA'])
             self.dec.append(obs['DEC'])
         return
+
+    def gen_coord(self,randseeds):
+        '''Generate ra,dec uniform on the sphere'''
+        ra_seed = randseeds[0]
+        dec_seed = randseeds[1]
+        ra = np.random.default_rng(ra_seed).uniform(low=0,high=2*np.pi)
+        dec_uni = np.random.default_rng(dec_seed).random()
+        dec = np.arcsin(2*dec_uni-1)
+        return ra, dec
 
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
@@ -528,24 +537,32 @@ class sn_sim :
         self.sim_t0=[]
         for i in range(self.n_sn):
             n_eps = 0
+            compt = 0
             while n_eps < self.nep_min:#minimum of epochs
-                field_id = np.random.default_rng(choice_seeds[i]).integers(0,len(self.obs_dic['fieldRA'])) #Choice one field
                 #Gen ra and dec
-                ra = self.obs_dic['fieldRA'][field_id] + np.random.default_rng(ra_seeds[i]).uniform(-field_size,field_size)
-                dec =  self.obs_dic['fieldDec'][field_id] + np.random.default_rng(dec_seeds[i]).uniform(-field_size,field_size)
-
+                ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
 
                 #Gen t0
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
                 #Epochs selection
-                epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime()) #time selection
+                epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime())
+
+                #time selection
                 epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
                 epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
                 epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
 
                 n_eps = np.sum(epochs_selec)
-                if n_eps < self.nep_min : choice_seeds[i] = np.random.default_rng(choice_seeds[i]).integers(1000,100000)
+                if n_eps < self.nep_min :
+                    ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
+                    dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
+
+                if compt > len(self.obs_dic['expMJD']):
+                    raise RuntimeError('Too many nep required, reduces nep_min')
+                else:
+                    compt+=1
+
 
             self.ra.append(ra)
             self.dec.append(dec)
@@ -570,6 +587,8 @@ class sn_sim :
                         'zp': [self.zp]*np.sum(epochs_selec),
                         'zpsys': ['ab']*np.sum(epochs_selec)})
             self.obs.append(obs)
+        self.ra = np.asarray(self.ra)
+        self.dec = np.asarray(self.dec)
         return
 
     def extract_from_db(self):
