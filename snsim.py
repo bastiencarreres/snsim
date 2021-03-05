@@ -203,6 +203,7 @@ class sn_sim :
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
 
+
         with open(sim_yaml, "r") as ymlfile:
            self.sim_cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
@@ -288,6 +289,11 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.vpec_gen = self.sim_cfg['vpec_gen']
+
+
+    #Init fit_res_table
+        self.fit_res = np.asarray(['No_fit']*self.n_sn,dtype='object')
+
         return
 
     def simulate(self):
@@ -496,12 +502,24 @@ class sn_sim :
         plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
         return
 
-    def fit_lc(self):
+    def fitter(self,id):
+        try :
+            res = snc_fit(self.sim_lc[id],self.model)
+        except (RuntimeError):
+            self.fit_res[id] = 'NaN'
+            return
+        self.fit_res[id] = res
+        return
+
+    def fit_lc(self,lc_id=None):
         '''Use sncosmo to fit sim lc'''
-        self.fit_res = []
-        for i in range(self.n_sn):
-            self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
-            self.fit_res.append(snc_fit(self.sim_lc[i],self.model))
+        if lc_id is None:
+            for i in range(self.n_sn):
+                self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
+                self.fitter(i)
+        else:
+            self.model.set(z=self.sim_lc[lc_id].meta['z'])
+            self.fitter(lc_id)
         return
 
     def write_sim(self):
