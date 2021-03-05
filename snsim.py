@@ -529,7 +529,7 @@ class sn_sim :
                 4- Capture the information (filter, noise) of these visits
                 5- Create sncosmo obs Table
          '''
-        field_size=np.sqrt(47)/2*np.pi/180
+        field_size=np.radians(np.sqrt(47)/2)
         ra_seeds, dec_seeds, choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(3,self.n_sn))
         t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
         self.ra=[]
