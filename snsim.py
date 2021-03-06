@@ -169,7 +169,7 @@ class sn_sim :
         |     gain: CCD GAIN e-/ADU                                                      |
         | sn_gen:                                                                        |
         |     n_sn: NUMBER OF SN TO GENERATE                                             |
-        |     nep_min: MINIMAL NBR OF EPOCHS FOR EACH SN                                 |
+        |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2],...] EPOCHS NBR CUTS       |
         |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                     |
         |     z_range: [ZMIN,ZMAX]                                                       |
         |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)            |
@@ -252,15 +252,6 @@ class sn_sim :
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
 
-        #Minimal nbr of epochs in LC
-        if 'nep_min' in self.sn_gen:
-            self.nep_min = int(self.sn_gen['nep_min'])
-        else:
-            self.nep_min = 1
-
-        if 'v_cmb' in self.sn_gen:
-            self.v_cmb = self.sn_gen['v_cmb']
-
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #--------------- cosmomogy section ----------------#
@@ -294,6 +285,19 @@ class sn_sim :
     #Init fit_res_table
         self.fit_res = np.asarray(['No_fit']*self.n_sn,dtype='object')
 
+    #Minimal nbr of epochs in LC
+        if 'nep_cut' in self.sn_gen:
+            if isinstance(self.sn_gen['nep_cut'], (int,float)):
+                self.nep_cut = [(self.sn_gen['nep_cut'],self.model.mintime(),self.model.maxtime())]
+                print(self.nep_cut)
+            elif isinstance(self.sn_gen['nep_cut'], (list)):
+                self.nep_cut = self.sn_gen['nep_cut']
+
+        else:
+            self.nep_cut = [(1,self.model.mintime(),self.model.maxtime())]
+
+        if 'v_cmb' in self.sn_gen:
+            self.v_cmb = self.sn_gen['v_cmb']
         return
 
     def simulate(self):
@@ -554,30 +558,36 @@ class sn_sim :
         self.dec=[]
         self.sim_t0=[]
         for i in range(self.n_sn):
-            n_eps = 0
             compt = 0
-            while n_eps < self.nep_min:#minimum of epochs
+            re_gen = True
+            while re_gen:
                 #Gen ra and dec
                 ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
-
                 #Gen t0
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
                 #Epochs selection
-                epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime())
-
-                #time selection
-                epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
+                ModelMinT_obsfrm = self.model.mintime()*(1+self.zcos[i])
+                ModelMaxT_obsfrm = self.model.maxtime()*(1+self.zcos[i])
+                epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
                 epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
                 epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
+                epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
 
-                n_eps = np.sum(epochs_selec)
-                if n_eps < self.nep_min :
+                for cut in self.nep_cut:
+                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
+                    test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
+                    test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
+                    if np.sum(test) < int(cut[0]):
+                        break
+                    re_gen = False
+
+                if re_gen:
                     ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
                     dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
 
                 if compt > len(self.obs_dic['expMJD']):
-                    raise RuntimeError('Too many nep required, reduces nep_min')
+                    raise RuntimeError('Too many nep required, reduces nep_cut')
                 else:
                     compt+=1
 
