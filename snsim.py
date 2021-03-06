@@ -12,6 +12,12 @@ import matplotlib.pyplot as plt
 import time
 import sqlite3
 
+sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
+sn_sim_print+= '    /       ||  \ |  |        /       ||  | |   \/   | \n'
+sn_sim_print+= '   |   (----`|   \|  |       |   (----`|  | |  \  /  | \n'
+sn_sim_print+= '    \   \    |  . `  |        \   \    |  | |  |\/|  | \n'
+sn_sim_print+= '.----)   |   |  |\   |    .----)   |   |  | |  |  |  | \n'
+sn_sim_print+= '|_______/    |__| \__|    |_______/    |__| |__|  |__| \n'
 
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
@@ -53,8 +59,9 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
 
-    time_th = np.linspace(t0-20, t0+50,100)
+    time_th = np.linspace(t0-20, t0+50,500)
 
+    plt.figure()
     if sim_model is not None:
         x0 = flux_table.meta['x0']
         mb = x0_to_mB(flux_table.meta['x0'])
@@ -63,12 +70,12 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
 
         sim_model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
 
-    #title = f'$m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
-    plt.figure()
+        title = f'z = {z:.3f} $m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
+        plt.title(title)
 
     #plt.title(title)
     plt.xlabel('Time to peak')
-
+    ylim = 0
     for b in bands:
         band_mask = flux_table['band']==b
         flux_b = flux_norm[band_mask]
@@ -87,20 +94,23 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
                 plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
         else:
             plt.ylabel('Flux')
-            plt.ylim(-10,np.max(flux_norm)+50)
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
                 plot_th = sim_model.bandflux(b,time_th,zp=zp,zpsys='ab')
             if fit_model is not None:
                 plot_fit = fit_model.bandflux(b,time_th,zp=zp,zpsys='ab')
+            ylim = ylim+(np.max(plot_th)-ylim)*(np.max(plot_th)>ylim)
 
-        p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o')
+
+        p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
         if fit_model is not None:
             plt.plot(time_th-t0, plot_fit,color=p[0].get_color())
 
+    plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
+    plt.axhline(0,ls='--',c='black',lw=1.5)
     plt.legend()
     plt.show()
     return
@@ -120,13 +130,22 @@ def norm_flux(flux_table,zp):
     fluxerr_norm = flux_table['fluxerr']*norm_factor
     return flux_norm,fluxerr_norm
 
-def add_filter():#Not implemented yet
-    for band in self.band_cfg:
+def add_filter(path):#Not implemented yet for later purpose
+    input_name={}
+    for band in bands:
         table = np.loadtxt(band[1])
         name= band[0]
         band = snc.Bandpass(wavelength, transmission, name=name)
-        snc.register(band)
-    return
+        try:
+            snc.register(band)
+        except (Exception):
+            band.name += '_temp'
+            snc.register(band,force=True)
+            input_name[band[0]] = band.name
+    if input_name == {}:
+        return None
+    else:
+        return input_name
 
 class sn_sim :
     def __init__(self,sim_yaml):
@@ -139,27 +158,26 @@ class sn_sim :
 
         +--------------------------------------------------------------------------------+
         | data :                                                                         |
-        |    write_path: '/PATH/TO/OUTPUT'                                               |
-        |    sim_name: 'NAME OF SIMULATION'                                              |
-        |    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in   |
+        |     write_path: '/PATH/TO/OUTPUT'                                              |
+        |     sim_name: 'NAME OF SIMULATION'                                             |
+        |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in  |
         | db/obs file doesn't correpond to those in sncosmo registery)                   |
-        |    band_cfg: [('band_name1', '/PATH/TO/BAND/FILE1'), ...] #(Optional if you    |
-        |  want to use your own bandpass -> compatible with band_dic )                   |
-        |    obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)             |
+        |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)            |
         | db_config: #(Optional -> use obs_file)                                         |
-        |    dbfile_path: '/PATH/TO/FILE'                                                |
-        |    zp: INSTRUMENTAL ZEROPOINT                                                  |
-        |    gain: CCD GAIN e-/ADU                                                       |
+        |     dbfile_path: '/PATH/TO/FILE'                                               |
+        |     zp: INSTRUMENTAL ZEROPOINT                                                 |
+        |     gain: CCD GAIN e-/ADU                                                      |
         | sn_gen:                                                                        |
-        |    n_sn: NUMBER OF SN TO GENERATE                                              |
-        |    randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                      |
-        |    z_range: [ZMIN,ZMAX]                                                        |
-        |    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)             |
-        |    M0: SN ABSOLUT MAGNITUDE                                                    |
-        |    mag_smear: SN INTRINSIC SMEARING                                            |
+        |     n_sn: NUMBER OF SN TO GENERATE                                             |
+        |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2],...] EPOCHS NBR CUTS       |
+        |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                     |
+        |     z_range: [ZMIN,ZMAX]                                                       |
+        |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)            |
+        |     M0: SN ABSOLUT MAGNITUDE                                                   |
+        |     mag_smear: SN INTRINSIC SMEARING                                           |
         | cosmology:                                                                     |
-        |    Om: MATTER DENSITY                                                          |
-        |    H0: HUBBLE CONSTANT                                                         |
+        |     Om: MATTER DENSITY                                                         |
+        |     H0: HUBBLE CONSTANT                                                        |
         | salt2_gen:                                                                     |
         |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                          |
         |     alpha: STRETCH CORRECTION = alpha*x1                                       |
@@ -184,6 +202,7 @@ class sn_sim :
         self.dec_cmb = 48.253
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
+
 
         with open(sim_yaml, "r") as ymlfile:
            self.sim_cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
@@ -226,12 +245,12 @@ class sn_sim :
         else:
             self.band_dic = None
 
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #----------------- sn_gen section -----------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.sn_gen = self.sim_cfg['sn_gen']
         self.n_sn = int(self.sn_gen['n_sn'])
-
-        if 'v_cmb' in self.sn_gen:
-            self.v_cmb = self.sn_gen['v_cmb']
 
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -261,6 +280,24 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.vpec_gen = self.sim_cfg['vpec_gen']
+
+
+    #Init fit_res_table
+        self.fit_res = np.asarray(['No_fit']*self.n_sn,dtype='object')
+
+    #Minimal nbr of epochs in LC
+        if 'nep_cut' in self.sn_gen:
+            if isinstance(self.sn_gen['nep_cut'], (int,float)):
+                self.nep_cut = [(self.sn_gen['nep_cut'],self.model.mintime(),self.model.maxtime())]
+                print(self.nep_cut)
+            elif isinstance(self.sn_gen['nep_cut'], (list)):
+                self.nep_cut = self.sn_gen['nep_cut']
+
+        else:
+            self.nep_cut = [(1,self.model.mintime(),self.model.maxtime())]
+
+        if 'v_cmb' in self.sn_gen:
+            self.v_cmb = self.sn_gen['v_cmb']
         return
 
     def simulate(self):
@@ -270,7 +307,7 @@ class sn_sim :
         3- GEN LC FLUX WITH sncosmo
         4- WRITE LC TO A FITS FILE
         '''
-
+        print(sn_sim_print)
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
@@ -365,7 +402,7 @@ class sn_sim :
         self.gen_redshift_cos()
 
         if self.use_obs:
-            self.gen_coord()
+            self.extract_coord()
         else:
             self.db_to_obs()
 
@@ -401,7 +438,7 @@ class sn_sim :
         self.zcos = np.random.default_rng(self.randseeds['z_seed']).uniform(low=self.z_range[0],high=self.z_range[1],size=self.n_sn)
         return
 
-    def gen_coord(self):
+    def extract_coord(self):
         '''Extract ra and dec from obs file'''
         # extract ra dec from obs config
         self.ra = []
@@ -411,6 +448,15 @@ class sn_sim :
             self.ra.append(obs['RA'])
             self.dec.append(obs['DEC'])
         return
+
+    def gen_coord(self,randseeds):
+        '''Generate ra,dec uniform on the sphere'''
+        ra_seed = randseeds[0]
+        dec_seed = randseeds[1]
+        ra = np.random.default_rng(ra_seed).uniform(low=0,high=2*np.pi)
+        dec_uni = np.random.default_rng(dec_seed).random()
+        dec = np.arcsin(2*dec_uni-1)
+        return ra, dec
 
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
@@ -449,7 +495,7 @@ class sn_sim :
         lc_seeds = np.random.default_rng(self.randseeds['sigflux_seed']).integers(low=1000,high=100000,size=self.n_sn)
         self.sim_lc=[]
         for obs,params,s in zip(self.obs,self.params,lc_seeds):
-            lc = snc.realize_lcs(obs, self.model, [params],scatter=False)[0]
+            lc = snc.realize_lcs(obs, self.model, [params], scatter=False)[0]
             lc['flux'] = np.random.default_rng(s).normal(loc=lc['flux'],scale=lc['fluxerr'])
             self.sim_lc.append(lc)
 
@@ -460,12 +506,24 @@ class sn_sim :
         plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
         return
 
-    def fit_lc(self):
+    def fitter(self,id):
+        try :
+            res = snc_fit(self.sim_lc[id],self.model)
+        except (RuntimeError):
+            self.fit_res[id] = 'NaN'
+            return
+        self.fit_res[id] = res
+        return
+
+    def fit_lc(self,lc_id=None):
         '''Use sncosmo to fit sim lc'''
-        self.fit_res = []
-        for i in range(self.n_sn):
-            self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
-            self.fit_res.append(snc_fit(self.sim_lc[i],self.model))
+        if lc_id is None:
+            for i in range(self.n_sn):
+                self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
+                self.fitter(i)
+        else:
+            self.model.set(z=self.sim_lc[lc_id].meta['z'])
+            self.fitter(lc_id)
         return
 
     def write_sim(self):
@@ -493,28 +551,52 @@ class sn_sim :
                 4- Capture the information (filter, noise) of these visits
                 5- Create sncosmo obs Table
          '''
-        field_size=np.sqrt(47)/2
-        ra_seed, dec_seed, choice_seed = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=3)
-
+        field_size=np.radians(np.sqrt(47)/2)
+        ra_seeds, dec_seeds, choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(3,self.n_sn))
+        t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
         self.ra=[]
         self.dec=[]
-
+        self.sim_t0=[]
         for i in range(self.n_sn):
-            field_id = np.random.default_rng(choice_seed).integers(0,len(self.obs_dic['fieldRA'])) #Choice one field
-            #Gen ra and dec
-            ra = self.obs_dic['fieldRA'][field_id] + np.random.default_rng(ra_seed).uniform(-field_size,field_size)
-            dec =  self.obs_dic['fieldDec'][field_id] + np.random.default_rng(dec_seed).uniform(-field_size,field_size)
+            compt = 0
+            re_gen = True
+            while re_gen:
+                #Gen ra and dec
+                ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
+                #Gen t0
+                t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
+
+                #Epochs selection
+                ModelMinT_obsfrm = self.model.mintime()*(1+self.zcos[i])
+                ModelMaxT_obsfrm = self.model.maxtime()*(1+self.zcos[i])
+                epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
+                epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
+                epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
+                epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
+
+                for cut in self.nep_cut:
+                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
+                    test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
+                    test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
+                    if np.sum(test) < int(cut[0]):
+                        break
+                    re_gen = False
+
+                if re_gen:
+                    ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
+                    dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
+
+                if compt > len(self.obs_dic['expMJD']):
+                    raise RuntimeError('Too many nep required, reduces nep_cut')
+                else:
+                    compt+=1
+
+
             self.ra.append(ra)
             self.dec.append(dec)
+            self.sim_t0.append(t0)
 
-        self.sim_t0 = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn)
-
-        for t0,ra,dec in zip(self.sim_t0,self.ra,self.dec):
-            epochs_selec = (self.obs_dic['expMJD'] - t0  > self.model.mintime())*(self.obs_dic['expMJD'] - t0 < self.model.maxtime()) #time selection
-            epochs_selec *=  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
-            epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
-            epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
-
+            #Capture noise and filter
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
 
@@ -522,8 +604,10 @@ class sn_sim :
             if self.band_dic is not None:
                 for i,f in enumerate(filter):
                     filter[i] = self.band_dic[f]
-
+            #Convert maglim to flux noise (ADU)
             skynoise = pw(10.,0.4*(self.zp-mlim5))/5
+
+            #Create obs table
             obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
                         'band': filter,
                         'gain': [self.gain]*np.sum(epochs_selec),
@@ -531,6 +615,8 @@ class sn_sim :
                         'zp': [self.zp]*np.sum(epochs_selec),
                         'zpsys': ['ab']*np.sum(epochs_selec)})
             self.obs.append(obs)
+        self.ra = np.asarray(self.ra)
+        self.dec = np.asarray(self.dec)
         return
 
     def extract_from_db(self):
