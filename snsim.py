@@ -135,6 +135,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
                     err_th = compute_fit_error(fit_model,fit_cov,b,plot_fit,time_th,zp)
 
 
+
         p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
@@ -142,6 +143,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
             plt.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--')
             if fit_cov is not None:
                 plt.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
+
 
     #plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
     plt.axhline(0,ls='--',c='black',lw=1.5)
@@ -623,10 +625,12 @@ class sn_sim :
                 epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
 
                 #Cut on epochs
+
                 for cut in self.nep_cut:
                     cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
                     test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
                     test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
+
 
                     #If the cut is applied just to one filter
                     if len(cut) == 4:
