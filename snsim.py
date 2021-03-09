@@ -97,7 +97,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
 
-    time_th = np.linspace(t0-20, t0+50,500)
+    time_th = np.linspace(t0-20*(1+z), t0+50*(1+z),500)
 
     fig=plt.figure()
     if residuals:
@@ -170,7 +170,9 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
                 ax1.set_ylabel('Data - Model')
                 ax1.errorbar(time_b-t0,rsd,yerr=err,fmt='o')
                 ax1.axhline(0,ls='--',c='black',lw=1.5)
-                ax1.set_ylim(-np.max(abs(rsd))*1.5,np.max(abs(rsd))*1.5)
+                ax1.set_ylim(-np.max(abs(rsd))*2,np.max(abs(rsd))*2)
+                ax1.plot(time_th-t0,err_th,ls='--',color=p[0].get_color())
+                ax1.plot(time_th-t0,-err_th,ls='--',color=p[0].get_color())
 
     #plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
     ax0.axhline(ls='--',c='black',lw=1.5)
