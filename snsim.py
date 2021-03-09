@@ -44,9 +44,38 @@ def snc_fit(lc,model):
                              - The stretch parameter x1
                              - The color parameter c
     '''
-    return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'])
+    return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'], modelcov=True)
 
-def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
+def compute_fit_error(fit_model,cov,band,flux_th,time_th,zp,magsys='ab'):
+    a = 1./(1+fit_model.parameters[0])
+    t0 = fit_model.parameters[1]
+    x0 = fit_model.parameters[2]
+    x1 = fit_model.parameters[3]
+    c = fit_model.parameters[4]
+    COV  = cov
+    b = snc.get_bandpass(band)
+    wave, dwave = snc.utils.integration_grid(b.minwave(), b.maxwave(),snc.constants.MODEL_BANDFLUX_SPACING)
+    trans = b(wave)
+    ms =  snc.get_magsystem(magsys)
+    zpms = ms.zpbandflux(b)
+    normfactor = 10**(0.4*zp)/zpms
+    err_th = []
+    for t,f in zip(time_th,flux_th):
+        p = time_th-t0
+        dfdx0 = f/x0
+        fint1 = fit_model.source._model['M1'](a*p, a*wave)[0]*10.**(-0.4*fit_model.source._colorlaw(a*wave)*c)
+        fint2 = (fit_model.source._model['M0'](a*p, a*wave)[0]+x1*fit_model.source._model['M1'](a*p, a*wave)[0])*10.**(-0.4*fit_model.source._colorlaw(a*wave)*c)*fit_model.source._colorlaw(a*wave)
+        m1int = np.sum(wave * trans * fint1, axis=0) * dwave / snc.constants.HC_ERG_AA
+        clint = np.sum(wave*trans*fint2, axis=0) * dwave / snc.constants.HC_ERG_AA
+        dfdx1 = a*x0*m1int*normfactor
+        dfdc = -0.4*np.log(10)*a*x0*clint*normfactor
+        J = np.asarray([dfdx0,dfdx1,dfdc],dtype=float)
+        err = np.sqrt(J.T @ cov @ J)
+        err_th.append(err)
+    err_th = np.asarray(err_th)
+    return err_th
+
+def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=None):
     '''General plot function
        Options : - zp = float, use the normalisation zero point that you want (default: 25.)
                  - mag = boolean, plot magnitude (default = False)
@@ -92,24 +121,31 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None):
                 plot_th = sim_model.bandmag(b,'ab',time_th)
             if fit_model is not None:
                 plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
+
         else:
             plt.ylabel('Flux')
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
                 plot_th = sim_model.bandflux(b,time_th,zp=zp,zpsys='ab')
+                ylim = ylim+(np.max(plot_th)-ylim)*(np.max(plot_th)>ylim)
             if fit_model is not None:
                 plot_fit = fit_model.bandflux(b,time_th,zp=zp,zpsys='ab')
-            ylim = ylim+(np.max(plot_th)-ylim)*(np.max(plot_th)>ylim)
+                if fit_cov is not None:
+                    err_th = compute_fit_error(fit_model,fit_cov,b,plot_fit,time_th,zp)
+
 
 
         p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
             plt.plot(time_th-t0,plot_th, color=p[0].get_color())
         if fit_model is not None:
-            plt.plot(time_th-t0, plot_fit,color=p[0].get_color())
+            plt.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--')
+            if fit_cov is not None:
+                plt.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
 
-    plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
+
+    #plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
     plt.axhline(0,ls='--',c='black',lw=1.5)
     plt.legend()
     plt.show()
@@ -155,42 +191,43 @@ class sn_sim :
         NOTE : - obs_file and db_file are optional but you must set one of the two!!!
                - If the name of bands in the obs/db file doesn't match sncosmo bands
             you can use the key band_dic to translate filters names
+               - If you don't set the filter name item in nep_cut, the cut apply to all the bands
 
-        +--------------------------------------------------------------------------------+
-        | data :                                                                         |
-        |     write_path: '/PATH/TO/OUTPUT'                                              |
-        |     sim_name: 'NAME OF SIMULATION'                                             |
-        |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in  |
-        | db/obs file doesn't correpond to those in sncosmo registery)                   |
-        |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)            |
-        | db_config: #(Optional -> use obs_file)                                         |
-        |     dbfile_path: '/PATH/TO/FILE'                                               |
-        |     zp: INSTRUMENTAL ZEROPOINT                                                 |
-        |     gain: CCD GAIN e-/ADU                                                      |
-        | sn_gen:                                                                        |
-        |     n_sn: NUMBER OF SN TO GENERATE                                             |
-        |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2],...] EPOCHS NBR CUTS       |
-        |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                     |
-        |     z_range: [ZMIN,ZMAX]                                                       |
-        |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)            |
-        |     M0: SN ABSOLUT MAGNITUDE                                                   |
-        |     mag_smear: SN INTRINSIC SMEARING                                           |
-        | cosmology:                                                                     |
-        |     Om: MATTER DENSITY                                                         |
-        |     H0: HUBBLE CONSTANT                                                        |
-        | salt2_gen:                                                                     |
-        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                          |
-        |     alpha: STRETCH CORRECTION = alpha*x1                                       |
-        |     beta: COLOR CORRECTION = -beta*c                                           |
-        |     mean_x1: MEAN X1 VALUE                                                     |
-        |     mean_c: MEAN C VALUE                                                       |
-        |     sig_x1: SIGMA X1                                                           |
-        |     sig_c: SIGMA C                                                             |
-        | vpec_gen:                                                                      |
-        |     mean_vpec: MEAN SN PECULIAR VEL                                            |
-        |     sig_vpec: SIGMA VPEC                                                       |
-        |                                                                                |
-        +--------------------------------------------------------------------------------+
+        +----------------------------------------------------------------------------------+
+        | data :                                                                           |
+        |     write_path: '/PATH/TO/OUTPUT'                                                |
+        |     sim_name: 'NAME OF SIMULATION'                                               |
+        |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
+        | db/obs file doesn't correpond to those in sncosmo registery)                     |
+        |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)              |
+        | db_config: #(Optional -> use obs_file)                                           |
+        |     dbfile_path: '/PATH/TO/FILE'                                                 |
+        |     zp: INSTRUMENTAL ZEROPOINT                                                   |
+        |     gain: CCD GAIN e-/ADU                                                        |
+        | sn_gen:                                                                          |
+        |     n_sn: NUMBER OF SN TO GENERATE                                               |
+        |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS |
+        |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                       |
+        |     z_range: [ZMIN,ZMAX]                                                         |
+        |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
+        |     M0: SN ABSOLUT MAGNITUDE                                                     |
+        |     mag_smear: SN INTRINSIC SMEARING                                             |
+        | cosmology:                                                                       |
+        |     Om: MATTER DENSITY                                                           |
+        |     H0: HUBBLE CONSTANT                                                          |
+        | salt2_gen:                                                                       |
+        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                            |
+        |     alpha: STRETCH CORRECTION = alpha*x1                                         |
+        |     beta: COLOR CORRECTION = -beta*c                                             |
+        |     mean_x1: MEAN X1 VALUE                                                       |
+        |     mean_c: MEAN C VALUE                                                         |
+        |     sig_x1: SIGMA X1                                                             |
+        |     sig_c: SIGMA C                                                               |
+        | vpec_gen:                                                                        |
+        |     mean_vpec: MEAN SN PECULIAR VEL                                              |
+        |     sig_vpec: SIGMA VPEC                                                         |
+        |                                                                                  |
+        +----------------------------------------------------------------------------------+
         '''
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------------- DEFAULT VALUES -----------------#
@@ -501,9 +538,22 @@ class sn_sim :
 
         return
 
-    def plot_lc(self,lc_id,zp=25.,mag=False):
+    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False):
         '''Ploting the ligth curve of number 'lc_id' sn'''
-        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
+        if plot_sim:
+            sim_model = self.model
+        else:
+            sim_model = None
+
+        if plot_fit:
+            if self.fit_res[lc_id] == 'No_fit':
+                raise ValueError("This lc wasn't fitted")
+            fit_model = self.fit_res[lc_id][1]
+            fit_cov = self.fit_res[lc_id][0]['covariance'][1:,1:]
+        else:
+            fit_model = None
+            fit_cov = None
+        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov)
         return
 
     def fitter(self,id):
@@ -574,10 +624,18 @@ class sn_sim :
                 epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
                 epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
 
+                #Cut on epochs
+
                 for cut in self.nep_cut:
                     cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
                     test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
                     test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
+
+
+                    #If the cut is applied just to one filter
+                    if len(cut) == 4:
+                        test *= (self.band_dic[self.self.obs_dic['filter']] == cut[3])
+
                     if np.sum(test) < int(cut[0]):
                         break
                     re_gen = False
