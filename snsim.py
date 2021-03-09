@@ -128,7 +128,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
         time_b = time[band_mask]
         if mag:
             plt.gca().invert_yaxis()
-            plt.ylabel('Mag')
+            ax0.ylabel('Mag')
             flux_b, fluxerr_b, time_b = flux_b[flux_b>0], fluxerr_b[flux_b>0], time_b[flux_b>0] #Delete < 0 pts
             plot = -2.5*np.log10(flux_b)+zp
             plt.ylim(np.max(plot)+3,np.min(plot)-3)
@@ -145,7 +145,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
                     rsd = plot-fit_pts
 
         else:
-            plt.ylabel('Flux')
+            ax0.set_ylabel('Flux')
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
@@ -167,6 +167,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
             if fit_cov is not None:
                 ax0.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
             if residuals :
+                ax1.set_ylabel('Data - Model')
                 ax1.errorbar(time_b-t0,rsd,yerr=err,fmt='o')
                 ax1.axhline(0,ls='--',c='black',lw=1.5)
                 ax1.set_ylim(-np.max(abs(rsd))*1.5,np.max(abs(rsd))*1.5)
