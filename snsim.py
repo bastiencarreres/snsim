@@ -11,6 +11,7 @@ from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
 import time
 import sqlite3
+import matplotlib.gridspec as gridspec
 
 sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
 sn_sim_print+= '    /       ||  \ |  |        /       ||  | |   \/   | \n'
@@ -47,6 +48,14 @@ def snc_fit(lc,model):
     return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'], modelcov=True)
 
 def compute_fit_error(fit_model,cov,band,flux_th,time_th,zp,magsys='ab'):
+    '''Compute theorical fluxerr from fit err = sqrt(COV)
+    where COV = J**T * COV(x0,x1,c) * J with J = (dF/dx0, dF/dx1, dF/dc) the jacobian.
+    According to Fnorm = x0/(1+z) * int_\lambda (M0(lambda_s,p)+x1*M1(lambda_s,p))*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+    where norm_factor = 10**(0.4*ZP_norm)/ZP_magsys. We found :
+    dF/dx0 = F/x0
+    dF/dx1 = x0/(1+z) * int_lambda M1(lambda_s,p))*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+    dF/dc  =  -0.4*ln(10)*x0/(1+z) * int_\lambda (M0(lambda_s,p)+x1*M1(lambda_s,p))*CL(lambda_s)*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+    '''
     a = 1./(1+fit_model.parameters[0])
     t0 = fit_model.parameters[1]
     x0 = fit_model.parameters[2]
@@ -75,7 +84,7 @@ def compute_fit_error(fit_model,cov,band,flux_th,time_th,zp,magsys='ab'):
     err_th = np.asarray(err_th)
     return err_th
 
-def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=None):
+def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=None,residuals=False):
     '''General plot function
        Options : - zp = float, use the normalisation zero point that you want (default: 25.)
                  - mag = boolean, plot magnitude (default = False)
@@ -90,7 +99,14 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
 
     time_th = np.linspace(t0-20, t0+50,500)
 
-    plt.figure()
+    fig=plt.figure()
+    if residuals:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
+        ax0 = plt.subplot(gs[0])
+        ax1 = plt.subplot(gs[1],sharex=ax0)
+    else :
+        ax0 = plt.subplot(111)
+
     if sim_model is not None:
         x0 = flux_table.meta['x0']
         mb = x0_to_mB(flux_table.meta['x0'])
@@ -100,7 +116,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
         sim_model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
 
         title = f'z = {z:.3f} $m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
-        plt.title(title)
+        ax0.set_title(title)
 
     #plt.title(title)
     plt.xlabel('Time to peak')
@@ -120,7 +136,13 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
             if sim_model is not None:
                 plot_th = sim_model.bandmag(b,'ab',time_th)
             if fit_model is not None:
-                plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
+                plot_fit = fit_model.bandmag(b,'ab',time_th)
+                if fit_cov is not None:
+                    err_th = compute_fit_error(fit_model,fit_cov,b,plot_fit,time_th,zp)
+                    err_th = 2.5/(np.log(10)*pw(10,-0.4*(plot_fit-zp)))*err_th
+                if residuals:
+                    fit_pts = fit_model.bandmag(b,'ab',time_b)
+                    rsd = plot-fit_pts
 
         else:
             plt.ylabel('Flux')
@@ -133,21 +155,26 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
                 plot_fit = fit_model.bandflux(b,time_th,zp=zp,zpsys='ab')
                 if fit_cov is not None:
                     err_th = compute_fit_error(fit_model,fit_cov,b,plot_fit,time_th,zp)
+                if residuals:
+                    fit_pts = fit_model.bandflux(b,time_b,zp=zp,zpsys='ab')
+                    rsd = plot-fit_pts
 
-
-
-        p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
+        p = ax0.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
-            plt.plot(time_th-t0,plot_th, color=p[0].get_color())
+            ax0.plot(time_th-t0,plot_th, color=p[0].get_color(),label='Sim')
         if fit_model is not None:
-            plt.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--')
+            ax0.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--',label='Fit')
             if fit_cov is not None:
-                plt.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
-
+                ax0.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
+            if residuals :
+                ax1.errorbar(time_b-t0,rsd,yerr=err,fmt='o')
+                ax1.axhline(0,ls='--',c='black',lw=1.5)
+                ax1.set_ylim(-np.max(abs(rsd))*1.5,np.max(abs(rsd))*1.5)
 
     #plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
-    plt.axhline(0,ls='--',c='black',lw=1.5)
-    plt.legend()
+    ax0.axhline(ls='--',c='black',lw=1.5)
+    ax0.legend()
+    plt.subplots_adjust(hspace=.0)
     plt.show()
     return
 
@@ -538,7 +565,7 @@ class sn_sim :
 
         return
 
-    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False):
+    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
         '''Ploting the ligth curve of number 'lc_id' sn'''
         if plot_sim:
             sim_model = self.model
@@ -553,7 +580,7 @@ class sn_sim :
         else:
             fit_model = None
             fit_cov = None
-        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov)
+        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov,residuals=residuals)
         return
 
     def fitter(self,id):
@@ -625,12 +652,10 @@ class sn_sim :
                 epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
 
                 #Cut on epochs
-
                 for cut in self.nep_cut:
                     cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
                     test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
                     test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
-
 
                     #If the cut is applied just to one filter
                     if len(cut) == 4:
