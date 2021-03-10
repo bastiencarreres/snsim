@@ -280,7 +280,7 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------------- DEFAULT VALUES -----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
-
+        self.use_host=False
         #Default values
         self.yml_path = sim_yaml
         #CMB values
@@ -403,8 +403,15 @@ class sn_sim :
 
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
         print(f'-----------------------------------\n')
-        start_time = time.time()
 
+
+        if self.use_host:
+            self.host=[]
+            with fits.open(self.host_file) as hduf:
+                for hdu in hduf:
+                    self.host.append(hdu.data)
+
+        start_time = time.time()
         self.obs=[]
         if self.use_obs:
             self.obs_header=[]
@@ -483,7 +490,8 @@ class sn_sim :
         self.sig_c = self.salt2_gen['sig_c']
 
         #Redshift generation
-        self.gen_redshift_cos()
+        if not self.use_host:
+            self.gen_redshift_cos()
 
         if self.use_obs:
             self.extract_coord()
@@ -555,7 +563,12 @@ class sn_sim :
         return
 
     def gen_z_pec(self):
-        self.vpec = np.random.default_rng(self.randseeds['vpec_seed']).normal(loc=self.mean_vpec,scale=self.sig_vpec,size=self.n_sn)
+        if self.use_host:
+            if 'vpec' in self.host.keys():
+                self.vpec = self.host['vpec']
+        else:
+            self.vpec = np.random.default_rng(self.randseeds['vpec_seed']).normal(loc=self.mean_vpec,scale=self.sig_vpec,size=self.n_sn)
+
         self.zpec = self.vpec/c_light_kms
         return
 
@@ -604,6 +617,7 @@ class sn_sim :
         return
 
     def fitter(self,id):
+        '''Use sncosmo to fit sim lc'''
         try :
             res = snc_fit(self.sim_lc[id],self.model)
         except (RuntimeError):
@@ -613,7 +627,7 @@ class sn_sim :
         return
 
     def fit_lc(self,lc_id=None):
-        '''Use sncosmo to fit sim lc'''
+        '''Send the lc and model to fit to self.fitter'''
         if lc_id is None:
             for i in range(self.n_sn):
                 self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
@@ -649,8 +663,23 @@ class sn_sim :
                 5- Create sncosmo obs Table
          '''
         field_size=np.radians(np.sqrt(47)/2)
-        ra_seeds, dec_seeds, choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(3,self.n_sn))
         t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
+
+        if self.use_host:
+            self.host=[]
+            self.zcos=[]
+            host_list = []
+            host_in_file = self.read_host_file()
+            for host in host_in_file:
+                check = (self.obs_dic['fieldRA']-field_size < host['ra'])*(self.obs_dic['fieldRA']+field_size > host['ra'])
+                check *= (self.obs_dic['fieldDec']-field_size < host['dec'])*(self.obs_dic['fieldDec']+field_size > host['dec'])
+                if np.sum(check) > 0:
+                    host_list.append(host)
+            host_list = np.asarray(host_list)
+            choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=self.n_sn)
+        else:
+            ra_seeds, dec_seeds= np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(2,self.n_sn))
+
         self.ra=[]
         self.dec=[]
         self.sim_t0=[]
@@ -658,16 +687,23 @@ class sn_sim :
         for i in range(self.n_sn):
             compt = 0
             re_gen = True
+
             while re_gen:
                 self.n_gen+=1
                 #Gen ra and dec
-                ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
+                if self.use_host:
+                     h_idx = np.random.default_rng(choice_seeds[i]).integers(len(host_list))
+                     ra,dec,z = host_list[h_idx]['ra'], host_list[h_idx]['dec'], host_list[h_idx]['z']
+                else:
+                    ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
+                    z = self.zcos[i]
+
                 #Gen t0
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
                 #Epochs selection
-                ModelMinT_obsfrm = self.model.mintime()*(1+self.zcos[i])
-                ModelMaxT_obsfrm = self.model.maxtime()*(1+self.zcos[i])
+                ModelMinT_obsfrm = self.model.mintime()*(1+z)
+                ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
                 epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
                 epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
                 epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
@@ -675,7 +711,7 @@ class sn_sim :
 
                 #Cut on epochs
                 for cut in self.nep_cut:
-                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
+                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
                     test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
                     test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
                     if len(cut) == 4:
@@ -685,9 +721,13 @@ class sn_sim :
                         break
                     else:
                         re_gen = False
+
                 if re_gen:
-                    ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
-                    dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
+                    if self.use_host:
+                        choice_seeds[i] = np.random.default_rng(choice_seeds[i]).integers(1000,100000)
+                    else:
+                        ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
+                        dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
 
                 if compt > len(self.obs_dic['expMJD']):
                     raise RuntimeError('Too many nep required, reduces nep_cut')
@@ -699,6 +739,10 @@ class sn_sim :
             self.dec.append(dec)
             self.sim_t0.append(t0)
 
+            if self.use_host:
+                self.host.append(host_list[h_idx])
+                self.zcos = np.asarray(z)
+
             #Capture noise and filter
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
@@ -707,6 +751,7 @@ class sn_sim :
             if self.band_dic is not None:
                 for i,f in enumerate(filter):
                     filter[i] = self.band_dic[f]
+
             #Convert maglim to flux noise (ADU)
             skynoise = pw(10.,0.4*(self.zp-mlim5))/5
 
@@ -718,8 +763,14 @@ class sn_sim :
                         'zp': [self.zp]*np.sum(epochs_selec),
                         'zpsys': ['ab']*np.sum(epochs_selec)})
             self.obs.append(obs)
+
         self.ra = np.asarray(self.ra)
         self.dec = np.asarray(self.dec)
+
+        if self.use_host:
+            self.host = np.asarray(self.host)
+            self.zcos = np.asarray(self.zcos)
+
         return
 
     def extract_from_db(self):
