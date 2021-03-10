@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import time
 import sqlite3
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 
 sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
 sn_sim_print+= '    /       ||  \ |  |        /       ||  | |   \/   | \n'
@@ -97,7 +99,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
 
-    time_th = np.linspace(t0-20*(1+z), t0+50*(1+z),500)
+    time_th = np.linspace(t0-19.8*(1+z),t0+49.8*(1+z),500)
 
     fig=plt.figure()
     if residuals:
@@ -115,10 +117,12 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
 
         sim_model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
 
+
         title = f'z = {z:.3f} $m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
         ax0.set_title(title)
 
-    #plt.title(title)
+
+
     plt.xlabel('Time to peak')
     ylim = 0
     for b in bands:
@@ -126,6 +130,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
         flux_b = flux_norm[band_mask]
         fluxerr_b = fluxerr_norm[band_mask]
         time_b = time[band_mask]
+
         if mag:
             plt.gca().invert_yaxis()
             ax0.ylabel('Mag')
@@ -161,22 +166,35 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
 
         p = ax0.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
-            ax0.plot(time_th-t0,plot_th, color=p[0].get_color(),label='Sim')
+            ax0.plot(time_th-t0,plot_th, color=p[0].get_color())
         if fit_model is not None:
-            ax0.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--',label='Fit')
+            ax0.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--')
             if fit_cov is not None:
                 ax0.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
             if residuals :
                 ax1.set_ylabel('Data - Model')
                 ax1.errorbar(time_b-t0,rsd,yerr=err,fmt='o')
-                ax1.axhline(0,ls='--',c='black',lw=1.5)
+                ax1.axhline(0,ls='dashdot',c='black',lw=1.5)
                 ax1.set_ylim(-np.max(abs(rsd))*2,np.max(abs(rsd))*2)
                 ax1.plot(time_th-t0,err_th,ls='--',color=p[0].get_color())
                 ax1.plot(time_th-t0,-err_th,ls='--',color=p[0].get_color())
 
     #plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
-    ax0.axhline(ls='--',c='black',lw=1.5)
-    ax0.legend()
+    handles, labels = ax0.get_legend_handles_labels()
+    if sim_model is not None:
+        sim_line = Line2D([0], [0], color='k', linestyle='solid')
+        sim_label = 'Sim'
+        handles.append(sim_line)
+        labels.append(sim_label)
+
+    if fit_model is not None:
+        fit_line = Line2D([0], [0], color='k', linestyle='--')
+        fit_label = 'Fit'
+        handles.append(fit_line)
+        labels.append(fit_label)
+
+    ax0.axhline(ls='dashdot',c='black',lw=1.5)
+    ax0.legend(handles=handles,labels=labels)
     plt.subplots_adjust(hspace=.0)
     plt.show()
     return
@@ -637,10 +655,12 @@ class sn_sim :
         self.ra=[]
         self.dec=[]
         self.sim_t0=[]
+        self.n_gen = 0
         for i in range(self.n_sn):
             compt = 0
             re_gen = True
             while re_gen:
+                self.n_gen+=1
                 #Gen ra and dec
                 ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
                 #Gen t0
@@ -659,15 +679,13 @@ class sn_sim :
                     cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
                     test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
                     test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
-
-                    #If the cut is applied just to one filter
                     if len(cut) == 4:
-                        test *= (self.band_dic[self.self.obs_dic['filter']] == cut[3])
-
+                        test *= (np.vectorize(self.band_dic.get)(self.obs_dic['filter']) == cut[3])
                     if np.sum(test) < int(cut[0]):
+                        re_gen = True
                         break
-                    re_gen = False
-
+                    else:
+                        re_gen = False
                 if re_gen:
                     ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
                     dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
