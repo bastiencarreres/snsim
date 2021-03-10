@@ -133,7 +133,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
 
         if mag:
             plt.gca().invert_yaxis()
-            ax0.ylabel('Mag')
+            ax0.set_ylabel('Mag')
             flux_b, fluxerr_b, time_b = flux_b[flux_b>0], fluxerr_b[flux_b>0], time_b[flux_b>0] #Delete < 0 pts
             plot = -2.5*np.log10(flux_b)+zp
             plt.ylim(np.max(plot)+3,np.min(plot)-3)
@@ -143,7 +143,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
             if fit_model is not None:
                 plot_fit = fit_model.bandmag(b,'ab',time_th)
                 if fit_cov is not None:
-                    err_th = compute_fit_error(fit_model,fit_cov,b,plot_fit,time_th,zp)
+                    err_th = compute_fit_error(fit_model,fit_cov,b,pw(10,-0.4*(plot_fit-zp)),time_th,zp)
                     err_th = 2.5/(np.log(10)*pw(10,-0.4*(plot_fit-zp)))*err_th
                 if residuals:
                     fit_pts = fit_model.bandmag(b,'ab',time_b)
@@ -151,6 +151,7 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
 
         else:
             ax0.set_ylabel('Flux')
+            ax0.axhline(ls='dashdot',c='black',lw=1.5)
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
@@ -193,7 +194,6 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
         handles.append(fit_line)
         labels.append(fit_label)
 
-    ax0.axhline(ls='dashdot',c='black',lw=1.5)
     ax0.legend(handles=handles,labels=labels)
     plt.subplots_adjust(hspace=.0)
     plt.show()
@@ -374,7 +374,6 @@ class sn_sim :
         if 'nep_cut' in self.sn_gen:
             if isinstance(self.sn_gen['nep_cut'], (int,float)):
                 self.nep_cut = [(self.sn_gen['nep_cut'],self.model.mintime(),self.model.maxtime())]
-                print(self.nep_cut)
             elif isinstance(self.sn_gen['nep_cut'], (list)):
                 self.nep_cut = self.sn_gen['nep_cut']
 
