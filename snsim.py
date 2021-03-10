@@ -11,6 +11,9 @@ from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
 import time
 import sqlite3
+import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 
 sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
 sn_sim_print+= '    /       ||  \ |  |        /       ||  | |   \/   | \n'
@@ -47,6 +50,14 @@ def snc_fit(lc,model):
     return snc.fit_lc(lc, model, ['t0', 'x0', 'x1', 'c'], modelcov=True)
 
 def compute_fit_error(fit_model,cov,band,flux_th,time_th,zp,magsys='ab'):
+    '''Compute theorical fluxerr from fit err = sqrt(COV)
+    where COV = J**T * COV(x0,x1,c) * J with J = (dF/dx0, dF/dx1, dF/dc) the jacobian.
+    According to Fnorm = x0/(1+z) * int_\lambda (M0(lambda_s,p)+x1*M1(lambda_s,p))*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+    where norm_factor = 10**(0.4*ZP_norm)/ZP_magsys. We found :
+    dF/dx0 = F/x0
+    dF/dx1 = x0/(1+z) * int_lambda M1(lambda_s,p))*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+    dF/dc  =  -0.4*ln(10)*x0/(1+z) * int_\lambda (M0(lambda_s,p)+x1*M1(lambda_s,p))*CL(lambda_s)*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+    '''
     a = 1./(1+fit_model.parameters[0])
     t0 = fit_model.parameters[1]
     x0 = fit_model.parameters[2]
@@ -75,7 +86,7 @@ def compute_fit_error(fit_model,cov,band,flux_th,time_th,zp,magsys='ab'):
     err_th = np.asarray(err_th)
     return err_th
 
-def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=None):
+def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=None,residuals=False):
     '''General plot function
        Options : - zp = float, use the normalisation zero point that you want (default: 25.)
                  - mag = boolean, plot magnitude (default = False)
@@ -88,9 +99,16 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
     t0= flux_table.meta['t0']
     z = flux_table.meta['z']
 
-    time_th = np.linspace(t0-20, t0+50,500)
+    time_th = np.linspace(t0-19.8*(1+z),t0+49.8*(1+z),500)
 
-    plt.figure()
+    fig=plt.figure()
+    if residuals:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
+        ax0 = plt.subplot(gs[0])
+        ax1 = plt.subplot(gs[1],sharex=ax0)
+    else :
+        ax0 = plt.subplot(111)
+
     if sim_model is not None:
         x0 = flux_table.meta['x0']
         mb = x0_to_mB(flux_table.meta['x0'])
@@ -99,10 +117,12 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
 
         sim_model.set(z=z, c=c, t0=t0, x0=x0, x1=x1)
 
-        title = f'z = {z:.3f} $m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
-        plt.title(title)
 
-    #plt.title(title)
+        title = f'z = {z:.3f} $m_B$ = {mb:.3f} $x_1$ = {x1:.3f} $c$ = {c:.4f}'
+        ax0.set_title(title)
+
+
+
     plt.xlabel('Time to peak')
     ylim = 0
     for b in bands:
@@ -110,9 +130,10 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
         flux_b = flux_norm[band_mask]
         fluxerr_b = fluxerr_norm[band_mask]
         time_b = time[band_mask]
+
         if mag:
             plt.gca().invert_yaxis()
-            plt.ylabel('Mag')
+            ax0.set_ylabel('Mag')
             flux_b, fluxerr_b, time_b = flux_b[flux_b>0], fluxerr_b[flux_b>0], time_b[flux_b>0] #Delete < 0 pts
             plot = -2.5*np.log10(flux_b)+zp
             plt.ylim(np.max(plot)+3,np.min(plot)-3)
@@ -120,10 +141,17 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
             if sim_model is not None:
                 plot_th = sim_model.bandmag(b,'ab',time_th)
             if fit_model is not None:
-                plot_fit = fit_model.bandmag(b,time_th,zp=zp,zpsys='ab')
+                plot_fit = fit_model.bandmag(b,'ab',time_th)
+                if fit_cov is not None:
+                    err_th = compute_fit_error(fit_model,fit_cov,b,pw(10,-0.4*(plot_fit-zp)),time_th,zp)
+                    err_th = 2.5/(np.log(10)*pw(10,-0.4*(plot_fit-zp)))*err_th
+                if residuals:
+                    fit_pts = fit_model.bandmag(b,'ab',time_b)
+                    rsd = plot-fit_pts
 
         else:
-            plt.ylabel('Flux')
+            ax0.set_ylabel('Flux')
+            ax0.axhline(ls='dashdot',c='black',lw=1.5)
             plot = flux_b
             err = fluxerr_b
             if sim_model is not None:
@@ -133,21 +161,41 @@ def plot_lc(flux_table,zp=25.,mag=False,sim_model=None,fit_model=None,fit_cov=No
                 plot_fit = fit_model.bandflux(b,time_th,zp=zp,zpsys='ab')
                 if fit_cov is not None:
                     err_th = compute_fit_error(fit_model,fit_cov,b,plot_fit,time_th,zp)
+                if residuals:
+                    fit_pts = fit_model.bandflux(b,time_b,zp=zp,zpsys='ab')
+                    rsd = plot-fit_pts
 
-
-
-        p = plt.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
+        p = ax0.errorbar(time_b-t0,plot,yerr=err,label=b,fmt='o',markersize=2.5)
         if sim_model is not None:
-            plt.plot(time_th-t0,plot_th, color=p[0].get_color())
+            ax0.plot(time_th-t0,plot_th, color=p[0].get_color())
         if fit_model is not None:
-            plt.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--')
+            ax0.plot(time_th-t0, plot_fit,color=p[0].get_color(),ls='--')
             if fit_cov is not None:
-                plt.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
-
+                ax0.fill_between(time_th-t0, plot_fit-err_th, plot_fit+err_th,alpha=0.5)
+            if residuals :
+                ax1.set_ylabel('Data - Model')
+                ax1.errorbar(time_b-t0,rsd,yerr=err,fmt='o')
+                ax1.axhline(0,ls='dashdot',c='black',lw=1.5)
+                ax1.set_ylim(-np.max(abs(rsd))*2,np.max(abs(rsd))*2)
+                ax1.plot(time_th-t0,err_th,ls='--',color=p[0].get_color())
+                ax1.plot(time_th-t0,-err_th,ls='--',color=p[0].get_color())
 
     #plt.ylim(-np.max(ylim)*0.1,np.max(ylim)*1.1)
-    plt.axhline(0,ls='--',c='black',lw=1.5)
-    plt.legend()
+    handles, labels = ax0.get_legend_handles_labels()
+    if sim_model is not None:
+        sim_line = Line2D([0], [0], color='k', linestyle='solid')
+        sim_label = 'Sim'
+        handles.append(sim_line)
+        labels.append(sim_label)
+
+    if fit_model is not None:
+        fit_line = Line2D([0], [0], color='k', linestyle='--')
+        fit_label = 'Fit'
+        handles.append(fit_line)
+        labels.append(fit_label)
+
+    ax0.legend(handles=handles,labels=labels)
+    plt.subplots_adjust(hspace=.0)
     plt.show()
     return
 
@@ -232,7 +280,7 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------------- DEFAULT VALUES -----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
-
+        self.use_host=False
         #Default values
         self.yml_path = sim_yaml
         #CMB values
@@ -326,7 +374,6 @@ class sn_sim :
         if 'nep_cut' in self.sn_gen:
             if isinstance(self.sn_gen['nep_cut'], (int,float)):
                 self.nep_cut = [(self.sn_gen['nep_cut'],self.model.mintime(),self.model.maxtime())]
-                print(self.nep_cut)
             elif isinstance(self.sn_gen['nep_cut'], (list)):
                 self.nep_cut = self.sn_gen['nep_cut']
 
@@ -356,8 +403,15 @@ class sn_sim :
 
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
         print(f'-----------------------------------\n')
-        start_time = time.time()
 
+
+        if self.use_host:
+            self.host=[]
+            with fits.open(self.host_file) as hduf:
+                for hdu in hduf:
+                    self.host.append(hdu.data)
+
+        start_time = time.time()
         self.obs=[]
         if self.use_obs:
             self.obs_header=[]
@@ -436,7 +490,8 @@ class sn_sim :
         self.sig_c = self.salt2_gen['sig_c']
 
         #Redshift generation
-        self.gen_redshift_cos()
+        if not self.use_host:
+            self.gen_redshift_cos()
 
         if self.use_obs:
             self.extract_coord()
@@ -508,7 +563,12 @@ class sn_sim :
         return
 
     def gen_z_pec(self):
-        self.vpec = np.random.default_rng(self.randseeds['vpec_seed']).normal(loc=self.mean_vpec,scale=self.sig_vpec,size=self.n_sn)
+        if self.use_host:
+            if 'vpec' in self.host.keys():
+                self.vpec = self.host['vpec']
+        else:
+            self.vpec = np.random.default_rng(self.randseeds['vpec_seed']).normal(loc=self.mean_vpec,scale=self.sig_vpec,size=self.n_sn)
+
         self.zpec = self.vpec/c_light_kms
         return
 
@@ -538,7 +598,7 @@ class sn_sim :
 
         return
 
-    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False):
+    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
         '''Ploting the ligth curve of number 'lc_id' sn'''
         if plot_sim:
             sim_model = self.model
@@ -553,10 +613,11 @@ class sn_sim :
         else:
             fit_model = None
             fit_cov = None
-        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov)
+        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov,residuals=residuals)
         return
 
     def fitter(self,id):
+        '''Use sncosmo to fit sim lc'''
         try :
             res = snc_fit(self.sim_lc[id],self.model)
         except (RuntimeError):
@@ -566,7 +627,7 @@ class sn_sim :
         return
 
     def fit_lc(self,lc_id=None):
-        '''Use sncosmo to fit sim lc'''
+        '''Send the lc and model to fit to self.fitter'''
         if lc_id is None:
             for i in range(self.n_sn):
                 self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
@@ -602,47 +663,71 @@ class sn_sim :
                 5- Create sncosmo obs Table
          '''
         field_size=np.radians(np.sqrt(47)/2)
-        ra_seeds, dec_seeds, choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(3,self.n_sn))
         t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
+
+        if self.use_host:
+            self.host=[]
+            self.zcos=[]
+            host_list = []
+            host_in_file = self.read_host_file()
+            for host in host_in_file:
+                check = (self.obs_dic['fieldRA']-field_size < host['ra'])*(self.obs_dic['fieldRA']+field_size > host['ra'])
+                check *= (self.obs_dic['fieldDec']-field_size < host['dec'])*(self.obs_dic['fieldDec']+field_size > host['dec'])
+                if np.sum(check) > 0:
+                    host_list.append(host)
+            host_list = np.asarray(host_list)
+            choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=self.n_sn)
+        else:
+            ra_seeds, dec_seeds= np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(2,self.n_sn))
+
         self.ra=[]
         self.dec=[]
         self.sim_t0=[]
+        self.n_gen = 0
         for i in range(self.n_sn):
             compt = 0
             re_gen = True
+
             while re_gen:
+                self.n_gen+=1
                 #Gen ra and dec
-                ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
+                if self.use_host:
+                     h_idx = np.random.default_rng(choice_seeds[i]).integers(len(host_list))
+                     ra,dec,z = host_list[h_idx]['ra'], host_list[h_idx]['dec'], host_list[h_idx]['z']
+                else:
+                    ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
+                    z = self.zcos[i]
+
                 #Gen t0
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
                 #Epochs selection
-                ModelMinT_obsfrm = self.model.mintime()*(1+self.zcos[i])
-                ModelMaxT_obsfrm = self.model.maxtime()*(1+self.zcos[i])
+                ModelMinT_obsfrm = self.model.mintime()*(1+z)
+                ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
                 epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
                 epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
                 epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
                 epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
 
                 #Cut on epochs
-
                 for cut in self.nep_cut:
-                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+self.zcos[i]), cut[2]*(1+self.zcos[i])
+                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
                     test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
                     test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
-
-
-                    #If the cut is applied just to one filter
                     if len(cut) == 4:
-                        test *= (self.band_dic[self.self.obs_dic['filter']] == cut[3])
-
+                        test *= (np.vectorize(self.band_dic.get)(self.obs_dic['filter']) == cut[3])
                     if np.sum(test) < int(cut[0]):
+                        re_gen = True
                         break
-                    re_gen = False
+                    else:
+                        re_gen = False
 
                 if re_gen:
-                    ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
-                    dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
+                    if self.use_host:
+                        choice_seeds[i] = np.random.default_rng(choice_seeds[i]).integers(1000,100000)
+                    else:
+                        ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
+                        dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
 
                 if compt > len(self.obs_dic['expMJD']):
                     raise RuntimeError('Too many nep required, reduces nep_cut')
@@ -654,6 +739,10 @@ class sn_sim :
             self.dec.append(dec)
             self.sim_t0.append(t0)
 
+            if self.use_host:
+                self.host.append(host_list[h_idx])
+                self.zcos = np.asarray(z)
+
             #Capture noise and filter
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
             filter = self.obs_dic['filter'][epochs_selec].astype('U27')
@@ -662,6 +751,7 @@ class sn_sim :
             if self.band_dic is not None:
                 for i,f in enumerate(filter):
                     filter[i] = self.band_dic[f]
+
             #Convert maglim to flux noise (ADU)
             skynoise = pw(10.,0.4*(self.zp-mlim5))/5
 
@@ -673,8 +763,14 @@ class sn_sim :
                         'zp': [self.zp]*np.sum(epochs_selec),
                         'zpsys': ['ab']*np.sum(epochs_selec)})
             self.obs.append(obs)
+
         self.ra = np.asarray(self.ra)
         self.dec = np.asarray(self.dec)
+
+        if self.use_host:
+            self.host = np.asarray(self.host)
+            self.zcos = np.asarray(self.zcos)
+
         return
 
     def extract_from_db(self):
