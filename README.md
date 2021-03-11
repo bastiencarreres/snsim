@@ -2,7 +2,7 @@
 The code is in dev
 
 ## Input file :
-The input file example is given by config.yml
+The input file is a .yml with the following structure:
 ```
 data :
     write_path: '/PATH/TO/OUTPUT'
