@@ -863,6 +863,7 @@ class sn_sim :
 
 class open_sim:
     def __init__(self,sim_file,SALT2_dir):
+        '''Copy some function of snsim to allow to use sim file'''
         self.salt2_dir = SALT2_dir
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model=snc.Model(source=source)
@@ -878,15 +879,31 @@ class open_sim:
                 self.lc.append(tab)
         return
 
-    def fit_lc(self):
-        self.fit_res=[]
-        for i in range(self.n_sn):
-            self.model.set(z=self.lc[i].meta['z'])  # set the model's redshift.
-            self.fit_res.append(snc_fit(self.lc[i],self.model))
+    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
+        '''Ploting the ligth curve of number 'lc_id' sn'''
+        if plot_sim:
+            sim_model = self.model
+        else:
+            sim_model = None
+
+        if plot_fit:
+            if self.fit_res[lc_id] == 'No_fit':
+                raise ValueError("This lc wasn't fitted")
+            fit_model = self.fit_res[lc_id][1]
+            fit_cov = self.fit_res[lc_id][0]['covariance'][1:,1:]
+        else:
+            fit_model = None
+            fit_cov = None
+        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov,residuals=residuals)
         return
 
-    def plot_lc(self,lc_id,zp=25.,mag=False,fit=True):
-        if fit:
-            plot_lc(self.lc[lc_id],zp=zp,mag=mag,fit_model=self.fit_res[lc_id][1])
+    def fit_lc(self,lc_id=None):
+        '''Send the lc and model to fit to self.fitter'''
+        if lc_id is None:
+            for i in range(self.n_sn):
+                self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
+                self.fitter(i)
         else:
-            plot_lc(self.lc[lc_id],zp=zp,mag=mag,sim_model=self.model)
+            self.model.set(z=self.sim_lc[lc_id].meta['z'])
+            self.fitter(lc_id)
+        return
