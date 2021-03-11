@@ -22,6 +22,8 @@ sn_sim_print+= '    \   \    |  . `  |        \   \    |  | |  |\/|  | \n'
 sn_sim_print+= '.----)   |   |  |\   |    .----)   |   |  | |  |  |  | \n'
 sn_sim_print+= '|_______/    |__| \__|    |_______/    |__| |__|  |__| \n'
 
+sep='###############################################'
+
 c_light_kms = cst.c.to('km/s').value
 snc_mag_offset = 10.5020699 #just an offset -> set_peakmag(mb=0,'bessellb', 'ab') -> offset=2.5*log10(get_x0) change with magsys
 
@@ -32,6 +34,11 @@ def x0_to_mB(x0):
 def mB_to_x0(mB):
     '''Convert mB to x0'''
     return pw(10,-0.4*(mB-snc_mag_offset))
+
+def cov_x0_to_mb(x0,cov):
+    J = np.array([[-2.5/np.log(10)*1/x0,0,0],[0,1,0],[0,0,1]])
+    new_cov = J @ cov @ J.T
+    return new_cov
 
 def box_output(sep,line):
     '''Use for plotting simulation output'''
@@ -280,7 +287,6 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------------- DEFAULT VALUES -----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
-        self.use_host=False
         #Default values
         self.yml_path = sim_yaml
         #CMB values
@@ -365,8 +371,11 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.vpec_gen = self.sim_cfg['vpec_gen']
-
-
+        if 'host_file' in self.vpec_gen:
+            self.use_host = True
+            self.host_file=self.vpec_gen['host_file']
+        else:
+            self.use_host = False
     #Init fit_res_table
         self.fit_res = np.asarray(['No_fit']*self.n_sn,dtype='object')
 
@@ -425,7 +434,6 @@ class sn_sim :
         else:
             self.extract_from_db()
 
-        sep='###############################################'
         sep2 =box_output(sep,'------------')
         line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
         print(sep)
@@ -564,8 +572,8 @@ class sn_sim :
 
     def gen_z_pec(self):
         if self.use_host:
-            if 'vpec' in self.host.keys():
-                self.vpec = self.host['vpec']
+            if 'vp_sight' in self.host.names:
+                self.vpec = self.host['vp_sight']
         else:
             self.vpec = np.random.default_rng(self.randseeds['vpec_seed']).normal(loc=self.mean_vpec,scale=self.sig_vpec,size=self.n_sn)
 
@@ -595,7 +603,6 @@ class sn_sim :
             lc = snc.realize_lcs(obs, self.model, [params], scatter=False)[0]
             lc['flux'] = np.random.default_rng(s).normal(loc=lc['flux'],scale=lc['fluxerr'])
             self.sim_lc.append(lc)
-
         return
 
     def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
@@ -620,7 +627,7 @@ class sn_sim :
         '''Use sncosmo to fit sim lc'''
         try :
             res = snc_fit(self.sim_lc[id],self.model)
-        except (RuntimeError):
+        except:
             self.fit_res[id] = 'NaN'
             return
         self.fit_res[id] = res
@@ -654,6 +661,16 @@ class sn_sim :
         hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
         return
 
+    def read_host_file(self):
+        stime =  time.time()
+        with fits.open(self.host_file) as hostf:
+            host_in_file = hostf[1].data[:]
+        l=f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
+        print(box_output(sep,l))
+        print(box_output(sep,'------------'))
+        return host_in_file
+
+
     def db_to_obs(self):
         '''Use a cadence db file to produce obs :
                 1- Generate SN ra,dec in cadence fields
@@ -666,16 +683,14 @@ class sn_sim :
         t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
 
         if self.use_host:
-            self.host=[]
-            self.zcos=[]
-            host_list = []
-            host_in_file = self.read_host_file()
-            for host in host_in_file:
-                check = (self.obs_dic['fieldRA']-field_size < host['ra'])*(self.obs_dic['fieldRA']+field_size > host['ra'])
-                check *= (self.obs_dic['fieldDec']-field_size < host['dec'])*(self.obs_dic['fieldDec']+field_size > host['dec'])
-                if np.sum(check) > 0:
-                    host_list.append(host)
-            host_list = np.asarray(host_list)
+            self.host = []
+            self.zcos = []
+            host_list = self.read_host_file()
+
+            #select redshift range
+            host_list = host_list[host_list['redshift'] > self.z_range[0]]
+            host_list = host_list[host_list['redshift'] < self.z_range[1]]
+            h_use_idx = []
             choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=self.n_sn)
         else:
             ra_seeds, dec_seeds= np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=(2,self.n_sn))
@@ -693,7 +708,7 @@ class sn_sim :
                 #Gen ra and dec
                 if self.use_host:
                      h_idx = np.random.default_rng(choice_seeds[i]).integers(len(host_list))
-                     ra,dec,z = host_list[h_idx]['ra'], host_list[h_idx]['dec'], host_list[h_idx]['z']
+                     ra,dec,z = host_list[h_idx]['ra'], host_list[h_idx]['dec'], host_list[h_idx]['redshift']
                 else:
                     ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
                     z = self.zcos[i]
@@ -728,8 +743,9 @@ class sn_sim :
                     else:
                         ra_seeds[i] = np.random.default_rng(ra_seeds[i]).integers(1000,100000)
                         dec_seeds[i] = np.random.default_rng(dec_seeds[i]).integers(1000,100000)
+                    t0_seeds[i] = np.random.default_rng(t0_seeds[i]).integers(1000,100000)
 
-                if compt > len(self.obs_dic['expMJD']):
+                if compt > len(self.obs_dic['expMJD']*2):
                     raise RuntimeError('Too many nep required, reduces nep_cut')
                 else:
                     compt+=1
@@ -740,8 +756,7 @@ class sn_sim :
             self.sim_t0.append(t0)
 
             if self.use_host:
-                self.host.append(host_list[h_idx])
-                self.zcos = np.asarray(z)
+                h_use_idx.append(h_idx)
 
             #Capture noise and filter
             mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
@@ -768,9 +783,8 @@ class sn_sim :
         self.dec = np.asarray(self.dec)
 
         if self.use_host:
-            self.host = np.asarray(self.host)
-            self.zcos = np.asarray(self.zcos)
-
+            self.host = host_list[h_use_idx]
+            self.zcos = self.host['redshift']
         return
 
     def extract_from_db(self):
@@ -784,6 +798,82 @@ class sn_sim :
             values = dbf.execute(sql_com)
             self.obs_dic[k] = np.array([a[0] for a in values])
         return
+
+    def write_fit(self):
+        x0_fit=[]
+        mb_fit=[]
+        x1_fit=[]
+        c_fit=[]
+
+        x0_err=[]
+        mb_err=[]
+        x1_err=[]
+        c_err=[]
+
+        cov_x0_x1=[]
+        cov_x0_c=[]
+        cov_mb_x1=[]
+        cov_mb_c=[]
+        cov_x1_c=[]
+
+        t0 = []
+        chi2 = []
+        ndof = []
+        for i in range(self.n_sn):
+            par = self.fit_res[i][0]['parameters']
+            par_cov = self.fit_res[i][0]['covariance'][1:,1:]
+            mb_cov = cov_x0_to_mb(par[2],par_cov)
+
+            x0_fit.append(par[2])
+            x0_err.append(np.sqrt(par_cov[0,0]))
+
+            mb_fit.append(x0_to_mB(par[2]))
+            mb_err.append(np.sqrt(mb_cov[0,0]))
+
+            x1_fit.append(par[3])
+            x1_err.append(np.sqrt(par_cov[1,1]))
+
+            c_fit.append(par[4])
+            c_err.append(np.sqrt(par_cov[2,2]))
+
+            cov_x0_x1.append(par_cov[0,1])
+            cov_x0_c.append(par_cov[0,2])
+            cov_x1_c.append(par_cov[1,2])
+            cov_mb_x1.append(mb_cov[0,1])
+            cov_mb_c.append(mb_cov[0,2])
+
+            chi2.append(self.fit_res[i][0]['chisq'])
+            ndof.append(self.fit_res[i][0]['ndof'])
+
+        table = Table({'id': np.arange(self.n_sn),
+                       'ra': self.ra,
+                       'dec': self.dec,
+                       'vpec': self.vpec,
+                       'zpec':self.zpec,
+                       'z2cmb': self.z2cmb,
+                       'zcos': self.zcos,
+                       'zCMB': self.zCMB,
+                       'zobs': self.zobs,
+                       'x0': x0_fit,
+                       'e_x0': x0_err,
+                       'mb': mb_fit,
+                       'e_mb': mb_err,
+                       'x1': x1_fit,
+                       'e_x1': x1_err,
+                       'c': c_fit,
+                       'e_c':c_err,
+                       'cov_x0_x1':cov_x0_x1,
+                       'cov_x0_c':cov_x0_c,
+                       'cov_mb_x1': cov_mb_x1,
+                       'cov_mb_c': cov_mb_c,
+                       'cov_x1_c': cov_x1_c
+                      })
+        hdu = fits.table_to_hdu(table)
+        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn})),hdu])
+        hdu_list.writeto(self.sim_name+'_fit.fits',overwrite=True)
+        return
+
+
 
 class open_sim:
     def __init__(self,sim_file,SALT2_dir):
