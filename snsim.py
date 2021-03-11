@@ -868,7 +868,7 @@ class open_sim:
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model=snc.Model(source=source)
 
-        self.lc=[]
+        self.sim_lc=[]
 
         with fits.open(sim_file) as sf:
             self.n_sn=sf[0].header['N_OBS']
@@ -876,8 +876,11 @@ class open_sim:
                 data=hdu.data
                 tab= Table(data)
                 tab.meta=hdu.header
-                self.lc.append(tab)
+                self.sim_lc.append(tab)
+        self.fit_res=np.asarray(['No_fit']*self.n_sn,dtype='object')
+
         return
+
 
     def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
         '''Ploting the ligth curve of number 'lc_id' sn'''
@@ -895,6 +898,15 @@ class open_sim:
             fit_model = None
             fit_cov = None
         plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov,residuals=residuals)
+        return
+    def fitter(self,id):
+        '''Use sncosmo to fit sim lc'''
+        try :
+            res = snc_fit(self.sim_lc[id],self.model)
+        except:
+            self.fit_res[id] = 'NaN'
+            return
+        self.fit_res[id] = res
         return
 
     def fit_lc(self,lc_id=None):
