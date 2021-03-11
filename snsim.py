@@ -800,74 +800,60 @@ class sn_sim :
         return
 
     def write_fit(self):
-        x0_fit=[]
-        mb_fit=[]
-        x1_fit=[]
-        c_fit=[]
+        add_keys = ['t0','e_t0','x0','e_x0','mb','e_mb','x1',\
+                    'e_x1','c','e_c', 'cov_x0_x1','cov_x0_x1',\
+                    'cov_x0_c','cov_mb_x1','cov_mb_c','cov_x1_c',\
+                    'chi2','ndof']
 
-        x0_err=[]
-        mb_err=[]
-        x1_err=[]
-        c_err=[]
+        data = {'id' : np.arange(self.n_sn),
+                'ra': self.ra,
+                'dec': self.dec,
+                'vpec': self.vpec,
+                'zpec': self.zpec,
+                'z2cmb': self.z2cmb,
+                'zcos': self.zcos,
+                'zCMB': self.zCMB,
+                'zobs': self.zobs,
+                }
+        for k in add_keys:
+            data[k] = []
 
-        cov_x0_x1=[]
-        cov_x0_c=[]
-        cov_mb_x1=[]
-        cov_mb_c=[]
-        cov_x1_c=[]
-
-        t0 = []
-        chi2 = []
-        ndof = []
         for i in range(self.n_sn):
-            par = self.fit_res[i][0]['parameters']
-            par_cov = self.fit_res[i][0]['covariance'][1:,1:]
-            mb_cov = cov_x0_to_mb(par[2],par_cov)
+            if self.fit_res[i] != 'NaN':
+                par = self.fit_res[i][0]['parameters']
+                par_cov = self.fit_res[i][0]['covariance'][1:,1:]
+                mb_cov = cov_x0_to_mb(par[2],par_cov)
+                data['t0'].append(par[1])
+                data['e_t0'].append(np.sqrt(self.fit_res[i][0]['covariance'][0,0]))
+                data['x0'].append(par[2])
+                data['e_x0'].append(np.sqrt(par_cov[0,0]))
 
-            x0_fit.append(par[2])
-            x0_err.append(np.sqrt(par_cov[0,0]))
+                data['mb'].append(x0_to_mB(par[2]))
+                data['e_mb'].append(np.sqrt(mb_cov[0,0]))
 
-            mb_fit.append(x0_to_mB(par[2]))
-            mb_err.append(np.sqrt(mb_cov[0,0]))
+                data['x1'].append(par[3])
+                data['e_x1'].append(np.sqrt(par_cov[1,1]))
 
-            x1_fit.append(par[3])
-            x1_err.append(np.sqrt(par_cov[1,1]))
+                data['c'].append(par[4])
+                data['e_c'].append(np.sqrt(par_cov[2,2]))
 
-            c_fit.append(par[4])
-            c_err.append(np.sqrt(par_cov[2,2]))
+                data['cov_x0_x1'].append(par_cov[0,1])
+                data['cov_x0_c'].append(par_cov[0,2])
+                data['cov_x1_c'].append(par_cov[1,2])
+                data['cov_mb_x1'].append(mb_cov[0,1])
+                data['cov_mb_c'].append(mb_cov[0,2])
 
-            cov_x0_x1.append(par_cov[0,1])
-            cov_x0_c.append(par_cov[0,2])
-            cov_x1_c.append(par_cov[1,2])
-            cov_mb_x1.append(mb_cov[0,1])
-            cov_mb_c.append(mb_cov[0,2])
+                data['chi2'].append(self.fit_res[i][0]['chisq'])
+                data['ndof'].append(self.fit_res[i][0]['ndof'])
 
-            chi2.append(self.fit_res[i][0]['chisq'])
-            ndof.append(self.fit_res[i][0]['ndof'])
+            else:
+                for k in add_keys:
+                    data[k].append('NaN')
 
-        table = Table({'id': np.arange(self.n_sn),
-                       'ra': self.ra,
-                       'dec': self.dec,
-                       'vpec': self.vpec,
-                       'zpec':self.zpec,
-                       'z2cmb': self.z2cmb,
-                       'zcos': self.zcos,
-                       'zCMB': self.zCMB,
-                       'zobs': self.zobs,
-                       'x0': x0_fit,
-                       'e_x0': x0_err,
-                       'mb': mb_fit,
-                       'e_mb': mb_err,
-                       'x1': x1_fit,
-                       'e_x1': x1_err,
-                       'c': c_fit,
-                       'e_c':c_err,
-                       'cov_x0_x1':cov_x0_x1,
-                       'cov_x0_c':cov_x0_c,
-                       'cov_mb_x1': cov_mb_x1,
-                       'cov_mb_c': cov_mb_c,
-                       'cov_x1_c': cov_x1_c
-                      })
+
+
+        table = Table(data)
+
         hdu = fits.table_to_hdu(table)
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn})),hdu])
         hdu_list.writeto(self.sim_name+'_fit.fits',overwrite=True)
