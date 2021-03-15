@@ -4,7 +4,7 @@ import ast
 import snsim
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--config_path", default=None, type=str,help="Configuration file")
+parser.add_argument("config_path", default=None, type=str,help="Configuration file")
 parser.add_argument("-fit", action='store_true')
 
 keys_dic = {'data': ['write_path','sim_name','band_dic','obs_config_path'],
@@ -50,8 +50,6 @@ for k in keys_list:
     parser.add_argument(f"--{k}")
 
 args = parser.parse_args()
-print(args.__dict__)
-
 
 for arg in args.__dict__:
     if arg not in keys_list and arg not in ignore_keys:
