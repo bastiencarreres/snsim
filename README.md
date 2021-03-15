@@ -1,8 +1,11 @@
 # Code for simulate sn with sn cosmo
-The code is in dev
+Use main.py with argparse:
+```
+>python3 main.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
+```
 
 ## Input file :
-The input file example is given by config.yml
+The input file is a .yml with the following structure:
 ```
 data :
     write_path: '/PATH/TO/OUTPUT'
@@ -33,13 +36,19 @@ salt2_gen:
     sig_x1: SIGMA X1   
     sig_c: SIGMA C
  vpec_gen:
+     host_file: '/PATH/TO/HOSTFILE'
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
 ```
 
-## Obs file:
+## bd file:
+It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
+
+## Obs file: (No longer usable)
 The obs file is in fits format and is generated with gen_obs.py
 gen_obs function :
 ```
 gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
 ```
+
+
