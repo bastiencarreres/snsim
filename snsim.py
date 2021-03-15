@@ -9,7 +9,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-from utils import x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print
+from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print
 
 class sn_sim :
     def __init__(self,param_dic):
