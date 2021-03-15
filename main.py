@@ -4,8 +4,8 @@ import ast
 import snsim
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--config_path", default=None, type=str,
-                    help="A yaml file for overriding parameters specification in this module.")
+parser.add_argument("--config_path", default=None, type=str,help="Configuration file")
+parser.add_argument("-fit", action='store_true')
 
 keys_dic = {'data': ['write_path','sim_name','band_dic','obs_config_path'],
             'db_config':['dbfile_path','zp','gain'],
@@ -41,6 +41,8 @@ type_dic={'write_path':str,
           'sig_vpec':float,
           'mean_x1':float}
 
+ignore_keys=['config_path','fit']
+
 keys_list = []
 for K in keys_dic : keys_list += keys_dic[K]
 
@@ -48,9 +50,11 @@ for k in keys_list:
     parser.add_argument(f"--{k}")
 
 args = parser.parse_args()
+print(args.__dict__)
+
 
 for arg in args.__dict__:
-    if arg not in keys_list and arg != 'config_path':
+    if arg not in keys_list and arg not in ignore_keys:
         print(f"{arg} option doesn't exist, arg ignored")
 
 param_dic={}
@@ -89,5 +93,7 @@ for K in param_dic:
 param_dic['yaml_path'] = args.__dict__['config_path']
 
 sim = snsim.sn_sim(param_dic)
-
 sim.simulate()
+
+if args.fit:
+    sim.fit_lc()

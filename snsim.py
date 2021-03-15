@@ -3,17 +3,12 @@ import numpy as np
 import astropy.units as u
 from numpy import power as pw
 from astropy.table import Table
-from astropy import constants as cst
 from astropy.io import fits
 import yaml
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
-import matplotlib.pyplot as plt
 import time
 import sqlite3
-import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
 from utils import x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print
 
 class sn_sim :
@@ -63,14 +58,20 @@ class sn_sim :
         |                                                                                  |
         +----------------------------------------------------------------------------------+
         '''
-        
+
+    #Load param dict from a yaml or by using main.py
+        if isinstance(param_dic,dict):
+            self.sim_cfg = param_dic
+            self.yml_path = param_dic['yaml_path']
+
+        elif isinstance(param_dic,str):
+            self.yml_path = param_dic
+            with open(self.yml_path, "r") as f:
+                self.sim_cfg = yaml.safe_load(f)
+
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------------- DEFAULT VALUES -----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
-        self.sim_cfg = param_dic
-
-        #Default values
-        self.yml_path = param_dic['yaml_path']
 
         #CMB values
         self.dec_cmb = 48.253

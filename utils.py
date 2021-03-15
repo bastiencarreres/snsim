@@ -1,3 +1,12 @@
+from astropy import constants as cst
+import sncosmo as snc
+import numpy as np
+from numpy import power as pw
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
+
 sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
 sn_sim_print+= '    /       ||  \ |  |        /       ||  | |   \/   | \n'
 sn_sim_print+= '   |   (----`|   \|  |       |   (----`|  | |  \  /  | \n'
