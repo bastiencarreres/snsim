@@ -584,7 +584,6 @@ class sn_sim :
                     'e_x1','c','e_c', 'cov_x0_x1','cov_x0_c',\
                     'cov_mb_x1','cov_mb_c','cov_x1_c',\
                     'chi2','ndof']
-
         data = {'id' : np.arange(self.n_sn),
                 'ra': self.ra,
                 'dec': self.dec,
@@ -607,6 +606,7 @@ class sn_sim :
         for i in range(self.n_sn):
             if self.fit_res[i] != 'NaN':
                 par = self.fit_res[i][0]['parameters']
+                print(type(par[3]))
                 par_cov = self.fit_res[i][0]['covariance'][1:,1:]
                 mb_cov = cov_x0_to_mb(par[2],par_cov)
                 data['t0'].append(par[1])
@@ -633,9 +633,10 @@ class sn_sim :
 
             else:
                 for k in add_keys:
-                    data[k].append('NaN')
+                    data[k].append(-99.)
 
         table = Table(data)
+        print(table)
 
         hdu = fits.table_to_hdu(table)
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0':self.M0, 'SIG_M': self.sigmaM})),hdu])
