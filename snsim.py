@@ -444,6 +444,7 @@ class sn_sim :
         stime =  time.time()
         with fits.open(self.host_file) as hostf:
             host_in_file = hostf[1].data[:]
+        host_in_file['ra'] = host_in_file['ra']+2*np.pi*(host_in_file['ra']<0)
         l=f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
         print(box_output(sep,l))
         print(box_output(sep,'------------'))
