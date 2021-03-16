@@ -616,7 +616,6 @@ class sn_sim :
 
                 data['c'].append(par[4])
                 data['e_c'].append(np.sqrt(par_cov[2,2]))
-                print("cov_x0_x1",len(data['cov_x0_x1']))
                 data['cov_x0_x1'].append(par_cov[0,1])
                 data['cov_x0_c'].append(par_cov[0,2])
                 data['cov_x1_c'].append(par_cov[1,2])
@@ -630,8 +629,6 @@ class sn_sim :
                 for k in add_keys:
                     data[k].append('NaN')
 
-        for k in data:
-            print(k,len(data[k]))
         table = Table(data)
 
         hdu = fits.table_to_hdu(table)
