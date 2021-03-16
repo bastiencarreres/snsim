@@ -606,7 +606,6 @@ class sn_sim :
         for i in range(self.n_sn):
             if self.fit_res[i] != 'NaN':
                 par = self.fit_res[i][0]['parameters']
-                print(type(par[3]))
                 par_cov = self.fit_res[i][0]['covariance'][1:,1:]
                 mb_cov = cov_x0_to_mb(par[2],par_cov)
                 data['t0'].append(par[1])
