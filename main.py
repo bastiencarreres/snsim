@@ -95,3 +95,4 @@ sim.simulate()
 
 if args.fit:
     sim.fit_lc()
+    sim.write_fit()
