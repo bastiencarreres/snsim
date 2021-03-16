@@ -594,6 +594,12 @@ class sn_sim :
                 'zcos': self.zcos,
                 'zCMB': self.zCMB,
                 'zobs': self.zobs,
+                'sim_x0': self.sim_x0,
+                'sim_mb': self.sim_mB,
+                'sim_x1': self.sim_x1,
+                'sim_c': self.sim_c,
+                'sim_mu': self.sim_mu,
+                'sim_mag_smear': self.mag_smear
                 }
         for k in add_keys:
             data[k] = []
@@ -632,7 +638,7 @@ class sn_sim :
         table = Table(data)
 
         hdu = fits.table_to_hdu(table)
-        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn})),hdu])
+        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0':self.M0, 'SIG_M': self.sigmaM})),hdu])
         hdu_list.writeto(self.sim_name+'_fit.fits',overwrite=True)
         return
 
