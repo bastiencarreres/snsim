@@ -312,8 +312,17 @@ class sn_sim :
             self.bands = self.obs_header_main['bands'].split()
         return
 
-    def gen_redshift_cos(self,low=self.z_range[0],high=self.z_range[1],size=self.n_sn,randseed=self.randseeds['z_seed']):
+    def gen_redshift_cos(self,low=None,high=None,size=None,randseed=None):
         '''Function to get zcos, to be updated'''
+        if high is None:
+            high = self.z_range[1]
+        if low is None:
+            low = self.z_range[0]
+        if size is None:
+            size = self.n_sn
+        if randseed is None:
+            randseed=self.randseeds['z_seed']
+
         self.zcos = np.random.default_rng(randseed).uniform(low=low,high=high,size=size)
         return
 
@@ -332,10 +341,13 @@ class sn_sim :
         '''Generate ra,dec uniform on the sphere'''
         ra_seed = randseeds[0]
         dec_seed = randseeds[1]
-        ra = np.random.default_rng(ra_seed).uniform(low=0,high=2*np.pi;size=size)
+        ra = np.random.default_rng(ra_seed).uniform(low=0,high=2*np.pi,size=size)
         dec_uni = np.random.default_rng(dec_seed).random(size=size)
         dec = np.arcsin(2*dec_uni-1)
-        return ra, dec
+        if size == 1:
+            return ra[0],dec[0]
+        else:
+            return ra, dec
 
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
@@ -471,7 +483,7 @@ class sn_sim :
 
         t0_tmp = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=n_sn_tot)
         zcos_tmp = []
-        
+
         for z,n,rds in zip(z_bins,n_sn,z_randseeds):
             zcos_tmp = np.concatenate(zcos_tmp,self.gen_redshift_cos(low=z,high=z+dz,size=n,randseed=rds))
 
@@ -499,7 +511,7 @@ class sn_sim :
         epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
         return epochs_selec
 
-    def epochs_cut(self,epochs_selec):
+    def epochs_cut(self,epochs_selec,z,t0):
         for cut in self.nep_cut:
             cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
             test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
@@ -538,11 +550,12 @@ class sn_sim :
         self.dec=[]
         self.sim_t0=[]
         self.n_gen = 0
+
         for i in range(self.n_sn):
             compt = 0
-            re_gen = True
+            pass_cut = False
 
-            while re_gen:
+            while not pass_cut:
                 self.n_gen+=1
                 #Gen ra and dec
                 if self.use_host:
@@ -556,10 +569,10 @@ class sn_sim :
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
                 #epochs selection
-                epochs_selec = self.selection(ra,dec,z,t0,field_size)
+                epochs_selec = self.epochs_selection(ra,dec,z,t0,field_size)
 
                 #Cut on epochs
-                pass_cut = self.epochs_cut(epochs_selec)
+                pass_cut = self.epochs_cut(epochs_selec,z,t0)
 
                 if not pass_cut:
                     if self.use_host:
@@ -679,7 +692,6 @@ class sn_sim :
                     data[k].append(-99.)
 
         table = Table(data)
-        print(table)
 
         hdu = fits.table_to_hdu(table)
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0':self.M0, 'SIG_M': self.sigmaM})),hdu])
