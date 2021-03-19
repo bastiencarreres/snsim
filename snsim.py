@@ -470,12 +470,14 @@ class sn_sim :
     def read_host_file(self):
         stime =  time.time()
         with fits.open(self.host_file) as hostf:
-            host_in_file = hostf[1].data[:]
-        host_in_file['ra'] = host_in_file['ra']+2*np.pi*(host_in_file['ra']<0)
+            host_list = hostf[1].data[:]
+        host_list['ra'] = host_list['ra']+2*np.pi*(host_list['ra']<0)
         l=f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
         print(box_output(sep,l))
         print(box_output(sep,'------------'))
-        return host_in_file
+        host_list = host_list[host_list['redshift'] > self.z_range[0]]
+        host_list = host_list[host_list['redshift'] < self.z_range[1]]
+        return host_list
 
     def gen_sn_rate(self,z,dz):
         rate = 2.6e-5*pw((1+z),self.sn_rate) #Rate in Nsn/Mpc^3/year
@@ -493,14 +495,16 @@ class sn_sim :
                 5- Generate z for in each shell uniform in the interval [z,z+dz]
                 6- Apply observation and selection cut to SN
         '''
+
         self.duration=np.max(self.obs_dic['expMJD'])-np.min(self.obs_dic['expMJD'])
-        dz = 0.01
+        dz = 0.001
         nstep = int((self.z_range[1]-self.z_range[0])/dz)
         z_bins = np.linspace(self.z_range[0],self.z_range[1]-dz,nstep)
         time_rate = self.gen_sn_rate(z_bins,dz)
         n_sn = np.random.default_rng(self.randseeds['nsn_seed']).poisson(0.1*time_rate)
         self.n_sn_gen = np.sum(n_sn)
         t0_tmp = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn_gen)
+
 
         self.ra=[]
         self.dec=[]
@@ -509,25 +513,33 @@ class sn_sim :
         self.n_sn=0
 
         if self.use_host:
-            self.host = []
-            for z,n in zip(z_bins,n_sn):
-                selec = (host['redshift'] >= z)*(host['redshift'] <= z+dz)
-                host_in_shell = host[selec]
+            print('slt')
+            host_list = self.read_host_file()
+            self.test=host_list
+            choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=self.n_sn_gen)
+            host_idx = []
+            for z,n,rds in zip(z_bins,n_sn,choice_seeds):
+                selec = (host_list['redshift'] >= z)*(host_list['redshift'] <= z+dz)
+                host_in_shell = host_list[selec]
+                host_in_shell_idx = np.where(selec)
                 if len(host_in_shell)<n:
                     raise RuntimeError('No host in shell')
 
-                host_tmp=np.random.default_rng(some_seed).choice(host_in_shell,size=n)
-                for h,t0 in zip(host_tmp,t0_tmp):
+                host_tmp_idx=np.random.default_rng(rds).choice(host_in_shell_idx,size=n,replace=False)
+
+                for idx,h,t0 in zip(host_tmp_idx,host_tmp,t0_tmp):
                     epochs_selec=self.epochs_selection(h['ra'],h['dec'],h['redshift'],t0)
                     pass_cut = self.epochs_cut(epochs_selec,h['z'],t0)
                     if pass_cut:
-                        self.host.appen(h)
+                        self.host.append(h)
                         self.ra.append(h['ra'])
                         self.dec.append(h['dec'])
                         self.sim_t0.append(t0)
                         self.zcos.append(h['redshift'])
                         self.make_obs_table(epochs_selec)
+                        host_idx.append(host_tmp_idx)
                         self.n_sn+=1
+                self.host=host_file[host_idx]
 
         else:
             z_randseeds = np.random.default_rng(self.randseeds['z_seed']).integers(low=1000,high=10000,size=self.n_sn_gen)
@@ -587,13 +599,9 @@ class sn_sim :
         t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
 
         if self.use_host:
-            self.host = []
             self.zcos = []
             host_list = self.read_host_file()
 
-            #select redshift range
-            host_list = host_list[host_list['redshift'] > self.z_range[0]]
-            host_list = host_list[host_list['redshift'] < self.z_range[1]]
             h_use_idx = []
             choice_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=self.n_sn)
         else:
@@ -612,7 +620,7 @@ class sn_sim :
                 self.n_gen+=1
                 #Gen ra and dec
                 if self.use_host:
-                     h_idx = np.random.default_rng(choice_seeds[i]).integers(len(host_list))
+                     h_idx = np.random.default_rng(choice_seeds[i]).choice(np.arange(len(host_list)),replace=False)
                      ra,dec,z = host_list[h_idx]['ra'], host_list[h_idx]['dec'], host_list[h_idx]['redshift']
                 else:
                     ra, dec = self.gen_coord([ra_seeds[i],dec_seeds[i]])
