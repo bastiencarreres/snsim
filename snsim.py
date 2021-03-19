@@ -312,9 +312,9 @@ class sn_sim :
             self.bands = self.obs_header_main['bands'].split()
         return
 
-    def gen_redshift_cos(self):
+    def gen_redshift_cos(self,low=self.z_range[0],high=self.z_range[1],size=self.n_sn,randseed=self.randseeds['z_seed']):
         '''Function to get zcos, to be updated'''
-        self.zcos = np.random.default_rng(self.randseeds['z_seed']).uniform(low=self.z_range[0],high=self.z_range[1],size=self.n_sn)
+        self.zcos = np.random.default_rng(randseed).uniform(low=low,high=high,size=size)
         return
 
     def extract_coord(self):
@@ -328,12 +328,12 @@ class sn_sim :
             self.dec.append(obs['DEC'])
         return
 
-    def gen_coord(self,randseeds):
+    def gen_coord(self,randseeds,size=1):
         '''Generate ra,dec uniform on the sphere'''
         ra_seed = randseeds[0]
         dec_seed = randseeds[1]
-        ra = np.random.default_rng(ra_seed).uniform(low=0,high=2*np.pi)
-        dec_uni = np.random.default_rng(dec_seed).random()
+        ra = np.random.default_rng(ra_seed).uniform(low=0,high=2*np.pi;size=size)
+        dec_uni = np.random.default_rng(dec_seed).random(size=size)
         dec = np.arcsin(2*dec_uni-1)
         return ra, dec
 
@@ -450,6 +450,65 @@ class sn_sim :
         print(box_output(sep,'------------'))
         return host_in_file
 
+    def sn_rate(self,z,dz):
+        rate = 2.6e-5*pw((1+z),self.n_rate) #Rate in Nsn/Mpc^3/year
+        shell_vol = 4*np.pi/3*(pw(cosmo.comoving_distance(z+dz),3)-pw(cosmo.comoving_distance(z),3))
+        time_rate = rate*shell_vol
+        return time_rate
+
+    def cadence_sim(self):
+        dz = 0.01
+        nstep = int((self.z_range[1]-self.z_range[0])/dz)
+        z_bins = np.linspace(self.z_range[0],self.z_range[1]-dz,nstep)
+        time_rate = self.sn_rate(z_bins,dz)
+        n_sn = np.random.default_rng(self.randseeds['some_seed']).poisson(self.duration*time_rate)
+        n_sn_tot = np.sum(n_sn)
+
+        z_randseeds = np.random.default_rng(self.randseeds['z_seed']).integers(low=1000,high=10000,size=n_sn_tot)
+
+        coord_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
+        ra_tmp,dec_tmp = self.gen_coord(coord_seeds,size=n_sn_tot)
+
+        t0_tmp = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=n_sn_tot)
+        zcos_tmp = []
+        
+        for z,n,rds in zip(z_bins,n_sn,z_randseeds):
+            zcos_tmp = np.concatenate(zcos_tmp,self.gen_redshift_cos(low=z,high=z+dz,size=n,randseed=rds))
+
+        self.ra=[]
+        self.dec=[]
+        self.sim_t0=[]
+        self.zcos=[]
+
+        for r,d,z,t0 in zip(ra_tmp,dec_tmp,zcos_tmp,t0_tmp):
+            epochs_selec = self.selection(r,d,z,t0,field_size)
+            pass_cut = self.epochs_cut(epochs_selec)
+            if pass_cut:
+                self.ra.append(r)
+                self.dec.append(dec)
+                selt.sim_t0.append(t0)
+                self.zcos.append(zcos)
+        return
+
+    def epochs_selection(self,ra,dec,z,t0,field_size):
+        ModelMinT_obsfrm = self.model.mintime()*(1+z)
+        ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
+        epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
+        epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
+        epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
+        epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
+        return epochs_selec
+
+    def epochs_cut(self,epochs_selec):
+        for cut in self.nep_cut:
+            cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
+            test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
+            test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
+            if len(cut) == 4:
+                test *= (np.vectorize(self.band_dic.get)(self.obs_dic['filter']) == cut[3])
+            if np.sum(test) < int(cut[0]):
+                return False
+        return True
 
     def db_to_obs(self):
         '''Use a cadence db file to produce obs :
@@ -496,28 +555,13 @@ class sn_sim :
                 #Gen t0
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
-                #Epochs selection
-                ModelMinT_obsfrm = self.model.mintime()*(1+z)
-                ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
-                epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
-                epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
-                epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
-                epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
+                #epochs selection
+                epochs_selec = self.selection(ra,dec,z,t0,field_size)
 
                 #Cut on epochs
-                for cut in self.nep_cut:
-                    cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
-                    test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
-                    test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
-                    if len(cut) == 4:
-                        test *= (np.vectorize(self.band_dic.get)(self.obs_dic['filter']) == cut[3])
-                    if np.sum(test) < int(cut[0]):
-                        re_gen = True
-                        break
-                    else:
-                        re_gen = False
+                pass_cut = self.epochs_cut(epochs_selec)
 
-                if re_gen:
+                if not pass_cut:
                     if self.use_host:
                         choice_seeds[i] = np.random.default_rng(choice_seeds[i]).integers(1000,100000)
                     else:
