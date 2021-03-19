@@ -500,33 +500,56 @@ class sn_sim :
         time_rate = self.gen_sn_rate(z_bins,dz)
         n_sn = np.random.default_rng(self.randseeds['nsn_seed']).poisson(0.1*time_rate)
         self.n_sn_gen = np.sum(n_sn)
-
-        z_randseeds = np.random.default_rng(self.randseeds['z_seed']).integers(low=1000,high=10000,size=self.n_sn_gen)
-
-        coord_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
-        ra_tmp,dec_tmp = self.gen_coord(coord_seeds,size=self.n_sn_gen)
-
         t0_tmp = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn_gen)
-        zcos_tmp = []
-
-        for z,n,rds in zip(z_bins,n_sn,z_randseeds):
-            zcos_tmp = np.concatenate((zcos_tmp,self.gen_redshift_cos(low=z,high=z+dz,size=n,randseed=rds)))
 
         self.ra=[]
         self.dec=[]
         self.sim_t0=[]
         self.zcos=[]
         self.n_sn=0
-        for ra,dec,zcos,t0 in zip(ra_tmp,dec_tmp,zcos_tmp,t0_tmp):
-            epochs_selec = self.epochs_selection(ra,dec,zcos,t0)
-            pass_cut = self.epochs_cut(epochs_selec,zcos,t0)
-            if pass_cut:
-                self.ra.append(ra)
-                self.dec.append(dec)
-                self.sim_t0.append(t0)
-                self.zcos.append(zcos)
-                self.make_obs_table(epochs_selec)
-                self.n_sn+=1
+
+        if self.use_host:
+            self.host = []
+            for z,n in zip(z_bins,n_sn):
+                selec = (host['redshift'] >= z)*(host['redshift'] <= z+dz)
+                host_in_shell = host[selec]
+                if len(host_in_shell)<n:
+                    raise RuntimeError('No host in shell')
+
+                host_tmp=np.random.default_rng(some_seed).choice(host_in_shell,size=n)
+                for h,t0 in zip(host_tmp,t0_tmp):
+                    epochs_selec=self.epochs_selection(h['ra'],h['dec'],h['redshift'],t0)
+                    pass_cut = self.epochs_cut(epochs_selec,h['z'],t0)
+                    if pass_cut:
+                        self.host.appen(h)
+                        self.ra.append(h['ra'])
+                        self.dec.append(h['dec'])
+                        self.sim_t0.append(t0)
+                        self.zcos.append(h['redshift'])
+                        self.make_obs_table(epochs_selec)
+                        self.n_sn+=1
+
+        else:
+            z_randseeds = np.random.default_rng(self.randseeds['z_seed']).integers(low=1000,high=10000,size=self.n_sn_gen)
+            coord_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
+
+            ra_tmp,dec_tmp = self.gen_coord(coord_seeds,size=self.n_sn_gen)
+            zcos_tmp = []
+
+            for z,n,rds in zip(z_bins,n_sn,z_randseeds):
+                zcos_tmp = np.concatenate((zcos_tmp,self.gen_redshift_cos(low=z,high=z+dz,size=n,randseed=rds)))
+
+            for ra,dec,zcos,t0 in zip(ra_tmp,dec_tmp,zcos_tmp,t0_tmp):
+                epochs_selec = self.epochs_selection(ra,dec,zcos,t0)
+                pass_cut = self.epochs_cut(epochs_selec,zcos,t0)
+                if pass_cut:
+                    self.ra.append(ra)
+                    self.dec.append(dec)
+                    self.sim_t0.append(t0)
+                    self.zcos.append(zcos)
+                    self.make_obs_table(epochs_selec)
+                    self.n_sn+=1
+
         self.ra = np.asarray(self.ra)
         self.dec = np.asarray(self.dec)
         self.zcos=np.asarray(self.zcos)
