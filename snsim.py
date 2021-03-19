@@ -78,6 +78,9 @@ class sn_sim :
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
 
+        self.field_size=np.radians(np.sqrt(47)/2)
+
+
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------- data and db_config section -----------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -120,7 +123,15 @@ class sn_sim :
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
         self.sn_gen = self.sim_cfg['sn_gen']
-        self.n_sn = int(self.sn_gen['n_sn'])
+
+        if 'n_sn' in self.sn_gen:
+            self.n_sn = int(self.sn_gen['n_sn'])
+            self.use_rate = False
+        elif 'sn_rate' in self.sn_gen:
+            self.sn_rate = int(self.sn_gen['sn_rate'])
+            self.use_rate = True
+        else:
+            raise RuntimeError('You should set a sn number n_sn or a rate sn_rate')
 
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -155,8 +166,6 @@ class sn_sim :
             self.host_file=self.vpec_gen['host_file']
         else:
             self.use_host = False
-    #Init fit_res_table
-        self.fit_res = np.asarray(['No_fit']*self.n_sn,dtype='object')
 
     #Minimal nbr of epochs in LC
         if 'nep_cut' in self.sn_gen:
@@ -236,6 +245,9 @@ class sn_sim :
         l=f'SIMULATION TERMINATED in {time.time() - start_time:.1f} seconds'
         print(box_output(sep,l))
         print(sep)
+
+        #Init fit_res_table
+        self.fit_res = np.asarray(['No_fit']*self.n_sn,dtype='object')
         return
 
     def gen_param_array(self):
@@ -247,7 +259,7 @@ class sn_sim :
         else:
             self.randseed = np.random.randint(low=1000,high=100000)
 
-        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=100000,size=9)
+        randseeds = np.random.default_rng(self.randseed).integers(low=1000,high=100000,size=10)
         self.randseeds = {'z_seed': randseeds[0],
                           't0_seed': randseeds[1],
                           'x0_seed': randseeds[2],
@@ -256,7 +268,8 @@ class sn_sim :
                           'coord_seed': randseeds[5],
                           'vpec_seed': randseeds[6],
                           'smearM_seed': randseeds[7],
-                          'sigflux_seed': randseeds[8]
+                          'sigflux_seed': randseeds[8],
+                          'nsn_seed': randseeds[9]
                           }
         #Init z range
         self.z_range = self.sn_gen['z_range']
@@ -277,11 +290,13 @@ class sn_sim :
         self.sig_c = self.salt2_gen['sig_c']
 
         #Redshift generation
-        if not self.use_host:
-            self.gen_redshift_cos()
+        if not self.use_host and not self.use_rate:
+            self.zcos = self.gen_redshift_cos()
 
         if self.use_obs:
             self.extract_coord()
+        elif self.use_rate:
+            self.cadence_sim()
         else:
             self.db_to_obs()
 
@@ -323,8 +338,8 @@ class sn_sim :
         if randseed is None:
             randseed=self.randseeds['z_seed']
 
-        self.zcos = np.random.default_rng(randseed).uniform(low=low,high=high,size=size)
-        return
+        z = np.random.default_rng(randseed).uniform(low=low,high=high,size=size)
+        return z
 
     def extract_coord(self):
         '''Extract ra and dec from obs file'''
@@ -462,51 +477,67 @@ class sn_sim :
         print(box_output(sep,'------------'))
         return host_in_file
 
-    def sn_rate(self,z,dz):
-        rate = 2.6e-5*pw((1+z),self.n_rate) #Rate in Nsn/Mpc^3/year
-        shell_vol = 4*np.pi/3*(pw(cosmo.comoving_distance(z+dz),3)-pw(cosmo.comoving_distance(z),3))
+    def gen_sn_rate(self,z,dz):
+        rate = 2.6e-5*pw((1+z),self.sn_rate) #Rate in Nsn/Mpc^3/year
+        shell_vol = 4*np.pi/3*(pw(self.cosmo.comoving_distance(z+dz).value,3)-pw(self.cosmo.comoving_distance(z).value,3))
         time_rate = rate*shell_vol
         return time_rate
 
     def cadence_sim(self):
+        '''Use a cadence file to produce SN according to a rate:
+                1- Cut the zrange into shell (z,z+dz)
+                2- Compute time rate for the shell r = r_v(z) * V SN/year where r_v is volume rate
+                3- Generate the number of SN Ia in each shell with a Poisson's law
+                4- Generate ra,dec for all the SN uniform on the sphere
+                5- Generate t0 uniform between mintime and maxtime
+                5- Generate z for in each shell uniform in the interval [z,z+dz]
+                6- Apply observation and selection cut to SN
+        '''
+        self.duration=np.max(self.obs_dic['expMJD'])-np.min(self.obs_dic['expMJD'])
         dz = 0.01
         nstep = int((self.z_range[1]-self.z_range[0])/dz)
         z_bins = np.linspace(self.z_range[0],self.z_range[1]-dz,nstep)
-        time_rate = self.sn_rate(z_bins,dz)
-        n_sn = np.random.default_rng(self.randseeds['some_seed']).poisson(self.duration*time_rate)
-        n_sn_tot = np.sum(n_sn)
+        time_rate = self.gen_sn_rate(z_bins,dz)
+        n_sn = np.random.default_rng(self.randseeds['nsn_seed']).poisson(0.1*time_rate)
+        self.n_sn_gen = np.sum(n_sn)
 
-        z_randseeds = np.random.default_rng(self.randseeds['z_seed']).integers(low=1000,high=10000,size=n_sn_tot)
+        z_randseeds = np.random.default_rng(self.randseeds['z_seed']).integers(low=1000,high=10000,size=self.n_sn_gen)
 
         coord_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000,high=10000,size=2)
-        ra_tmp,dec_tmp = self.gen_coord(coord_seeds,size=n_sn_tot)
+        ra_tmp,dec_tmp = self.gen_coord(coord_seeds,size=self.n_sn_gen)
 
-        t0_tmp = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=n_sn_tot)
+        t0_tmp = np.random.default_rng(self.randseeds['t0_seed']).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']),size=self.n_sn_gen)
         zcos_tmp = []
 
         for z,n,rds in zip(z_bins,n_sn,z_randseeds):
-            zcos_tmp = np.concatenate(zcos_tmp,self.gen_redshift_cos(low=z,high=z+dz,size=n,randseed=rds))
+            zcos_tmp = np.concatenate((zcos_tmp,self.gen_redshift_cos(low=z,high=z+dz,size=n,randseed=rds)))
 
         self.ra=[]
         self.dec=[]
         self.sim_t0=[]
         self.zcos=[]
-
-        for r,d,z,t0 in zip(ra_tmp,dec_tmp,zcos_tmp,t0_tmp):
-            epochs_selec = self.selection(r,d,z,t0,field_size)
-            pass_cut = self.epochs_cut(epochs_selec)
+        self.n_sn=0
+        for ra,dec,zcos,t0 in zip(ra_tmp,dec_tmp,zcos_tmp,t0_tmp):
+            epochs_selec = self.epochs_selection(ra,dec,zcos,t0)
+            pass_cut = self.epochs_cut(epochs_selec,zcos,t0)
             if pass_cut:
-                self.ra.append(r)
+                self.ra.append(ra)
                 self.dec.append(dec)
-                selt.sim_t0.append(t0)
+                self.sim_t0.append(t0)
                 self.zcos.append(zcos)
+                self.make_obs_table(epochs_selec)
+                self.n_sn+=1
+        self.ra = np.asarray(self.ra)
+        self.dec = np.asarray(self.dec)
+        self.zcos=np.asarray(self.zcos)
+
         return
 
-    def epochs_selection(self,ra,dec,z,t0,field_size):
+    def epochs_selection(self,ra,dec,z,t0):
         ModelMinT_obsfrm = self.model.mintime()*(1+z)
         ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
-        epochs_selec =  (self.obs_dic['fieldRA']-field_size < ra)*(self.obs_dic['fieldRA']+field_size > ra) #ra selection
-        epochs_selec *= (self.obs_dic['fieldDec']-field_size < dec)*(self.obs_dic['fieldDec']+field_size > dec) #dec selection
+        epochs_selec =  (self.obs_dic['fieldRA']-self.field_size < ra)*(self.obs_dic['fieldRA']+self.field_size > ra) #ra selection
+        epochs_selec *= (self.obs_dic['fieldDec']-self.field_size < dec)*(self.obs_dic['fieldDec']+self.field_size > dec) #dec selection
         epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
         epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
         return epochs_selec
@@ -530,7 +561,6 @@ class sn_sim :
                 4- Capture the information (filter, noise) of these visits
                 5- Create sncosmo obs Table
          '''
-        field_size=np.radians(np.sqrt(47)/2)
         t0_seeds = np.random.default_rng(self.randseeds['t0_seed']).integers(low=1000,high=100000,size=self.n_sn)
 
         if self.use_host:
@@ -569,7 +599,7 @@ class sn_sim :
                 t0 = np.random.default_rng(t0_seeds[i]).uniform(np.min(self.obs_dic['expMJD']),np.max(self.obs_dic['expMJD']))
 
                 #epochs selection
-                epochs_selec = self.epochs_selection(ra,dec,z,t0,field_size)
+                epochs_selec = self.epochs_selection(ra,dec,z,t0)
 
                 #Cut on epochs
                 pass_cut = self.epochs_cut(epochs_selec,z,t0)
@@ -583,38 +613,17 @@ class sn_sim :
                     t0_seeds[i] = np.random.default_rng(t0_seeds[i]).integers(1000,100000)
 
                 if compt > len(self.obs_dic['expMJD']*2):
-                    raise RuntimeError('Too many nep required, reduces nep_cut')
+                    raise RuntimeError('Too many cuts required, reduces nep_cut')
                 else:
                     compt+=1
 
+            self.make_obs_table(epochs_selec)
 
             self.ra.append(ra)
             self.dec.append(dec)
             self.sim_t0.append(t0)
-
             if self.use_host:
                 h_use_idx.append(h_idx)
-
-            #Capture noise and filter
-            mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
-            filter = self.obs_dic['filter'][epochs_selec].astype('U27')
-
-            #Change band name to correpond with sncosmo bands
-            if self.band_dic is not None:
-                for i,f in enumerate(filter):
-                    filter[i] = self.band_dic[f]
-
-            #Convert maglim to flux noise (ADU)
-            skynoise = pw(10.,0.4*(self.zp-mlim5))/5
-
-            #Create obs table
-            obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
-                        'band': filter,
-                        'gain': [self.gain]*np.sum(epochs_selec),
-                        'skynoise': skynoise,
-                        'zp': [self.zp]*np.sum(epochs_selec),
-                        'zpsys': ['ab']*np.sum(epochs_selec)})
-            self.obs.append(obs)
 
         self.ra = np.asarray(self.ra)
         self.dec = np.asarray(self.dec)
@@ -622,6 +631,28 @@ class sn_sim :
         if self.use_host:
             self.host = host_list[h_use_idx]
             self.zcos = self.host['redshift']
+        return
+
+    def make_obs_table(self,epochs_selec):
+        #Capture noise and filter
+        mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
+        filter = self.obs_dic['filter'][epochs_selec].astype('U27')
+        #Change band name to correpond with sncosmo bands
+        if self.band_dic is not None:
+            for i,f in enumerate(filter):
+                filter[i] = self.band_dic[f]
+
+        #Convert maglim to flux noise (ADU)
+        skynoise = pw(10.,0.4*(self.zp-mlim5))/5
+
+        #Create obs table
+        obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
+                     'band': filter,
+                     'gain': [self.gain]*np.sum(epochs_selec),
+                     'skynoise': skynoise,
+                     'zp': [self.zp]*np.sum(epochs_selec),
+                     'zpsys': ['ab']*np.sum(epochs_selec)})
+        self.obs.append(obs)
         return
 
     def extract_from_db(self):
