@@ -214,13 +214,14 @@ class sn_sim :
 
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
         print(f'-----------------------------------\n')
-        if self.duration is None:
-            duration_str = f'Survey duration is given by cadence file'
-        else:
-            duration_str = f'Survey duration is {self.duration} year(s)'
+        if self.use_rate:
+            if self.duration is None:
+                duration_str = f'Survey duration is given by cadence file'
+            else:
+                duration_str = f'Survey duration is {self.duration} year(s)'
 
-        print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
-        print(duration_str+'\n')
+            print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
+            print(duration_str+'\n')
 
         if self.use_host:
             self.host=[]
