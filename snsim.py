@@ -666,10 +666,11 @@ class sn_sim :
             self.host = host_list[h_use_idx]
             self.zcos = self.host['redshift']
         return
-        
+
     def write_sim(self):
         '''Write the simulated lc in a fits file'''
         lc_hdu_list = []
+        self.sn_id = []
         for i,tab in enumerate(self.sim_lc):
             tab.meta['vpec'] = self.vpec[i]
             tab.meta['zcos'] = self.zcos[i]
@@ -678,10 +679,13 @@ class sn_sim :
             tab.meta['zCMB'] = self.zCMB[i]
             tab.meta['ra'] = self.ra[i]
             tab.meta['dec'] = self.dec[i]
+            tab.meta['sn_id'] = i
+            self.sn_id.append(i)
             lc_hdu_list.append(fits.table_to_hdu(tab))
 
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))]+lc_hdu_list)
         hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
+        self.sn_id = np.asarray(self.sn_id)
         return
 
     def fitter(self,id):
@@ -697,7 +701,7 @@ class sn_sim :
     def fit_lc(self,lc_id=None):
         '''Send the lc and model to fit to self.fitter'''
         if lc_id is None:
-            for i in range(self.n_sn):
+            for i in self.sn_id:
                 self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
                 self.fitter(i)
         else:
@@ -710,7 +714,7 @@ class sn_sim :
                     'e_x1','c','e_c', 'cov_x0_x1','cov_x0_c',\
                     'cov_mb_x1','cov_mb_c','cov_x1_c',\
                     'chi2','ndof']
-        data = {'id' : np.arange(self.n_sn),
+        data = {'id' : self.sn_id,
                 'ra': self.ra,
                 'dec': self.dec,
                 'vpec': self.vpec,
@@ -729,7 +733,7 @@ class sn_sim :
         for k in add_keys:
             data[k] = []
 
-        for i in range(self.n_sn):
+        for i in self.sn_id:
             if self.fit_res[i] != 'NaN':
                 par = self.fit_res[i][0]['parameters']
                 par_cov = self.fit_res[i][0]['covariance'][1:,1:]
