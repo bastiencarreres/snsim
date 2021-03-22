@@ -9,7 +9,7 @@ parser.add_argument("-fit", action='store_true')
 
 keys_dic = {'data': ['write_path','sim_name','band_dic','obs_config_path'],
             'db_config':['dbfile_path','zp','gain'],
-            'sn_gen':['randseed','n_sn','nep_cut','z_range','v_cmb','M0','mag_smear'],
+            'sn_gen':['randseed','n_sn','sn_rate','rate_pw','duration','nep_cut','z_range','v_cmb','M0','mag_smear'],
             'cosmology':['Om','H0'],
             'salt2_gen':['salt2_dir','alpha','beta','mean_x1','mean_c','sig_x1','sig_c'],
             'vpec_gen':['host_file','mean_vpec','sig_vpec']
