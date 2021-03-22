@@ -33,7 +33,10 @@ class sn_sim :
         |     zp: INSTRUMENTAL ZEROPOINT                                                   |
         |     gain: CCD GAIN e-/ADU                                                        |
         | sn_gen:                                                                          |
-        |     n_sn: NUMBER OF SN TO GENERATE                                               |
+        |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
+        |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                      |
+        |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                  |
+              duration: DURATION OF THE SURVEY (Optional, default given by cadence file)   |
         |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS |
         |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                       |
         |     z_range: [ZMIN,ZMAX]                                                         |
@@ -335,13 +338,24 @@ class sn_sim :
                   'x1': x1,
                   'c': c
                   } for z,peak,x0,x1,c in zip(self.zobs,self.sim_t0,self.sim_x0,self.sim_x1,self.sim_c)]
-
+        return
 
     def open_obs_header(self):
         ''' Open the fits obs file header'''
         with fits.open(self.obs_cfg_path,'readonly') as obs_fits:
             self.obs_header_main = obs_fits[0].header
             self.bands = self.obs_header_main['bands'].split()
+        return
+
+    def extract_coord(self):
+        '''Extract ra and dec from obs file'''
+        # extract ra dec from obs config
+        self.ra = []
+        self.dec = []
+        for i in range(self.n_sn):
+            obs=self.obs_header[i]
+            self.ra.append(obs['RA'])
+            self.dec.append(obs['DEC'])
         return
 
     def gen_redshift_cos(self,low=None,high=None,size=None,randseed=None):
@@ -357,17 +371,6 @@ class sn_sim :
 
         z = np.random.default_rng(randseed).uniform(low=low,high=high,size=size)
         return z
-
-    def extract_coord(self):
-        '''Extract ra and dec from obs file'''
-        # extract ra dec from obs config
-        self.ra = []
-        self.dec = []
-        for i in range(self.n_sn):
-            obs=self.obs_header[i]
-            self.ra.append(obs['RA'])
-            self.dec.append(obs['DEC'])
-        return
 
     def gen_coord(self,randseeds,size=1):
         '''Generate ra,dec uniform on the sphere'''
@@ -428,60 +431,39 @@ class sn_sim :
             self.sim_lc.append(lc)
         return
 
-    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
-        '''Ploting the ligth curve of number 'lc_id' sn'''
-        if plot_sim:
-            sim_model = self.model
-        else:
-            sim_model = None
 
-        if plot_fit:
-            if self.fit_res[lc_id] == 'No_fit':
-                raise ValueError("This lc wasn't fitted")
-            fit_model = self.fit_res[lc_id][1]
-            fit_cov = self.fit_res[lc_id][0]['covariance'][1:,1:]
-        else:
-            fit_model = None
-            fit_cov = None
-        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov,residuals=residuals)
+    def extract_from_db(self):
+        '''Read db file and extract relevant information'''
+
+        dbf = sqlite3.connect(self.db_file)
+        self.obs_dic={}
+        keys=['expMJD', 'filter', 'fieldRA','fieldDec','fiveSigmaDepth','moonPhase']
+        for k in keys:
+            sql_com = f'SELECT {k} from Summary;'
+            values = dbf.execute(sql_com)
+            self.obs_dic[k] = np.array([a[0] for a in values])
         return
 
-    def fitter(self,id):
-        '''Use sncosmo to fit sim lc'''
-        try :
-            res = snc_fit(self.sim_lc[id],self.model)
-        except:
-            self.fit_res[id] = 'NaN'
-            return
-        self.fit_res[id] = res
-        return
+    def make_obs_table(self,epochs_selec):
+        #Capture noise and filter
+        mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
+        filter = self.obs_dic['filter'][epochs_selec].astype('U27')
+        #Change band name to correpond with sncosmo bands
+        if self.band_dic is not None:
+            for i,f in enumerate(filter):
+                filter[i] = self.band_dic[f]
 
-    def fit_lc(self,lc_id=None):
-        '''Send the lc and model to fit to self.fitter'''
-        if lc_id is None:
-            for i in range(self.n_sn):
-                self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
-                self.fitter(i)
-        else:
-            self.model.set(z=self.sim_lc[lc_id].meta['z'])
-            self.fitter(lc_id)
-        return
+        #Convert maglim to flux noise (ADU)
+        skynoise = pw(10.,0.4*(self.zp-mlim5))/5
 
-    def write_sim(self):
-        '''Write the simulated lc in a fits file'''
-        lc_hdu_list = []
-        for i,tab in enumerate(self.sim_lc):
-            tab.meta['vpec'] = self.vpec[i]
-            tab.meta['zcos'] = self.zcos[i]
-            tab.meta['zpec'] = self.zpec[i]
-            tab.meta['z2cmb'] = self.z2cmb[i]
-            tab.meta['zCMB'] = self.zCMB[i]
-            tab.meta['ra'] = self.ra[i]
-            tab.meta['dec'] = self.dec[i]
-            lc_hdu_list.append(fits.table_to_hdu(tab))
-
-        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))]+lc_hdu_list)
-        hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
+        #Create obs table
+        obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
+                     'band': filter,
+                     'gain': [self.gain]*np.sum(epochs_selec),
+                     'skynoise': skynoise,
+                     'zp': [self.zp]*np.sum(epochs_selec),
+                     'zpsys': ['ab']*np.sum(epochs_selec)})
+        self.obs.append(obs)
         return
 
     def read_host_file(self):
@@ -496,7 +478,30 @@ class sn_sim :
         host_list = host_list[host_list['redshift'] < self.z_range[1]]
         return host_list
 
+    def epochs_selection(self,ra,dec,z,t0):
+        '''Select epochs that match the survey observations'''
+        ModelMinT_obsfrm = self.model.mintime()*(1+z)
+        ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
+        epochs_selec =  (self.obs_dic['fieldRA']-self.field_size < ra)*(self.obs_dic['fieldRA']+self.field_size > ra) #ra selection
+        epochs_selec *= (self.obs_dic['fieldDec']-self.field_size < dec)*(self.obs_dic['fieldDec']+self.field_size > dec) #dec selection
+        epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
+        epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
+        return epochs_selec
+
+    def epochs_cut(self,epochs_selec,z,t0):
+        '''Check if the SN pass the cuts'''
+        for cut in self.nep_cut:
+            cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
+            test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
+            test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
+            if len(cut) == 4:
+                test *= (np.vectorize(self.band_dic.get)(self.obs_dic['filter']) == cut[3])
+            if np.sum(test) < int(cut[0]):
+                return False
+        return True
+
     def gen_sn_rate(self,z):
+        '''Give the rate of SN Ia given a volume'''
         rate = self.sn_rate*pw((1+z),self.rate_pw) #Rate in Nsn/Mpc^3/year
         shell_vol = 4*np.pi/3*(pw(self.cosmo.comoving_distance(z+self.dz).value,3)-pw(self.cosmo.comoving_distance(z).value,3))
         time_rate = rate*shell_vol
@@ -584,28 +589,7 @@ class sn_sim :
         self.ra = np.asarray(self.ra)
         self.dec = np.asarray(self.dec)
         self.zcos=np.asarray(self.zcos)
-
         return
-
-    def epochs_selection(self,ra,dec,z,t0):
-        ModelMinT_obsfrm = self.model.mintime()*(1+z)
-        ModelMaxT_obsfrm = self.model.maxtime()*(1+z)
-        epochs_selec =  (self.obs_dic['fieldRA']-self.field_size < ra)*(self.obs_dic['fieldRA']+self.field_size > ra) #ra selection
-        epochs_selec *= (self.obs_dic['fieldDec']-self.field_size < dec)*(self.obs_dic['fieldDec']+self.field_size > dec) #dec selection
-        epochs_selec *= (self.obs_dic['fiveSigmaDepth']>0) #use to avoid 1e43 errors
-        epochs_selec *= (self.obs_dic['expMJD'] - t0  > ModelMinT_obsfrm)*(self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
-        return epochs_selec
-
-    def epochs_cut(self,epochs_selec,z,t0):
-        for cut in self.nep_cut:
-            cutMin_obsfrm, cutMax_obsfrm = cut[1]*(1+z), cut[2]*(1+z)
-            test = epochs_selec*(self.obs_dic['expMJD']-t0 > cutMin_obsfrm)
-            test *= (self.obs_dic['expMJD']-t0 < cutMax_obsfrm)
-            if len(cut) == 4:
-                test *= (np.vectorize(self.band_dic.get)(self.obs_dic['filter']) == cut[3])
-            if np.sum(test) < int(cut[0]):
-                return False
-        return True
 
     def db_to_obs(self):
         '''Use a cadence db file to produce obs :
@@ -682,39 +666,43 @@ class sn_sim :
             self.host = host_list[h_use_idx]
             self.zcos = self.host['redshift']
         return
+        
+    def write_sim(self):
+        '''Write the simulated lc in a fits file'''
+        lc_hdu_list = []
+        for i,tab in enumerate(self.sim_lc):
+            tab.meta['vpec'] = self.vpec[i]
+            tab.meta['zcos'] = self.zcos[i]
+            tab.meta['zpec'] = self.zpec[i]
+            tab.meta['z2cmb'] = self.z2cmb[i]
+            tab.meta['zCMB'] = self.zCMB[i]
+            tab.meta['ra'] = self.ra[i]
+            tab.meta['dec'] = self.dec[i]
+            lc_hdu_list.append(fits.table_to_hdu(tab))
 
-    def make_obs_table(self,epochs_selec):
-        #Capture noise and filter
-        mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
-        filter = self.obs_dic['filter'][epochs_selec].astype('U27')
-        #Change band name to correpond with sncosmo bands
-        if self.band_dic is not None:
-            for i,f in enumerate(filter):
-                filter[i] = self.band_dic[f]
-
-        #Convert maglim to flux noise (ADU)
-        skynoise = pw(10.,0.4*(self.zp-mlim5))/5
-
-        #Create obs table
-        obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
-                     'band': filter,
-                     'gain': [self.gain]*np.sum(epochs_selec),
-                     'skynoise': skynoise,
-                     'zp': [self.zp]*np.sum(epochs_selec),
-                     'zpsys': ['ab']*np.sum(epochs_selec)})
-        self.obs.append(obs)
+        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))]+lc_hdu_list)
+        hdu_list.writeto(self.write_path+self.sim_name+'.fits',overwrite=True)
         return
 
-    def extract_from_db(self):
-        '''Read db file and extract relevant information'''
+    def fitter(self,id):
+        '''Use sncosmo to fit sim lc'''
+        try :
+            res = snc_fit(self.sim_lc[id],self.model)
+        except:
+            self.fit_res[id] = 'NaN'
+            return
+        self.fit_res[id] = res
+        return
 
-        dbf = sqlite3.connect(self.db_file)
-        self.obs_dic={}
-        keys=['expMJD', 'filter', 'fieldRA','fieldDec','fiveSigmaDepth','moonPhase']
-        for k in keys:
-            sql_com = f'SELECT {k} from Summary;'
-            values = dbf.execute(sql_com)
-            self.obs_dic[k] = np.array([a[0] for a in values])
+    def fit_lc(self,lc_id=None):
+        '''Send the lc and model to fit to self.fitter'''
+        if lc_id is None:
+            for i in range(self.n_sn):
+                self.model.set(z=self.sim_lc[i].meta['z'])  # set the model's redshift.
+                self.fitter(i)
+        else:
+            self.model.set(z=self.sim_lc[lc_id].meta['z'])
+            self.fitter(lc_id)
         return
 
     def write_fit(self):
@@ -778,6 +766,25 @@ class sn_sim :
         hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header({'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0':self.M0, 'SIG_M': self.sigmaM})),hdu])
         hdu_list.writeto(self.sim_name+'_fit.fits',overwrite=True)
         return
+
+    def plot_lc(self,lc_id,zp=25.,mag=False,plot_sim=True,plot_fit=False,residuals=False):
+        '''Ploting the ligth curve of number 'lc_id' sn'''
+        if plot_sim:
+            sim_model = self.model
+        else:
+            sim_model = None
+
+        if plot_fit:
+            if self.fit_res[lc_id] == 'No_fit':
+                raise ValueError("This lc wasn't fitted")
+            fit_model = self.fit_res[lc_id][1]
+            fit_cov = self.fit_res[lc_id][0]['covariance'][1:,1:]
+        else:
+            fit_model = None
+            fit_cov = None
+        plot_lc(self.sim_lc[lc_id],zp=zp,mag=mag,sim_model=self.model,fit_model=fit_model,fit_cov=fit_cov,residuals=residuals)
+        return
+
 
 
 
