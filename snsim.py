@@ -130,6 +130,7 @@ class sn_sim :
         if 'n_sn' in self.sn_gen:
             self.n_sn = int(self.sn_gen['n_sn'])
             self.use_rate = False
+            self.duration = None
             print(f"Generate {self.n_sn} SN Ia")
         else:
             self.use_rate = True
