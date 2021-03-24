@@ -577,7 +577,7 @@ class sn_sim:
         self.dz = 0.01 * (1 + self.z_range[1]) / np.max(1, self.rate_pw)
         if self.use_host:
             host_list = self.read_host_file()
-            redshift_copy = sorted(np.copy(host_list['redshift']))
+            redshift_copy = np.sort(np.copy(host_list['redshift']))
             diff = redshift_copy[1:] - redshift_copy[:-1]
             # avoid dz < gap between redshift
             self.dz = np.max([self.dz, 2 * np.max(diff)])
