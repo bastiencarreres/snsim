@@ -15,10 +15,13 @@ data :
     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)
 db_config: #(Optional -> use obs_file)
     dbfile_path: '/PATH/TO/FILE'
+    db_cut: {'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...}
     zp: INSTRUMENTAL ZEROPOINT  
     gain: CCD GAIN e-/ADU
 sn_gen:
-    n_sn: NUMBER OF SN TO GENERATE
+    n_sn: NUMBER OF SN TO GENERATE #(Optional)
+    sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
+    rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)
     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)
     z_range: [ZMIN,ZMAX]
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
@@ -50,5 +53,3 @@ gen_obs function :
 ```
 gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
 ```
-
-

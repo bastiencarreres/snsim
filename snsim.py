@@ -31,13 +31,14 @@ class sn_sim:
         |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)              |
         | db_config: #(Optional -> use obs_file)                                           |
         |     dbfile_path: '/PATH/TO/FILE'                                                 |
+        |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
         |     zp: INSTRUMENTAL ZEROPOINT                                                   |
         |     gain: CCD GAIN e-/ADU                                                        |
         | sn_gen:                                                                          |
         |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
         |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                      |
         |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                  |
-              duration: DURATION OF THE SURVEY (Optional, default given by cadence file)   |
+        |     duration: DURATION OF THE SURVEY (Optional, default given by cadence file)   |
         |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS |
         |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                       |
         |     z_range: [ZMIN,ZMAX]                                                         |
@@ -113,6 +114,11 @@ class sn_sim:
             self.db_file = self.db_cfg['dbfile_path']
             self.zp = self.db_cfg['zp']
             self.gain = self.db_cfg['gain']
+            self.use_dbcut = False
+            if 'db_cut' in self.db_cfg:
+                self.use_dbcut = True
+                self.db_cut = self.db_cfg['db_cut']
+
 
         self.write_path = self.data_cfg['write_path']
         self.sim_name = self.data_cfg['sim_name']
@@ -218,22 +224,36 @@ class sn_sim:
 
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
         print(f'-----------------------------------\n')
-        if self.use_rate:
-            if self.duration is None:
-                duration_str = f'Survey duration is given by cadence file'
-            else:
-                duration_str = f'Survey duration is {self.duration} year(s)'
 
-            print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
-            print(duration_str + '\n')
-        else:
-            print(f"Generate {self.n_sn} SN Ia")
+        if not self.use_obs:
+            if self.use_rate:
+                if self.duration is None:
+                    duration_str = f'Survey duration is given by cadence file'
+                else:
+                    duration_str = f'Survey duration is {self.duration} year(s)'
+
+                print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
+                print(duration_str + '\n')
+            else:
+                print(f"Generate {self.n_sn} SN Ia")
+
+            if self.use_dbcut:
+                for k in self.db_cut:
+                    conditions_str=''
+                    for cond in self.db_cut[k]:
+                        conditions_str+=str(cond)+' OR '
+                    conditions_str=conditions_str[:-4]
+                    print(f'Select {k}: '+conditions_str)
+            else:
+                print('No db cut')
+            print('\n')
 
         if self.use_host:
             self.host = []
             with fits.open(self.host_file) as hduf:
                 for hdu in hduf:
                     self.host.append(hdu.data)
+
 
         start_time = time.time()
         self.obs = []
@@ -469,24 +489,41 @@ class sn_sim:
             lc = snc.realize_lcs(obs, self.model, [params], scatter=False)[0]
             lc['flux'] = np.random.default_rng(s).normal(
                 loc=lc['flux'], scale=lc['fluxerr'])
+            if not self.use_obs:
+                lc['subprogram'] = obs['subprogram']
             self.sim_lc.append(lc)
         return
 
     def extract_from_db(self):
         '''Read db file and extract relevant information'''
-
+        self.obs_dic={}
         dbf = sqlite3.connect(self.db_file)
-        self.obs_dic = {}
-        keys = [
-            'expMJD',
-            'filter',
-            'fieldRA',
-            'fieldDec',
-            'fiveSigmaDepth',
-            'moonPhase']
+
+        keys = ['expMJD',
+                'filter',
+                'fieldRA',
+                'fieldDec',
+                'fiveSigmaDepth',
+                'moonPhase',
+                'subprogram']
+        where=''
+        if self.use_dbcut:
+            where=" WHERE "
+            for cut_var in self.db_cut:
+                where+="("
+                for cut in self.db_cut[cut_var]:
+                    if cut_var == 'subprogram' or  cut_var=='filter':
+                        cut_str=f"='{cut}'"
+                    else:
+                        cut_str=f"{cut}"
+                    where+=f"{cut_var}{cut_str} OR "
+                where=where[:-4]
+                where+=") AND "
+            where=where[:-5]
+        obs_dic={}
         for k in keys:
-            sql_com = f'SELECT {k} from Summary;'
-            values = dbf.execute(sql_com)
+            query = 'SELECT '+k+' FROM Summary'+where+';'
+            values = dbf.execute(query)
             self.obs_dic[k] = np.array([a[0] for a in values])
         return
 
@@ -509,6 +546,8 @@ class sn_sim:
                      'skynoise': skynoise,
                      'zp': [self.zp] * np.sum(epochs_selec),
                      'zpsys': ['ab'] * np.sum(epochs_selec)})
+        if not self.use_obs:
+            obs['subprogram'] = self.obs_dic['subprogram'][epochs_selec]
         self.obs.append(obs)
         return
 
