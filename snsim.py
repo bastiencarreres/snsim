@@ -523,7 +523,6 @@ class sn_sim:
         obs_dic={}
         for k in keys:
             query = 'SELECT '+k+' FROM Summary'+where+';'
-            print(query)
             values = dbf.execute(query)
             self.obs_dic[k] = np.array([a[0] for a in values])
         return
