@@ -9,7 +9,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print
+from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print, write_fit
 
 
 class sn_sim:
@@ -818,11 +818,14 @@ class sn_sim:
             tab.meta['ra'] = self.ra[i]
             tab.meta['dec'] = self.dec[i]
             tab.meta['sn_id'] = i
+            tab.meta['mb'] = self.sim_mB[i]
+            tab.meta['mu'] = self.sim_mu[i]
+            tab.meta['msmear'] = self.mag_smear[i]
             self.sn_id.append(i)
             lc_hdu_list.append(fits.table_to_hdu(tab))
-
+        sim_header = {'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
         hdu_list = fits.HDUList(
-            [fits.PrimaryHDU(header=fits.Header({'n_obs': self.n_sn}))] + lc_hdu_list)
+            [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
         hdu_list.writeto(
             self.write_path +
             self.sim_name +
@@ -854,67 +857,26 @@ class sn_sim:
         return
 
     def write_fit(self):
-        add_keys = ['t0', 'e_t0', 'x0', 'e_x0', 'mb', 'e_mb', 'x1',
-                    'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
-                    'cov_mb_x1', 'cov_mb_c', 'cov_x1_c',
-                    'chi2', 'ndof']
-        data = {'id': self.sn_id,
-                'ra': self.ra,
-                'dec': self.dec,
-                'vpec': self.vpec,
-                'zpec': self.zpec,
-                'z2cmb': self.z2cmb,
-                'zcos': self.zcos,
-                'zCMB': self.zCMB,
-                'zobs': self.zobs,
-                'sim_x0': self.sim_x0,
-                'sim_mb': self.sim_mB,
-                'sim_x1': self.sim_x1,
-                'sim_c': self.sim_c,
-                'sim_mu': self.sim_mu,
-                'sim_mag_smear': self.mag_smear
-                }
-        for k in add_keys:
-            data[k] = []
 
-        for i in self.sn_id:
-            if self.fit_res[i] != 'NaN':
-                par = self.fit_res[i][0]['parameters']
-                par_cov = self.fit_res[i][0]['covariance'][1:, 1:]
-                mb_cov = cov_x0_to_mb(par[2], par_cov)
-                data['t0'].append(par[1])
-                data['e_t0'].append(
-                    np.sqrt(self.fit_res[i][0]['covariance'][0, 0]))
-                data['x0'].append(par[2])
-                data['e_x0'].append(np.sqrt(par_cov[0, 0]))
+        sim_lc_meta = {'id': self.sn_id,
+                       'ra': self.ra,
+                       'dec': self.dec,
+                       'vpec': self.vpec,
+                       'zpec': self.zpec,
+                       'z2cmb': self.z2cmb,
+                       'zcos': self.zcos,
+                       'zCMB': self.zCMB,
+                       'zobs': self.zobs,
+                       'sim_x0': self.sim_x0,
+                       'sim_mb': self.sim_mB,
+                       'sim_x1': self.sim_x1,
+                       'sim_c': self.sim_c,
+                       'sim_mu': self.sim_mu,
+                       'sim_mag_smear': self.mag_smear
+                       }
 
-                data['mb'].append(x0_to_mB(par[2]))
-                data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
-
-                data['x1'].append(par[3])
-                data['e_x1'].append(np.sqrt(par_cov[1, 1]))
-
-                data['c'].append(par[4])
-                data['e_c'].append(np.sqrt(par_cov[2, 2]))
-                data['cov_x0_x1'].append(par_cov[0, 1])
-                data['cov_x0_c'].append(par_cov[0, 2])
-                data['cov_x1_c'].append(par_cov[1, 2])
-                data['cov_mb_x1'].append(mb_cov[0, 1])
-                data['cov_mb_c'].append(mb_cov[0, 2])
-
-                data['chi2'].append(self.fit_res[i][0]['chisq'])
-                data['ndof'].append(self.fit_res[i][0]['ndof'])
-
-            else:
-                for k in add_keys:
-                    data[k].append(-99.)
-
-        table = Table(data)
-
-        hdu = fits.table_to_hdu(table)
-        hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header(
-            {'n_sn': self.n_sn, 'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM})), hdu])
-        hdu_list.writeto(self.sim_name + '_fit.fits', overwrite=True)
+        sim_meta={'n_sn': self.n_sn, 'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
+        write_fit(sim_lc_meta,self.fit_res,self.write_path+self.sim_name+'_fit.fits',sim_meta=sim_meta)
         return
 
     def plot_lc(
@@ -956,11 +918,11 @@ class open_sim:
         self.salt2_dir = SALT2_dir
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model = snc.Model(source=source)
-
         self.sim_lc = []
 
         with fits.open(sim_file) as sf:
-            self.n_sn = sf[0].header['N_OBS']
+            self.header=sf[0].header
+            self.n_sn = sf[0].header['n_sn']
             for hdu in sf[1:]:
                 data = hdu.data
                 tab = Table(data)
@@ -1022,4 +984,51 @@ class open_sim:
         else:
             self.model.set(z=self.sim_lc[lc_id].meta['z'])
             self.fitter(lc_id)
+        return
+
+    def write_fit(self,w_path):
+        sim_meta_keys=['n_sn', 'alpha', 'beta', 'M0', 'SIG_M']
+        sim_meta={}
+
+        for k in sim_meta_keys:
+            sim_meta[k]=self.header[k]
+
+        sim_lc_meta = {'id': [],
+                           'ra': [],
+                           'dec': [],
+                           'vpec': [],
+                           'zpec': [],
+                           'z2cmb': [],
+                           'zcos': [],
+                           'zCMB': [],
+                           'zobs': [],
+                           'sim_x0': [],
+                           'sim_mb': [],
+                           'sim_x1': [],
+                           'sim_c': [],
+                           'sim_mu': [],
+                           'sim_mag_smear': []
+                           }
+        trad_dic = {'id': 'sn_id',
+                    'ra': 'ra',
+                    'dec': 'dec',
+                    'vpec': 'vpec',
+                    'zpec': 'zpec',
+                    'z2cmb': 'z2cmb',
+                    'zcos': 'zcos',
+                    'zCMB': 'zcmb',
+                    'zobs': 'z',
+                    'sim_x0': 'x0',
+                    'sim_mb': 'mb',
+                    'sim_x1': 'x1',
+                    'sim_c': 'c',
+                    'sim_mu': 'mu' ,
+                    'sim_mag_smear':'msmear'
+                   }
+
+        for lc in self.sim_lc:
+            for k in trad_dic:
+                sim_lc_meta[k].append(lc.meta[trad_dic[k]])
+
+        write_fit(sim_lc_meta,self.fit_res,'_fit.fits',sim_meta=sim_meta)
         return
