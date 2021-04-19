@@ -48,8 +48,9 @@ class sn_sim:
         | cosmology:                                                                       |
         |     Om: MATTER DENSITY                                                           |
         |     H0: HUBBLE CONSTANT                                                          |
-        | salt2_gen:                                                                       |
-        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                            |
+        | salt_gen:                                                                        |
+        |     version: 2 or 3                                                              |
+        |     salt_dir: '/PATH/TO/SALT/MODEL'                                              |
         |     alpha: STRETCH CORRECTION = alpha*x1                                         |
         |     beta: COLOR CORRECTION = -beta*c                                             |
         |     mean_x1: MEAN X1 VALUE                                                       |
@@ -165,16 +166,22 @@ class sn_sim:
             Om0=self.cosmo_cfg['Om'])
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
-    #--------------- salt2_gen section ----------------#
+    #--------------- salt_gen section ----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
-        # Salt2 parameters
-        self.salt2_gen = self.sim_cfg['salt2_gen']
-        self.alpha = self.salt2_gen['alpha']
-        self.beta = self.salt2_gen['beta']
-        self.salt2_dir = self.salt2_gen['salt2_dir']
+        # Salt parameters
+        self.salt_gen = self.sim_cfg['salt_gen']
+        self.alpha = self.salt_gen['alpha']
+        self.beta = self.salt_gen['beta']
+        self.salt_dir = self.salt_gen['salt_dir']
 
-        source = snc.SALT2Source(modeldir=self.salt2_dir)
+        if self.salt_gen['version'] == 2:
+            source = snc.SALT2Source(modeldir=self.salt_dir)
+        elif self.salt_gen['version'] == 3:
+            source = snc.SALT3Source(modeldir=self.salt_dir)
+        else :
+            raise RuntimeError("Support SALT version = 2 or 3")
+
         self.model = snc.Model(source=source)
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
