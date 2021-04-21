@@ -301,6 +301,71 @@ def norm_flux(flux_table, zp):
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
 
+class G10(snc.PropagationEffect):
+    '''G10 smearing effect for sncosmo
+       Use colordisp file of salt and follow SNANA formalism, see arXiv:1209.2482
+    '''
+    _param_names = ['L0', 'F0', 'F1', 'dL','RandS']
+    param_names_latex = ['\lambda_0', 'F_0', 'F_1','d_L','RS']
+
+    def __init__(self,model):
+        self._parameters = np.array([2157.3,0.0,1.08e-4,800,np.random.randint(low=1000, high=100000)])
+        self._minwave = model.source.minwave()
+        self._maxwave = model.source.maxwave()
+        self._colordisp = model.source._colordisp
+        self.tmp_par = self._parameters[:-1].copy()
+        self.scattering_law()
+
+    def scattering_law(self):
+        '''Initialise scattering law'''
+        L0,F0,F1,dL = self._parameters[:-1]
+        lam = self._minwave
+        sigma_lam=[]
+        sigma_val=[]
+
+        while lam < self._maxwave:
+            sigma_lam.append(lam)
+            val = self._colordisp(lam)
+            if lam > L0:
+                val*=1+(lam-L0)*F1
+            elif lam < L0:
+                val*=1+(lam-L0)*F0
+
+            sigma_val.append(val)
+            lam += self._parameters[3]
+
+        self.sigma_lam = np.asarray(sigma_lam)
+        self.sigma_val = np.asarray(sigma_val)
+        return
+
+    def gen_smearing(self, wave):
+        '''Return smear value for a given wavelength'''
+        comp_tmp = (self.tmp_par != self._parameters[:-1]).any()
+        if comp_tmp:
+            self.scattering_law()
+            self.tmp_par = self._parameters[:-1].copy()
+        RS=self._parameters[-1]
+        self.sigma_scatter = self.sigma_val*np.random.default_rng(int(RS)).normal(0,1,size=len(self.sigma_val))
+        inf_sel = wave>self.sigma_lam[:-1]
+        sup_sel = wave<self.sigma_lam[1:]
+
+        if inf_sel.all():
+            idx_inf = -2
+        elif sup_sel.all():
+            idx_inf = 0
+        else:
+            idx_inf=np.where(inf_sel*sup_sel)[0][0]
+        Lam_inf = self.sigma_lam[idx_inf]
+        Lam_sup = self.sigma_lam[idx_inf+1]
+        Value_inf = self.sigma_scatter[idx_inf]
+        Value_sup = self.sigma_scatter[idx_inf+1]
+        sin_interp = np.sin(np.pi*(wave-0.5*(Lam_inf+Lam_sup))/(Lam_sup-Lam_inf))
+        return 0.5*(Value_sup+Value_inf)+0.5*(Value_sup-Value_inf)*sin_interp
+
+    def propagate(self, wave, flux):
+        """Propagate the flux."""
+        smear = np.asarray([self.gen_smearing(w) for w in wave])
+        return flux*10**(-0.4*smear)
 
 def add_filter(path):  # Not implemented yet for later purpose
     input_name = {}
