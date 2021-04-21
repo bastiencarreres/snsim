@@ -9,7 +9,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print, write_fit
+from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print, write_fit, G10
 
 
 class sn_sim:
@@ -45,11 +45,13 @@ class sn_sim:
         |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
         |     M0: SN ABSOLUT MAGNITUDE                                                     |
         |     mag_smear: SN INTRINSIC SMEARING                                             |
+        |     smear_mod: 'G10' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING              |
         | cosmology:                                                                       |
         |     Om: MATTER DENSITY                                                           |
         |     H0: HUBBLE CONSTANT                                                          |
-        | salt2_gen:                                                                       |
-        |     salt2_dir: '/PATH/TO/SALT2/MODEL'                                            |
+        | salt_gen:                                                                        |
+        |     version: 2 or 3                                                              |
+        |     salt_dir: '/PATH/TO/SALT/MODEL'                                              |
         |     alpha: STRETCH CORRECTION = alpha*x1                                         |
         |     beta: COLOR CORRECTION = -beta*c                                             |
         |     mean_x1: MEAN X1 VALUE                                                       |
@@ -154,6 +156,7 @@ class sn_sim:
             else:
                 self.duration = None
 
+
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #--------------- cosmomogy section ----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -165,17 +168,31 @@ class sn_sim:
             Om0=self.cosmo_cfg['Om'])
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
-    #--------------- salt2_gen section ----------------#
+    #--------------- salt_gen section ----------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
 
-        # Salt2 parameters
-        self.salt2_gen = self.sim_cfg['salt2_gen']
-        self.alpha = self.salt2_gen['alpha']
-        self.beta = self.salt2_gen['beta']
-        self.salt2_dir = self.salt2_gen['salt2_dir']
+        # Salt parameters
+        self.salt_gen = self.sim_cfg['salt_gen']
+        self.alpha = self.salt_gen['alpha']
+        self.beta = self.salt_gen['beta']
+        self.salt_dir = self.salt_gen['salt_dir']
 
-        source = snc.SALT2Source(modeldir=self.salt2_dir)
-        self.model = snc.Model(source=source)
+        if self.salt_gen['version'] == 2:
+            source = snc.SALT2Source(modeldir=self.salt_dir)
+        elif self.salt_gen['version'] == 3:
+            source = snc.SALT3Source(modeldir=self.salt_dir)
+        else :
+            raise RuntimeError("Support SALT version = 2 or 3")
+
+        self.sim_model = snc.Model(source=source)
+        self.fit_model = snc.Model(source=source)
+
+        if 'smear_mod' in self.sn_gen:
+            self.use_smear_mod = True
+            if self.sn_gen['smear_mod'] == 'G10':
+                self.sim_model.add_effect(G10(self.sim_model),'G10','rest')
+        else:
+            self.use_smear_mod = False
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #--------------- vpec_gen section -----------------#
@@ -193,16 +210,41 @@ class sn_sim:
             if isinstance(self.sn_gen['nep_cut'], (int, float)):
                 self.nep_cut = [
                     (self.sn_gen['nep_cut'],
-                     self.model.mintime(),
-                     self.model.maxtime())]
+                     self.sim_model.mintime(),
+                     self.sim_model.maxtime())]
             elif isinstance(self.sn_gen['nep_cut'], (list)):
                 self.nep_cut = self.sn_gen['nep_cut']
 
         else:
-            self.nep_cut = [(1, self.model.mintime(), self.model.maxtime())]
+            self.nep_cut = [(1, self.sim_model.mintime(), self.sim_model.maxtime())]
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
+
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+    #------------ Randseed Initialisation -------------#
+    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+        if 'randseed' in self.sn_gen:
+            self.randseed = int(self.sn_gen['randseed'])
+        else:
+            self.randseed = np.random.randint(low=1000, high=100000)
+
+        randseeds = np.random.default_rng(
+            self.randseed).integers(
+            low=1000, high=100000, size=11)
+        self.randseeds = {'z_seed': randseeds[0],
+                          't0_seed': randseeds[1],
+                          'x0_seed': randseeds[2],
+                          'x1_seed': randseeds[3],
+                          'c_seed': randseeds[4],
+                          'coord_seed': randseeds[5],
+                          'vpec_seed': randseeds[6],
+                          'smearM_seed': randseeds[7],
+                          'sigflux_seed': randseeds[8],
+                          'nsn_seed': randseeds[9],
+                          'smearmod_seed': randseeds[10]
+                          }
         return
 
     def simulate(self):
@@ -212,6 +254,7 @@ class sn_sim:
         3- GEN LC FLUX WITH sncosmo
         4- WRITE LC TO A FITS FILE
         '''
+
         print(sn_sim_print)
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
@@ -300,26 +343,6 @@ class sn_sim:
     def gen_param_array(self):
         '''GENERATE Z,T0,SALT2 PARAMS'''
 
-        # Init randseed in order to reproduce SNs simulations
-        if 'randseed' in self.sn_gen:
-            self.randseed = int(self.sn_gen['randseed'])
-        else:
-            self.randseed = np.random.randint(low=1000, high=100000)
-
-        randseeds = np.random.default_rng(
-            self.randseed).integers(
-            low=1000, high=100000, size=10)
-        self.randseeds = {'z_seed': randseeds[0],
-                          't0_seed': randseeds[1],
-                          'x0_seed': randseeds[2],
-                          'x1_seed': randseeds[3],
-                          'c_seed': randseeds[4],
-                          'coord_seed': randseeds[5],
-                          'vpec_seed': randseeds[6],
-                          'smearM_seed': randseeds[7],
-                          'sigflux_seed': randseeds[8],
-                          'nsn_seed': randseeds[9]
-                          }
         # Init z range
         self.z_range = self.sn_gen['z_range']
         self.sigmaM = self.sn_gen['mag_smear']  # To change
@@ -332,11 +355,11 @@ class sn_sim:
         self.M0 = self.sn_gen['M0']
 
         # Init x1 and c
-        self.mean_x1 = self.salt2_gen['mean_x1']
-        self.sig_x1 = self.salt2_gen['sig_x1']
+        self.mean_x1 = self.salt_gen['mean_x1']
+        self.sig_x1 = self.salt_gen['sig_x1']
 
-        self.mean_c = self.salt2_gen['mean_c']
-        self.sig_c = self.salt2_gen['sig_c']
+        self.mean_c = self.salt_gen['mean_c']
+        self.sig_c = self.salt_gen['sig_c']
 
         # Redshift generation
         if not self.use_host and not self.use_rate:
@@ -347,7 +370,7 @@ class sn_sim:
         elif self.use_rate:
             self.cadence_sim()
         else:
-            self.db_to_obs()
+            self.fix_nsn_sim()
 
         self.gen_z2cmb()
         self.gen_z_pec()
@@ -358,14 +381,12 @@ class sn_sim:
         self.gen_sn_par()
         self.gen_sn_mag()
 
-        # self.sim_t0=np.zeros(self.n_sn)
-        # Total fake for the moment....
-        #self.sim_t0=np.array([52000+20+30*i for i in range(self.n_sn)])
         self.params = [{'z': z,
                         't0': peak,
                         'x0': x0,
                         'x1': x1,
-                        'c': c} for z,
+                        'c': c,
+                        } for z,
                        peak,
                        x0,
                        x1,
@@ -374,6 +395,10 @@ class sn_sim:
                                 self.sim_x0,
                                 self.sim_x1,
                                 self.sim_c)]
+        if self.use_smear_mod:
+            self.smear_mod_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000, high=10000,size=self.n_sn)
+            for par,s in zip(self.params,self.smear_mod_seeds):
+                par['G10RandS'] = s
         return
 
     def open_obs_header(self):
@@ -486,7 +511,7 @@ class sn_sim:
             low=1000, high=100000, size=self.n_sn)
         self.sim_lc = []
         for obs, params, s in zip(self.obs, self.params, lc_seeds):
-            lc = snc.realize_lcs(obs, self.model, [params], scatter=False)[0]
+            lc = snc.realize_lcs(obs, self.sim_model, [params], scatter=False)[0]
             lc['flux'] = np.random.default_rng(s).normal(
                 loc=lc['flux'], scale=lc['fluxerr'])
             if not self.use_obs:
@@ -565,8 +590,8 @@ class sn_sim:
 
     def epochs_selection(self, ra, dec, z, t0):
         '''Select epochs that match the survey observations'''
-        ModelMinT_obsfrm = self.model.mintime() * (1 + z)
-        ModelMaxT_obsfrm = self.model.maxtime() * (1 + z)
+        ModelMinT_obsfrm = self.sim_model.mintime() * (1 + z)
+        ModelMaxT_obsfrm = self.sim_model.maxtime() * (1 + z)
         epochs_selec = (self.obs_dic['fieldRA'] - self.field_size < ra) * (
             self.obs_dic['fieldRA'] + self.field_size > ra)  # ra selection
         epochs_selec *= (self.obs_dic['fieldDec'] - self.field_size < dec) * (
@@ -702,7 +727,7 @@ class sn_sim:
         self.zcos = np.asarray(self.zcos)
         return
 
-    def db_to_obs(self):
+    def fix_nsn_sim(self):
         '''Use a cadence db file to produce obs :
                 1- Generate SN ra,dec in cadence fields
                 2- Generate SN t0 in the survey time
@@ -830,7 +855,7 @@ class sn_sim:
     def fitter(self, id):
         '''Use sncosmo to fit sim lc'''
         try:
-            res = snc_fit(self.sim_lc[id], self.model)
+            res = snc_fit(self.sim_lc[id], self.fit_model)
         except BaseException:
             self.fit_res[id] = 'NaN'
             return
@@ -842,10 +867,10 @@ class sn_sim:
         if lc_id is None:
             for i in self.sn_id:
                 # set the model's redshift.
-                self.model.set(z=self.sim_lc[i].meta['z'])
+                self.fit_model.set(z=self.sim_lc[i].meta['z'])
                 self.fitter(i)
         else:
-            self.model.set(z=self.sim_lc[lc_id].meta['z'])
+            self.fit_model.set(z=self.sim_lc[lc_id].meta['z'])
             self.fitter(lc_id)
         return
 
@@ -882,7 +907,7 @@ class sn_sim:
             residuals=False):
         '''Ploting the ligth curve of number 'lc_id' sn'''
         if plot_sim:
-            sim_model = self.model
+            sim_model = self.sim_model
         else:
             sim_model = None
 
@@ -898,7 +923,7 @@ class sn_sim:
             self.sim_lc[lc_id],
             zp=zp,
             mag=mag,
-            sim_model=self.model,
+            sim_model=self.sim_model,
             fit_model=fit_model,
             fit_cov=fit_cov,
             residuals=residuals)

@@ -30,8 +30,9 @@ sn_gen:
 cosmology:
     Om: MATTER DENSITY  
     H0: HUBBLE CONSTANT
-salt2_gen:
-    salt2_dir: '/PATH/TO/SALT2/MODEL'  
+salt_gen:
+    version: 2 or 3
+    salt_dir: '/PATH/TO/SALT/MODEL'  
     alpha: STRETCH CORRECTION = alpha*x1
     beta: COLOR CORRECTION = -beta*c   
     mean_x1: MEAN X1 VALUE
