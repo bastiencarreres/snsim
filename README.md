@@ -27,6 +27,7 @@ sn_gen:
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
     M0: SN ABSOLUT MAGNITUDE
     mag_smear: SN INTRINSIC SMEARING
+    smear_mod: 'G10' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
 cosmology:
     Om: MATTER DENSITY  
     H0: HUBBLE CONSTANT
