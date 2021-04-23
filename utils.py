@@ -301,11 +301,102 @@ def norm_flux(flux_table, zp):
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
 
+def sine_interp(x_new, fun_x, fun_y):
+    if len(fun_x) != len(fun_y):
+        raise ValueError('x and y must have the same len')
+
+    if (x_new > fun_x[-1]) or (x_new < fun_x[0]):
+        raise ValueError('x_new is out of range of fun_x')
+
+    inf_sel = x_new >= fun_x[:-1]
+    sup_sel = x_new < fun_x[1:]
+    if inf_sel.all():
+        idx_inf = -2
+    elif sup_sel.all():
+        idx_inf = 0
+    else:
+        idx_inf=np.where(inf_sel*sup_sel)[0][0]
+
+    x_inf = fun_x[idx_inf]
+    x_sup = fun_x[idx_inf+1]
+    Value_inf = fun_y[idx_inf]
+    Value_sup = fun_y[idx_inf+1]
+    sin_interp = np.sin(np.pi*(x_new-0.5*(x_inf+x_sup))/(x_sup-x_inf))
+
+    return 0.5*(Value_sup+Value_inf)+0.5*(Value_sup-Value_inf)*sin_interp
+
+class C11(snc.PropagationEffect):
+    _param_names = ['Cuu','Sc','RndS']
+    param_names_latex = ["\rho_{u'u}",'Sc','RS']
+
+    def __init__(self,model):
+        self._parameters = np.array([0.,1.3,np.random.randint(low=1000, high=100000)])
+        self.tmp_par = self._parameters[:-1].copy()
+        self.check_coruu()
+        self._minwave = model.source.minwave()
+        self._maxwave = model.source.maxwave()
+
+        # U'UBVRI lambda eff
+        self.sigma_lam = np.array([2500.0, 3560.0, 4390.0, 5490.0, 6545.0, 8045.0])
+        # U'UBVRI correlation matrix extract from SNANA, came from N.Chotard thesis
+        self.CORR_matrix = np.array([[+1.000, 0.000,     0.000,     0.000,     0.000,     0.000],
+                                     [0.000, +1.000000, -0.118516, -0.768635, -0.908202, -0.219447],
+                                     [0.000, -0.118516, +1.000000, +0.570333, -0.238470, -0.888611],
+                                     [0.000, -0.768635, +0.570333, +1.000000, +0.530320, -0.399538],
+                                     [0.000, -0.908202, -0.238470, +0.530320, +1.000000, +0.490134],
+                                     [0.000, -0.219447, -0.888611, -0.399538, +0.490134, +1.000000]])
+        # U'UBVRI sigma
+        self.sigma = np.array([ 0.5900, 0.06001, 0.040034, 0.050014, 0.040017, 0.080007 ])
+        #Initialisation of covmatrix
+        self.init_covmat()
+        return
+
+    def init_covmat(self):
+        self.covmat = np.zeros((6,6))
+        for i in range(6):
+            for j in range(i+1):
+                cor2cov = self.CORR_matrix[i,j]
+                if  i != 0 and j == 0:
+                    cor2cov = self._parameters[0] * self.CORR_matrix[i,1]
+                sigi_sigj = self.sigma[i]*self.sigma[j]
+                cor2cov *= sigi_sigj
+                self.covmat[i,j] = self.covmat[j,i] = cor2cov*self._parameters[1]
+        return
+
+    def check_coruu(self):
+        if self._parameters[0] not in [1.,0.,-1]:
+            raise ValueError('C11_i can be 1, 0 or -1')
+        comp_tmp = (self.tmp_par != self._parameters[:-1]).any()
+        if comp_tmp:
+            self.init_covmat()
+            self.tmp_par = self._parameters[:-1].copy()
+        return
+
+    def gen_smearing(self):
+        '''Use the cov matrix to generate 6 random numbers'''
+        self.check_coruu()
+        RS=self._parameters[-1]
+        mu = np.zeros(6)
+        self.sigma_scatter = np.random.default_rng(int(RS)).multivariate_normal(mu, self.covmat, check_valid='raise')
+        return
+
+    def propagate(self, wave, flux):
+        self.gen_smearing()
+        smear= np.zeros(len(wave))
+        for i,w in enumerate(wave):
+            if w >= self.sigma_lam[-1]:
+                smear[i] = self.sigma_scatter[-1]
+            elif w <= self.sigma_lam[0]:
+                smear[i] = self.sigma_scatter[0]
+            else:
+                smear[i] = sine_interp(w, self.sigma_lam, self.sigma_scatter)
+        return flux*10**(-0.4*smear)
+
 class G10(snc.PropagationEffect):
     '''G10 smearing effect for sncosmo
        Use colordisp file of salt and follow SNANA formalism, see arXiv:1209.2482
     '''
-    _param_names = ['L0', 'F0', 'F1', 'dL','RandS']
+    _param_names = ['L0', 'F0', 'F1', 'dL','RndS']
     param_names_latex = ['\lambda_0', 'F_0', 'F_1','d_L','RS']
 
     def __init__(self,model):
@@ -338,33 +429,20 @@ class G10(snc.PropagationEffect):
         self.sigma_val = np.asarray(sigma_val)
         return
 
-    def gen_smearing(self, wave):
-        '''Return smear value for a given wavelength'''
+    def gen_smearing(self):
+        '''Generate a smear funtion'''
         comp_tmp = (self.tmp_par != self._parameters[:-1]).any()
         if comp_tmp:
             self.scattering_law()
             self.tmp_par = self._parameters[:-1].copy()
         RS=self._parameters[-1]
         self.sigma_scatter = self.sigma_val*np.random.default_rng(int(RS)).normal(0,1,size=len(self.sigma_val))
-        inf_sel = wave>self.sigma_lam[:-1]
-        sup_sel = wave<self.sigma_lam[1:]
-
-        if inf_sel.all():
-            idx_inf = -2
-        elif sup_sel.all():
-            idx_inf = 0
-        else:
-            idx_inf=np.where(inf_sel*sup_sel)[0][0]
-        Lam_inf = self.sigma_lam[idx_inf]
-        Lam_sup = self.sigma_lam[idx_inf+1]
-        Value_inf = self.sigma_scatter[idx_inf]
-        Value_sup = self.sigma_scatter[idx_inf+1]
-        sin_interp = np.sin(np.pi*(wave-0.5*(Lam_inf+Lam_sup))/(Lam_sup-Lam_inf))
-        return 0.5*(Value_sup+Value_inf)+0.5*(Value_sup-Value_inf)*sin_interp
+        return
 
     def propagate(self, wave, flux):
         """Propagate the flux."""
-        smear = np.asarray([self.gen_smearing(w) for w in wave])
+        self.gen_smearing()
+        smear = np.asarray([sine_interp(w, self.sigma_lam, self.sigma_scatter) for w in wave])
         return flux*10**(-0.4*smear)
 
 def add_filter(path):  # Not implemented yet for later purpose
