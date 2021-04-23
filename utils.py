@@ -326,6 +326,9 @@ def sine_interp(x_new, fun_x, fun_y):
     return 0.5*(Value_sup+Value_inf)+0.5*(Value_sup-Value_inf)*sin_interp
 
 class C11(snc.PropagationEffect):
+    '''C11 smearing effect for sncosmo
+       Use COV matrix from N. Chottard thesis and follow SNANA formalism, see arXiv:1209.2482
+    '''
     _param_names = ['Cuu','Sc','RndS']
     param_names_latex = ["\rho_{u'u}",'Sc','RS']
 
