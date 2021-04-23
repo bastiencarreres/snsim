@@ -9,7 +9,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print, write_fit, G10
+from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print, write_fit, G10, C11
 
 
 class sn_sim:
@@ -21,6 +21,9 @@ class sn_sim:
                - If the name of bands in the obs/db file doesn't match sncosmo bands
             you can use the key band_dic to translate filters names
                - If you don't set the filter name item in nep_cut, the cut apply to all the bands
+               - For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> Possibility are
+            'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation
+            between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 
         +----------------------------------------------------------------------------------+
         | data :                                                                           |
@@ -45,7 +48,7 @@ class sn_sim:
         |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
         |     M0: SN ABSOLUT MAGNITUDE                                                     |
         |     mag_smear: SN INTRINSIC SMEARING                                             |
-        |     smear_mod: 'G10' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING              |
+        |     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING      |
         | cosmology:                                                                       |
         |     Om: MATTER DENSITY                                                           |
         |     H0: HUBBLE CONSTANT                                                          |
@@ -190,7 +193,19 @@ class sn_sim:
         if 'smear_mod' in self.sn_gen:
             self.use_smear_mod = True
             if self.sn_gen['smear_mod'] == 'G10':
-                self.sim_model.add_effect(G10(self.sim_model),'G10','rest')
+                self.smear_par_prefix='G10_'
+                self.sim_model.add_effect(G10(self.sim_model),'G10_','rest')
+            elif self.sn_gen['smear_mod'][:3] == 'C11':
+                self.smear_par_prefix='C11_'
+                if self.sn_gen['smear_mod'] == ('C11' or 'C11_0'):
+                    self.sim_model.add_effect(C11(self.sim_model),'C11_','rest')
+                elif self.sn_gen['smear_mod'] == 'C11_1':
+                    self.sim_model.add_effect(C11(self.sim_model),'C11_','rest')
+                    self.sim_model.set(C11_Cuu=1.)
+                elif self.sn_gen['smear_mod'] == 'C11_2':
+                    self.sim_model.add_effect(C11(self.sim_model),'C11_','rest')
+                    self.sim_model.set(C11_Cuu=-1.)
+
         else:
             self.use_smear_mod = False
 
@@ -396,9 +411,9 @@ class sn_sim:
                                 self.sim_x1,
                                 self.sim_c)]
         if self.use_smear_mod:
-            self.smear_mod_seeds = np.random.default_rng(self.randseeds['coord_seed']).integers(low=1000, high=10000,size=self.n_sn)
+            self.smear_mod_seeds = np.random.default_rng(self.randseeds['smearmod_seed']).integers(low=1000, high=10000,size=self.n_sn)
             for par,s in zip(self.params,self.smear_mod_seeds):
-                par['G10RandS'] = s
+                par[self.smear_par_prefix+'RndS'] = s
         return
 
     def open_obs_header(self):
