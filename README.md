@@ -55,7 +55,7 @@ NOTE :
     'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation
     between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 
-## bd file:
+## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
 
 ## Obs file: (No longer usable)
