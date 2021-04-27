@@ -1,6 +1,6 @@
 import numpy as np
 import sncosmo as snc
-from sim_utils import sine_interp
+from .sim_utils import sine_interp
 
 class C11(snc.PropagationEffect):
     '''C11 smearing effect for sncosmo

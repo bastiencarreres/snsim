@@ -9,8 +9,8 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-import sim_utils as su
-import scatter as sct
+import sim_code.sim_utils as su
+import sim_code.scatter as sct
 
 
 class sn_sim:

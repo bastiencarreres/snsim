@@ -1,7 +1,7 @@
 import argparse
 import yaml
 import ast
-import sim_code.snsim
+import sim_code.snsim as snsim
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -36,8 +36,9 @@ keys_dic = {
     'cosmology': [
         'Om',
         'H0'],
-    'salt2_gen': [
-        'salt2_dir',
+    'salt_gen': [
+        'salt_dir',
+	'version',
         'alpha',
         'beta',
         'mean_x1',
@@ -65,9 +66,11 @@ type_dic = {'write_path': str,
             'v_cmb': float,
             'M0': float,
             'mag_smear': float,
+	    'smear_mod': str,
             'Om': float,
             'H0': float,
-            'salt2_dir': str,
+            'salt_dir': str,
+            'version': int,
             'alpha': float,
             'beta': float,
             'mean_x1': float,
