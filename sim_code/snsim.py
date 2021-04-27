@@ -1,5 +1,6 @@
 import sncosmo as snc
 import numpy as np
+import astropy.units as u
 from numpy import power as pw
 from astropy.table import Table
 from astropy.io import fits
