@@ -1,7 +1,7 @@
 # Code for simulate sn with sn cosmo
 Use main.py with argparse:
 ```
->python3 main.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
 ```
 
 ## Input file :
