@@ -9,7 +9,8 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-from utils import plot_lc, x0_to_mB, mB_to_x0, cov_x0_to_mb, box_output, snc_fit, c_light_kms, snc_mag_offset, sep, sn_sim_print, write_fit, G10, C11
+import sim_code.sim_utils as su
+import sim_code.scatter as sct
 
 
 class sn_sim:
@@ -194,16 +195,16 @@ class sn_sim:
             self.use_smear_mod = True
             if self.sn_gen['smear_mod'] == 'G10':
                 self.smear_par_prefix='G10_'
-                self.sim_model.add_effect(G10(self.sim_model),'G10_','rest')
+                self.sim_model.add_effect(sct.G10(self.sim_model),'G10_','rest')
             elif self.sn_gen['smear_mod'][:3] == 'C11':
                 self.smear_par_prefix='C11_'
                 if self.sn_gen['smear_mod'] == ('C11' or 'C11_0'):
-                    self.sim_model.add_effect(C11(self.sim_model),'C11_','rest')
+                    self.sim_model.add_effect(sct.C11(self.sim_model),'C11_','rest')
                 elif self.sn_gen['smear_mod'] == 'C11_1':
-                    self.sim_model.add_effect(C11(self.sim_model),'C11_','rest')
+                    self.sim_model.add_effect(sct.C11(self.sim_model),'C11_','rest')
                     self.sim_model.set(C11_Cuu=1.)
                 elif self.sn_gen['smear_mod'] == 'C11_2':
-                    self.sim_model.add_effect(C11(self.sim_model),'C11_','rest')
+                    self.sim_model.add_effect(sct.C11(self.sim_model),'C11_','rest')
                     self.sim_model.set(C11_Cuu=-1.)
 
         else:
@@ -270,7 +271,7 @@ class sn_sim:
         4- WRITE LC TO A FITS FILE
         '''
 
-        print(sn_sim_print)
+        print(su.sn_sim_print)
         print('-----------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
@@ -327,10 +328,10 @@ class sn_sim:
         else:
             self.extract_from_db()
 
-        sep2 = box_output(sep, '------------')
+        sep2 = su.box_output(su.sep, '------------')
         line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
-        print(sep)
-        print(box_output(sep, line))
+        print(su.sep)
+        print(su.box_output(su.sep, line))
         print(sep2)
         sim_time = time.time()
         # Generate z, x0, x1, c
@@ -339,17 +340,17 @@ class sn_sim:
         self.gen_flux()
 
         l = f'{self.n_sn} SN lcs generated in {time.time() - sim_time:.1f} seconds'
-        print(box_output(sep, l))
+        print(su.box_output(su.sep, l))
         print(sep2)
 
         write_time = time.time()
         self.write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
-        print(box_output(sep, l))
+        print(su.box_output(su.sep, l))
         print(sep2)
         l = f'SIMULATION TERMINATED in {time.time() - start_time:.1f} seconds'
-        print(box_output(sep, l))
-        print(sep)
+        print(su.box_output(su.sep, l))
+        print(su.sep)
 
         # Init fit_res_table
         self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
@@ -476,7 +477,7 @@ class sn_sim:
         ss = np.sin(self.dec_gal) * np.sin(self.dec_cmb * np.pi / 180)
         ccc = np.cos(self.dec_gal) * np.cos(self.dec_cmb * np.pi / \
                      180) * np.cos(self.ra_gal - self.ra_cmb * np.pi / 180)
-        self.z2cmb = (1 - self.v_cmb * (ss + ccc) / c_light_kms) - 1.
+        self.z2cmb = (1 - self.v_cmb * (ss + ccc) / su.c_light_kms) - 1.
         return
 
     def gen_z_pec(self):
@@ -490,7 +491,7 @@ class sn_sim:
                 scale=self.sig_vpec,
                 size=self.n_sn)
 
-        self.zpec = self.vpec / c_light_kms
+        self.zpec = self.vpec / su.c_light_kms
         return
 
     def gen_sn_par(self):
@@ -516,7 +517,7 @@ class sn_sim:
         # beta*c : scattering due to color and stretch} + {intrinsic smearing}
         self.sim_mB = self.sim_mu + self.M0 - self.alpha * \
             self.sim_x1 + self.beta * self.sim_c + self.mag_smear
-        self.sim_x0 = mB_to_x0(self.sim_mB)
+        self.sim_x0 = su.mB_to_x0(self.sim_mB)
         return
 
     def gen_flux(self):
@@ -597,8 +598,8 @@ class sn_sim:
             host_list = hostf[1].data[:]
         host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
         l = f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
-        print(box_output(sep, l))
-        print(box_output(sep, '------------'))
+        print(su.box_output(su.sep, l))
+        print(su.box_output(su.sep, '------------'))
         host_list = host_list[host_list['redshift'] > self.z_range[0]]
         host_list = host_list[host_list['redshift'] < self.z_range[1]]
         return host_list
@@ -870,7 +871,7 @@ class sn_sim:
     def fitter(self, id):
         '''Use sncosmo to fit sim lc'''
         try:
-            res = snc_fit(self.sim_lc[id], self.fit_model)
+            res = su.snc_fit(self.sim_lc[id], self.fit_model)
         except BaseException:
             self.fit_res[id] = 'NaN'
             return
@@ -909,7 +910,7 @@ class sn_sim:
                        }
 
         sim_meta={'n_sn': self.n_sn, 'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
-        write_fit(sim_lc_meta,self.fit_res,self.write_path+self.sim_name+'_fit.fits',sim_meta=sim_meta)
+        su.write_fit(sim_lc_meta,self.fit_res,self.write_path+self.sim_name+'_fit.fits',sim_meta=sim_meta)
         return
 
     def plot_lc(
@@ -934,7 +935,7 @@ class sn_sim:
         else:
             fit_model = None
             fit_cov = None
-        plot_lc(
+        su.plot_lc(
             self.sim_lc[lc_id],
             zp=zp,
             mag=mag,
@@ -987,7 +988,7 @@ class open_sim:
         else:
             fit_model = None
             fit_cov = None
-        plot_lc(
+        su.plot_lc(
             self.sim_lc[lc_id],
             zp=zp,
             mag=mag,
@@ -1000,7 +1001,7 @@ class open_sim:
     def fitter(self, id):
         '''Use sncosmo to fit sim lc'''
         try:
-            res = snc_fit(self.sim_lc[id], self.model)
+            res = su.snc_fit(self.sim_lc[id], self.model)
         except BaseException:
             self.fit_res[id] = 'NaN'
             return
@@ -1063,5 +1064,5 @@ class open_sim:
             for k in trad_dic:
                 sim_lc_meta[k].append(lc.meta[trad_dic[k]])
 
-        write_fit(sim_lc_meta,self.fit_res,'_fit.fits',sim_meta=sim_meta)
+        su.write_fit(sim_lc_meta,self.fit_res,'_fit.fits',sim_meta=sim_meta)
         return

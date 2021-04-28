@@ -1,7 +1,7 @@
 # Code for simulate sn with sn cosmo
 Use main.py with argparse:
 ```
->python3 main.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
 ```
 
 ## Input file :
@@ -46,15 +46,12 @@ salt_gen:
      sig_vpec: SIGMA VPEC
 ```
 
-NOTE : * obs_file and db_file are optional but you must set one of the two!!!
-       * If the name of bands in the obs/db file doesn't match sncosmo bands
-    you can use the key band_dic to translate filters names
-       * If you don't set the filter name item in nep_cut, the cut apply to all the bands
-       * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> Possibility are
-    'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation
-    between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
+* obs_file and db_file are optional but you must set one of the two!!!
+* If the name of bands in the obs/db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
+* If you don't set the filter name item in nep_cut, the cut apply to all the band
+* For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 
-## bd file:
+## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
 
 ## Obs file: (No longer usable)
