@@ -78,7 +78,6 @@ class sn_sim:
             self.yml_path = param_dic['yaml_path']
 
         elif isinstance(param_dic, str):
-            self.yml_path = param_dic
             with open(self.yml_path, "r") as f:
                 self.sim_cfg = yaml.safe_load(f)
 
@@ -611,7 +610,7 @@ class sn_sim:
         '''Select epochs that match the survey observations'''
         ModelMinT_obsfrm = self.sim_model.mintime() * (1 + z)
         ModelMaxT_obsfrm = self.sim_model.maxtime() * (1 + z)
-        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size) # ra selection
+        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size # ra selection
         epochs_selec *= abs(dec-self.obs_dic['fieldDec']) < self.dec_size # dec selection
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_dic['fiveSigmaDepth'] > 0)
