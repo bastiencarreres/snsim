@@ -5,7 +5,7 @@ setup(
    version='0.1',
    author='B. Carreres',
    author_email='carreres@cppm.in2p3.fr',
-   packages=['snsim_pkg'],
+   packages=['snsim'],
    url='http://github.com/bcarreres/SNSim',
    license='NONE',
    description='A package to simulate SN Ia',
