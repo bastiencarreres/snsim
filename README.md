@@ -17,6 +17,8 @@ db_config: #(Optional -> use obs_file)
     dbfile_path: '/PATH/TO/FILE'
     db_cut: {'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...}
     zp: INSTRUMENTAL ZEROPOINT  
+    ra_size: RA FIELD SIZE
+    dec_size: DEC FIELD SIZE
     gain: CCD GAIN e-/ADU
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)

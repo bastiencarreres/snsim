@@ -9,8 +9,8 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-import sim_code.sim_utils as su
-import sim_code.scatter as sct
+from . import sim_utils as su
+from . import scatter as sct
 
 
 class sn_sim:
@@ -37,6 +37,8 @@ class sn_sim:
         |     dbfile_path: '/PATH/TO/FILE'                                                 |
         |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
         |     zp: INSTRUMENTAL ZEROPOINT                                                   |
+        |     ra_size: RA FIELD SIZE                                                       |
+        |     dec_size: DEC FIELD SIZE                                                     |
         |     gain: CCD GAIN e-/ADU                                                        |
         | sn_gen:                                                                          |
         |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
@@ -89,8 +91,6 @@ class sn_sim:
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
 
-        self.field_size = np.radians(np.sqrt(47) / 2)
-
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------- data and db_config section -----------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -120,6 +120,8 @@ class sn_sim:
             self.db_file = self.db_cfg['dbfile_path']
             self.zp = self.db_cfg['zp']
             self.gain = self.db_cfg['gain']
+            self.ra_size = self.db_cfg['ra_size']
+            self.dec_size = self.db_cfg['dec_size']
             self.use_dbcut = False
             if 'db_cut' in self.db_cfg:
                 self.use_dbcut = True
@@ -158,6 +160,7 @@ class sn_sim:
             if 'duration' in self.sn_gen:
                 self.duration = self.sn_gen['duration']
             else:
+
                 self.duration = None
 
 
@@ -608,10 +611,8 @@ class sn_sim:
         '''Select epochs that match the survey observations'''
         ModelMinT_obsfrm = self.sim_model.mintime() * (1 + z)
         ModelMaxT_obsfrm = self.sim_model.maxtime() * (1 + z)
-        epochs_selec = (self.obs_dic['fieldRA'] - self.field_size < ra) * (
-            self.obs_dic['fieldRA'] + self.field_size > ra)  # ra selection
-        epochs_selec *= (self.obs_dic['fieldDec'] - self.field_size < dec) * (
-            self.obs_dic['fieldDec'] + self.field_size > dec)  # dec selection
+        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size) # ra selection
+        epochs_selec *= abs(dec-self.obs_dic['fieldDec']) < self.dec_size # dec selection
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_dic['fiveSigmaDepth'] > 0)
         epochs_selec *= (self.obs_dic['expMJD'] - t0 > ModelMinT_obsfrm) * \
