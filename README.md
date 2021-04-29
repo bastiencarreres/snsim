@@ -1,5 +1,12 @@
 # Code for simulate sn with sn cosmo
-Use main.py with argparse:
+## Installation
+In the setup.py directory use:
+```
+>python -m pip setup .
+```
+
+## Script launch
+Use launch_sim.py with argparse:
 ```
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
 ```
