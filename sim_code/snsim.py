@@ -966,10 +966,10 @@ class open_sim:
                 if meta:
                     meta=False
                     for k in tab.meta:
-                        self.meta[k]=np.zeros(self.n_sn)
+                        self.meta[k]=np.zeros(self.n_sn,dtype='object')
                 for k in tab.meta:
                     self.meta[k][i]=tab.meta[k]
-                    
+
                 self.sim_lc.append(tab)
         self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
 
