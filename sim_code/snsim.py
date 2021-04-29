@@ -953,14 +953,23 @@ class open_sim:
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model = snc.Model(source=source)
         self.sim_lc = []
-
+        self.meta={}
         with fits.open(sim_file) as sf:
             self.header=sf[0].header
             self.n_sn = sf[0].header['n_sn']
-            for hdu in sf[1:]:
+            meta=True
+            for i,hdu in enumerate(sf[1:]):
                 data = hdu.data
                 tab = Table(data)
                 tab.meta = hdu.header
+
+                if meta:
+                    meta=False
+                    for k in tab.meta:
+                        self.meta[k]=np.zeros(self.n_sn)
+                for k in tab.meta:
+                    self.meta[k][i]=tab.meta[k]
+                    
                 self.sim_lc.append(tab)
         self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
 
@@ -1064,5 +1073,5 @@ class open_sim:
             for k in trad_dic:
                 sim_lc_meta[k].append(lc.meta[trad_dic[k]])
 
-        su.write_fit(sim_lc_meta,self.fit_res,'_fit.fits',sim_meta=sim_meta)
+        su.write_fit(sim_lc_meta,self.fit_res,w_path+'_fit.fits',sim_meta=sim_meta)
         return
