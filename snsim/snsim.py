@@ -5,6 +5,7 @@ from numpy import power as pw
 from astropy.table import Table
 from astropy.io import fits
 import yaml
+import pickle
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
@@ -78,6 +79,7 @@ class sn_sim:
             self.yml_path = param_dic['yaml_path']
 
         elif isinstance(param_dic, str):
+            self.yml_path = param_dic
             with open(self.yml_path, "r") as f:
                 self.sim_cfg = yaml.safe_load(f)
 
@@ -866,6 +868,9 @@ class sn_sim:
             '.fits',
             overwrite=True)
         self.sn_id = np.asarray(self.sn_id)
+        #Export lc as pickle
+        with open(self.write_path+self.sim_name+'_lcs.pkl','wb') as file:
+            pickle.dump(self.sim_lc,file)
         return
 
     def fitter(self, id):
