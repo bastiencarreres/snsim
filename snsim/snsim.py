@@ -35,6 +35,7 @@ class sn_sim:
         |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
         | db/obs file doesn't correpond to those in sncosmo registery)                     |
         |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)              |
+        |     write_format: 'format' or ['format1','format2'] # Optional default pkl, fits |
         | db_config: #(Optional -> use obs_file)                                           |
         |     dbfile_path: '/PATH/TO/FILE'                                                 |
         |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
@@ -93,6 +94,9 @@ class sn_sim:
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
 
+        # Write format
+        self.write_format = ['fits','pkl']
+
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------- data and db_config section -----------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -122,17 +126,27 @@ class sn_sim:
             self.db_file = self.db_cfg['dbfile_path']
             self.zp = self.db_cfg['zp']
             self.gain = self.db_cfg['gain']
-            self.ra_size = self.db_cfg['ra_size']
-            self.dec_size = self.db_cfg['dec_size']
+            self.ra_size = np.radians(self.db_cfg['ra_size'])
+            self.dec_size = np.radians(self.db_cfg['dec_size'])
             self.use_dbcut = False
             if 'db_cut' in self.db_cfg:
                 self.use_dbcut = True
                 self.db_cut = self.db_cfg['db_cut']
 
-
         self.write_path = self.data_cfg['write_path']
         self.sim_name = self.data_cfg['sim_name']
 
+        if 'write_format' in self.data_cfg:
+            print(self.data_cfg['write_format'])
+            if isinstance(self.data_cfg['write_format'],str):
+                if self.data_cfg['write_format'] not in ['fits','pkl']:
+                    raise ValueError('write_format avaible are fits and pkl')
+                self.write_format=[self.data_cfg['write_format']]
+            elif isinstance(self.data_cfg['write_format'],list):
+                for format in self.data_cfg['write_format']:
+                    if format not in ['fits','pkl']:
+                        raise ValueError('write_format avaible are fits and pkl')
+                self.write_format=self.data_cfg['write_format']
         # Band dic : band_name_obs/db_file -> band_name_sncosmo
         if 'band_dic' in self.data_cfg:
             self.band_dic = self.data_cfg['band_dic']
@@ -162,7 +176,6 @@ class sn_sim:
             if 'duration' in self.sn_gen:
                 self.duration = self.sn_gen['duration']
             else:
-
                 self.duration = None
 
 
@@ -359,6 +372,9 @@ class sn_sim:
 
         # Init fit_res_table
         self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
+        print('\n OUTPUT FILES : ')
+        for format in self.write_format:
+            print('- '+self.write_path+self.sim_name+'.'+format)
         return
 
     def gen_param_array(self):
@@ -613,8 +629,8 @@ class sn_sim:
         '''Select epochs that match the survey observations'''
         ModelMinT_obsfrm = self.sim_model.mintime() * (1 + z)
         ModelMaxT_obsfrm = self.sim_model.maxtime() * (1 + z)
-        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size # ra selection
-        epochs_selec *= abs(dec-self.obs_dic['fieldDec']) < self.dec_size # dec selection
+        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size/2 # ra selection
+        epochs_selec *= abs(dec-self.obs_dic['fieldDec']) < self.dec_size/2 # dec selection
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_dic['fiveSigmaDepth'] > 0)
         epochs_selec *= (self.obs_dic['expMJD'] - t0 > ModelMinT_obsfrm) * \
@@ -844,8 +860,10 @@ class sn_sim:
 
     def write_sim(self):
         '''Write the simulated lc in a fits file'''
-        lc_hdu_list = []
         self.sn_id = []
+        if 'fits' in self.write_format:
+            lc_hdu_list = []
+
         for i, tab in enumerate(self.sim_lc):
             tab.meta['vpec'] = self.vpec[i]
             tab.meta['zcos'] = self.zcos[i]
@@ -859,19 +877,24 @@ class sn_sim:
             tab.meta['mu'] = self.sim_mu[i]
             tab.meta['msmear'] = self.mag_smear[i]
             self.sn_id.append(i)
-            lc_hdu_list.append(fits.table_to_hdu(tab))
-        sim_header = {'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
-        hdu_list = fits.HDUList(
-            [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
-        hdu_list.writeto(
-            self.write_path +
-            self.sim_name +
-            '.fits',
-            overwrite=True)
+            if 'fits' in self.write_format:
+                lc_hdu_list.append(fits.table_to_hdu(tab))
+
         self.sn_id = np.asarray(self.sn_id)
-        #Export lc as pickle
-        with open(self.write_path+self.sim_name+'_lcs.pkl','wb') as file:
-            pickle.dump(self.sim_lc,file)
+        if 'fits' in self.write_format:
+            sim_header = {'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
+            hdu_list = fits.HDUList(
+                    [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
+            hdu_list.writeto(
+                    self.write_path +
+                    self.sim_name +
+                    '.fits',
+                    overwrite=True)
+
+        #Export lcs as pickle
+        if 'pkl' in self.write_format:
+            with open(self.write_path+self.sim_name+'_lcs.pkl','wb') as file:
+                pickle.dump(self.sim_lc,file)
         return
 
     def fitter(self, id):

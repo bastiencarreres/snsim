@@ -20,12 +20,13 @@ data :
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
  correpond to those in sncosmo registery)
     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)
+    write_format: 'format' or ['format1','format2'] # Optional default pkl, fits
 db_config: #(Optional -> use obs_file)
     dbfile_path: '/PATH/TO/FILE'
     db_cut: {'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...}
     zp: INSTRUMENTAL ZEROPOINT  
-    ra_size: RA FIELD SIZE
-    dec_size: DEC FIELD SIZE
+    ra_size: RA FIELD SIZE in DEG
+    dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
