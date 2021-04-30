@@ -1,7 +1,7 @@
 import argparse
 import yaml
 import ast
-import sim_code.snsim as snsim
+import snsim
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

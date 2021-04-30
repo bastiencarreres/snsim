@@ -1,5 +1,12 @@
 # Code for simulate sn with sn cosmo
-Use main.py with argparse:
+## Installation
+In the setup.py directory use:
+```
+>python -m pip setup .
+```
+
+## Script launch
+Use launch_sim.py with argparse:
 ```
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
 ```
@@ -17,6 +24,8 @@ db_config: #(Optional -> use obs_file)
     dbfile_path: '/PATH/TO/FILE'
     db_cut: {'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...}
     zp: INSTRUMENTAL ZEROPOINT  
+    ra_size: RA FIELD SIZE
+    dec_size: DEC FIELD SIZE
     gain: CCD GAIN e-/ADU
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)

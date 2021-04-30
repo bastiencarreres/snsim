@@ -9,8 +9,8 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 import time
 import sqlite3
-import sim_code.sim_utils as su
-import sim_code.scatter as sct
+from . import sim_utils as su
+from . import scatter as sct
 
 
 class sn_sim:
@@ -37,6 +37,8 @@ class sn_sim:
         |     dbfile_path: '/PATH/TO/FILE'                                                 |
         |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
         |     zp: INSTRUMENTAL ZEROPOINT                                                   |
+        |     ra_size: RA FIELD SIZE                                                       |
+        |     dec_size: DEC FIELD SIZE                                                     |
         |     gain: CCD GAIN e-/ADU                                                        |
         | sn_gen:                                                                          |
         |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
@@ -76,7 +78,6 @@ class sn_sim:
             self.yml_path = param_dic['yaml_path']
 
         elif isinstance(param_dic, str):
-            self.yml_path = param_dic
             with open(self.yml_path, "r") as f:
                 self.sim_cfg = yaml.safe_load(f)
 
@@ -88,8 +89,6 @@ class sn_sim:
         self.dec_cmb = 48.253
         self.ra_cmb = 266.81
         self.v_cmb = 369.82
-
-        self.field_size = np.radians(np.sqrt(47) / 2)
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------- data and db_config section -----------#
@@ -120,6 +119,8 @@ class sn_sim:
             self.db_file = self.db_cfg['dbfile_path']
             self.zp = self.db_cfg['zp']
             self.gain = self.db_cfg['gain']
+            self.ra_size = self.db_cfg['ra_size']
+            self.dec_size = self.db_cfg['dec_size']
             self.use_dbcut = False
             if 'db_cut' in self.db_cfg:
                 self.use_dbcut = True
@@ -158,6 +159,7 @@ class sn_sim:
             if 'duration' in self.sn_gen:
                 self.duration = self.sn_gen['duration']
             else:
+
                 self.duration = None
 
 
@@ -608,10 +610,8 @@ class sn_sim:
         '''Select epochs that match the survey observations'''
         ModelMinT_obsfrm = self.sim_model.mintime() * (1 + z)
         ModelMaxT_obsfrm = self.sim_model.maxtime() * (1 + z)
-        epochs_selec = (self.obs_dic['fieldRA'] - self.field_size < ra) * (
-            self.obs_dic['fieldRA'] + self.field_size > ra)  # ra selection
-        epochs_selec *= (self.obs_dic['fieldDec'] - self.field_size < dec) * (
-            self.obs_dic['fieldDec'] + self.field_size > dec)  # dec selection
+        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size # ra selection
+        epochs_selec *= abs(dec-self.obs_dic['fieldDec']) < self.dec_size # dec selection
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_dic['fiveSigmaDepth'] > 0)
         epochs_selec *= (self.obs_dic['expMJD'] - t0 > ModelMinT_obsfrm) * \
@@ -953,14 +953,23 @@ class open_sim:
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model = snc.Model(source=source)
         self.sim_lc = []
-
+        self.meta={}
         with fits.open(sim_file) as sf:
             self.header=sf[0].header
             self.n_sn = sf[0].header['n_sn']
-            for hdu in sf[1:]:
+            meta=True
+            for i,hdu in enumerate(sf[1:]):
                 data = hdu.data
                 tab = Table(data)
                 tab.meta = hdu.header
+
+                if meta:
+                    meta=False
+                    for k in tab.meta:
+                        self.meta[k]=np.zeros(self.n_sn,dtype='object')
+                for k in tab.meta:
+                    self.meta[k][i]=tab.meta[k]
+
                 self.sim_lc.append(tab)
         self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
 
@@ -1064,5 +1073,5 @@ class open_sim:
             for k in trad_dic:
                 sim_lc_meta[k].append(lc.meta[trad_dic[k]])
 
-        su.write_fit(sim_lc_meta,self.fit_res,'_fit.fits',sim_meta=sim_meta)
+        su.write_fit(sim_lc_meta,self.fit_res,w_path+'_fit.fits',sim_meta=sim_meta)
         return
