@@ -137,7 +137,6 @@ class sn_sim:
         self.sim_name = self.data_cfg['sim_name']
 
         if 'write_format' in self.data_cfg:
-            print(self.data_cfg['write_format'])
             if isinstance(self.data_cfg['write_format'],str):
                 if self.data_cfg['write_format'] not in ['fits','pkl']:
                     raise ValueError('write_format avaible are fits and pkl')
