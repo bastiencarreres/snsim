@@ -5,6 +5,7 @@ from numpy import power as pw
 from astropy.table import Table
 from astropy.io import fits
 import yaml
+import os
 import pickle
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
@@ -957,25 +958,32 @@ class open_sim:
         self.salt2_dir = SALT2_dir
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model = snc.Model(source=source)
-        self.sim_lc = []
-        self.meta={}
-        with fits.open(sim_file) as sf:
-            self.header=sf[0].header
-            self.n_sn = sf[0].header['n_sn']
-            meta=True
-            for i,hdu in enumerate(sf[1:]):
-                data = hdu.data
-                tab = Table(data)
-                tab.meta = hdu.header
+        file_name, file_ext= os.path.splitext(sim_file)
+        if file_ext == '.fits':
+            self.sim_lc = []
+            self.meta={}
+            with fits.open(sim_file) as sf:
+                self.header=sf[0].header
+                self.n_sn = sf[0].header['n_sn']
+                meta=True
+                for i,hdu in enumerate(sf[1:]):
+                    data = hdu.data
+                    tab = Table(data)
+                    tab.meta = hdu.header
 
-                if meta:
-                    meta=False
+                    if meta:
+                        meta=False
+                        for k in tab.meta:
+                            self.meta[k]=np.zeros(self.n_sn,dtype='object')
                     for k in tab.meta:
-                        self.meta[k]=np.zeros(self.n_sn,dtype='object')
-                for k in tab.meta:
-                    self.meta[k][i]=tab.meta[k]
+                        self.meta[k][i]=tab.meta[k]
 
-                self.sim_lc.append(tab)
+                    self.sim_lc.append(tab)
+        if file_ext == '.pkl':
+            with open(sim_file,'rb') as f:
+                self.sim_lc = pickle.load(f)
+            self.n_sn=len(self.sim_lc)
+
         self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
 
         return
