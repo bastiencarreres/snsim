@@ -485,9 +485,11 @@ class sn_sim:
 
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
+        print(self.ra)
+        print(self.dec)
         coordfk5 = SkyCoord(
-            self.ra * u.deg,
-            self.dec * u.deg,
+            self.ra * u.rad,
+            self.dec * u.rad,
             frame='fk5')  # coord in fk5 frame
         galac_coord = coordfk5.transform_to('galactic')
         self.ra_gal = galac_coord.l.rad - 2 * np.pi * \
@@ -876,6 +878,7 @@ class sn_sim:
             tab.meta['zpec'] = self.zpec[i]
             tab.meta['z2cmb'] = self.z2cmb[i]
             tab.meta['zCMB'] = self.zCMB[i]
+            tab.meta['zobs'] = self.zobs[i]
             tab.meta['ra'] = self.ra[i]
             tab.meta['dec'] = self.dec[i]
             tab.meta['sn_id'] = i
