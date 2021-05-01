@@ -1,4 +1,4 @@
-# Code for simulate sn with sn cosmo
+# Code for simulation of SN Ia using sn cosmo
 ## Installation
 In the setup.py directory use:
 ```
