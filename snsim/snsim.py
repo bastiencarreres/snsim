@@ -485,8 +485,6 @@ class sn_sim:
 
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
-        print(self.ra)
-        print(self.dec)
         coordfk5 = SkyCoord(
             self.ra * u.rad,
             self.dec * u.rad,
