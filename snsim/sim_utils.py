@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
+from . import nb_fun as nbf
 
 sn_sim_print = '     _______..__   __.         _______. __  .___  ___. \n'
 sn_sim_print += '    /       ||  \\ |  |        /       ||  | |   \\/   | \n'
@@ -324,3 +325,11 @@ def sine_interp(x_new, fun_x, fun_y):
     sin_interp = np.sin(np.pi*(x_new-0.5*(x_inf+x_sup))/(x_sup-x_inf))
 
     return 0.5*(Value_sup+Value_inf)+0.5*(Value_sup-Value_inf)*sin_interp
+
+def change_sph_frame(ra,dec,ra_frame,dec_frame):
+    if isinstance(ra_frame,float):
+        ra_frame=np.array([ra_frame])
+        dec_frame=np.array([dec_frame])
+    vec=np.array([np.cos(ra)*np.cos(dec),np.sin(ra)*np.cos(dec),np.sin(dec)])
+    new_ra,new_dec = nbf.new_coord_on_fields(ra_frame,dec_frame,vec)
+    return new_ra, new_dec

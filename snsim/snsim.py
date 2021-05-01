@@ -137,7 +137,6 @@ class sn_sim:
         self.sim_name = self.data_cfg['sim_name']
 
         if 'write_format' in self.data_cfg:
-            print(self.data_cfg['write_format'])
             if isinstance(self.data_cfg['write_format'],str):
                 if self.data_cfg['write_format'] not in ['fits','pkl']:
                     raise ValueError('write_format avaible are fits and pkl')
@@ -629,12 +628,19 @@ class sn_sim:
         '''Select epochs that match the survey observations'''
         ModelMinT_obsfrm = self.sim_model.mintime() * (1 + z)
         ModelMaxT_obsfrm = self.sim_model.maxtime() * (1 + z)
-        epochs_selec = abs(ra-self.obs_dic['fieldRA']) < self.ra_size/2 # ra selection
-        epochs_selec *= abs(dec-self.obs_dic['fieldDec']) < self.dec_size/2 # dec selection
+
+        # time selection
+        epochs_selec = (self.obs_dic['expMJD'] - t0 > ModelMinT_obsfrm) * \
+            (self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_dic['fiveSigmaDepth'] > 0)
-        epochs_selec *= (self.obs_dic['expMJD'] - t0 > ModelMinT_obsfrm) * \
-            (self.obs_dic['expMJD'] - t0 < ModelMaxT_obsfrm)
+        # Find the index of the field that pass time cut
+        epochs_selec_idx = np.where(epochs_selec)
+        # Compute the coord of the SN in the rest frame of each field
+        ra_field_frame, dec_field_frame = su.change_sph_frame(ra,dec,self.obs_dic['fieldRA'][epochs_selec],self.obs_dic['fieldDec'][epochs_selec])
+        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < self.ra_size/2 # ra selection
+        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < self.dec_size/2 # dec selection
+
         return epochs_selec
 
     def epochs_cut(self, epochs_selec, z, t0):
@@ -662,12 +668,12 @@ class sn_sim:
     def cadence_sim(self):
         '''Use a cadence file to produce SN according to a rate:
                 1- Cut the zrange into shell (z,z+dz)
-                2- Compute time rate for the shell r = r_v(z) * V SN/year where r_v is volume rate
+                2- Compute time rate for the shell r = r_v(z) * V SN/year where r_v is the volume rate
                 3- Generate the number of SN Ia in each shell with a Poisson's law
                 4- Generate ra,dec for all the SN uniform on the sphere
                 5- Generate t0 uniform between mintime and maxtime
                 5- Generate z for in each shell uniform in the interval [z,z+dz]
-                6- Apply observation and selection cut to SN
+                6- Apply observation and selection cuts to SN
         '''
         if self.duration is None:
             self.duration = np.max(
