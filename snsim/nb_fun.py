@@ -1,7 +1,7 @@
 from numba import njit
 import numpy as np
 
-@njit
+@njit(cache=True)
 def R_base(a,t,vec):
     """Return the new coordinates in field frame a=ra,t=-dec, matrix computed using sagemaths"""
     R=np.zeros((3,3))
@@ -16,7 +16,7 @@ def R_base(a,t,vec):
     R[2,2] = np.cos(t)
     return R.T @ vec
 
-@njit
+@njit(cache=True)
 def new_coord_on_fields(ra_frame,dec_frame,vec):
     """Iter on fields to compute the new location of the sn in each new field"""
     new_vec=np.zeros((len(ra_frame),3))
