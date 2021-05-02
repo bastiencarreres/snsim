@@ -66,7 +66,7 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD |filter | fieldRA | fieldDec|fiveSigmaDepth|
+| expMJD | filter | fieldRA (rad) | fieldDec (rad) | fiveSigmaDepth |
 | :-----------: | :-----: | :----------: | :----------: | :--------------------: |
 | Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
 
@@ -94,6 +94,6 @@ sim.sim_lc[i].meta
 ```
 The list of ligth curves metadata is given in the following table
 
-| z  |  t0| x0  |  x1 | c | vpec |  zcos |  zpec | z2cmb |  zCMB |  ra | dec |  sn id  |  mb | mu  | msmear |
+| z | t0 | x0 | x1 | c | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id  | mb | mu | msmear |
 | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
 |  Observed redshift | Peaktime | SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | SN magnitude in restframe Bessell B | Simulated distance modulli | Coherent smear term |
