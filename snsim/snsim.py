@@ -289,7 +289,7 @@ class sn_sim:
         '''
 
         print(su.sn_sim_print)
-        print('-----------------------------------')
+        print('-------------------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
 
@@ -299,7 +299,9 @@ class sn_sim:
             print(f'CADENCE FILE : {self.db_file}')
 
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
-        print(f'-----------------------------------\n')
+        print(f'SIMULATION RANDSEED : {self.randseed}')
+        print(f'-------------------------------------------\n')
+
 
         if not self.use_obs:
             if self.use_rate:
