@@ -66,7 +66,7 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD |filter | fieldRA | fieldDec|fiveSigmaDepth|
+| expMJD |filter | fieldRA (rad) |  fieldDec(rad) | fiveSigmaDepth |
 | :-----------: | :-----: | :----------: | :----------: | :--------------------: |
 | Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
 
@@ -78,9 +78,14 @@ gen_obs function :
 gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
 ```
 
+## Host file
+The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
+
+| redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
+| :-----------: | :-----: | :----------: | :----------: |
+| Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
+
 ## Usage and output
-
-
 ```
 from snsim import sn_sim
 
