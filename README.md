@@ -31,8 +31,10 @@ db_config: #(Optional -> use obs_file)
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
     sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
-    rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)
-    randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)
+    rate_pw: rate = sn_rate*(1+z)^rate_pw #(Optional, default=0)
+    duration: DURATION OF THE SURVEY #(Optional, default given by cadence file)
+    nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS #(Optional defaut >= 1 ep)
+    randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional default random)
     z_range: [ZMIN,ZMAX]
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
     M0: SN ABSOLUT MAGNITUDE
@@ -66,7 +68,7 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD | filter | fieldRA (rad) | fieldDec (rad) | fiveSigmaDepth |
+| expMJD |filter | fieldRA (rad) |  fieldDec(rad) | fiveSigmaDepth |
 | :-----------: | :-----: | :----------: | :----------: | :--------------------: |
 | Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
 
@@ -78,9 +80,14 @@ gen_obs function :
 gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
 ```
 
+## Host file
+The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
+
+| redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
+| :-----------: | :-----: | :----------: | :----------: |
+| Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
+
 ## Usage and output
-
-
 ```
 from snsim import sn_sim
 

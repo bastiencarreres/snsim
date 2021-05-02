@@ -14,6 +14,7 @@ setup(
        "numpy >= 1.13.3",
        "scipy >= 0.9.0",
        "astropy >= 1.0.0",
-       "numba"
+       "numba",
+       "pyyaml"
        ]
 )

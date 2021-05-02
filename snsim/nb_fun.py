@@ -18,11 +18,10 @@ def R_base(a,t,vec):
 
 @njit(cache=True)
 def new_coord_on_fields(ra_frame,dec_frame,vec):
-    """Iter on fields to compute the new location of the sn in each new field"""
-    new_vec=np.zeros((len(ra_frame),3))
+    """Iter on fields to compute the new location of the sn in each field"""
     new_radec=np.zeros((len(ra_frame),2))
     for i in range(len(ra_frame)):
         x,y,z = R_base(ra_frame[i],-dec_frame[i],vec)
-        new_radec[i][0] = np.arctan2(y,x)
-        new_radec[i][1] = np.arcsin(z)
-    return new_radec.T
+        new_radec[0][i] = np.arctan2(y,x)
+        new_radec[1][i] = np.arcsin(z)
+    return new_radec
