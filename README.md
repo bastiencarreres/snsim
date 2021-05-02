@@ -1,4 +1,4 @@
-# Code for simulate sn with sn cosmo
+# Code for simulation of SN Ia using sn cosmo
 ## Installation
 In the setup.py directory use:
 ```
@@ -99,6 +99,6 @@ sim.sim_lc[i].meta
 ```
 The list of ligth curves metadata is given in the following table
 
-| z  |  t0| x0  |  x1 | c | vpec |  zcos |  zpec | z2cmb |  zCMB |  ra | dec |  sn id  |  mb | mu  | msmear |
+| z | t0 | x0 | x1 | c | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id  | mb | mu | msmear |
 | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
 |  Observed redshift | Peaktime | SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | SN magnitude in restframe Bessell B | Simulated distance modulli | Coherent smear term |
