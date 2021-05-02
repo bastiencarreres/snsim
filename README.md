@@ -1,4 +1,4 @@
-# Code for simulate sn with sn cosmo
+# Code for simulation of SN Ia using sn cosmo
 ## Installation
 In the setup.py directory use:
 ```
@@ -64,9 +64,41 @@ salt_gen:
 ## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
 
+The required data keys are resumed in the next table
+
+| expMJD |filter | fieldRA (rad) |  fieldDec(rad) | fiveSigmaDepth |
+| :-----------: | :-----: | :----------: | :----------: | :--------------------: |
+| Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
+
+
 ## Obs file: (No longer usable)
 The obs file is in fits format and is generated with gen_obs.py
 gen_obs function :
 ```
 gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
 ```
+
+## Host file
+The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
+
+| redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
+| :-----------: | :-----: | :----------: | :----------: |
+| Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
+
+## Usage and output
+```
+from snsim import sn_sim
+
+sim = sn_sim('yaml_cfg_file.yml')
+sim.simulate()
+```
+
+The result is stored in sim.sim_lc table which each entry is a SN light curve. Metadata are given by
+```
+sim.sim_lc[i].meta
+```
+The list of ligth curves metadata is given in the following table
+
+| z | t0 | x0 | x1 | c | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id  | mb | mu | msmear |
+| :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
+|  Observed redshift | Peaktime | SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | SN magnitude in restframe Bessell B | Simulated distance modulli | Coherent smear term |

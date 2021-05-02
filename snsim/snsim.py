@@ -878,7 +878,6 @@ class sn_sim:
             tab.meta['zpec'] = self.zpec[i]
             tab.meta['z2cmb'] = self.z2cmb[i]
             tab.meta['zCMB'] = self.zCMB[i]
-            tab.meta['zobs'] = self.zobs[i]
             tab.meta['ra'] = self.ra[i]
             tab.meta['dec'] = self.dec[i]
             tab.meta['sn_id'] = i
