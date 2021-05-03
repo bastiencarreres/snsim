@@ -13,7 +13,7 @@ data :
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
  correpond to those in sncosmo registery)
     write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
-db_config: #(Optional -> use obs_file)
+db_config: 
     dbfile_path: '/PATH/TO/FILE'
     add_keys: ['keys1', 'keys2', ...] #(Optional add db file keys to metadata)  
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
