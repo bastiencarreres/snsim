@@ -94,13 +94,13 @@ The program can be launch with the ./sripts/launch_sim.py python script.
 
 The script use argparse to change parameters:
 ```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys value (overwrite yaml configuration or add param)
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_key value (overwrite yaml configuration or add param)
 ```
 If the config keys is a float or an int just type as :
 ```
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --int_or_float_key value_nbr
 ```
-If the config keys is a dict you have to pass it like a yaml string :
+If the config key is a dict you have to pass it like a yaml string :
 ```
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
 ```
