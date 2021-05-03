@@ -8,7 +8,27 @@ In the setup.py directory use:
 ## Script launch
 Use launch_sim.py with argparse:
 ```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys=value (overwrite yaml configuration or add param)
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys value (overwrite yaml configuration or add param)
+```
+If the config keys is a float or an int just type as :
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --int_or_float_key value_nbr
+```
+If the config keys is a dict you have to pass it like a yaml string :
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
+```
+If the config keys is a list you have to pass it by separate item by space :
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --list_key item1 item2 item3
+```
+In the case of nep_cut key you can pass an int or pass list by typing --nep_cut multiple times, note that filter argument is optional:
+```
+#nep_cut is just an int
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut minimal_nbr_of_epoch
+
+#Multiple cuts
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
 ```
 
 ## Input file :
@@ -68,7 +88,7 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD |filter | fieldRA (rad) |  fieldDec(rad) | fiveSigmaDepth |
+| expMJD |filter | fieldRA (rad) |  fieldDec (rad) | fiveSigmaDepth |
 | :-----------: | :-----: | :----------: | :----------: | :--------------------: |
 | Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
 
