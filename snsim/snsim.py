@@ -33,11 +33,11 @@ class sn_sim:
         |     write_path: '/PATH/TO/OUTPUT'                                                |
         |     sim_name: 'NAME OF SIMULATION'                                               |
         |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
-        | db/obs file doesn't correpond to those in sncosmo registery)                     |
-        |     obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)              |
+        | db file doesn't correpond to those in sncosmo registery)                         |
         |     write_format: 'format' or ['format1','format2'] # Optional default pkl, fits |
         | db_config: #(Optional -> use obs_file)                                           |
         |     dbfile_path: '/PATH/TO/FILE'                                                 |
+        |     add_keys: ['keys1', 'keys2', ...] add db file keys to metadata               |
         |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
         |     zp: INSTRUMENTAL ZEROPOINT                                                   |
         |     ra_size: RA FIELD SIZE                                                       |
@@ -97,6 +97,8 @@ class sn_sim:
         # Write format
         self.write_format = ['fits','pkl']
 
+        #db keys
+        self.add_keys=[]
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #----------- data and db_config section -----------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -105,31 +107,22 @@ class sn_sim:
         self.data_cfg = self.sim_cfg['data']
 
         # Condition to use obs_file or db_file
-        if 'db_config' in self.sim_cfg and 'obs_config_path' in self.data_cfg:
+        if 'db_config' not in self.sim_cfg:
             raise RuntimeError(
-                "The simulation can't run with obs file and db file, just set one of the two")
-        elif 'obs_config_path' in self.data_cfg:
-            self.use_obs = True
-        else:
-            if 'db_config' in self.sim_cfg:
-                self.use_obs = False
-            else:
-                raise RuntimeError(
                     "Set a db_file or a obs_file -> type help(sn_sim) to print the syntax")
 
-        # Initialisation of db/obs_path
-        if self.use_obs:
-            self.obs_cfg_path = self.data_cfg['obs_config_path']
-            self.open_obs_header()
-        else:
-            self.db_cfg = self.sim_cfg['db_config']
-            self.db_file = self.db_cfg['dbfile_path']
-            self.zp = self.db_cfg['zp']
-            self.gain = self.db_cfg['gain']
-            self.ra_size = np.radians(self.db_cfg['ra_size'])
-            self.dec_size = np.radians(self.db_cfg['dec_size'])
-            self.use_dbcut = False
-            if 'db_cut' in self.db_cfg:
+        # Initialisation of db file
+        self.db_cfg = self.sim_cfg['db_config']
+        self.db_file = self.db_cfg['dbfile_path']
+        if 'add_keys' in self.db_cfg:
+            self.add_keys=self.db_cfg['add_keys']
+        self.zp = self.db_cfg['zp']
+        self.gain = self.db_cfg['gain']
+        self.ra_size = np.radians(self.db_cfg['ra_size'])
+        self.dec_size = np.radians(self.db_cfg['dec_size'])
+
+        self.use_dbcut = False
+        if 'db_cut' in self.db_cfg:
                 self.use_dbcut = True
                 self.db_cut = self.db_cfg['db_cut']
 
@@ -253,7 +246,6 @@ class sn_sim:
                         self.nep_cut[i].append(self.sim_model.maxtime())
         else:
             self.nep_cut = [(1, self.sim_model.mintime(), self.sim_model.maxtime())]
-        print(self.nep_cut)
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
@@ -296,47 +288,41 @@ class sn_sim:
         print('-------------------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self.yml_path}')
-
-        if self.use_obs:
-            print(f'OBS FILE : {self.obs_cfg_path}')
-        else:
-            print(f'CADENCE FILE : {self.db_file}')
-
+        print(f'OBS FILE : {self.db_file}')
         print(f'SIM WRITE DIRECTORY : {self.write_path}')
         print(f'SIMULATION RANDSEED : {self.randseed}')
         print(f'-------------------------------------------\n')
 
-
-        if not self.use_obs:
-            if self.use_rate:
-                if self.duration is None:
-                    duration_str = f'Survey duration is given by cadence file'
-                else:
-                    duration_str = f'Survey duration is {self.duration} year(s)'
-
-                print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
-                print(duration_str + '\n')
+        if self.use_rate:
+            if self.duration is None:
+                duration_str = f'Survey duration is given by cadence file'
             else:
-                print(f"Generate {self.n_sn} SN Ia")
+                duration_str = f'Survey duration is {self.duration} year(s)'
 
-            if self.use_dbcut:
-                for k in self.db_cut:
-                    conditions_str=''
-                    for cond in self.db_cut[k]:
-                        conditions_str+=str(cond)+' OR '
-                    conditions_str=conditions_str[:-4]
-                    print(f'Select {k}: '+conditions_str)
-            else:
-                print('No db cut')
-            print('\n')
+            print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
+            print(duration_str + '\n')
+        else:
+            print(f"Generate {self.n_sn} SN Ia")
 
-            print("SN ligthcurve cuts :")
-            for cut in self.nep_cut:
-                print_cut = f'- At least {cut[0]} epochs between {cut[1]} and {cut[2]}'
-                if len(cut)==4:
-                    print_cut+=f' in {cut[3]} band'
-                print(print_cut)
-            print('\n')
+        if self.use_dbcut:
+            for k in self.db_cut:
+                conditions_str=''
+                for cond in self.db_cut[k]:
+                    conditions_str+=str(cond)+' OR '
+                conditions_str=conditions_str[:-4]
+                print(f'Select {k}: '+conditions_str)
+        else:
+            print('No db cut')
+        print('\n')
+
+        print("SN ligthcurve cuts :")
+
+        for cut in self.nep_cut:
+            print_cut = f'- At least {cut[0]} epochs between {cut[1]} and {cut[2]}'
+            if len(cut)==4:
+                print_cut+=f' in {cut[3]} band'
+            print(print_cut)
+        print('\n')
 
         if self.use_host:
             self.host = []
@@ -344,20 +330,9 @@ class sn_sim:
                 for hdu in hduf:
                     self.host.append(hdu.data)
 
-
         start_time = time.time()
         self.obs = []
-        if self.use_obs:
-            self.obs_header = []
-            with fits.open(self.obs_cfg_path) as hduf:
-                for hdu in hduf[1:]:
-                    if self.band_dic is not None:
-                        for i, b in hdu['band']:
-                            hdu.data['band'][i] = self.band_dic[b]
-                    self.obs.append(hdu.data)
-                    self.obs_header.append(hdu.header)
-        else:
-            self.extract_from_db()
+        self.extract_from_db()
 
         sep2 = su.box_output(su.sep, '------------')
         line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
@@ -415,9 +390,7 @@ class sn_sim:
         if not self.use_host and not self.use_rate:
             self.zcos = self.gen_redshift_cos()
 
-        if self.use_obs:
-            self.extract_coord()
-        elif self.use_rate:
+        if self.use_rate:
             self.cadence_sim()
         else:
             self.fix_nsn_sim()
@@ -449,24 +422,6 @@ class sn_sim:
             self.smear_mod_seeds = np.random.default_rng(self.randseeds['smearmod_seed']).integers(low=1000, high=10000,size=self.n_sn)
             for par,s in zip(self.params,self.smear_mod_seeds):
                 par[self.smear_par_prefix+'RndS'] = s
-        return
-
-    def open_obs_header(self):
-        ''' Open the fits obs file header'''
-        with fits.open(self.obs_cfg_path, 'readonly') as obs_fits:
-            self.obs_header_main = obs_fits[0].header
-            self.bands = self.obs_header_main['bands'].split()
-        return
-
-    def extract_coord(self):
-        '''Extract ra and dec from obs file'''
-        # extract ra dec from obs config
-        self.ra = []
-        self.dec = []
-        for i in range(self.n_sn):
-            obs = self.obs_header[i]
-            self.ra.append(obs['RA'])
-            self.dec.append(obs['DEC'])
         return
 
     def gen_redshift_cos(self, low=None, high=None, size=None, randseed=None):
@@ -564,8 +519,8 @@ class sn_sim:
             lc = snc.realize_lcs(obs, self.sim_model, [params], scatter=False)[0]
             lc['flux'] = np.random.default_rng(s).normal(
                 loc=lc['flux'], scale=lc['fluxerr'])
-            if not self.use_obs:
-                lc['subprogram'] = obs['subprogram']
+            for k in self.add_keys:
+                lc[k] = obs[k]
             self.sim_lc.append(lc)
         return
 
@@ -578,18 +533,15 @@ class sn_sim:
                 'filter',
                 'fieldRA',
                 'fieldDec',
-                'fiveSigmaDepth',
-                'subprogram']
+                'fiveSigmaDepth']+self.add_keys
+
         where=''
         if self.use_dbcut:
             where=" WHERE "
             for cut_var in self.db_cut:
                 where+="("
                 for cut in self.db_cut[cut_var]:
-                    if cut_var == 'subprogram' or  cut_var=='filter':
-                        cut_str=f"='{cut}'"
-                    else:
-                        cut_str=f"{cut}"
+                    cut_str=f"{cut}"
                     where+=f"{cut_var}{cut_str} OR "
                 where=where[:-4]
                 where+=") AND "
@@ -620,8 +572,9 @@ class sn_sim:
                      'skynoise': skynoise,
                      'zp': [self.zp] * np.sum(epochs_selec),
                      'zpsys': ['ab'] * np.sum(epochs_selec)})
-        if not self.use_obs:
-            obs['subprogram'] = self.obs_dic['subprogram'][epochs_selec]
+
+        for k in self.add_keys:
+            obs[k] = self.obs_dic[k][epochs_selec]
         self.obs.append(obs)
         return
 

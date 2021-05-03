@@ -12,11 +12,11 @@ data :
     sim_name: 'NAME OF SIMULATION'
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
  correpond to those in sncosmo registery)
-    obs_config_path: '/PATH/TO/OBS/FILE' #(Optional -> use db_file)
-    write_format: 'format' or ['format1','format2'] # Optional default pkl, fits
+    write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
 db_config: #(Optional -> use obs_file)
     dbfile_path: '/PATH/TO/FILE'
-    db_cut: {'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...}
+    add_keys: ['keys1', 'keys2', ...] #(Optional add db file keys to metadata)  
+    db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
     zp: INSTRUMENTAL ZEROPOINT  
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
@@ -125,4 +125,3 @@ In the case of nep_cut key you can pass an int or pass list by typing --nep_cut 
 #Multiple cuts
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
 ```
-
