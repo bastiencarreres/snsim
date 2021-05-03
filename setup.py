@@ -1,14 +1,25 @@
 from setuptools import setup
+import re
+import os
 
+PACKNAME='snsim'
+AUTHOR = 'Bastien Carreres'
+EMAIL='carreres@cppm.in2p3.fr'
+URL = 'https://github.com/bcarreres/snsim'
+LICENSE = 'BSD'
+DESCRIPTION = 'Package to simulate SN survey, using sncosmo SN simulation package'
+VERSION = re.findall(r"__version__ = \"(.*?)\"",
+                     open(os.path.join("snsim", "__init__.py")).read())[0]
 setup(
-   name='snsim',
-   version='0.1',
-   author='B. Carreres',
-   author_email='carreres@cppm.in2p3.fr',
+   name=PACKNAME,
+   version=VERSION,
+   description=DESCRIPTION,
+   author=AUTHOR,
+   author_email=EMAIL,
+   license=LICENSE,
    packages=['snsim'],
-   url='http://github.com/bcarreres/SNSim',
-   license='NONE',
-   description='A package to simulate SN Ia',
+   url=URL,
+   python_requires='>=3.7',
    install_requires=[
        "sncosmo >= 2.5.0",
        "numpy >= 1.13.3",
