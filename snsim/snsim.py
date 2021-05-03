@@ -240,16 +240,20 @@ class sn_sim:
 
     # Minimal nbr of epochs in LC
         if 'nep_cut' in self.sn_gen:
-            if isinstance(self.sn_gen['nep_cut'], (int, float)):
+            if isinstance(self.sn_gen['nep_cut'], (int)):
                 self.nep_cut = [
                     (self.sn_gen['nep_cut'],
                      self.sim_model.mintime(),
                      self.sim_model.maxtime())]
             elif isinstance(self.sn_gen['nep_cut'], (list)):
                 self.nep_cut = self.sn_gen['nep_cut']
-
+                for i in range(len(self.nep_cut)):
+                    if len(self.nep_cut[i]) < 3:
+                        self.nep_cut[i].append(self.sim_model.mintime())
+                        self.nep_cut[i].append(self.sim_model.maxtime())
         else:
             self.nep_cut = [(1, self.sim_model.mintime(), self.sim_model.maxtime())]
+        print(self.nep_cut)
 
         if 'v_cmb' in self.sn_gen:
             self.v_cmb = self.sn_gen['v_cmb']
@@ -324,6 +328,14 @@ class sn_sim:
                     print(f'Select {k}: '+conditions_str)
             else:
                 print('No db cut')
+            print('\n')
+
+            print("SN ligthcurve cuts :")
+            for cut in self.nep_cut:
+                print_cut = f'- At least {cut[0]} epochs between {cut[1]} and {cut[2]}'
+                if len(cut)==4:
+                    print_cut+=f' in {cut[3]} band'
+                print(print_cut)
             print('\n')
 
         if self.use_host:
@@ -567,7 +579,6 @@ class sn_sim:
                 'fieldRA',
                 'fieldDec',
                 'fiveSigmaDepth',
-                'moonPhase',
                 'subprogram']
         where=''
         if self.use_dbcut:
