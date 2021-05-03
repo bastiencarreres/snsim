@@ -51,8 +51,7 @@ salt_gen:
      sig_vpec: SIGMA VPEC
 ```
 
-* obs_file and db_file are optional but you must set one of the two!!!
-* If the name of bands in the obs/db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
+* If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 
@@ -64,14 +63,6 @@ The required data keys are resumed in the next table
 | expMJD |filter | fieldRA (rad) |  fieldDec (rad) | fiveSigmaDepth |
 | :-----------: | :-----: | :----------: | :----------: | :--------------------: |
 | Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
-
-
-## Obs file: (No longer usable)
-The obs file is in fits format and is generated with gen_obs.py
-gen_obs function :
-```
-gen_obs(n_obs,n_epochs_b,bands,mean_depth,mjdstart,ra_list,dec_list,magsys='ab',gain=1.000)
-```
 
 ## Host file
 The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
