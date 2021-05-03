@@ -4,33 +4,6 @@ In the setup.py directory use:
 ```
 >python -m pip setup .
 ```
-
-## Script launch
-Use launch_sim.py with argparse:
-```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys value (overwrite yaml configuration or add param)
-```
-If the config keys is a float or an int just type as :
-```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' --int_or_float_key value_nbr
-```
-If the config keys is a dict you have to pass it like a yaml string :
-```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
-```
-If the config keys is a list you have to pass it by separate item by space :
-```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' --list_key item1 item2 item3
-```
-In the case of nep_cut key you can pass an int or pass list by typing --nep_cut multiple times, note that filter argument is optional:
-```
-#nep_cut is just an int
->python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut minimal_nbr_of_epoch
-
-#Multiple cuts
->python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
-```
-
 ## Input file :
 The input file is a .yml with the following structure:
 ```
@@ -124,3 +97,32 @@ The list of ligth curves metadata is given in the following table
 | z | t0 | x0 | x1 | c | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id  | mb | mu | msmear |
 | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
 |  Observed redshift | Peaktime | SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | SN magnitude in restframe Bessell B | Simulated distance modulli | Coherent smear term |
+
+## Script launch
+The program can be launch with the ./sripts/launch_sim.py python script.
+
+The script use argparse to change parameters:
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys value (overwrite yaml configuration or add param)
+```
+If the config keys is a float or an int just type as :
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --int_or_float_key value_nbr
+```
+If the config keys is a dict you have to pass it like a yaml string :
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
+```
+If the config keys is a list you have to pass it by separate item by space :
+```
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --list_key item1 item2 item3
+```
+In the case of nep_cut key you can pass an int or pass list by typing --nep_cut multiple times, note that filter argument is optional:
+```
+#nep_cut is just an int
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut minimal_nbr_of_epoch
+
+#Multiple cuts
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
+```
+
