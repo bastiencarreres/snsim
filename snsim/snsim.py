@@ -109,7 +109,7 @@ class sn_sim:
         # Condition to use obs_file or db_file
         if 'db_config' not in self.sim_cfg:
             raise RuntimeError(
-                    "Set a db_file or a obs_file -> type help(sn_sim) to print the syntax")
+                    "Set a db_file -> type help(sn_sim) to print the syntax")
 
         # Initialisation of db file
         self.db_cfg = self.sim_cfg['db_config']
@@ -953,8 +953,9 @@ class open_sim:
         self.salt2_dir = SALT2_dir
         source = snc.SALT2Source(modeldir=self.salt2_dir)
         self.model = snc.Model(source=source)
-        file_name, file_ext= os.path.splitext(sim_file)
-        if file_ext == '.fits':
+        self.file_path, self.file_ext= os.path.splitext(sim_file)
+
+        if self.file_ext == '.fits':
             self.sim_lc = []
             self.meta={}
             with fits.open(sim_file) as sf:
@@ -974,7 +975,7 @@ class open_sim:
                         self.meta[k][i]=tab.meta[k]
 
                     self.sim_lc.append(tab)
-        if file_ext == '.pkl':
+        elif self.file_ext == '.pkl':
             with open(sim_file,'rb') as f:
                 self.sim_lc = pickle.load(f)
             self.n_sn=len(self.sim_lc)
@@ -1037,12 +1038,16 @@ class open_sim:
             self.fitter(lc_id)
         return
 
-    def write_fit(self,w_path):
+    def write_fit(self):
         sim_meta_keys=['n_sn', 'alpha', 'beta', 'M0', 'SIG_M']
         sim_meta={}
 
-        for k in sim_meta_keys:
-            sim_meta[k]=self.header[k]
+        #Temporary solution
+        if self.file_ext == '.fits':
+            for k in sim_meta_keys:
+                sim_meta[k]=self.header[k]
+        else:
+            sim_meta={}
 
         sim_lc_meta = {'id': [],
                            'ra': [],
@@ -1067,7 +1072,7 @@ class open_sim:
                     'zpec': 'zpec',
                     'z2cmb': 'z2cmb',
                     'zcos': 'zcos',
-                    'zCMB': 'zcmb',
+                    'zCMB': 'zCMB',
                     'zobs': 'z',
                     'sim_x0': 'x0',
                     'sim_mb': 'mb',
@@ -1081,5 +1086,5 @@ class open_sim:
             for k in trad_dic:
                 sim_lc_meta[k].append(lc.meta[trad_dic[k]])
 
-        su.write_fit(sim_lc_meta,self.fit_res,w_path+'_fit.fits',sim_meta=sim_meta)
+        su.write_fit(sim_lc_meta,self.fit_res,self.file_path+'_fit.fits',sim_meta=sim_meta)
         return
