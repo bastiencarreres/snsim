@@ -837,6 +837,10 @@ class sn_sim:
             lc_hdu_list = []
 
         for i, tab in enumerate(self.sim_lc):
+            tab.meta['sim_x0'] = tab.meta.pop('x0')
+            tab.meta['sim_x1'] = tab.meta.pop('x1')
+            tab.meta['sim_c'] = tab.meta.pop('c')
+            tab.meta['sim_t0'] = tab.meta.pop('t0') 
             tab.meta['vpec'] = self.vpec[i]
             tab.meta['zcos'] = self.zcos[i]
             tab.meta['zpec'] = self.zpec[i]
@@ -845,9 +849,9 @@ class sn_sim:
             tab.meta['ra'] = self.ra[i]
             tab.meta['dec'] = self.dec[i]
             tab.meta['sn_id'] = i
-            tab.meta['mb'] = self.sim_mB[i]
-            tab.meta['mu'] = self.sim_mu[i]
-            tab.meta['msmear'] = self.mag_smear[i]
+            tab.meta['sim_mb'] = self.sim_mB[i]
+            tab.meta['sim_mu'] = self.sim_mu[i]
+            tab.meta['sim_msmear'] = self.mag_smear[i]
             self.sn_id.append(i)
             if 'fits' in self.write_format:
                 lc_hdu_list.append(fits.table_to_hdu(tab))
