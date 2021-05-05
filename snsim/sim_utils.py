@@ -111,9 +111,10 @@ def write_fit(sim_lc_meta,fit_res,directory,sim_meta={}):
 
     for k in fit_keys:
         data[k] = []
-
+        
     for i in sim_lc_meta['id']:
         if fit_res[i] != 'NaN':
+            print(fit_res[i][0]['parameters'])
             par = fit_res[i][0]['parameters']
             par_cov = fit_res[i][0]['covariance'][1:, 1:]
             mb_cov = cov_x0_to_mb(par[2], par_cov)
