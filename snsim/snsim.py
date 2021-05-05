@@ -840,7 +840,7 @@ class sn_sim:
             tab.meta['sim_x0'] = tab.meta.pop('x0')
             tab.meta['sim_x1'] = tab.meta.pop('x1')
             tab.meta['sim_c'] = tab.meta.pop('c')
-            tab.meta['sim_t0'] = tab.meta.pop('t0') 
+            tab.meta['sim_t0'] = tab.meta.pop('t0')
             tab.meta['vpec'] = self.vpec[i]
             tab.meta['zcos'] = self.zcos[i]
             tab.meta['zpec'] = self.zpec[i]
@@ -851,7 +851,7 @@ class sn_sim:
             tab.meta['sn_id'] = i
             tab.meta['sim_mb'] = self.sim_mB[i]
             tab.meta['sim_mu'] = self.sim_mu[i]
-            tab.meta['sim_msmear'] = self.mag_smear[i]
+            tab.meta['sim_mag_smear'] = self.mag_smear[i]
             self.sn_id.append(i)
             if 'fits' in self.write_format:
                 lc_hdu_list.append(fits.table_to_hdu(tab))
@@ -1053,42 +1053,27 @@ class open_sim:
         else:
             sim_meta={}
 
-        sim_lc_meta = {'id': [],
-                           'ra': [],
-                           'dec': [],
-                           'vpec': [],
-                           'zpec': [],
-                           'z2cmb': [],
-                           'zcos': [],
-                           'zCMB': [],
-                           'zobs': [],
-                           'sim_x0': [],
-                           'sim_mb': [],
-                           'sim_x1': [],
-                           'sim_c': [],
-                           'sim_mu': [],
-                           'sim_mag_smear': []
+        sim_lc_meta = {'sn_id': [],
+                       'ra': [],
+                       'dec': [],
+                       'vpec': [],
+                       'zpec': [],
+                       'z2cmb': [],
+                       'zcos': [],
+                       'zCMB': [],
+                       'zobs': [],
+                       'sim_x0': [],
+                       'sim_mb': [],
+                       'sim_x1': [],
+                       'sim_c': [],
+                       'sim_mu': [],
+                       'sim_mag_smear': []
                            }
-        trad_dic = {'id': 'sn_id',
-                    'ra': 'ra',
-                    'dec': 'dec',
-                    'vpec': 'vpec',
-                    'zpec': 'zpec',
-                    'z2cmb': 'z2cmb',
-                    'zcos': 'zcos',
-                    'zCMB': 'zCMB',
-                    'zobs': 'z',
-                    'sim_x0': 'x0',
-                    'sim_mb': 'mb',
-                    'sim_x1': 'x1',
-                    'sim_c': 'c',
-                    'sim_mu': 'mu' ,
-                    'sim_mag_smear':'msmear'
-                   }
+
 
         for lc in self.sim_lc:
             for k in trad_dic:
-                sim_lc_meta[k].append(lc.meta[trad_dic[k]])
+                sim_lc_meta[k].append(lc.meta[k]])
 
         su.write_fit(sim_lc_meta,self.fit_res,self.file_path+'_fit.fits',sim_meta=sim_meta)
         return
