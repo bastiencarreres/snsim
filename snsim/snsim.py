@@ -980,7 +980,7 @@ class open_sim:
                 self.sim_lc = pickle.load(f)
             self.n_sn=len(self.sim_lc)
 
-        self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
+        self.fit_res = np.asarray(['NaN'] * self.n_sn, dtype='object')
 
         return
 
