@@ -112,7 +112,7 @@ def write_fit(sim_lc_meta,fit_res,directory,sim_meta={}):
     for k in fit_keys:
         data[k] = []
 
-    for i in sim_lc_meta['id']:
+    for i in sim_lc_meta['sn_id']:
         if fit_res[i] != 'NaN':
             par = fit_res[i][0]['parameters']
             par_cov = fit_res[i][0]['covariance'][1:, 1:]
@@ -149,6 +149,7 @@ def write_fit(sim_lc_meta,fit_res,directory,sim_meta={}):
     hdu = fits.table_to_hdu(table)
     hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header(sim_meta)), hdu])
     hdu_list.writeto(directory, overwrite=True)
+    print(f'Fit result output file : {directory}')
     return
 
 def plot_lc(
