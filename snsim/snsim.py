@@ -712,7 +712,7 @@ class sn_sim:
                 low=1000, high=10000, size=2)
 
             ra_tmp, dec_tmp = self.gen_coord(coord_seeds, size=self.n_sn_gen)
-
+            zcos_tmp=[]
             for z, n, rds in zip(z_bins, n_sn, z_randseeds):
                 zcos_tmp = np.concatenate(
                     (zcos_tmp, self.gen_redshift_cos(
