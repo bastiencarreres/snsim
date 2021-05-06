@@ -645,7 +645,8 @@ class sn_sim:
             self.duration = np.max(
                 self.obs_dic['expMJD']) - np.min(self.obs_dic['expMJD'])
         # dz such as rv(z+dz)<(1+1e-2)rv(z)
-        self.dz = 0.01 * (1 + self.z_range[1]) / np.max(1, self.rate_pw)
+        self.dz = (self.z_range[1]-self.z_range[0])/(100*(1+self.rate_pw*self.z_range[1]))
+
         if self.use_host:
             host_list = self.read_host_file()
             redshift_copy = np.sort(np.copy(host_list['redshift']))
@@ -711,12 +712,11 @@ class sn_sim:
                 low=1000, high=10000, size=2)
 
             ra_tmp, dec_tmp = self.gen_coord(coord_seeds, size=self.n_sn_gen)
-            zcos_tmp = []
 
             for z, n, rds in zip(z_bins, n_sn, z_randseeds):
                 zcos_tmp = np.concatenate(
                     (zcos_tmp, self.gen_redshift_cos(
-                        low=z, high=z + self.dz, size=n, randseed=rds)))
+                    low=z, high=z + self.dz, size=n, randseed=rds)))
 
             for ra, dec, zcos, t0 in zip(ra_tmp, dec_tmp, zcos_tmp, t0_tmp):
                 epochs_selec = self.epochs_selection(ra, dec, zcos, t0)
