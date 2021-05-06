@@ -685,7 +685,7 @@ class sn_sim:
                 host_in_shell_idx = np.where(selec)[0]
                 if len(host_in_shell) < n:
                     raise RuntimeError('No host in shell')
-                host_tmp_idx = np.random.default_rnbranchg(rds).choice(
+                host_tmp_idx = np.random.default_rng(rds).choice(
                     host_in_shell_idx, size=n, replace=False)
                 host_tmp = host_list[host_tmp_idx]
                 for idx, h, t0 in zip(host_tmp_idx, host_tmp, t0_tmp):
