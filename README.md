@@ -116,3 +116,22 @@ In the case of nep_cut key you can pass an int or pass list by typing --nep_cut 
 #Multiple cuts
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
 ```
+## Fit and open_sim class
+You can direct fit after running the simulation 
+```
+# Fit 1 lc by id
+sim.fit_lc(id)
+
+# Fit all the lcs
+sim.fit_lc()
+
+# Write the fit
+sim.write_fit()
+```
+Or you can open register open sim file .fits or .pkl with the open_sim class
+```
+from snsim import open_sim
+
+sim = open_sim('sim_file.pkl/.fits',SALT2_dir)
+```
+
