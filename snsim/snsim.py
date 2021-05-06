@@ -684,7 +684,7 @@ class sn_sim:
                 host_in_shell_idx = np.where(selec)[0]
                 if len(host_in_shell) < n:
                     raise RuntimeError('No host in shell')
-                host_tmp_idx = np.random.default_rng(rds).choice(
+                host_tmp_idx = np.random.default_rnbranchg(rds).choice(
                     host_in_shell_idx, size=n, replace=False)
                 host_tmp = host_list[host_tmp_idx]
                 for idx, h, t0 in zip(host_tmp_idx, host_tmp, t0_tmp):
@@ -851,7 +851,7 @@ class sn_sim:
             tab.meta['sn_id'] = i
             tab.meta['sim_mb'] = self.sim_mB[i]
             tab.meta['sim_mu'] = self.sim_mu[i]
-            tab.meta['sim_mag_smear'] = self.mag_smear[i]
+            tab.meta['m_smear'] = self.mag_smear[i]
             self.sn_id.append(i)
             if 'fits' in self.write_format:
                 lc_hdu_list.append(fits.table_to_hdu(tab))
@@ -897,7 +897,7 @@ class sn_sim:
 
     def write_fit(self):
 
-        sim_lc_meta = {'id': self.sn_id,
+        sim_lc_meta = {'sn_id': self.sn_id,
                        'ra': self.ra,
                        'dec': self.dec,
                        'vpec': self.vpec,
@@ -911,7 +911,7 @@ class sn_sim:
                        'sim_x1': self.sim_x1,
                        'sim_c': self.sim_c,
                        'sim_mu': self.sim_mu,
-                       'sim_mag_smear': self.mag_smear
+                       'm_smear': self.mag_smear
                        }
 
         sim_meta={'n_sn': self.n_sn, 'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
@@ -1061,19 +1061,19 @@ class open_sim:
                        'z2cmb': [],
                        'zcos': [],
                        'zCMB': [],
-                       'zobs': [],
+                       'z': [],
                        'sim_x0': [],
                        'sim_mb': [],
                        'sim_x1': [],
                        'sim_c': [],
                        'sim_mu': [],
-                       'sim_mag_smear': []
+                       'm_smear': []
                            }
 
 
         for lc in self.sim_lc:
-            for k in trad_dic:
-                sim_lc_meta[k].append(lc.meta[k]])
+            for k in sim_lc_meta:
+                sim_lc_meta[k].append(lc.meta[k])
 
         su.write_fit(sim_lc_meta,self.fit_res,self.file_path+'_fit.fits',sim_meta=sim_meta)
         return
