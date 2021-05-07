@@ -1,8 +1,8 @@
 class SN:
     __slots__ = ['zcos','zpec','z2cmb','zCMB','ra','dec','vpec','t0']
 
-    def __init__(self,zcos,z2cmb,ra,dec,vpec,t0,sim_mu,mag_smear,model):
-        self.t0 = t0
+    def __init__(self,zcos,z2cmb,ra,dec,vpec,t0,sim_mu,mag_smear,sim_model,model_par):
+        self.sim_t0 = t0
         self.zcos = zcos
         self.z2cmb = z2cmb
         self.ra = ra
@@ -10,6 +10,8 @@ class SN:
         self.vpec = vpec
         self.sim_mu = sim_mu
         self.mag_smear = mag_smear
+        self.model_par = model_par
+        self.sim_model = model.__copy__()
         self._epochs = None
         self.sim_lc = None
         return
@@ -35,7 +37,7 @@ class SN:
 
     @property
     def sim_x0(self):
-        self.sim_x0 = su.mB_to_x0(self.sim_mB)
+        return su.mB_to_x0(self.sim_mB)
 
     @property
     def epochs(self):
@@ -46,10 +48,10 @@ class SN:
         self._epochs = ep_dic
 
     def pass_cuts(self,nep_cut):
-        if self.epochs = None:
+        if self.epochs == None:
             return  False
         else:
-            for cut in self.nep_cut:
+            for cut in nep_cut:
                 cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.z), cut[2] * (1 + self.z)
                 test = epochs_selec * (self.epochs['expMJD'] - t0 > cutMin_obsfrm)
                 test *= (self.epochs['expMJD'] - self.t0 < cutMax_obsfrm)
@@ -62,18 +64,11 @@ class SN:
     def gen_flux(self,add_keys={}):
         ''' Generate simulated flux '''
         obs_table = self.make_obs_table(self.epochs)
-        params = [{'z': self.z,
-                   't0': self.t0,
-                   'x0': self.x0,
-                   'x1': self.x1,
-                    'c': self.c
-                 }]
+        params = {'z': self.z,
+                  't0': self.t0}
+        params = {**params, **modeldir}
+        self.sim_lc = snc.realize_lcs(obs_table, self.sim_model, [params], scatter=False)[0]
 
-        if self.use_smear_mod:
-            self.smear_mod_seeds = np.random.default_rng(self.randseeds['smearmod_seed']).integers(low=1000, high=10000)
-            par[self.smear_par_prefix+'RndS'] = s
-
-        self.sim_lc = snc.realize_lcs(obs_table, self.sim_model, params, scatter=False)[0]
         self.sim_lc['flux'] = np.random.default_rng(s).normal(
                 loc=lc['flux'], scale=lc['fluxerr'])
 
