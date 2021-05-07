@@ -10,7 +10,7 @@ class SN:
         self.vpec = vpec
         self.sim_mu = sim_mu
         self.mag_smear = mag_smear
-        self.model_par = model_par
+        self.model_par = model_par 
         self.sim_model = model.__copy__()
         self._epochs = None
         self.sim_lc = None
