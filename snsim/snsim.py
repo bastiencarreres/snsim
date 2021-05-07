@@ -373,8 +373,9 @@ class sn_sim:
         self.sigmaM = self.sn_gen['mag_smear']  # To change
 
         # Init vpec_gen
-        self.mean_vpec = self.vpec_gen['mean_vpec']
-        self.sig_vpec = self.vpec_gen['sig_vpec']
+        if not self.use_host:
+            self.mean_vpec = self.vpec_gen['mean_vpec']
+            self.sig_vpec = self.vpec_gen['sig_vpec']
 
         # Init M0
         self.M0 = self.sn_gen['M0']
