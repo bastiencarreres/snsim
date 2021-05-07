@@ -1,52 +1,153 @@
-class SuperNovae():
-    __slots__ = ['zcos','zCMB','zpec','vpec','z2cmb','ra','dec','model_par']
+class SN:
+    __slots__ = ['zcos','zpec','z2cmb','zCMB','ra','dec','vpec','t0']
 
-    def __init__(self,n_sn,rand_seed,host=None):
-        randseeds = l
-        self.gen_coord(randseeds[0])
-        self.gen_zcos(randseeds[1])
-        self.gen_z2cmb()
-        self.gen_z_pec()
-        self.zCMB = (1 + self.zcos) * (1 + self.zpec) - 1.
-        self.zobs = (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
+    def __init__(self,zcos,z2cmb,ra,dec,vpec,t0,sim_mu,mag_smear,model):
+        self.t0 = t0
+        self.zcos = zcos
+        self.z2cmb = z2cmb
+        self.ra = ra
+        self.dec = dec
+        self.vpec = vpec
+        self.sim_mu = sim_mu
+        self.mag_smear = mag_smear
+        self._epochs = None
+        self.sim_lc = None
         return
+
+    @property
+    def zpec(self):
+        return self.vpec/su.c_light_kms
+
+    @property
+    def zCMB(self):
+        return (1+self.zcos)*(1+self.zpec) - 1.
+
+    @property
+    def z(self):
+        return (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb) - 1.
+
+    @property
+    def sim_mb(self):
+        # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
+        # beta*c : scattering due to color and stretch} + {intrinsic smearing}
+        return self.sim_mu + self.M0 - self.alpha * \
+        self.sim_x1 + self.beta * self.sim_c + self.mag_smear
+
+    @property
+    def sim_x0(self):
+        self.sim_x0 = su.mB_to_x0(self.sim_mB)
+
+    @property
+    def epochs(self):
+         return self._epochs
+
+    @epochs.setter
+    def epochs(self,ep_dic):
+        self._epochs = ep_dic
+
+    def pass_cuts(self,nep_cut):
+        if self.epochs = None:
+            return  False
+        else:
+            for cut in self.nep_cut:
+                cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.z), cut[2] * (1 + self.z)
+                test = epochs_selec * (self.epochs['expMJD'] - t0 > cutMin_obsfrm)
+                test *= (self.epochs['expMJD'] - self.t0 < cutMax_obsfrm)
+                if len(cut) == 4:
+                    test *= (self.epochs['filter']) == cut[3])
+                if np.sum(test) < int(cut[0]):
+                    return False
+            return True
+
+    def gen_flux(self,add_keys={}):
+        ''' Generate simulated flux '''
+        obs_table = self.make_obs_table(self.epochs)
+        params = [{'z': self.z,
+                   't0': self.t0,
+                   'x0': self.x0,
+                   'x1': self.x1,
+                    'c': self.c
+                 }]
+
+        if self.use_smear_mod:
+            self.smear_mod_seeds = np.random.default_rng(self.randseeds['smearmod_seed']).integers(low=1000, high=10000)
+            par[self.smear_par_prefix+'RndS'] = s
+
+        self.sim_lc = snc.realize_lcs(obs_table, self.sim_model, params, scatter=False)[0]
+        self.sim_lc['flux'] = np.random.default_rng(s).normal(
+                loc=lc['flux'], scale=lc['fluxerr'])
+
+        for k in add_keys:
+            self.sim_lc[k] = obs[k]
+
+class SNGen:
+    __slots__ = ['n_sn','z_range','rand_seed','sn_model']
+
+    def __init__(self,n_sn,z_range,sigmaM,rand_seed,host=None):
+        self.n_sn = n_sn
+        self.z_range = z_range
+        self.rand_seed = rand_seed
+        self.sigmaM = sigmaM
+        return
+
+    def __call__(self,host=None):
+        ra,dec = self.gen_coord()
+        zcos = self.gen_zcos(se)
+        z2cmb = self.gen_z2cmb(ra,dec)
+        vpec, zpec = self.gen_zpec(host)
+        sim_mu, mag_smear = self.gen_sn_mag(self.sigmaM)
+
+        SN_list = [SN(z1,z2,v,r,d,t,mu,ms,mod) for z1,z2,v,r,d,t,mu,ms,mod in zip(zcos,z2cmb,vpec,ra,dec,t0,sim_mu,mag_smear,model)]
+        return SN_list
 
     def gen_coord(self, rand_seed, size=1):
         '''Generate ra,dec uniform on the sphere'''
-        ra_seed = randseeds[0]
-        dec_seed = randseeds[1]
-        self.ra = np.random.default_rng(ra_seed).uniform(
+        ra_seed = rand_seed[0]
+        dec_seed = rand_seed[1]
+        ra = np.random.default_rng(ra_seed).uniform(
             low=0, high=2 * np.pi, size=size)
         dec_uni = np.random.default_rng(dec_seed).random(size=size)
-        self.dec = np.arcsin(2 * dec_uni - 1)
-        return
+        dec = np.arcsin(2 * dec_uni - 1)
+        return ra, dec
 
-    def gen_zcos(self,z_range,rand_seed):
+    def gen_zcos(self,rand_seed):
         '''Function to get zcos, to be updated'''
-        self.zcos = np.random.default_rng(rand_seed).uniform(
-            low=z_range[0], high=z_range[1], size=size)
-        return
+        zcos = np.random.default_rng(rand_seed).uniform(
+            low=self.z_range[0], high=self.z_range[1], size=size)
+        return zcos
 
-    def gen_z2cmb(self):
+    def gen_z2cmb(ra,dec):
         # use ra dec to simulate the effect of our motion
         coordfk5 = SkyCoord(
-            self.ra * u.rad,
-            self.dec * u.rad,
+            ra * u.rad,
+            dec * u.rad,
             frame='fk5')  # coord in fk5 frame
         galac_coord = coordfk5.transform_to('galactic')
-        self.ra_gal = galac_coord.l.rad - 2 * np.pi * \
+        ra_gal = galac_coord.l.rad - 2 * np.pi * \
             np.sign(galac_coord.l.rad) * (abs(galac_coord.l.rad) > np.pi)
-        self.dec_gal = galac_coord.b.rad
+        dec_gal = galac_coord.b.rad
 
-        ss = np.sin(self.dec_gal) * np.sin(self.dec_cmb * np.pi / 180)
-        ccc = np.cos(self.dec_gal) * np.cos(self.dec_cmb * np.pi / \
-                     180) * np.cos(self.ra_gal - self.ra_cmb * np.pi / 180)
-        self.z2cmb = (1 - self.v_cmb * (ss + ccc) / su.c_light_kms) - 1.
-        return
+        ss = np.sin(dec_gal) * np.sin(dec_cmb * np.pi / 180)
+        ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi / \
+                     180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
+        z2cmb = (1 - v_cmb * (ss + ccc) / su.c_light_kms) - 1.
+        return z2cmb
 
-    def gen_z_pec(self,rand_seed,host=None):
+    def gen_sn_par(self,x1_distrib,c_distrib,rand_seed):
+        ''' Generate x1 and c for the SALT2 model'''
+            x1_seed,c_seed = rand_seed
+            sim_x1 = np.random.default_rng(x1_seed).normal(
+            loc=x1_distrib[0],
+            scale=x1_distrib[1],
+            size=self.n_sn)
+            sim_c = np.random.default_rng(c_seed).normal(
+            loc=c_distrib[0], scale=c_distrib[1], size=self.n_sn)
+            return sim_x1, sim_c
+
+
+    def gen_zpec(self,rand_seed,host=None):
         if host=None:
-            self.vpec = np.random.default_rng(rand_seed).normal(
+            vpec = np.random.default_rng(rand_seed).normal(
                 loc=self.mean_vpec,
                 scale=self.sig_vpec,
                 size=self.n_sn)
@@ -54,11 +155,21 @@ class SuperNovae():
             if 'vp_sight' in self.host.names:
                 self.vpec = self.host['vp_sight']
         else:
+            vpec = host.vpec
+        return vpec
 
-        self.zpec = self.vpec / su.c_light_kms
-        return
+    def gen_sn_mag(self,sigmaM):
+        ''' Generate x0/mB parameters for SALT2 '''
+        mag_smear = np.random.default_rng(
+            self.randseeds['smearM_seed']).normal(
+            loc=0, scale=self.sigmaM, size=self.n_sn)
 
-class ObsTable():
+        sim_mu = 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) * pw(
+            (1 + self.zpec), 2) * self.cosmo.comoving_distance(self.zcos).value) + 25
+
+        return sim_mu, mag_smear
+
+class ObsTable:
     __slots__ = ['obs_dic','ra_size','dec_size']
 
     def __init__(self,db_file,db_cuts,add_keys,ra_size,dec_size):
@@ -111,4 +222,33 @@ class ObsTable():
         ra_field_frame, dec_field_frame = su.change_sph_frame(ra,dec,self.obs_dic['fieldRA'][epochs_selec],self.obs_dic['fieldDec'][epochs_selec])
         epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < self.ra_size/2 # ra selection
         epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < self.dec_size/2 # dec selection
-        return epochs_selection
+        if np.sum(epochs_selec) == 0:
+            return None
+        return self.make_obs_table(epochs_selec)
+
+
+        def make_obs_table(self,epochs_selec):
+            # Capture noise and filter
+            mlim5 = self.epochs['fiveSigmaDepth'][epochs_selec]
+            filter = self.epochs['filter'][epochs_selec].astype('U27')
+
+            # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
+            if self.band_dic is not None:
+                for i, f in enumerate(filter):
+                    filter[i] = self.band_dic[f]
+
+            # Convert maglim to flux noise (ADU)
+            skynoise = pw(10., 0.4 * (self.zp - mlim5)) / 5
+
+            # Create obs table
+            obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
+                          'band': filter,
+                          'gain': [self.gain] * np.sum(epochs_selec),
+                          'skynoise': skynoise,
+                          'zp': [self.zp] * np.sum(epochs_selec),
+                          'zpsys': ['ab'] * np.sum(epochs_selec)})
+
+            for k in self.add_keys:
+                obs[k] = self.obs_dic[k][epochs_selec]
+
+            return obs
