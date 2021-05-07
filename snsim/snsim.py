@@ -15,7 +15,7 @@ from . import sim_utils as su
 from . import scatter as sct
 
 
-class sn_sim:
+class SnSim:
     def __init__(self, param_dic):
         '''Initialisation of the simulation class with the config file
         config.yml
@@ -439,19 +439,7 @@ class sn_sim:
             low=low, high=high, size=size)
         return z
 
-    def gen_coord(self, randseeds, size=1):
-        '''Generate ra,dec uniform on the sphere'''
-        ra_seed = randseeds[0]
-        dec_seed = randseeds[1]
-        ra = np.random.default_rng(ra_seed).uniform(
-            low=0, high=2 * np.pi, size=size)
-        dec_uni = np.random.default_rng(dec_seed).random(size=size)
-        dec = np.arcsin(2 * dec_uni - 1)
-        if size == 1:
-            return ra[0], dec[0]
-        else:
-            return ra, dec
-
+    
     def gen_z2cmb(self):
         # use ra dec to simulate the effect of our motion
         coordfk5 = SkyCoord(
@@ -524,34 +512,6 @@ class sn_sim:
             self.sim_lc.append(lc)
         return
 
-    def extract_from_db(self):
-        '''Read db file and extract relevant information'''
-        self.obs_dic={}
-        dbf = sqlite3.connect(self.db_file)
-
-        keys = ['expMJD',
-                'filter',
-                'fieldRA',
-                'fieldDec',
-                'fiveSigmaDepth']+self.add_keys
-
-        where=''
-        if self.use_dbcut:
-            where=" WHERE "
-            for cut_var in self.db_cut:
-                where+="("
-                for cut in self.db_cut[cut_var]:
-                    cut_str=f"{cut}"
-                    where+=f"{cut_var}{cut_str} OR "
-                where=where[:-4]
-                where+=") AND "
-            where=where[:-5]
-        obs_dic={}
-        for k in keys:
-            query = 'SELECT '+k+' FROM Summary'+where+';'
-            values = dbf.execute(query)
-            self.obs_dic[k] = np.array([a[0] for a in values])
-        return
 
     def make_obs_table(self, epochs_selec):
         # Capture noise and filter
@@ -951,7 +911,7 @@ class sn_sim:
         return
 
 
-class open_sim:
+class OpenSim:
     def __init__(self, sim_file, SALT2_dir):
         '''Copy some function of snsim to allow to use sim file'''
         self.salt2_dir = SALT2_dir
