@@ -1,7 +1,7 @@
 class SN:
-    __slots__ = ['zcos','zpec','z2cmb','zCMB','ra','dec','vpec','t0']
+    __slots__ = ['zcos','zpec','zCMB','ra','dec','vpec','t0']
 
-    def __init__(self,zcos,z2cmb,ra,dec,vpec,t0,sim_mu,mag_smear,sim_model,model_par):
+    def __init__(self,zcos,ra,dec,vpec,t0,sim_mu,cosmo,mag_smear,sim_model,model_par):
         self.sim_t0 = t0
         self.zcos = zcos
         self.z2cmb = z2cmb
@@ -10,7 +10,7 @@ class SN:
         self.vpec = vpec
         self.sim_mu = sim_mu
         self.mag_smear = mag_smear
-        self.model_par = model_par 
+        self.model_par = model_par
         self.sim_model = model.__copy__()
         self._epochs = None
         self.sim_lc = None
@@ -47,6 +47,24 @@ class SN:
     def epochs(self,ep_dic):
         self._epochs = ep_dic
 
+
+    def z2cmb(self):
+        # use ra dec to simulate the effect of our motion
+        coordfk5 = SkyCoord(self.ra * u.rad,
+                            self.dec * u.rad,
+                            frame='fk5')  # coord in fk5 frame
+
+        galac_coord = coordfk5.transform_to('galactic')
+        ra_gal = galac_coord.l.rad - 2 * np.pi * \
+        np.sign(galac_coord.l.rad) * (abs(galac_coord.l.rad) > np.pi)
+        dec_gal = galac_coord.b.rad
+
+        ss = np.sin(dec_gal) * np.sin(dec_cmb * np.pi / 180)
+        ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi / \
+                         180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
+        z2cmb = (1 - v_cmb * (ss + ccc) / su.c_light_kms) - 1.
+        return z2cmb
+
     def pass_cuts(self,nep_cut):
         if self.epochs == None:
             return  False
@@ -64,9 +82,7 @@ class SN:
     def gen_flux(self,add_keys={}):
         ''' Generate simulated flux '''
         obs_table = self.make_obs_table(self.epochs)
-        params = {'z': self.z,
-                  't0': self.t0}
-        params = {**params, **modeldir}
+        params = {**{'z': self.z,'t0': self.t0}, **modeldir}
         self.sim_lc = snc.realize_lcs(obs_table, self.sim_model, [params], scatter=False)[0]
 
         self.sim_lc['flux'] = np.random.default_rng(s).normal(
@@ -76,23 +92,42 @@ class SN:
             self.sim_lc[k] = obs[k]
 
 class SNGen:
-    __slots__ = ['n_sn','z_range','rand_seed','sn_model']
-
     def __init__(self,n_sn,z_range,sigmaM,rand_seed,host=None):
         self.n_sn = n_sn
         self.z_range = z_range
-        self.rand_seed = rand_seed
+        randseeds = np.random.default_rng(rand_seed).randint(low=1000, high=100000,size=6)
+        self.rand_seed = {'z' : randseeds[0],
+                          't0': randseeds[1],
+                          'coord': randseed[2],
+                          'coh_scatter': randseeds[3],
+                          'mod_scatter': randseed[4],
+                          'sn_model': randseed[5]
+                         }
+
         self.sigmaM = sigmaM
+        self.sim_model = sim_model
+
         return
 
-    def __call__(self,host=None):
-        ra,dec = self.gen_coord()
-        zcos = self.gen_zcos(se)
-        z2cmb = self.gen_z2cmb(ra,dec)
-        vpec, zpec = self.gen_zpec(host)
-        sim_mu, mag_smear = self.gen_sn_mag(self.sigmaM)
+    def __call__(self):
+        if sel.host == None:
+            ra, dec = self.gen_coord()
+            zcos = self.gen_zcos(se)
+            z2cmb = self.gen_z2cmb(ra,dec)
+            vpec, zpec = self.gen_zpec(host)
 
-        SN_list = [SN(z1,z2,v,r,d,t,mu,ms,mod) for z1,z2,v,r,d,t,mu,ms,mod in zip(zcos,z2cmb,vpec,ra,dec,t0,sim_mu,mag_smear,model)]
+        mag_smear = self.gen_coh_scatter(self.sigmaM)
+
+        sn_par = [{'zcos': z,
+                   't0': t,
+                   'ra': r,
+                   'dec': d,
+                   'vpec': v,
+                   'mag_smear': ms
+                    } for z,t,r,d,v,ms in zip(zcos,t0,ra,dec,mag_smear)]
+
+        model
+        SN_list = [SN(z1,v,r,d,t,ms,mod) for z1,z2,v,r,d,t,mu,ms,mod in zip(zcosvpec,ra,dec,t0,sim_mu,mag_smear,model)]
         return SN_list
 
     def gen_coord(self, rand_seed, size=1):
@@ -105,7 +140,7 @@ class SNGen:
         dec = np.arcsin(2 * dec_uni - 1)
         return ra, dec
 
-    def gen_zcos(self,rand_seed):
+    def gen_zcos(self):
         '''Function to get zcos, to be updated'''
         zcos = np.random.default_rng(rand_seed).uniform(
             low=self.z_range[0], high=self.z_range[1], size=size)
@@ -128,17 +163,29 @@ class SNGen:
         z2cmb = (1 - v_cmb * (ss + ccc) / su.c_light_kms) - 1.
         return z2cmb
 
-    def gen_sn_par(self,x1_distrib,c_distrib,rand_seed):
-        ''' Generate x1 and c for the SALT2 model'''
-            x1_seed,c_seed = rand_seed
+    def gen_model_param(self):
+        if sim_model.source.name in ['salt2','salt3']:
+            self.gen_SALT_par()
+
+        if 'G10_' in sim_model.effect_name:
+            self.model_par['G10_RndS'] = self.rand_seed['mod_scatter']
+
+        elif 'C11_' in sim_model.effect_name:
+            self.model_par['C11_RndS'] = self.rand_seed['mod_scatter']
+        return
+
+    def gen_SALT_par(self):
+        ''' Generate x1 and c for the SALT2 or SALT3 model'''
+            x1_seed,c_seed = np.random.default_rng(self.rand_seed['sn_model']).randint(low=1000, high=100000,size=2)
             sim_x1 = np.random.default_rng(x1_seed).normal(
             loc=x1_distrib[0],
             scale=x1_distrib[1],
             size=self.n_sn)
             sim_c = np.random.default_rng(c_seed).normal(
             loc=c_distrib[0], scale=c_distrib[1], size=self.n_sn)
-            return sim_x1, sim_c
-
+            self.model_par['x1'] = sim_x1
+            self.model_par['c'] = sim_c
+            return
 
     def gen_zpec(self,rand_seed,host=None):
         if host=None:
@@ -153,16 +200,10 @@ class SNGen:
             vpec = host.vpec
         return vpec
 
-    def gen_sn_mag(self,sigmaM):
+    def gen_coh_scatter(self):
         ''' Generate x0/mB parameters for SALT2 '''
-        mag_smear = np.random.default_rng(
-            self.randseeds['smearM_seed']).normal(
-            loc=0, scale=self.sigmaM, size=self.n_sn)
-
-        sim_mu = 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) * pw(
-            (1 + self.zpec), 2) * self.cosmo.comoving_distance(self.zcos).value) + 25
-
-        return sim_mu, mag_smear
+        mag_smear = np.random.default_rng(self.rand_seed['coh_scatter']).normal(loc=0, scale=self.sigmaM, size=self.n_sn)
+        return mag_smear
 
 class ObsTable:
     __slots__ = ['obs_dic','ra_size','dec_size']
