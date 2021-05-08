@@ -1,20 +1,66 @@
-class SN:
-    __slots__ = ['zcos','zpec','zCMB','ra','dec','vpec','t0']
 
-    def __init__(self,zcos,ra,dec,vpec,t0,sim_mu,cosmo,mag_smear,sim_model,model_par):
-        self.sim_t0 = t0
-        self.zcos = zcos
-        self.z2cmb = z2cmb
-        self.ra = ra
-        self.dec = dec
-        self.vpec = vpec
-        self.sim_mu = sim_mu
-        self.mag_smear = mag_smear
+import numpy as np
+from astropy.cosmology import FlatLambdaCDM
+
+class SN:
+    '''SN object
+    Data structure :
+    SN
+    ├── sn_par
+    │   ├── sim_t0
+    │   ├── z
+    │   ├── zcos
+    │   ├── zCMB
+    │   ├── z2cmb
+    │   ├── zpec
+    │   ├── vpec
+    │   ├── sim_mu
+    │   ├── sim_mb
+    │   └── mag_smear
+    ├── cosmo_dic
+    │   ├── CMB
+    │   │   ├── ra_cmb
+    │   │   ├── dec_cmb
+    │   │   └── v_cmb
+    │   └── cosmo_par
+    │       ├── H0
+    │       └── Om0
+    ├── model_par
+    │   ├── sncosmo
+    │   └── other parameters (depends on sncosmo model source)
+    ├── sim_model (sn_cosmo model)
+    ├── epochs
+    ├── sim_lc
+    └── fit_model
+    '''
+    __slots__ = ['sn_par','cosmo_dic','sim_model','model_par']
+
+    def __init__(self,sn_par,cosmo_dic,sim_model,model_par):
+        self.sn_par = sn_par
+        self.sn_par['z2cmb'] = self.init_z2cmb(cosmo_dic)
+        self.sn_par['sim_mu'] = self.init_sim_mu(cosmo_dic)
         self.model_par = model_par
         self.sim_model = model.__copy__()
         self._epochs = None
         self.sim_lc = None
+        self._fit_model = None
         return
+
+    @property
+    def sim_t0(self):
+        return self.sn_par['sim_t0']
+
+    @property
+    def zcos(self):
+        return self.sn_par['zcos']
+
+    @property
+    def coord(self):
+        return self.sn_par['ra'], self.sn_par['dec']
+
+    @property
+    def mag_smear(self):
+        return self.sn_par['mag_smear']
 
     @property
     def zpec(self):
@@ -25,19 +71,20 @@ class SN:
         return (1+self.zcos)*(1+self.zpec) - 1.
 
     @property
+    def z2cmb(self):
+        return self.sn_par['z2cmb']
+
+    @property
     def z(self):
         return (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb) - 1.
 
     @property
-    def sim_mb(self):
-        # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
-        # beta*c : scattering due to color and stretch} + {intrinsic smearing}
-        return self.sim_mu + self.M0 - self.alpha * \
-        self.sim_x1 + self.beta * self.sim_c + self.mag_smear
+    def sim_mu(self):
+        return self.sn_par['sim_mu']
 
     @property
-    def sim_x0(self):
-        return su.mB_to_x0(self.sim_mB)
+    def sim_mb(self):
+        return self.sn_par['sim_mb']
 
     @property
     def epochs(self):
@@ -48,7 +95,10 @@ class SN:
         self._epochs = ep_dic
 
 
-    def z2cmb(self):
+    def init_z2cmb(self,cosmo_par):
+        ra_cmb = cosmo_dic['CMB']['ra_cmb']
+        dec_cmb = cosmo_par['CMB']['dec_smb']
+        v_cmb = cosmo_par['CMB']['v_cmb']
         # use ra dec to simulate the effect of our motion
         coordfk5 = SkyCoord(self.ra * u.rad,
                             self.dec * u.rad,
@@ -64,6 +114,32 @@ class SN:
                          180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
         z2cmb = (1 - v_cmb * (ss + ccc) / su.c_light_kms) - 1.
         return z2cmb
+
+    def init_sim_mu(self,cosmo_dic):
+        ''' Generate x0/mB parameters for SALT2 '''
+        cosmo = FlatLambdaCDM(**cosmo_dic['cosmo_par'])
+        self.sn_par['sim_mu'] = 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) * pw(
+            (1 + self.zpec), 2) * self.cosmo.comoving_distance(self.zcos).value) + 25
+
+        return
+
+    def init_sim_mb(self,model_par):
+        ''' Init the SN magnitude in restframe Bessell B band'''
+        M0 = self.model_par['M0']
+
+        if self.sim_model.source.name in ['salt2', 'salt3']:
+            # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
+            # beta*c : scattering due to color and stretch} + {intrinsic smearing}
+            alpha = self.model_par['alpha']
+            beta = self.model_par['beta']
+            sim_mb = self.sim_mu + M0 - alpha * \
+                self.sim_x1 + beta * self.sim_c + self.mag_smear
+            self.model_par['sncosmo']['sim_x0'] = su.mB_to_x0(sim_mB)
+            return self.sim_mB
+
+        elif self.sim_model.source.name == 'snoopy':
+            #TODO
+            return
 
     def pass_cuts(self,nep_cut):
         if self.epochs == None:
@@ -91,119 +167,6 @@ class SN:
         for k in add_keys:
             self.sim_lc[k] = obs[k]
 
-class SNGen:
-    def __init__(self,n_sn,z_range,sigmaM,rand_seed,host=None):
-        self.n_sn = n_sn
-        self.z_range = z_range
-        randseeds = np.random.default_rng(rand_seed).randint(low=1000, high=100000,size=6)
-        self.rand_seed = {'z' : randseeds[0],
-                          't0': randseeds[1],
-                          'coord': randseed[2],
-                          'coh_scatter': randseeds[3],
-                          'mod_scatter': randseed[4],
-                          'sn_model': randseed[5]
-                         }
-
-        self.sigmaM = sigmaM
-        self.sim_model = sim_model
-
-        return
-
-    def __call__(self):
-        if sel.host == None:
-            ra, dec = self.gen_coord()
-            zcos = self.gen_zcos(se)
-            z2cmb = self.gen_z2cmb(ra,dec)
-            vpec, zpec = self.gen_zpec(host)
-
-        mag_smear = self.gen_coh_scatter(self.sigmaM)
-
-        sn_par = [{'zcos': z,
-                   't0': t,
-                   'ra': r,
-                   'dec': d,
-                   'vpec': v,
-                   'mag_smear': ms
-                    } for z,t,r,d,v,ms in zip(zcos,t0,ra,dec,mag_smear)]
-
-        model
-        SN_list = [SN(z1,v,r,d,t,ms,mod) for z1,z2,v,r,d,t,mu,ms,mod in zip(zcosvpec,ra,dec,t0,sim_mu,mag_smear,model)]
-        return SN_list
-
-    def gen_coord(self, rand_seed, size=1):
-        '''Generate ra,dec uniform on the sphere'''
-        ra_seed = rand_seed[0]
-        dec_seed = rand_seed[1]
-        ra = np.random.default_rng(ra_seed).uniform(
-            low=0, high=2 * np.pi, size=size)
-        dec_uni = np.random.default_rng(dec_seed).random(size=size)
-        dec = np.arcsin(2 * dec_uni - 1)
-        return ra, dec
-
-    def gen_zcos(self):
-        '''Function to get zcos, to be updated'''
-        zcos = np.random.default_rng(rand_seed).uniform(
-            low=self.z_range[0], high=self.z_range[1], size=size)
-        return zcos
-
-    def gen_z2cmb(ra,dec):
-        # use ra dec to simulate the effect of our motion
-        coordfk5 = SkyCoord(
-            ra * u.rad,
-            dec * u.rad,
-            frame='fk5')  # coord in fk5 frame
-        galac_coord = coordfk5.transform_to('galactic')
-        ra_gal = galac_coord.l.rad - 2 * np.pi * \
-            np.sign(galac_coord.l.rad) * (abs(galac_coord.l.rad) > np.pi)
-        dec_gal = galac_coord.b.rad
-
-        ss = np.sin(dec_gal) * np.sin(dec_cmb * np.pi / 180)
-        ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi / \
-                     180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
-        z2cmb = (1 - v_cmb * (ss + ccc) / su.c_light_kms) - 1.
-        return z2cmb
-
-    def gen_model_param(self):
-        if sim_model.source.name in ['salt2','salt3']:
-            self.gen_SALT_par()
-
-        if 'G10_' in sim_model.effect_name:
-            self.model_par['G10_RndS'] = self.rand_seed['mod_scatter']
-
-        elif 'C11_' in sim_model.effect_name:
-            self.model_par['C11_RndS'] = self.rand_seed['mod_scatter']
-        return
-
-    def gen_SALT_par(self):
-        ''' Generate x1 and c for the SALT2 or SALT3 model'''
-            x1_seed,c_seed = np.random.default_rng(self.rand_seed['sn_model']).randint(low=1000, high=100000,size=2)
-            sim_x1 = np.random.default_rng(x1_seed).normal(
-            loc=x1_distrib[0],
-            scale=x1_distrib[1],
-            size=self.n_sn)
-            sim_c = np.random.default_rng(c_seed).normal(
-            loc=c_distrib[0], scale=c_distrib[1], size=self.n_sn)
-            self.model_par['x1'] = sim_x1
-            self.model_par['c'] = sim_c
-            return
-
-    def gen_zpec(self,rand_seed,host=None):
-        if host=None:
-            vpec = np.random.default_rng(rand_seed).normal(
-                loc=self.mean_vpec,
-                scale=self.sig_vpec,
-                size=self.n_sn)
-
-            if 'vp_sight' in self.host.names:
-                self.vpec = self.host['vp_sight']
-        else:
-            vpec = host.vpec
-        return vpec
-
-    def gen_coh_scatter(self):
-        ''' Generate x0/mB parameters for SALT2 '''
-        mag_smear = np.random.default_rng(self.rand_seed['coh_scatter']).normal(loc=0, scale=self.sigmaM, size=self.n_sn)
-        return mag_smear
 
 class ObsTable:
     __slots__ = ['obs_dic','ra_size','dec_size']
