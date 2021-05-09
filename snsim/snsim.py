@@ -69,14 +69,14 @@ class SnSim:
         +----------------------------------------------------------------------------------+
         '''
 
-    # Load param dict from a yaml or by using main.py
+    # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
             self.sim_cfg = param_dic
-            self.yml_path = param_dic['yaml_path']
+            self._yml_path = param_dic['yaml_path']
 
         elif isinstance(param_dic, str):
-            self.yml_path = param_dic
-            with open(self.yml_path, "r") as f:
+            self._yml_path = param_dic
+            with open(self._yml_path, "r") as f:
                 self.sim_cfg = yaml.safe_load(f)
 
         # Check if there is a db_file
@@ -90,18 +90,7 @@ class SnSim:
             self.duration = None
         else:
             self.use_rate = True
-            if 'sn_rate' in self.sim_cfg['sn_gen']:
-                self.sn_rate = float(self.sim_cfg['sn_gen']['sn_rate'])
-            else:
-                self.sn_rate = 3e-5  # SN/Mpc^3/year
-            if 'rate_pw' in self.sim_cfg['sn_gen']:
-                self.rate_pw = self.sim_cfg['sn_gen']['rate_pw']
-            else:
-                self.rate_pw = 0  # No dependance in redshift
-            if 'duration' in self.sim_cfg['sn_gen']:
-                self.duration = self.sim_cfg['sn_gen']['duration']
-            else:
-                self.duration = None
+
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #--------------- vpec_gen section -----------------#
@@ -119,30 +108,14 @@ class SnSim:
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #------------ Randseed Initialisation -------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
+        self._random_seed = None
 
-        if 'randseed' in self.sim_cfg['sn_gen']:
-            self.randseed = int(self.sn_gen['randseed'])
-        else:
-            self.randseed = np.random.randint(low=1000, high=100000)
+        self._obs = ObsTable(**self.obs_parameters)
+        self._generator = SNGen(self.sim_par)
 
-        randseeds = np.random.default_rng(
-            self.randseed).integers(
-            low=1000, high=100000, size=11)
-        self.randseeds = {'z_seed': randseeds[0],
-                          't0_seed': randseeds[1],
-                          'x0_seed': randseeds[2],
-                          'x1_seed': randseeds[3],
-                          'c_seed': randseeds[4],
-                          'coord_seed': randseeds[5],
-                          'vpec_seed': randseeds[6],
-                          'smearM_seed': randseeds[7],
-                          'sigflux_seed': randseeds[8],
-                          'nsn_seed': randseeds[9],
-                          'smearmod_seed': randseeds[10]
-                          }
     @property
     def sim_name(self):
-        return self.sim_cfg['data_cfg']['sim_name']
+        return self.sim_cfg['data']['sim_name']
 
     @property
     def write_format(self):
@@ -164,9 +137,9 @@ class SnSim:
     @property
     def survey_prop(self):
         dic = {'ra_size': np.radians(self.sim_cfg['db_config']['ra_size']),
-                           'dec_size': np.radians(self.sim_cfg['db_config']['dec_size']),
-                           'gain': self.sim_cfg['db_config']['gain']
-                           }
+                'dec_size': np.radians(self.sim_cfg['db_config']['dec_size']),
+                'gain': self.sim_cfg['db_config']['gain']
+                }
         # zeropoint
         if 'zp' in self.sim_cfg['db_config']:
             dic['zp'] = self.sim_cfg['db_config']['zp']
@@ -197,8 +170,21 @@ class SnSim:
         return params
 
     @property
-    def obs(self):
-        return ObsTable(**self.obs_parameters)
+    def snc_model_par(self):
+        if 'salt_gen' in self.sim_cfg:
+            model_tag = 'salt'
+            model_dir = self.sim_cfg['salt_gen']['salt_dir']
+            version = self.sim_cfg['salt_gen']['version']
+            if version not in [2, 3]:
+                raise ValueError("Support SALT version = 2 or 3")
+
+        params = {'model_tag': model_tag,
+                  'model_dir': model_dir,
+                  'version': version}
+
+        if 'smear_mod' in self.sim_cfg['sn_gen']:
+            params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
+        return params
 
     @property
     def sn_model_par(self):
@@ -233,39 +219,27 @@ class SnSim:
 
     @property
     def sim_par(self):
-        return {'cosmo' : self.cosmo, 'cmb': self.cmb, 'sn_model_par': self.sn_model_par}
+        return {'snc_model_par': self.snc_model_par,
+                'cosmo': self.cosmo,
+                'cmb': self.cmb,
+                'sn_model_par': self.sn_model_par}
 
     @property
-    def sim_model(self):
-        if 'salt_gen' in self.sim_cfg:
-            salt_dir = self.sim_cfg['salt_gen']['salt_dir']
-            if self.sim_cfg['salt_gen']['version'] == 2:
-                source = snc.SALT2Source(modeldir=salt_dir)
-            elif self.sim_cfg['salt_gen']['version'] == 3:
-                source = snc.SALT3Source(modeldir=salt_dir)
-            else :
-                raise RuntimeError("Support SALT version = 2 or 3")
+    def obs(self):
+        if self._obs._survey_prop != self.survey_prop:
+            self._obs = ObsTable(**self.obs_parameters)
+        return self._obs
 
-        model = snc.Model(source=source)
-
-        if 'smear_mod' in self.sim_cfg['sn_gen']:
-            smear_mod = self.sim_cfg['sn_gen']['smear_mod']
-            if smear_mod == 'G10':
-                model.add_effect(sct.G10(self.sim_model),'G10_','rest')
-
-            elif smear_mod[:3] == 'C11':
-                if smear_mod == ('C11' or 'C11_0'):
-                    model.add_effect(sct.C11(self.sim_model),'C11_','rest')
-                elif smear_mod == 'C11_1':
-                    model.add_effect(sct.C11(self.sim_model),'C11_','rest')
-                    model.set(C11_Cuu=1.)
-                elif smear_mod == 'C11_2':
-                    model.add_effect(sct.C11(self.sim_model),'C11_','rest')
-                    model.set(C11_Cuu=-1.)
-        return model
+    @property
+    def generator(self):
+        not_same = (self._generator._sim_par != self.sim_par)
+        if not_same:
+            self._generator = SNGen(self.sim_par)
+        return self._generator
 
     @property
     def fit_model(self):
+        print('fit_model')
         if 'salt_gen' in self.sim_cfg:
             self.salt_dir = self.sim_cfg['salt_gen']['salt_dir']
             if self.salt_gen['version'] == 2:
@@ -278,22 +252,78 @@ class SnSim:
 
     @property
     def nep_cut(self):
+        snc_mintime, snc_maxtime = self.generator.snc_model_time
         if 'nep_cut' in self.sim_cfg['sn_gen']:
             nep_cut = self.sim_cfg['sn_gen']['nep_cut']
             if isinstance(nep_cut, (int)):
                 nep_cut = [
                     (nep_cut,
-                     self.sim_model.mintime(),
-                     self.sim_model.maxtime())]
+                     snc_mintime,
+                     snc_maxtime)]
             elif isinstance(nep_cut, (list)):
                 for i in range(len(self.nep_cut)):
                     if len(self.nep_cut[i]) < 3:
-                        nep_cut[i].append(self.sim_model.mintime())
-                        nep_cut[i].append(self.sim_model.maxtime())
+                        nep_cut[i].append(snc_mintime)
+                        nep_cut[i].append(snc_maxtime)
         else:
-            nep_cut = [(1, self.sim_model.mintime(), self.sim_model.maxtime())]
+            nep_cut = [(1, snc_mintime, snc_maxtime)]
         return nep_cut
 
+    @property
+    def rand_seed(self):
+        if 'randseed' in self.sim_cfg['sn_gen']:
+            return int(self.sim_cfg['sn_gen']['randseed'])
+        elif self._random_seed is None:
+            self._random_seed = np.random.randint(low=1000, high=100000)
+        return self._random_seed
+
+    @property
+    def z_range(self):
+        return self.sim_cfg['sn_gen']['z_range']
+
+
+    @property
+    def survey_duration(self):
+        if 'duration' not in self.sim_cfg['sn_gen']:
+            duration = (self.obs.mintime() - self.obs.maxtime())/365.25
+        else:
+            duration = self.sim_cfg['sn_gen']['duration']
+        return duration
+
+    @property
+    def z_span(self):
+        z_min, z_max = self.z_range
+        rate_pw = self.sim_cfg['sn_gen']['rate_pw']
+        dz = (z_max-z_min)/(100*(1+rate_pw*z_max))
+        n_bins = int((z_max - z_min) / dz)
+        z_bins = np.linspace(z_min, z_max - dz, n_bins)
+        return  {'z_bins': z_bins, 'dz': dz, 'n_bins': n_bins }
+
+    @property
+    def sn_rate_z0(self):
+        if 'sn_rate' and 'rate_pw' in  self.sim_cfg['sn_gen'] :
+            return float(self.sim_cfg['sn_gen']['sn_rate']), self.sim_cfg['sn_gen']['rate_pw']
+        else:
+            return 3e-5, 0
+
+    def sn_rate(self,z):
+        rate_z0, pw = self.sn_rate_z0
+        return  rate_z0 * (1 + z)**pw
+
+    def gen_sn_rate(self, z):
+        '''Give the rate of SN Ia given a volume'''
+
+        cosmo = FlatLambdaCDM(**self.cosmo)
+        rate = self.sn_rate(z)# Rate in Nsn/Mpc^3/year
+        shell_vol = 4 * np.pi / 3 * (pw(cosmo.comoving_distance(
+            z + self.z_span['dz']).value, 3) - pw(cosmo.comoving_distance(z).value, 3))
+        time_rate = rate * shell_vol
+        return time_rate
+
+    def gen_n_sn(self,rand_seed):
+        z_bins = self.z_span['z_bins']
+        time_rate = self.gen_sn_rate(z_bins)
+        return np.random.default_rng(rand_seed).poisson(self.survey_duration * time_rate)
 
     def simulate(self):
         '''Simulation routine :
@@ -303,30 +333,30 @@ class SnSim:
         4- WRITE LC TO A FITS FILE
         '''
 
-        print(su.sn_sim_print)
+        #print(su.sn_sim_print)
         print('-------------------------------------------')
         print(f'SIM NAME : {self.sim_name}')
-        print(f'CONFIG FILE : {self.yml_path}')
-        print(f'OBS FILE : {self.db_file}')
-        print(f'SIM WRITE DIRECTORY : {self.write_path}')
-        print(f'SIMULATION RANDSEED : {self.randseed}')
+        print(f'CONFIG FILE : {self._yml_path}')
+        print(f"OBS FILE : {self.obs_parameters['db_file']}")
+        print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
+        print(f'SIMULATION RANDSEED : {self.rand_seed}')
         print(f'-------------------------------------------\n')
 
         if self.use_rate:
-            if self.duration is None:
+            if self.survey_duration is None:
                 duration_str = f'Survey duration is given by cadence file'
             else:
-                duration_str = f'Survey duration is {self.duration} year(s)'
+                duration_str = f'Survey duration is {self.survey_duration} year(s)'
 
-            print(f"Generate with a rate of r_v = {self.sn_rate}*(1+z)^{self.rate_pw} SN/Mpc^3/year")
+            print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
             print(duration_str + '\n')
         else:
             print(f"Generate {self.n_sn} SN Ia")
 
-        if self.use_dbcut:
-            for k in self.db_cut:
+        if self.obs_parameters['db_cut'] is not None:
+            for k,v in self.obs_parameters['db_cut'].items():
                 conditions_str=''
-                for cond in self.db_cut[k]:
+                for cond in v:
                     conditions_str+=str(cond)+' OR '
                 conditions_str=conditions_str[:-4]
                 print(f'Select {k}: '+conditions_str)
@@ -343,8 +373,7 @@ class SnSim:
             print(print_cut)
         print('\n')
 
-
-
+        self.use_host = False
         if self.use_host:
             self.host = []
             with fits.open(self.host_file) as hduf:
@@ -353,13 +382,11 @@ class SnSim:
 
         start_time = time.time()
         ############################
-        self.obs = ObsTable('/renoir/carreres/Documents/Structure_Growth/My_sim_vpec/db_files/ztf.db',survey_prop,{'r':'ztfr','g':'ztfg','i':'ztfi'})
-        ############################
-        sep2 = su.box_output(su.sep, '------------')
+        #sep2 = su.box_output(su.sep, '------------')
         line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
-        print(su.sep)
-        print(su.box_output(su.sep, line))
-        print(sep2)
+        #print(su.sep)
+        #print(su.box_output(su.sep, line))
+        #print(sep2)
 
         sim_time = time.time()
         ############################
@@ -368,10 +395,11 @@ class SnSim:
         else:
             self.fix_nsn_sim()
         ############################
-        l = f'{self.n_sn} SN lcs generated in {time.time() - sim_time:.1f} seconds'
-        print(su.box_output(su.sep, l))
-        print(sep2)
-
+        l = f'{len(self.sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
+        print(l)
+        #print(su.box_output(su.sep, l))
+        #print(sep2)
+        '''
         write_time = time.time()
         self.write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
@@ -386,33 +414,8 @@ class SnSim:
         print('\n OUTPUT FILES : ')
         for format in self.write_format:
             print('- '+self.write_path+self.sim_name+'.'+format)
+        '''
         return
-
-    def gen_param_array(self):
-        '''GENERATE Z,T0,SALT2 PARAMS'''
-
-        # Init z range
-        self.z_range = self.sn_gen['z_range']
-        self.sigmaM = self.sn_gen['mag_smear']  # To change
-
-        # Init vpec_gen
-        self.mean_vpec = self.vpec_gen['mean_vpec']
-        self.sig_vpec = self.vpec_gen['sig_vpec']
-
-        # Init M0
-        self.M0 = self.sn_gen['M0']
-
-        # Init x1 and c
-        self.mean_x1 = self.salt_gen['mean_x1']
-        self.sig_x1 = self.salt_gen['sig_x1']
-
-        self.mean_c = self.salt_gen['mean_c']
-        self.sig_c = self.salt_gen['sig_c']
-
-        # Redshift generation
-        if not self.use_host and not self.use_rate:
-            self.zcos = self.gen_redshift_cos()
-
 
     def read_host_file(self):
         stime = time.time()
@@ -426,14 +429,6 @@ class SnSim:
         host_list = host_list[host_list['redshift'] < self.z_range[1]]
         return host_list
 
-    def gen_sn_rate(self, z):
-        '''Give the rate of SN Ia given a volume'''
-        rate = self.sn_rate * pw((1 + z),
-                                 self.rate_pw)  # Rate in Nsn/Mpc^3/year
-        shell_vol = 4 * np.pi / 3 * (pw(self.cosmo.comoving_distance(
-            z + self.dz).value, 3) - pw(self.cosmo.comoving_distance(z).value, 3))
-        time_rate = rate * shell_vol
-        return time_rate
 
     def cadence_sim(self):
         '''Use a cadence file to produce SN according to a rate:
@@ -445,11 +440,8 @@ class SnSim:
                 5- Generate z for in each shell uniform in the interval [z,z+dz]
                 6- Apply observation and selection cuts to SN
         '''
-        if self.duration is None:
-            self.duration = np.max(
-                self.obs_dic['expMJD']) - np.min(self.obs_dic['expMJD'])
-        # dz such as rv(z+dz)<(1+1e-2)rv(z)
-        self.dz = (self.z_range[1]-self.z_range[0])/(100*(1+self.rate_pw*self.z_range[1]))
+
+        n_sn_seed, sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low=1000, high=100000, size=2)
 
         if self.use_host:
             host_list = self.read_host_file()
@@ -457,24 +449,8 @@ class SnSim:
             diff = redshift_copy[1:] - redshift_copy[:-1]
             # avoid dz < gap between redshift
             self.dz = np.max([self.dz, 2 * np.max(diff)])
-        nstep = int((self.z_range[1] - self.z_range[0]) / self.dz)
-        z_bins = np.linspace(self.z_range[0], self.z_range[1] - self.dz, nstep)
-        time_rate = self.gen_sn_rate(z_bins)
-        n_sn = np.random.default_rng(
-            self.randseeds['nsn_seed']).poisson(
-            self.duration * time_rate)
-        self.n_sn_gen = np.sum(n_sn)
-        t0_tmp = np.random.default_rng(
-            self.randseeds['t0_seed']).uniform(
-            np.min(
-                self.obs_dic['expMJD']), np.max(
-                self.obs_dic['expMJD']), size=self.n_sn_gen)
 
-        self.ra = []
-        self.dec = []
-        self.sim_t0 = []
-        self.zcos = []
-        self.n_sn = 0
+        n_sn = self.gen_n_sn(n_sn_seed)
 
         if self.use_host:
             choice_seeds = np.random.default_rng(
@@ -508,19 +484,16 @@ class SnSim:
             self.host = host_list[host_idx]
 
         else:
-            sn_list_tmp = []
-            for n,z in zip(n_sn,z_bins):
-                Gen = SNGen(n,[z,z+self.dz],self.rand_seed,self.sigmaM)
-                sn_list += Gen()
-
+            sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(low=1000, high=100000, size=np.sum(n_sn))
             self.sn_list = []
-            for sn in sn_list_tmp:
-                sn.epochs = ObsTable.epochs_selection(sn)
-                if sn.pass_cut(self.nep_cut):
-                    sn.gen_flux()
-                    self.sn_list.append(sn)
-                    self.n_sn += 1
-        return
+            for n, z, rs in zip(n_sn, self.z_span['z_bins'], sn_bins_seed):
+                sn_list_tmp = self.generator(n,[z,z+self.z_span['dz']],rs)
+                for sn in sn_list_tmp:
+                    sn.epochs = self.obs.epochs_selection(sn)
+                    if sn.pass_cut(self.nep_cut):
+                        sn.gen_flux()
+                        self.sn_list.append(sn)
+        return None
 
     def fix_nsn_sim(self):
         '''Use a cadence db file to produce obs :
@@ -641,131 +614,4 @@ class SnSim:
         if 'pkl' in self.write_format:
             with open(self.write_path+self.sim_name+'_lcs.pkl','wb') as file:
                 pickle.dump(self.sim_lc,file)
-        return
-
-class OpenSim:
-    def __init__(self, sim_file, SALT2_dir):
-        '''Copy some function of snsim to allow to use sim file'''
-        self.salt2_dir = SALT2_dir
-        source = snc.SALT2Source(modeldir=self.salt2_dir)
-        self.model = snc.Model(source=source)
-        self.file_path, self.file_ext= os.path.splitext(sim_file)
-
-        if self.file_ext == '.fits':
-            self.sim_lc = []
-            self.meta={}
-            with fits.open(sim_file) as sf:
-                self.header=sf[0].header
-                self.n_sn = sf[0].header['n_sn']
-                meta=True
-                for i,hdu in enumerate(sf[1:]):
-                    data = hdu.data
-                    tab = Table(data)
-                    tab.meta = hdu.header
-
-                    if meta:
-                        meta=False
-                        for k in tab.meta:
-                            self.meta[k]=np.zeros(self.n_sn,dtype='object')
-                    for k in tab.meta:
-                        self.meta[k][i]=tab.meta[k]
-
-                    self.sim_lc.append(tab)
-        elif self.file_ext == '.pkl':
-            with open(sim_file,'rb') as f:
-                self.sim_lc = pickle.load(f)
-            self.n_sn=len(self.sim_lc)
-
-        self.fit_res = np.asarray(['NaN'] * self.n_sn, dtype='object')
-
-        return
-
-    def plot_lc(
-            self,
-            lc_id,
-            zp=25.,
-            mag=False,
-            plot_sim=True,
-            plot_fit=False,
-            residuals=False):
-        '''Ploting the ligth curve of number 'lc_id' sn'''
-        if plot_sim:
-            sim_model = self.model
-        else:
-            sim_model = None
-
-        if plot_fit:
-            if self.fit_res[lc_id] == 'No_fit':
-                raise ValueError("This lc wasn't fitted")
-            fit_model = self.fit_res[lc_id][1]
-            fit_cov = self.fit_res[lc_id][0]['covariance'][1:, 1:]
-        else:
-            fit_model = None
-            fit_cov = None
-        su.plot_lc(
-            self.sim_lc[lc_id],
-            zp=zp,
-            mag=mag,
-            sim_model=self.model,
-            fit_model=fit_model,
-            fit_cov=fit_cov,
-            residuals=residuals)
-        return
-
-    def fitter(self, id):
-        '''Use sncosmo to fit sim lc'''
-        try:
-            res = su.snc_fit(self.sim_lc[id], self.model)
-        except BaseException:
-            self.fit_res[id] = 'NaN'
-            return
-        self.fit_res[id] = res
-        return
-
-    def fit_lc(self, lc_id=None):
-        '''Send the lc and model to fit to self.fitter'''
-        if lc_id is None:
-            for i in range(self.n_sn):
-                # set the model's redshift.
-                self.model.set(z=self.sim_lc[i].meta['z'])
-                self.fitter(i)
-        else:
-            self.model.set(z=self.sim_lc[lc_id].meta['z'])
-            self.fitter(lc_id)
-        return
-
-    def write_fit(self):
-        sim_meta_keys=['n_sn', 'alpha', 'beta', 'M0', 'SIG_M']
-        sim_meta={}
-
-        #Temporary solution
-        if self.file_ext == '.fits':
-            for k in sim_meta_keys:
-                sim_meta[k]=self.header[k]
-        else:
-            sim_meta={}
-
-        sim_lc_meta = {'sn_id': [],
-                       'ra': [],
-                       'dec': [],
-                       'vpec': [],
-                       'zpec': [],
-                       'z2cmb': [],
-                       'zcos': [],
-                       'zCMB': [],
-                       'z': [],
-                       'sim_x0': [],
-                       'sim_mb': [],
-                       'sim_x1': [],
-                       'sim_c': [],
-                       'sim_mu': [],
-                       'm_smear': []
-                           }
-
-
-        for lc in self.sim_lc:
-            for k in sim_lc_meta:
-                sim_lc_meta[k].append(lc.meta[k])
-
-        su.write_fit(sim_lc_meta,self.fit_res,self.file_path+'_fit.fits',sim_meta=sim_meta)
         return
