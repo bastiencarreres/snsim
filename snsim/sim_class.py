@@ -5,6 +5,166 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 from . import sim_utils as su
 
+class SnHost:
+    def __init__(self,host_file,z_range = None):
+        self.z_range = z_range
+        self.host_file = host_file
+        self.host_list = self.read_host_file()
+        self._max_dz = None
+
+    @property
+    def max_dz(self):
+        if self._max_dz is None:
+            redshift_copy = np.sort(np.copy(self.host_list['redshift']))
+            diff = redshift_copy[1:] - redshift_copy[:-1]
+            self._max_dz = np.max(diff)
+        return self._max_dz
+
+    def read_host_file(self):
+        #stime = time.time()
+        with fits.open(self.host_file) as hostf:
+            host_list = hostf[1].data[:]
+        host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
+        #l = f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
+        #print(su.box_output(su.sep, l))
+        #print(su.box_output(su.sep, '------------'))
+        if self.z_range is not None:
+            return self.host_in_range(host_list,self.z_range)
+        else:
+            return host_list
+
+    @staticmethod
+    def host_in_range(host,z_range):
+        selec = host['redshift'] > z_range[0]
+        selec *= host['redshift'] < z_range[1]
+        return host[selec]
+
+    def random_host(self, n_host, z_range, random_seed):
+        if z_range[0] < self.z_range[0] or z_range[1] > self.z_range[1]:
+            raise ValueError(f'z_range must be between {self.z_range[0]} and {self.z_range[1]}')
+        elif z_range[0] > z_range[1]:
+            raise ValueError(f'z_range[0] must be < to z_range[1]')
+        host_available = self.host_in_range(self.host_list, z_range)
+        host_choice = np.random.default_rng(random_seed).choice(host_available, size=n_host, replace=False)
+        if len(host_choice) < n_host:
+            raise RuntimeError('Not enough host in the shell')
+        return host_choice
+
+
+class ObsTable:
+    def __init__(self,db_file,survey_prop,band_dic=None,db_cut=None,add_keys=[]):
+        self._survey_prop = survey_prop
+        self.db_cut = db_cut
+        self.db_file = db_file
+        self.band_dic = band_dic
+        self.add_keys = add_keys
+        self.obs_table = self.extract_from_db()
+
+    @property
+    def field_size(self):
+        return self._survey_prop['ra_size'],self._survey_prop['dec_size']
+
+    @property
+    def gain(self):
+        return self._survey_prop['gain']
+
+    @property
+    def zp(self):
+        if 'zp' in self._survey_prop:
+            return self._survey_prop['zp']
+        else:
+            return 'zp_in_obs'
+
+    @property
+    def mintime(self):
+        return np.min(self.obs_table['expMJD'])
+
+    @property
+    def maxtime(self):
+        return np.max(self.obs_table['expMJD'])
+
+    def extract_from_db(self):
+        '''Read db file and extract relevant information'''
+        dbf = sqlite3.connect(self.db_file)
+
+        keys = ['expMJD',
+                'filter',
+                'fieldRA',
+                'fieldDec',
+                'fiveSigmaDepth']+self.add_keys
+
+        where=''
+        if self.db_cut != None:
+            where=" WHERE "
+            for cut_var in self.db_cut:
+                where+="("
+                for cut in self.db_cut[cut_var]:
+                    cut_str=f"{cut}"
+                    where+=f"{cut_var}{cut_str} OR "
+                where=where[:-4]
+                where+=") AND "
+            where=where[:-5]
+        obs_dic={}
+        for k in keys:
+            query = 'SELECT '+k+' FROM Summary'+where+';'
+            values = dbf.execute(query)
+            obs_dic[k] = np.array([a[0] for a in values])
+        return Table(obs_dic)
+
+    def epochs_selection(self, SN):
+        '''Select epochs that match the survey observations'''
+        ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
+        ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
+        ra,dec = SN.coord
+        # time selection
+        epochs_selec = (self.obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
+            (self.obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
+        # use to avoid 1e43 errors
+        epochs_selec *= (self.obs_table['fiveSigmaDepth'] > 0)
+        # Find the index of the field that pass time cut
+        epochs_selec_idx = np.where(epochs_selec)
+        # Compute the coord of the SN in the rest frame of each field
+        ra_size, dec_size = self.field_size
+        ra_field_frame, dec_field_frame = change_sph_frame(ra,dec,self.obs_table['fieldRA'][epochs_selec],self.obs_table['fieldDec'][epochs_selec])
+        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < ra_size/2 # ra selection
+        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size/2 # dec selection
+        if np.sum(epochs_selec) == 0:
+            return None
+        return self.make_obs_table(epochs_selec)
+
+
+    def make_obs_table(self,epochs_selec):
+        # Capture noise and filter
+        mlim5 = self.obs_table['fiveSigmaDepth'][epochs_selec]
+        band = self.obs_table['filter'][epochs_selec].astype('U27')
+
+        # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
+        if self.band_dic is not None:
+            band = np.array(list(map(self.band_dic.get,band)))
+
+        if self.zp != 'zp_in_obs':
+            zp = [self.zp] * np.sum(epochs_selec)
+        elif isinstance(zp,(int, float)):
+            zp = self.obs_table['zp'][epochs_selec]
+        else:
+            raise ValueError("zp is not define")
+
+        # Convert maglim to flux noise (ADU)
+        skynoise = pw(10., 0.4 * (self.zp - mlim5)) / 5
+
+        # Create obs table
+        obs = Table({'time': self.obs_table['expMJD'][epochs_selec],
+                      'band': band,
+                      'gain': [self.gain] * np.sum(epochs_selec),
+                      'skynoise': skynoise,
+                      'zp': zp,
+                      'zpsys': ['ab'] * np.sum(epochs_selec)})
+
+        for k in self.add_keys:
+            obs[k] = self.obs_table[k][epochs_selec]
+        return obs
+
+
 class SNGen:
     def __init__(self,sim_par, host=None):
         self._sim_par = sim_par
@@ -76,14 +236,21 @@ class SNGen:
 
     def __call__(self,n_sn,z_range,rand_seed):
         rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=7)
-
         t0 = self.gen_peak_time(n_sn,rand_seeds[0])
-        ra, dec = self.gen_coord(n_sn,rand_seeds[1])
-        zcos = self.gen_zcos(n_sn,z_range,rand_seeds[2])
-        vpec = self.gen_vpec(n_sn,rand_seeds[3])
         mag_smear = self.gen_coh_scatter(n_sn,rand_seeds[4])
         noise_rand_seed = self.gen_noise_rand_seed(n_sn,rand_seeds[5])
         model_par_sncosmo = self.gen_sncosmo_param(n_sn,rand_seeds[6:8])
+
+        if self.host is not None:
+            host = self.host.random_host(n_sn,z_range,rand_seeds[1])
+            ra = host['ra']
+            dec = host['dec']
+            zcos = host['redshift']
+            vpec = host['vp_sight']
+        else:
+            ra, dec = self.gen_coord(n_sn,rand_seeds[1])
+            zcos = self.gen_zcos(n_sn,z_range,rand_seeds[2])
+            vpec = self.gen_vpec(n_sn,rand_seeds[3])
 
         sn_par = [{'zcos': z,
                    'sim_t0': t,
@@ -167,6 +334,7 @@ class SNGen:
     def gen_noise_rand_seed(self,n_sn,rand_seed):
         return np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=n_sn)
 
+
 class SN:
     '''SN object
     Data structure :
@@ -205,7 +373,21 @@ class SN:
         self._epochs = None
         self.sim_lc = None
         self._fit_model = None
+        self._ID = None
         return
+
+    @property
+    def ID(self):
+        if self._ID is None:
+            print('No id')
+        return self._id
+
+    @ID.setter
+    def ID(self,ID):
+        if isinstance(ID, int):
+            self._ID = ID
+        else:
+            print('SN ID must mbe an integer')
 
     @property
     def sim_t0(self):
@@ -346,122 +528,12 @@ class SN:
             self.sim_lc.meta['zCMB'] = self.zCMB
             self.sim_lc.meta['ra'] = self.coord[0]
             self.sim_lc.meta['dec'] = self.coord[1]
-            self.sim_lc.meta['sn_id'] = 1
             self.sim_lc.meta['sim_mb'] = self.sim_mb
             self.sim_lc.meta['sim_mu'] = self.sim_mu
             self.sim_lc.meta['m_smear'] = self.mag_smear
+            if self.ID is not None:
+                self.sim_lc.meta['sn_id'] = self.ID
             return
 
-class ObsTable:
-    def __init__(self,db_file,survey_prop,band_dic=None,db_cut=None,add_keys=[]):
-        self._survey_prop = survey_prop
-        self.db_cut = db_cut
-        self.db_file = db_file
-        self.band_dic = band_dic
-        self.add_keys = add_keys
-        self.obs_dic={}
-        self.extract_from_db()
-        return
-
-    @property
-    def field_size(self):
-        return self._survey_prop['ra_size'],self._survey_prop['dec_size']
-
-    @property
-    def gain(self):
-        return self._survey_prop['gain']
-
-    @property
-    def zp(self):
-        if 'zp' in self._survey_prop:
-            return self._survey_prop['zp']
-        else:
-            return 'zp_in_obs'
-
-    @property
-    def mintime(self):
-        return np.min(self.obs_dic['expMJD'])
-
-    @property
-    def maxtime(self):
-        return np.max(self.obs_dic['expMJD'])
-
-    def extract_from_db(self):
-        '''Read db file and extract relevant information'''
-        dbf = sqlite3.connect(self.db_file)
-
-        keys = ['expMJD',
-                'filter',
-                'fieldRA',
-                'fieldDec',
-                'fiveSigmaDepth']+self.add_keys
-
-        where=''
-        if self.db_cut != None:
-            where=" WHERE "
-            for cut_var in self.db_cut:
-                where+="("
-                for cut in self.db_cut[cut_var]:
-                    cut_str=f"{cut}"
-                    where+=f"{cut_var}{cut_str} OR "
-                where=where[:-4]
-                where+=") AND "
-            where=where[:-5]
-        for k in keys:
-            query = 'SELECT '+k+' FROM Summary'+where+';'
-            values = dbf.execute(query)
-            self.obs_dic[k] = np.array([a[0] for a in values])
-        return
-
-    def epochs_selection(self, SN):
-        '''Select epochs that match the survey observations'''
-        ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
-        ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
-        ra,dec = SN.coord
-        # time selection
-        epochs_selec = (self.obs_dic['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
-            (self.obs_dic['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
-        # use to avoid 1e43 errors
-        epochs_selec *= (self.obs_dic['fiveSigmaDepth'] > 0)
-        # Find the index of the field that pass time cut
-        epochs_selec_idx = np.where(epochs_selec)
-        # Compute the coord of the SN in the rest frame of each field
-        ra_size, dec_size = self.field_size
-        ra_field_frame, dec_field_frame = change_sph_frame(ra,dec,self.obs_dic['fieldRA'][epochs_selec],self.obs_dic['fieldDec'][epochs_selec])
-        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < ra_size/2 # ra selection
-        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size/2 # dec selection
-        if np.sum(epochs_selec) == 0:
-            return None
-        return self.make_obs_table(epochs_selec)
-
-
-    def make_obs_table(self,epochs_selec):
-        # Capture noise and filter
-        mlim5 = self.obs_dic['fiveSigmaDepth'][epochs_selec]
-        band = self.obs_dic['filter'][epochs_selec].astype('U27')
-
-        # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
-        if self.band_dic is not None:
-            band = np.array(list(map(self.band_dic.get,band)))
-
-        if self.zp != 'zp_in_obs':
-            zp = [self.zp] * np.sum(epochs_selec)
-        elif isinstance(zp,(int, float)):
-            zp = self.obs_dic['zp'][epochs_selec]
-        else:
-            raise ValueError("zp is not define")
-
-        # Convert maglim to flux noise (ADU)
-        skynoise = pw(10., 0.4 * (self.zp - mlim5)) / 5
-
-        # Create obs table
-        obs = Table({'time': self.obs_dic['expMJD'][epochs_selec],
-                      'band': band,
-                      'gain': [self.gain] * np.sum(epochs_selec),
-                      'skynoise': skynoise,
-                      'zp': zp,
-                      'zpsys': ['ab'] * np.sum(epochs_selec)})
-
-        for k in self.add_keys:
-            obs[k] = self.obs_dic[k][epochs_selec]
-        return obs
+    def get_lc_hdu(self):
+        return fits.table_to_hdu(self.sim_lc)

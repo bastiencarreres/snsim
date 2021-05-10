@@ -85,54 +85,31 @@ class SnSim:
 
         # cadence sim or n fixed
         if 'n_sn' in self.sim_cfg['sn_gen']:
-            self.n_sn = int(self.sim_cfg['sn_gen']['n_sn'])
-            self.use_rate = False
-            self.duration = None
+            self._use_rate = False
         else:
-            self.use_rate = True
+            self._use_rate = True
 
-
-    #++++++++++++++++++++++++++++++++++++++++++++++++++#
-    #--------------- vpec_gen section -----------------#
-    #++++++++++++++++++++++++++++++++++++++++++++++++++#
-
-        if 'host_file' in self.sim_cfg['vpec_gen']:
-            self.use_host = True
-            self.host_file = self.sim_cfg['vpec_gen']['host_file']
-        else:
-            self.use_host = False
-
-    # Minimal nbr of epochs in LC
-
+        self._sn_list = None
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
     #------------ Randseed Initialisation -------------#
     #++++++++++++++++++++++++++++++++++++++++++++++++++#
         self._random_seed = None
-
+        self._host = None
         self._obs = ObsTable(**self.obs_parameters)
-        self._generator = SNGen(self.sim_par)
+        self._generator = SNGen(self.sim_par, host=self.host)
 
     @property
     def sim_name(self):
         return self.sim_cfg['data']['sim_name']
 
     @property
-    def write_format(self):
-        if 'write_format' in self.sim_cfg['data_cfg']['write_format']:
-            write_format = self.sim_cfg['data_cfg']['write_format']
-            if isinstance(write_format,str):
-                if write_format not in ['fits','pkl']:
-                    raise ValueError('write_format avaible are fits and pkl')
-                write_format = [write_format]
-
-            elif isinstance(self.data_cfg['write_format'],list):
-                for format in self.data_cfg['write_format']:
-                    if format not in ['fits','pkl']:
-                        raise ValueError('write_format avaible are fits and pkl')
+    def n_sn(self):
+        if self._sn_list is None:
+            print('You have to run the simulation')
+            return
         else:
-            write_format =  ['fits', 'pkl']
-        return write_format
+            return len(self._sn_list)
 
     @property
     def survey_prop(self):
@@ -238,6 +215,16 @@ class SnSim:
         return self._generator
 
     @property
+    def host(self):
+        if self._host is not None:
+            return self._host
+        elif 'host_file' in self.sim_cfg['vpec_gen']:
+            self._host = SnHost(self.sim_cfg['vpec_gen']['host_file'],self.z_range)
+            return self._host
+        else:
+            return None
+
+    @property
     def fit_model(self):
         print('fit_model')
         if 'salt_gen' in self.sim_cfg:
@@ -284,7 +271,9 @@ class SnSim:
 
     @property
     def survey_duration(self):
-        if 'duration' not in self.sim_cfg['sn_gen']:
+        if 'n_sn' in self.sim_cfg['sn_gen']:
+            return None
+        elif 'duration' not in self.sim_cfg['sn_gen']:
             duration = (self.obs.mintime() - self.obs.maxtime())/365.25
         else:
             duration = self.sim_cfg['sn_gen']['duration']
@@ -295,6 +284,9 @@ class SnSim:
         z_min, z_max = self.z_range
         rate_pw = self.sim_cfg['sn_gen']['rate_pw']
         dz = (z_max-z_min)/(100*(1+rate_pw*z_max))
+        if self.host is not None:
+            host_max_dz = self.host.max_dz
+            dz = np.max([dz, 2 * host_max_dz])
         n_bins = int((z_max - z_min) / dz)
         z_bins = np.linspace(z_min, z_max - dz, n_bins)
         return  {'z_bins': z_bins, 'dz': dz, 'n_bins': n_bins }
@@ -312,9 +304,8 @@ class SnSim:
 
     def gen_sn_rate(self, z):
         '''Give the rate of SN Ia given a volume'''
-
         cosmo = FlatLambdaCDM(**self.cosmo)
-        rate = self.sn_rate(z)# Rate in Nsn/Mpc^3/year
+        rate = self.sn_rate(z + 0.5 * self.z_span['dz'])# Rate in Nsn/Mpc^3/year
         shell_vol = 4 * np.pi / 3 * (pw(cosmo.comoving_distance(
             z + self.z_span['dz']).value, 3) - pw(cosmo.comoving_distance(z).value, 3))
         time_rate = rate * shell_vol
@@ -342,16 +333,12 @@ class SnSim:
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
         print(f'-------------------------------------------\n')
 
-        if self.use_rate:
-            if self.survey_duration is None:
-                duration_str = f'Survey duration is given by cadence file'
-            else:
-                duration_str = f'Survey duration is {self.survey_duration} year(s)'
-
+        if self._use_rate:
+            duration_str = f'Survey duration is {self.survey_duration} year(s)'
             print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
             print(duration_str + '\n')
         else:
-            print(f"Generate {self.n_sn} SN Ia")
+            print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia")
 
         if self.obs_parameters['db_cut'] is not None:
             for k,v in self.obs_parameters['db_cut'].items():
@@ -373,61 +360,50 @@ class SnSim:
             print(print_cut)
         print('\n')
 
-        self.use_host = False
-        if self.use_host:
-            self.host = []
-            with fits.open(self.host_file) as hduf:
-                for hdu in hduf:
-                    self.host.append(hdu.data)
-
-        start_time = time.time()
         ############################
         #sep2 = su.box_output(su.sep, '------------')
-        line = f'OBS FILE read in {time.time()-start_time:.1f} seconds'
         #print(su.sep)
         #print(su.box_output(su.sep, line))
         #print(sep2)
 
         sim_time = time.time()
         ############################
-        if self.use_rate:
+        self._sn_list = []
+        if self._use_rate:
             self.cadence_sim()
         else:
             self.fix_nsn_sim()
         ############################
-        l = f'{len(self.sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
+        l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
         #print(su.box_output(su.sep, l))
         #print(sep2)
-        '''
+
         write_time = time.time()
         self.write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
-        print(su.box_output(su.sep, l))
-        print(sep2)
-        l = f'SIMULATION TERMINATED in {time.time() - start_time:.1f} seconds'
-        print(su.box_output(su.sep, l))
-        print(su.sep)
+        #print(su.box_output(su.sep, l))
+       # print(sep2)
+        #l = f'SIMULATION TERMINATED in {time.time() - start_time:.1f} seconds'
+       # print(su.box_output(su.sep, l))
+        #print(su.sep)
 
         # Init fit_res_table
-        self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
+        #self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
         print('\n OUTPUT FILES : ')
-        for format in self.write_format:
-            print('- '+self.write_path+self.sim_name+'.'+format)
-        '''
+        if isinstance(self.sim_cfg['data']['write_format'],str):
+            print(self.sim_cfg['data']['write_path']
+                  + self.sim_name
+                  + '.'
+                  + self.sim_cfg['data']['write_format'])
+        else:
+            for f in self.sim_cfg['data']['write_format']:
+                print('- '
+                      + self.sim_cfg['data']['write_path']
+                      + self.sim_name
+                      + '.'
+                      + f)
         return
-
-    def read_host_file(self):
-        stime = time.time()
-        with fits.open(self.host_file) as hostf:
-            host_list = hostf[1].data[:]
-        host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
-        l = f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
-        print(su.box_output(su.sep, l))
-        print(su.box_output(su.sep, '------------'))
-        host_list = host_list[host_list['redshift'] > self.z_range[0]]
-        host_list = host_list[host_list['redshift'] < self.z_range[1]]
-        return host_list
 
 
     def cadence_sim(self):
@@ -440,59 +416,20 @@ class SnSim:
                 5- Generate z for in each shell uniform in the interval [z,z+dz]
                 6- Apply observation and selection cuts to SN
         '''
-
         n_sn_seed, sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low=1000, high=100000, size=2)
-
-        if self.use_host:
-            host_list = self.read_host_file()
-            redshift_copy = np.sort(np.copy(host_list['redshift']))
-            diff = redshift_copy[1:] - redshift_copy[:-1]
-            # avoid dz < gap between redshift
-            self.dz = np.max([self.dz, 2 * np.max(diff)])
-
         n_sn = self.gen_n_sn(n_sn_seed)
+        sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(low=1000, high=100000, size=np.sum(n_sn))
 
-        if self.use_host:
-            choice_seeds = np.random.default_rng(
-                self.randseeds['coord_seed']).integers(
-                low=1000, high=10000, size=len(n_sn))
-            host_idx = []
-            for z, n, rds in zip(z_bins, n_sn, choice_seeds):
-                selec = (host_list['redshift'] >= z) * \
-                    (host_list['redshift'] <= z + self.dz)
-                host_in_shell = host_list[selec]
-                self.selec = selec
-                host_in_shell_idx = np.where(selec)[0]
-                if len(host_in_shell) < n:
-                    raise RuntimeError('No host in shell')
-                host_tmp_idx = np.random.default_rng(rds).choice(
-                    host_in_shell_idx, size=n, replace=False)
-                host_tmp = host_list[host_tmp_idx]
-                for idx, h, t0 in zip(host_tmp_idx, host_tmp, t0_tmp):
-                    epochs_selec = self.epochs_selection(
-                        h['ra'], h['dec'], h['redshift'], t0)
-                    pass_cut = self.epochs_cut(epochs_selec, h['z'], t0)
-                    if pass_cut:
-                        self.host.append(h)
-                        self.ra.append(h['ra'])
-                        self.dec.append(h['dec'])
-                        self.sim_t0.append(t0)
-                        self.zcos.append(h['redshift'])
-                        self.make_obs_table(epochs_selec)
-                        host_idx.append(idx)
-                        self.n_sn += 1
-            self.host = host_list[host_idx]
-
-        else:
-            sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(low=1000, high=100000, size=np.sum(n_sn))
-            self.sn_list = []
-            for n, z, rs in zip(n_sn, self.z_span['z_bins'], sn_bins_seed):
-                sn_list_tmp = self.generator(n,[z,z+self.z_span['dz']],rs)
-                for sn in sn_list_tmp:
-                    sn.epochs = self.obs.epochs_selection(sn)
-                    if sn.pass_cut(self.nep_cut):
-                        sn.gen_flux()
-                        self.sn_list.append(sn)
+        SN_ID = 0
+        for n, z, rs in zip(n_sn, self.z_span['z_bins'], sn_bins_seed):
+            sn_list_tmp = self.generator(n,[z,z+self.z_span['dz']],rs)
+            for sn in sn_list_tmp:
+                sn.epochs = self.obs.epochs_selection(sn)
+                if sn.pass_cut(self.nep_cut):
+                    sn.gen_flux()
+                    sn.ID = SN_ID
+                    SN_ID+= 1
+                    self._sn_list.append(sn)
         return None
 
     def fix_nsn_sim(self):
@@ -503,115 +440,70 @@ class SnSim:
                 4- Capture the information (filter, noise) of these visits
                 5- Create sncosmo obs Table
          '''
-        t0_seeds = np.random.default_rng(
-            self.randseeds['t0_seed']).integers(
-            low=1000, high=100000, size=self.n_sn)
-
-        if self.use_host:
-            self.zcos = []
-            host_list = self.read_host_file()
-
-            h_use_idx = []
-            choice_seeds = np.random.default_rng(
-                self.randseeds['coord_seed']).integers(
-                low=1000, high=10000, size=self.n_sn)
-        else:
-            ra_seeds, dec_seeds = np.random.default_rng(
-                self.randseeds['coord_seed']).integers(
-                low=1000, high=10000, size=(
-                    2, self.n_sn))
-
-        self.ra = []
-        self.dec = []
-        self.sim_t0 = []
-        self.n_gen = 0
-
-        for i in range(self.n_sn):
-            compt = 0
-            pass_cut = False
-
-            while not pass_cut:
-                self.n_gen += 1
-                # Gen ra and dec
-                if self.use_host:
-                    h_idx = np.random.default_rng(
-                        choice_seeds[i]).choice(
-                        np.arange(
-                            len(host_list)),
-                        replace=False)
-                    ra, dec, z = host_list[h_idx]['ra'], host_list[h_idx]['dec'], host_list[h_idx]['redshift']
-                else:
-                    ra, dec = self.gen_coord([ra_seeds[i], dec_seeds[i]])
-                    z = self.zcos[i]
-
-                # Gen t0
-                t0 = np.random.default_rng(
-                    t0_seeds[i]).uniform(
-                    np.min(
-                        self.obs_dic['expMJD']), np.max(
-                        self.obs_dic['expMJD']))
-
-                # epochs selection
-                epochs_selec = self.epochs_selection(ra, dec, z, t0)
-
-                # Cut on epochs
-                pass_cut = self.epochs_cut(epochs_selec, z, t0)
-
-                if not pass_cut:
-                    if self.use_host:
-                        choice_seeds[i] = np.random.default_rng(
-                            choice_seeds[i]).integers(1000, 100000)
-                    else:
-                        ra_seeds[i] = np.random.default_rng(
-                            ra_seeds[i]).integers(1000, 100000)
-                        dec_seeds[i] = np.random.default_rng(
-                            dec_seeds[i]).integers(1000, 100000)
-                    t0_seeds[i] = np.random.default_rng(
-                        t0_seeds[i]).integers(1000, 100000)
-
-                if compt > len(self.obs_dic['expMJD'] * 2):
-                    raise RuntimeError(
-                        'Too many cuts required, reduces nep_cut')
-                else:
-                    compt += 1
-
-            self.make_obs_table(epochs_selec)
-
-            self.ra.append(ra)
-            self.dec.append(dec)
-            self.sim_t0.append(t0)
-            if self.use_host:
-                h_use_idx.append(h_idx)
-
-        self.ra = np.asarray(self.ra)
-        self.dec = np.asarray(self.dec)
-
-        if self.use_host:
-            self.host = host_list[h_use_idx]
-            self.zcos = self.host['redshift']
+        raise_trigger = 0
+        sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low = 1000, high = 100000, size = self.sim_cfg['sn_gen']['n_sn'])
+        rs_id = 0
+        SN_ID = 0
+        rs = sn_gen_seed[rs_id]
+        while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
+            sn = self.generator(1, self.z_range, rs)[0]
+            sn.epochs = self.obs.epochs_selection(sn)
+            if sn.pass_cut(self.nep_cut):
+                sn.gen_flux()
+                sn.ID = SN_ID
+                SN_ID+=1
+                self._sn_list.append(sn)
+                if len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
+                    rs_id+=1
+                    rs = sn_gen_seed[rs_id]
+            elif raise_trigger > 2*len(self.obs.obs_table['expMJD']):
+                raise RuntimeError('Cuts are too stricts')
+            else:
+                raise_trigger+=1
+                rs = np.random.default_rng(rs).integers(low = 1000, high = 100000)
         return
+
+    def get_primary_header(self):
+        header = {'n_sn': self.n_sn,
+                  'M0' : self.sim_cfg['sn_gen']['M0'],
+                  'sigM': self.sim_cfg['sn_gen']['mag_smear']}
+
+        if self.host is None:
+            header['m_vp'] = self.sim_cfg['vpec_gen']['mean_vpec']
+            header['s_vp'] =  self.sim_cfg['vpec_gen']['sig_vpec']
+
+        if 'salt_gen' in self.sim_cfg:
+            fits_dic = {'alpha': 'alpha',
+                        'beta': 'beta',
+                        'mean_x1': 'm_x1',
+                        'sig_x1': 's_x1',
+                        'mean_c': 'm_c',
+                        'sig_c': 's_c'
+                       }
+
+            for k,v in fits_dic.items():
+                header[v] = self.sim_cfg['salt_gen'][k]
+
+        return header
 
     def write_sim(self):
         '''Write the simulated lc in a fits file'''
-        self.sn_id = []
-        if 'fits' in self.write_format:
-            lc_hdu_list = []
-            if 'fits' in self.write_format:
-                lc_hdu_list.append(fits.table_to_hdu(tab))
-
-        self.sn_id = np.asarray(self.sn_id)
-        if 'fits' in self.write_format:
-            sim_header = {'n_sn': self.n_sn,'alpha': self.alpha, 'beta': self.beta, 'M0': self.M0, 'SIG_M': self.sigmaM}
+        write_path = self.sim_cfg['data']['write_path']
+        if 'fits' in self.sim_cfg['data']['write_format']:
+            lc_hdu_list = [sn.get_lc_hdu() for sn in self._sn_list]
+            sim_header = self.get_primary_header()
             hdu_list = fits.HDUList(
                     [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
+
             hdu_list.writeto(
-                    self.write_path +
+                    write_path +
                     self.sim_name +
                     '.fits',
                     overwrite=True)
 
         #Export lcs as pickle
-        if 'pkl' in self.write_format:
-            with open(self.write_path+self.sim_name+'_lcs.pkl','wb') as file:
-                pickle.dump(self.sim_lc,file)
+        if 'pkl' in self.sim_cfg['data']['write_format']:
+            sim_lc = [sn.sim_lc for sn in self._sn_list]
+            with open(write_path+self.sim_name+'_lcs.pkl','wb') as file:
+                pickle.dump(sim_lc, file)
         return
