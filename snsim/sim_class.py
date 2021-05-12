@@ -7,11 +7,51 @@ from . import utils as ut
 from .constants import C_LIGHT_KMS
 
 class SN:
+    """This class represent SN object.
+
+    Parameters
+    ----------
+    sn_par : dict
+        Contains intrinsic SN parameters generate by SNGen.
+    sim_model : sncosmo.Model
+        The sncosmo model used to generate the SN ligthcurve.
+    model_par : dict
+        Contains general model parameters and sncsomo parameters.
+
+    Attributes
+    ----------
+    _sn_par : dic
+        Contains the sn_par parameters.
+    _epochs : Astropy Table
+        Contains the epochs when the SN is observed by the survey.
+    sim_lc : Astropy Table
+        The result of the SN ligthcurve simulation with sncosmo.
+    _ID : type
+        The Supernovae ID.
+    sim_model : sncosmo.Model
+        A copy of the input sncosmo Model.
+    _model_par :
+        A copy of input model_par with some model dependents quantities added.
+
+    Methods
+    -------
+    __init_model_par()
+        Init model parameters of the SN use dto compute mu.
+    __reformat_sim_table()
+        Give the good format to sncosmo output Table.
+    pass_cut(nep_cut)
+        Test if the SN pass the cuts given in nep_cut.
+    gen_flux()
+        Generate the ligthcurve flux with sncosmo.
+    get_lc_hdu()
+        Give a hdu version of the ligthcurve table
+    """
+
     def __init__(self, sn_par, sim_model, model_par):
-        self.sim_model = sim_model
+        self.sim_model = sim_model.__copy__()
         self._sn_par = sn_par
-        self.model_par = model_par
-        self.init_model_par()
+        self._model_par = model_par
+        self.__init_model_par()
         self._epochs = None
         self.sim_lc = None
         self._ID = None
@@ -19,12 +59,14 @@ class SN:
 
     @property
     def ID(self):
+        """Get SN ID"""
         if self._ID is None:
             print('No id')
         return self._ID
 
     @ID.setter
     def ID(self,ID):
+        """Set SN ID"""
         if isinstance(ID, int):
             self._ID = ID
         else:
@@ -32,80 +74,106 @@ class SN:
 
     @property
     def sim_t0(self):
+        """Get SN peakmag time"""
         return self._sn_par['sim_t0']
 
     @property
     def vpec(self):
+        """Get SN peculiar velocity"""
         return self._sn_par['vpec']
 
     @property
     def zcos(self):
+        """Get SN cosmological redshift"""
         return self._sn_par['zcos']
 
     @property
     def como_dist(self):
+        """Get SN comoving distance"""
         return self._sn_par['como_dist']
 
     @property
     def coord(self):
+        """Get SN coordinates (ra,dec)"""
         return self._sn_par['ra'], self._sn_par['dec']
 
     @property
     def mag_smear(self):
+        """Get SN coherent scattering term"""
         return self._sn_par['mag_smear']
 
     @property
     def zpec(self):
+        """Get SN peculiar velocity redshift"""
         return self.vpec/C_LIGHT_KMS
 
     @property
     def zCMB(self):
+        """Get SN CMB frame redshift"""
         return (1+self.zcos)*(1+self.zpec) - 1.
 
     @property
     def z2cmb(self):
+        """Get SN redshift due to our motion relative to CMB"""
         return self._sn_par['z2cmb']
 
     @property
     def z(self):
+        """Get SN observed redshift"""
         return (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb) - 1.
 
     @property
     def epochs(self):
+        """Get SN observed redshift"""
          return self._epochs
 
     @epochs.setter
     def epochs(self,ep_dic):
+        """Get SN observed epochs"""
         self._epochs = ep_dic
 
     @property
-    def z2cmb(self):
-        return self._sn_par['z2cmb']
-
-    @property
     def sim_mu(self):
-        ''' Generate x0/mB parameters for SALT2 '''
+        """Get SN distance moduli"""
         return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) * (1 + self.zpec)**2 * self.como_dist) + 25
 
     @property
     def smear_mod_seed(self):
-        if 'G10_RndS' in self.model_par['sncosmo']:
-            return self.model_par['sncosmo']['G10_RndS']
-        elif 'C11_RndS' in self.model_par['sncosmo']:
-            return self.model_par['sncosmo']['C11_RndS']
+        """Get SN  smear model if exist"""
+        if 'G10_RndS' in self._model_par['sncosmo']:
+            return self._model_par['sncosmo']['G10_RndS']
+        elif 'C11_RndS' in self._model_par['sncosmo']:
+            return self._model_par['sncosmo']['C11_RndS']
         else:
             return None
 
-    def init_model_par(self):
-        ''' Init the SN magnitude in restframe Bessell B band'''
-        M0 = self.model_par['M0']
+    def __init_model_par(self):
+        """Extract and compute SN parameters that depends on used model.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Set attributes dependant on SN model
+        SALT:
+            - alpha -> _model_par['alpha']
+            - beta -> _model_par['beta']
+            - mb
+            - x0
+            - x1
+            - c
+        """
+
+        M0 = self._model_par['M0']
         if self.sim_model.source.name in ['salt2', 'salt3']:
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
             # beta*c : scattering due to color and stretch} + {intrinsic smearing}
-            alpha = self.model_par['alpha']
-            beta = self.model_par['beta']
-            x1 = self.model_par['sncosmo']['x1']
-            c = self.model_par['sncosmo']['c']
+            alpha = self._model_par['alpha']
+            beta = self._model_par['beta']
+            x1 = self._model_par['sncosmo']['x1']
+            c = self._model_par['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * \
                x1 + beta * c+ self.mag_smear
 
@@ -114,13 +182,26 @@ class SN:
             self.sim_x0 = x0
             self.sim_x1 = x1
             self.sim_c = c
-            self.model_par['sncosmo']['x0'] = x0
+            self._model_par['sncosmo']['x0'] = x0
 
         elif self.sim_model.source.name == 'snoopy':
             #TODO
             return
 
     def pass_cut(self,nep_cut):
+        """Check if the SN pass the given cuts.
+
+        Parameters
+        ----------
+        nep_cut : list
+            nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...].
+
+        Returns
+        -------
+        boolean
+            True or False.
+
+        """
         if self.epochs is None:
             return  False
         else:
@@ -134,21 +215,39 @@ class SN:
                     return False
             return True
 
-    def gen_flux(self,add_keys={}):
-        ''' Generate simulated flux '''
-        params = {**{'z': self.z,'t0': self.sim_t0}, **self.model_par['sncosmo']}
+    def gen_flux(self):
+        """Generate the SN lightcurve.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Set the sim_lc attribute as an astropy Table
+
+        """
+
+        params = {**{'z': self.z,'t0': self.sim_t0}, **self._model_par['sncosmo']}
         self.sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
-        rs = self.model_par['noise_rand_seed']
+        rs = self._model_par['noise_rand_seed']
         self.sim_lc['flux'] = np.random.default_rng(rs).normal(
                 loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
 
-        for k in add_keys:
-            self.sim_lc[k] = obs[k]
+        return self.__reformat_sim_table()
 
-        self.reformat_sim_table()
+    def __reformat_sim_table(self):
+        """Give the good format to the sncosmo output Table.
 
+        Returns
+        -------
+        None
 
-    def reformat_sim_table(self):
+        Notes
+        -----
+        Directly change the sim_lc attribute
+
+        """
             for k in self.sim_lc.meta.copy():
                 if k != 'z':
                     self.sim_lc.meta['sim_'+k] = self.sim_lc.meta.pop(k)
@@ -166,38 +265,94 @@ class SN:
             return
 
     def get_lc_hdu(self):
+        """Convert the astropy Table to a hdu.
+
+        Returns
+        -------
+        fits hdu
+            A hdu object that contains the sim_lc Table.
+
+        """
         return fits.table_to_hdu(self.sim_lc)
 
 
 class SNGen:
+    """This class set up the random part of the SN generator.
+
+    Parameters
+    ----------
+    sim_par : dict
+        All the parameters needed to generate the SN.
+    host : dict
+        SnHost object that contains information about SN host.
+
+    Attributes
+    ----------
+    _sim_par : dict
+        A copy of the input sim_par dict.
+    sim_model : sncosmo.Model
+        The base model to generate SN.
+    _model_keys : dict
+        SN model global parameters names.
+    host
+        SnHost object, same as input.
+
+    Methods
+    -------
+    __init__(sim_par, host=None)
+        Initialise the SNGen object.
+    __call__(n_sn,z_range,rand_seed)
+        Simulate a given number of sn in a given redshift range using the
+        given random seed.
+    __init_model_keys()
+        Init the SN model parameters names.
+    __init_sim_model()
+        Configure the sncosmo Model
+
+
+    """
     def __init__(self,sim_par, host=None):
         self._sim_par = sim_par
-        self.sim_model = self.init_sim_model()
-        self.model_keys = ['M0']
-        self.model_keys += self.init_model_keys()
+        self.sim_model = self.__init_sim_model()
+        self._model_keys = ['M0']
+        self._model_keys += self.init_model_keys()
         self.host = host
 
     @property
     def snc_model_par(self):
+        """Get sncosmo model parameters"""
         return self._sim_par['snc_model_par']
 
     @property
     def sn_model_par(self):
+        """Get sncosmo configuration parameters"""
         return self._sim_par['sn_model_par']
 
     @property
     def cosmo(self):
+        """Get cosmo use_defaults parameters"""
         return self._sim_par['cosmo']
 
     @property
     def cmb(self):
+        """Get cmb used parameters"""
         return self._sim_par['cmb']
 
     @property
     def snc_model_time(self):
+        """Get the sncosmo model mintime and maxtime"""
         return self.sim_model.mintime(), self.sim_model.maxtime()
 
-    def init_sim_model(self):
+    def __init_sim_model(self):
+        """Initialise sncosmo model using the good source.
+
+        Returns
+        -------
+        sncosmo.Model
+            sncosmo.Model(source) object where source depends on the
+            SN simulation model.
+
+        """
         model = ut.init_sn_model(self.snc_model_par['model_name'],
                               self.snc_model_par['model_dir'])
 
@@ -217,14 +372,37 @@ class SNGen:
                     model.set(C11_Cuu=-1.)
         return model
 
-    def init_model_keys(self):
+    def __init_model_keys(self):
+        """Initialise the model keys depends on the SN simulation model.
+
+        Returns
+        -------
+        list
+            A dict that contains all the usefull keys of the SN model.
+        """
         model_name = self.snc_model_par['model_name']
         if model_name == 'salt2' or model_name == 'salt3':
             model_keys = ['alpha','beta']
-
         return model_keys
 
     def __call__(self,n_sn,z_range,rand_seed):
+        """Launch the simulation of SN.
+
+        Parameters
+        ----------
+        n_sn : int
+            Number of SN to simulate.
+        z_range : list(float)
+            The redshift range of simulation.
+        rand_seed : int
+            The random seed of the simulation.
+
+        Returns
+        -------
+        list(SN)
+            A list that contains SN object.
+
+        """
         rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=7)
         t0 = self.gen_peak_time(n_sn,rand_seeds[0])
         mag_smear = self.gen_coh_scatter(n_sn,rand_seeds[4])
@@ -252,7 +430,7 @@ class SNGen:
                    } for z,t,r,d,v,ms in zip(zcos,t0,ra,dec,vpec,mag_smear)]
 
         model_default = {}
-        for k in self.model_keys:
+        for k in self._model_keys:
             model_default[k] = self.sn_model_par[k]
 
         model_par_list = [{**model_default,'sncosmo': mpsn, 'noise_rand_seed': rs } for mpsn, rs in zip(model_par_sncosmo, noise_rand_seed)]
