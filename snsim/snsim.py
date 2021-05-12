@@ -1,13 +1,10 @@
 import numpy as np
 from numpy import power as pw
-from astropy.table import Table
-from astropy.io import fits
 import yaml
-import os
 import pickle
 import time
-from . import sim_utils as su
-from . import scatter as sct
+from . import utils as ut
+from .constants import SN_SIM_PRINT
 
 class SnSim:
     def __init__(self, param_dic):
@@ -52,9 +49,9 @@ class SnSim:
         |     Om: MATTER DENSITY                                                           |
         |     H0: HUBBLE CONSTANT                                                          |
         |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
-        | salt_gen:                                                                        |
-        |     version: 2 or 3                                                              |
-        |     salt_dir: '/PATH/TO/SALT/MODEL'                                              |
+        | model_gen:                                                                       |
+        |     model_name                                                                   |
+        |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
         |     alpha: STRETCH CORRECTION = alpha*x1                                         |
         |     beta: COLOR CORRECTION = -beta*c                                             |
         |     mean_x1: MEAN X1 VALUE                                                       |
@@ -90,10 +87,7 @@ class SnSim:
             self._use_rate = True
 
         self._sn_list = None
-
-    #++++++++++++++++++++++++++++++++++++++++++++++++++#
-    #------------ Randseed Initialisation -------------#
-    #++++++++++++++++++++++++++++++++++++++++++++++++++#
+        self._fit_res = None
         self._random_seed = None
         self._host = None
         self._obs = ObsTable(**self.obs_parameters)
@@ -110,6 +104,17 @@ class SnSim:
             return
         else:
             return len(self._sn_list)
+    @property
+    def model_name(self):
+        return self.sim_cfg['model_gen']['model_name']
+
+    @property
+    def sn_list(self):
+        return self._sn_list
+
+    @property
+    def fit_res(self):
+        return self._fit_res
 
     @property
     def survey_prop(self):
@@ -148,17 +153,11 @@ class SnSim:
 
     @property
     def snc_model_par(self):
-        if 'salt_gen' in self.sim_cfg:
-            model_tag = 'salt'
-            model_dir = self.sim_cfg['salt_gen']['salt_dir']
-            version = self.sim_cfg['salt_gen']['version']
-            if version not in [2, 3]:
-                raise ValueError("Support SALT version = 2 or 3")
-
-        params = {'model_tag': model_tag,
-                  'model_dir': model_dir,
-                  'version': version}
-
+        if self.model_name not in ['salt2', 'salt3']:
+            raise ValueError(f'The only model implemented are salt')
+        params = {'model_name': self.model_name,
+                  'model_dir': self.sim_cfg['model_gen']['model_dir']
+                 }
         if 'smear_mod' in self.sim_cfg['sn_gen']:
             params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
         return params
@@ -169,11 +168,11 @@ class SnSim:
                   'time_range': [self.obs.mintime,self.obs.maxtime],
                   'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
 
-        if 'salt_gen' in self.sim_cfg:
-            params['alpha'] = self.sim_cfg['salt_gen']['alpha']
-            params['beta'] = self.sim_cfg['salt_gen']['beta']
-            params['x1_distrib'] = [self.sim_cfg['salt_gen']['mean_x1'],self.sim_cfg['salt_gen']['sig_x1']]
-            params['c_distrib'] = [self.sim_cfg['salt_gen']['mean_c'],self.sim_cfg['salt_gen']['sig_c']]
+        if self.model_name == 'salt2' or self.model_name == 'salt3':
+            params['alpha'] = self.sim_cfg['model_gen']['alpha']
+            params['beta'] = self.sim_cfg['model_gen']['beta']
+            params['x1_distrib'] = [self.sim_cfg['model_gen']['mean_x1'],self.sim_cfg['model_gen']['sig_x1']]
+            params['c_distrib'] = [self.sim_cfg['model_gen']['mean_c'],self.sim_cfg['model_gen']['sig_c']]
 
         if 'host_file' not in self.sim_cfg['vpec_gen']:
             params['vpec_distrib'] = [self.sim_cfg['vpec_gen']['mean_vpec'], self.sim_cfg['vpec_gen']['sig_vpec']]
@@ -223,19 +222,6 @@ class SnSim:
             return self._host
         else:
             return None
-
-    @property
-    def fit_model(self):
-        print('fit_model')
-        if 'salt_gen' in self.sim_cfg:
-            self.salt_dir = self.sim_cfg['salt_gen']['salt_dir']
-            if self.salt_gen['version'] == 2:
-                source = snc.SALT2Source(modeldir=self.salt_dir)
-            elif self.salt_gen['version'] == 3:
-                source = snc.SALT3Source(modeldir=self.salt_dir)
-            else :
-                raise RuntimeError("Support SALT version = 2 or 3")
-        return snc.Model(source=source)
 
     @property
     def nep_cut(self):
@@ -324,11 +310,12 @@ class SnSim:
         4- WRITE LC TO A FITS FILE
         '''
 
-        #print(su.sn_sim_print)
+        print(SN_SIM_PRINT)
         print('-------------------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self._yml_path}')
         print(f"OBS FILE : {self.obs_parameters['db_file']}")
+        print(f"SN SIM MODEL: {sim.model_name} from {self.sim_cfg['model_gen']['model_dir']}")
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
         print(f'-------------------------------------------\n')
@@ -360,36 +347,25 @@ class SnSim:
             print(print_cut)
         print('\n')
 
-        ############################
-        #sep2 = su.box_output(su.sep, '------------')
-        #print(su.sep)
-        #print(su.box_output(su.sep, line))
-        #print(sep2)
+
 
         sim_time = time.time()
-        ############################
+
         self._sn_list = []
         if self._use_rate:
             self.cadence_sim()
         else:
             self.fix_nsn_sim()
-        ############################
+
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
-        #print(su.box_output(su.sep, l))
-        #print(sep2)
+
 
         write_time = time.time()
         self.write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
-        #print(su.box_output(su.sep, l))
-       # print(sep2)
-        #l = f'SIMULATION TERMINATED in {time.time() - start_time:.1f} seconds'
-       # print(su.box_output(su.sep, l))
-        #print(su.sep)
 
-        # Init fit_res_table
-        #self.fit_res = np.asarray(['No_fit'] * self.n_sn, dtype='object')
+
         print('\n OUTPUT FILES : ')
         if isinstance(self.sim_cfg['data']['write_format'],str):
             print(self.sim_cfg['data']['write_path']
@@ -472,7 +448,7 @@ class SnSim:
             header['m_vp'] = self.sim_cfg['vpec_gen']['mean_vpec']
             header['s_vp'] =  self.sim_cfg['vpec_gen']['sig_vpec']
 
-        if 'salt_gen' in self.sim_cfg:
+        if self.model_name == 'salt2' or self.model_name == 'salt3':
             fits_dic = {'alpha': 'alpha',
                         'beta': 'beta',
                         'mean_x1': 'm_x1',
@@ -481,8 +457,8 @@ class SnSim:
                         'sig_c': 's_c'
                        }
 
-            for k,v in fits_dic.items():
-                header[v] = self.sim_cfg['salt_gen'][k]
+        for k,v in fits_dic.items():
+            header[v] = self.sim_cfg['salt_gen'][k]
 
         return header
 
@@ -507,3 +483,93 @@ class SnSim:
             with open(write_path+self.sim_name+'_lcs.pkl','wb') as file:
                 pickle.dump(sim_lc, file)
         return
+
+    def plot_lc(self, sn_ID, mag = False, zp=25., plot_sim = True, plot_fit = False):
+        sn = self._sn_list[sn_ID]
+        if plot_sim:
+            s_model = sim.generator.sim_model.__copy__()
+            dic_par = {**{'z': sn.z,'t0': sn.sim_t0}, **sn.model_par['sncosmo']}
+            s_model.set(**dic_par)
+        else:
+            s_model = None
+
+        if plot_fit:
+            f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
+            x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
+            f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
+            cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:,1:]
+            residuals = True
+        else:
+            f_model = None
+            cov_x0_x1_c = None
+            residuals = False
+
+        ut.plot_lc(sn.sim_lc, mag = mag,
+                snc_sim_model = s_model,
+                snc_fit_model = f_model,
+                fit_cov = cov_x0_x1_c, residuals = residuals)
+
+        return None
+
+    def fit_lc(self, sn_ID = None):
+        if self.sn_list is None:
+            print('No sn to fit, run the simulation before')
+            return
+
+        if self._fit_res is None:
+            self._fit_res = [None]*len(self.sn_list)
+
+        fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
+
+        if self.model_name == 'salt2' or self.model_name == 'salt3':
+            fit_par = ['t0', 'x0', 'x1', 'c']
+
+        if sn_ID is None:
+            for i, sn in enumerate(self.sn_list):
+                if self.fit_res[i] is None:
+                    model.set(z=sn.z)
+                    self._fit_res[i] = ut.snc_fitter(sn.sim_lc, model, fit_par)
+        else:
+            model.set(z=self.sn_list[sn_ID].z)
+            self._fit_res[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, model, fit_par)
+        return
+
+    def write_fit(self):
+        sim_lc_meta = {'sn_id': [sn.ID for sn in self.sn_list],
+                       'ra': [sn.coord[0] for sn in self.sn_list],
+                       'dec': [sn.coord[1] for sn in self.sn_list],
+                       'vpec': [sn.vpec for sn in self.sn_list],
+                       'zpec': [sn.zpec for sn in self.sn_list],
+                       'z2cmb': [sn.z2cmb for sn in self.sn_list],
+                       'zcos': [sn.zcos for sn in self.sn_list],
+                       'zCMB': [sn.zCMB for sn in self.sn_list],
+                       'zobs': [sn.z for sn in self.sn_list],
+                       'sim_mu': [sn.sim_mu for sn in self.sn_list]}
+        if self.model_name == 'salt2' or self.model_name == 'salt3':
+
+            sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
+            sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
+            sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
+            sim_lc_meta['m_smear'] = [sn.mag_smear for sn in self.sn_list]
+
+        sim_meta={'n_sn': len(self.sn_list), 'MName': self.model_name, 'M0': self.sim_par['sn_model_par']['M0'], **self.sim_par['cosmo']}
+
+        if self.model_name == 'salt2' or self.model_name == 'salt3':
+            sim_meta['alpha'] = self.sim_cfg['model_gen']['alpha']
+            sim_meta['beta'] = self.sim_cfg['model_gen']['beta']
+            sim_meta['m_x1'] = self.sim_cfg['model_gen']['mean_x1']
+            sim_meta['s_x1'] = self.sim_cfg['model_gen']['sig_x1']
+            sim_meta['m_c'] = self.sim_cfg['model_gen']['mean_c']
+            sim_meta['s_c'] = self.sim_cfg['model_gen']['sig_c']
+
+            sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
+            sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
+            sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
+            sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
+
+        if 'smear_mod' in self.sim_cfg['sn_gen']:
+            sim_meta['SMod'] = self.sim_cfg['sn_gen']['smear_mod']
+            sim_lc_meta['SM_seed'] = [sn.smear_mod_seed for sn in self.sn_list]
+
+        write_file = self.sim_cfg['data']['write_path'] + self.sim_name + '_fit.fits'
+        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta = sim_meta)
