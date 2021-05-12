@@ -311,6 +311,7 @@ class SNGen:
 
 
     """
+
     def __init__(self,sim_par, host=None):
         self._sim_par = sim_par
         self.sim_model = self.__init_sim_model()
@@ -393,7 +394,7 @@ class SNGen:
         n_sn : int
             Number of SN to simulate.
         z_range : list(float)
-            The redshift range of simulation.
+            The redshift range of simulation -> 2 elmt zmin and zmax.
         rand_seed : int
             The random seed of the simulation.
 
@@ -437,92 +438,257 @@ class SNGen:
         SN_list = [SN(snp,self.sim_model,mp) for snp,mp in zip(sn_par,model_par_list)]
         return SN_list
 
-    def gen_peak_time(self,n_sn,rand_seed):
-        t0 = np.random.default_rng(rand_seed).uniform(*self.sn_model_par['time_range'],size=n_sn)
+    def gen_peak_time(self,n,rand_seed):
+        """Generate uniformly n peak time in the survey time range.
+
+        Parameters
+        ----------
+        n : int
+            Number of time to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            A numpy array which contains generated peak time.
+
+        """
+        t0 = np.random.default_rng(rand_seed).uniform(*self.sn_model_par['time_range'],size=n)
         return t0
 
-    def gen_coord(self,n_sn,rand_seed):
+    def gen_coord(self,n,rand_seed):
+        """Generate n coords (ra,dec) uniformly on the sky sphere.
+
+        Parameters
+        ----------
+        n : int
+            Number of coord to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray(float), numpy.ndarray(float)
+            2 numpy arrays that contains generated coordinates.
+
+        """
         coord_seed = np.random.default_rng(rand_seed).integers(low=1000,high=100000,size=2)
         ra = np.random.default_rng(coord_seed[0]).uniform(
-            low=0, high=2 * np.pi, size=n_sn)
-        dec_uni = np.random.default_rng(coord_seed[1]).random(size=n_sn)
+            low=0, high=2 * np.pi, size=n)
+        dec_uni = np.random.default_rng(coord_seed[1]).random(size=n)
         dec = np.arcsin(2 * dec_uni - 1)
         return ra, dec
 
-    def gen_zcos(self,n_sn,z_range, rand_seed):
-        '''Function to get zcos, to be updated'''
+    def gen_zcos(self, n, z_range, rand_seed):
+        """Generate n cosmological redshift in a range.
+
+        Parameters
+        ----------
+        n : int
+            Number of redshift to generate.
+        z_range : list(float)
+            The redshift range zmin zmax.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            A numpy array which contains generated cosmological redshift.
+
+        TODO: Generation is uniform, in small shell not really a problem, maybe
+        fix this in general
+        """
         zcos = np.random.default_rng(rand_seed).uniform(
         low=z_range[0], high=z_range[1], size=n_sn)
         return zcos
 
-    def gen_sncosmo_param(self,n_sn,rand_seed):
+    def gen_sncosmo_param(self, n, rand_seed):
+        """Generate model dependant parameters.
+
+        Parameters
+        ----------
+        n : int
+            Number of parameters to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        dict
+            One dictionnary that contains 'parameters names': numpy.ndaray(float).
+
+        """
         snc_seeds = np.random.default_rng(rand_seed).integers(low=1000,high=100000,size=2)
         model_name = self.snc_model_par['model_name']
         if model_name == 'salt2' or   model_name == 'salt3':
-            sim_x1, sim_c = self.gen_SALT_par(n_sn,snc_seeds[0])
+            sim_x1, sim_c = self.gen_SALT_par(n, snc_seeds[0])
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1,sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
-            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000,size=n_sn)
+            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000,size=n)
             for par,s in zip(model_par_sncosmo,seeds):
                 par['G10_RndS'] = s
 
         elif 'C11_' in self.sim_model.effect_names:
-            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000,size=n_sn)
+            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000,size=n)
             for par,s in zip(model_par_sncosmo,seeds):
                 par['C11_RndS'] = s
 
         return model_par_sncosmo
 
-    def gen_SALT_par(self,n_sn,rand_seed):
-        ''' Generate x1 and c for the SALT2 or SALT3 model'''
+    def gen_SALT_par(self, n, rand_seed):
+        """Generate n SALT parameters.
+
+        Parameters
+        ----------
+        n : int
+            Number of parameters to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray(float), numpy.ndarray(float)
+            2 numpy arrays that contains SALT2 x1 and c generated parameters.
+
+        """
         x1_seed,c_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=2)
         sim_x1 = np.random.default_rng(x1_seed).normal(
             loc=self.sn_model_par['x1_distrib'][0],
             scale=self.sn_model_par['x1_distrib'][1],
-            size=n_sn)
+            size=n)
         sim_c = np.random.default_rng(c_seed).normal(
-            loc=self.sn_model_par['c_distrib'][0], scale=self.sn_model_par['c_distrib'][1], size=n_sn)
+            loc=self.sn_model_par['c_distrib'][0], scale=self.sn_model_par['c_distrib'][1], size=n)
         return sim_x1, sim_c
 
     def gen_vpec(self,n_sn,rand_seed):
+        """Generate n peculiar velocities.
+
+        Parameters
+        ----------
+        n : int
+            Number of vpec to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array that contains vpec (km/s) generated.
+
+        """
         if self.host is None:
             vpec = np.random.default_rng(rand_seed).normal(
                 loc=self.sn_model_par['vpec_distrib'][0],
                 scale=self.sn_model_par['vpec_distrib'][1],
-                size=n_sn)
+                size=n)
         else:
             vpec = host.vpec
         return vpec
 
-    def gen_coh_scatter(self,n_sn,rand_seed):
+    def gen_coh_scatter(self, n, rand_seed):
+        """Generate n coherent mag smear term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag smear terms to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array that contains smear terms generated.
+
+        """
         ''' Generate coherent intrinsic scattering '''
-        mag_smear = np.random.default_rng(rand_seed).normal(loc=0, scale=self.sn_model_par['mag_smear'], size=n_sn)
+        mag_smear = np.random.default_rng(rand_seed).normal(loc=0, scale=self.sn_model_par['mag_smear'], size=n)
         return mag_smear
 
-    def gen_noise_rand_seed(self,n_sn,rand_seed):
-        return np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=n_sn)
+    def gen_noise_rand_seed(self, n, rand_seed):
+        """Generate n seeds for later sn noise simulation.
+
+        Parameters
+        ----------
+        n : int
+            Number of noise seeds to generate.
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
+        return np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=n)
 
 
 class ObsTable:
-    def __init__(self,db_file,survey_prop,band_dic=None,db_cut=None,add_keys=[]):
+    """This class deals with the observations of the survey.
+
+    Parameters
+    ----------
+    db_file : str
+        Path to the SQL database of observations.
+    survey_prop : dict
+        The properties of the survey.
+    band_dic : dict
+        Translate from band name in database to sncosmo band name.
+    db_cut : dict
+        Selection to add to the SQL query.
+    add_keys : list
+        database keys to add to observation meta.
+
+    Attributes
+    ----------
+    _survey_prop : dict
+        Copy of the survey_prop input dict.
+    obs_table : astropy.Table
+        Table that contains the observation.
+    _db_cut : dict
+        Copy of the db_cut input
+    _db_file : str
+        Copy of the db_file input
+    _band_dic : str
+        Copy of the band_dic input
+    _add_keys : dict
+        Copy of the add_keys input
+
+    Methods
+    -------
+    __extract_from_db()
+        Description of attribute `extract_from_db`.
+
+    epochs_selection(SN)
+        Give the epochs of observation of a given SN.
+
+    """
+
+    def __init__(self, db_file, survey_prop, band_dic=None, db_cut=None, add_keys=[]):
         self._survey_prop = survey_prop
-        self.db_cut = db_cut
+        self._db_cut = db_cut
         self.db_file = db_file
         self.band_dic = band_dic
         self.add_keys = add_keys
-        self.obs_table = self.extract_from_db()
+        self.obs_table = self.__extract_from_db()
 
     @property
     def field_size(self):
+        """Get field size (ra,dec) in radians"""
         return self._survey_prop['ra_size'],self._survey_prop['dec_size']
 
     @property
     def gain(self):
+        """Get CCD gain in e-/ADU"""
         return self._survey_prop['gain']
 
     @property
     def zp(self):
+        """Get zero point"""
         if 'zp' in self._survey_prop:
             return self._survey_prop['zp']
         else:
@@ -530,14 +696,23 @@ class ObsTable:
 
     @property
     def mintime(self):
+        """Get observations mintime"""
         return np.min(self.obs_table['expMJD'])
 
     @property
     def maxtime(self):
+        """Get observations maxtime"""
         return np.max(self.obs_table['expMJD'])
 
-    def extract_from_db(self):
-        '''Read db file and extract relevant information'''
+    def __extract_from_db(self):
+        """Extract the observations table from SQL data base.
+
+        Returns
+        -------
+        astropy.Table
+            The observations table.
+
+        """
         dbf = sqlite3.connect(self.db_file)
 
         keys = ['expMJD',
@@ -547,11 +722,11 @@ class ObsTable:
                 'fiveSigmaDepth']+self.add_keys
 
         where=''
-        if self.db_cut != None:
+        if self._db_cut != None:
             where=" WHERE "
-            for cut_var in self.db_cut:
+            for cut_var in self._db_cut:
                 where+="("
-                for cut in self.db_cut[cut_var]:
+                for cut in self._db_cut[cut_var]:
                     cut_str=f"{cut}"
                     where+=f"{cut_var}{cut_str} OR "
                 where=where[:-4]
@@ -565,7 +740,20 @@ class ObsTable:
         return Table(obs_dic)
 
     def epochs_selection(self, SN):
-        '''Select epochs that match the survey observations'''
+        """Give the epochs of observations of a given SN.
+
+        Parameters
+        ----------
+        SN : SN object
+            A class SN object.
+
+        Returns
+        -------
+        astropy.Table
+            astropy table that contains the SN observations.
+
+        """
+
         ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
         ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
         ra,dec = SN.coord
@@ -583,10 +771,24 @@ class ObsTable:
         epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size/2 # dec selection
         if np.sum(epochs_selec) == 0:
             return None
-        return self.make_obs_table(epochs_selec)
+        return self._make_obs_table(epochs_selec)
 
 
-    def make_obs_table(self,epochs_selec):
+    def _make_obs_table(self,epochs_selec):
+        """ Create the astropy table from selection bool array.
+
+        Parameters
+        ----------
+        epochs_selec : numpy.ndarray(boolean)
+            A boolean array that define the observation selection.
+
+        Returns
+        -------
+        astropy.Table
+            The observations table that correspond to the selection.
+
+        """
+
         # Capture noise and filter
         mlim5 = self.obs_table['fiveSigmaDepth'][epochs_selec]
         band = self.obs_table['filter'][epochs_selec].astype('U27')
@@ -619,10 +821,31 @@ class ObsTable:
 
 
 class SnHost:
+    """ Class that contains the SN Host parameters.
+
+    Parameters
+    ----------
+    host_file : str
+        fits host file path.
+    z_range : list(float)
+        The redshift range.
+
+    Attributes
+    ----------
+    host_list : type
+        Description of attribute `host_list`.
+    read_host_file : type
+        Description of attribute `read_host_file`.
+    _max_dz : float
+        The maximum redshift gap between 2 host .
+    z_range
+    host_file
+
+    """
     def __init__(self,host_file,z_range = None):
         self.z_range = z_range
-        self.host_file = host_file
-        self.host_list = self.read_host_file()
+        self._host_file = host_file
+        self.host_list = self.__read_host_file()
         self._max_dz = None
 
     @property
@@ -633,16 +856,12 @@ class SnHost:
             self._max_dz = np.max(diff)
         return self._max_dz
 
-    def read_host_file(self):
-        #stime = time.time()
+    def __read_host_file(self):
         with fits.open(self.host_file) as hostf:
             host_list = hostf[1].data[:]
         host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
-        #l = f'HOST FILE READ IN  {time.time() - stime:.1f} seconds'
-        #print(su.box_output(su.sep, l))
-        #print(su.box_output(su.sep, '------------'))
         if self.z_range is not None:
-            return self.host_in_range(host_list,self.z_range)
+            return self.host_in_range(host_list, self.z_range)
         else:
             return host_list
 
