@@ -186,7 +186,7 @@ class SN:
 
         elif self.sim_model.source.name == 'snoopy':
             #TODO
-            return
+        return None
 
     def pass_cut(self,nep_cut):
         """Check if the SN pass the given cuts.
@@ -225,7 +225,6 @@ class SN:
         Notes
         -----
         Set the sim_lc attribute as an astropy Table
-
         """
 
         params = {**{'z': self.z,'t0': self.sim_t0}, **self._model_par['sncosmo']}
@@ -270,7 +269,7 @@ class SN:
         Returns
         -------
         fits hdu
-            A hdu object that contains the sim_lc Table.
+            A hdu object containing the sim_lc Table.
 
         """
         return fits.table_to_hdu(self.sim_lc)
@@ -284,7 +283,7 @@ class SNGen:
     sim_par : dict
         All the parameters needed to generate the SN.
     host : dict
-        SnHost object that contains information about SN host.
+        SnHost object containing information about SN host.
 
     Attributes
     ----------
@@ -308,8 +307,6 @@ class SNGen:
         Init the SN model parameters names.
     __init_sim_model()
         Configure the sncosmo Model
-
-
     """
 
     def __init__(self,sim_par, host=None):
@@ -379,7 +376,7 @@ class SNGen:
         Returns
         -------
         list
-            A dict that contains all the usefull keys of the SN model.
+            A dict containing all the usefull keys of the SN model.
         """
         model_name = self.snc_model_par['model_name']
         if model_name == 'salt2' or model_name == 'salt3':
@@ -401,7 +398,7 @@ class SNGen:
         Returns
         -------
         list(SN)
-            A list that contains SN object.
+            A list containing SN object.
 
         """
         rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=7)
@@ -470,7 +467,7 @@ class SNGen:
         Returns
         -------
         numpy.ndarray(float), numpy.ndarray(float)
-            2 numpy arrays that contains generated coordinates.
+            2 numpy arrays containing generated coordinates.
 
         """
         coord_seed = np.random.default_rng(rand_seed).integers(low=1000,high=100000,size=2)
@@ -517,7 +514,7 @@ class SNGen:
         Returns
         -------
         dict
-            One dictionnary that contains 'parameters names': numpy.ndaray(float).
+            One dictionnary containing 'parameters names': numpy.ndaray(float).
 
         """
         snc_seeds = np.random.default_rng(rand_seed).integers(low=1000,high=100000,size=2)
@@ -551,7 +548,7 @@ class SNGen:
         Returns
         -------
         numpy.ndarray(float), numpy.ndarray(float)
-            2 numpy arrays that contains SALT2 x1 and c generated parameters.
+            2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
         x1_seed,c_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=2)
@@ -576,7 +573,7 @@ class SNGen:
         Returns
         -------
         numpy.ndarray(float)
-            numpy array that contains vpec (km/s) generated.
+            numpy array containing vpec (km/s) generated.
 
         """
         if self.host is None:
@@ -601,7 +598,7 @@ class SNGen:
         Returns
         -------
         numpy.ndarray(float)
-            numpy array that contains smear terms generated.
+            numpy array containing smear terms generated.
 
         """
         ''' Generate coherent intrinsic scattering '''
@@ -648,7 +645,7 @@ class ObsTable:
     _survey_prop : dict
         Copy of the survey_prop input dict.
     obs_table : astropy.Table
-        Table that contains the observation.
+        Table containing the observation.
     _db_cut : dict
         Copy of the db_cut input
     _db_file : str
@@ -661,7 +658,7 @@ class ObsTable:
     Methods
     -------
     __extract_from_db()
-        Description of attribute `extract_from_db`.
+        Extract the observation from SQL data base.
 
     epochs_selection(SN)
         Give the epochs of observation of a given SN.
@@ -750,7 +747,7 @@ class ObsTable:
         Returns
         -------
         astropy.Table
-            astropy table that contains the SN observations.
+            astropy table containing the SN observations.
 
         """
 
@@ -821,7 +818,7 @@ class ObsTable:
 
 
 class SnHost:
-    """ Class that contains the SN Host parameters.
+    """ Class containing the SN Host parameters.
 
     Parameters
     ----------
@@ -832,52 +829,108 @@ class SnHost:
 
     Attributes
     ----------
-    host_list : type
+    _host_table : astropy.Table
         Description of attribute `host_list`.
-    read_host_file : type
-        Description of attribute `read_host_file`.
     _max_dz : float
-        The maximum redshift gap between 2 host .
-    z_range
-    host_file
+        The maximum redshift gap between 2 host.
+    _z_range : list(float)
+        A copy of input z_range.
+    _host_file
+        A copy of input host_file.
+
+    Methods
+    -------
+    __read_host_file()
+        Extract host from host file.
+    host_in_range(host, z_range):
+        Give the hosts in the good redshift range.
+    random_host(n, z_range, rand_seed)
+        Random choice of host in a redshift range.
 
     """
-    def __init__(self,host_file,z_range = None):
-        self.z_range = z_range
+    def __init__(self, host_file, z_range = None):
+        self._z_range = z_range
         self._host_file = host_file
-        self.host_list = self.__read_host_file()
+        self._host_table = self.__read_host_file()
         self._max_dz = None
 
     @property
     def max_dz(self):
+        """Get the maximum redshift gap"""
         if self._max_dz is None:
             redshift_copy = np.sort(np.copy(self.host_list['redshift']))
             diff = redshift_copy[1:] - redshift_copy[:-1]
             self._max_dz = np.max(diff)
         return self._max_dz
 
+    @property
+    def host_table(self):
+        """Get astropy Table of host"""
+        return self._host_table
+
     def __read_host_file(self):
+        """Extract host from host file.
+
+        Returns
+        -------
+        astropy.Table
+            astropy Table containing host.
+
+        """
         with fits.open(self.host_file) as hostf:
             host_list = hostf[1].data[:]
         host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
-        if self.z_range is not None:
-            return self.host_in_range(host_list, self.z_range)
+        if self._z_range is not None:
+            return Table(self.host_in_range(host_list, self._z_range))
         else:
-            return host_list
+            return Table(host_list)
 
     @staticmethod
-    def host_in_range(host,z_range):
+    def host_in_range(host, z_range):
+        """Give the hosts in the good redshift range.
+
+        Parameters
+        ----------
+        host : astropy.Table
+            astropy Table of host.
+        z_range : type
+            The selection redshift range.
+
+        Returns
+        -------
+        astropy.Table
+            astropy Table containing host in the redshift range.
+
+        """
         selec = host['redshift'] > z_range[0]
         selec *= host['redshift'] < z_range[1]
         return host[selec]
 
-    def random_host(self, n_host, z_range, random_seed):
-        if z_range[0] < self.z_range[0] or z_range[1] > self.z_range[1]:
-            raise ValueError(f'z_range must be between {self.z_range[0]} and {self.z_range[1]}')
+    def random_host(self, n, z_range, random_seed):
+        """Random choice of host in a redshift range.
+
+        Parameters
+        ----------
+        n : int
+            Number of host to choice.
+        z_range : list(float)
+            The redshift range zmin, zmax.
+        random_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        astropy.Table
+            astropy Table containing the randomly selected host.
+
+        """
+
+        if z_range[0] < self._z_range[0] or z_range[1] > self._z_range[1]:
+            raise ValueError(f'z_range must be between {self._z_range[0]} and {self._z_range[1]}')
         elif z_range[0] > z_range[1]:
             raise ValueError(f'z_range[0] must be < to z_range[1]')
         host_available = self.host_in_range(self.host_list, z_range)
-        host_choice = np.random.default_rng(random_seed).choice(host_available, size=n_host, replace=False)
-        if len(host_choice) < n_host:
+        host_choice = np.random.default_rng(random_seed).choice(host_available, size=n, replace=False)
+        if len(host_choice) < n:
             raise RuntimeError('Not enough host in the shell')
         return host_choice
