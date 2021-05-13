@@ -1,10 +1,14 @@
-import numpy as np
-from numpy import power as pw
-import yaml
+"""Main module of the simulaiton package"""
 import pickle
 import time
+import yaml
+import numpy as np
+from astropy.io import fits
+from astropy.cosmology import FlatLambdaCDM
+from numpy import power as pw
 from . import utils as ut
 from .constants import SN_SIM_PRINT
+from . import sim_class as scls
 
 class SnSim:
     """Simulation class using a config file config.yml
@@ -62,7 +66,6 @@ class SnSim:
 
     NOTES
     -----
-
     Remarks :
 
     - obs_file and db_file are optional but you must set one of the two!!!
@@ -81,11 +84,10 @@ class SnSim:
     | data :                                                                           |
     |     write_path: '/PATH/TO/OUTPUT'                                                |
     |     sim_name: 'NAME OF SIMULATION'                                               |
-    |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
-    | db file doesn't correpond to those in sncosmo registery)                         |
-    |     write_format: 'format' or ['format1','format2'] # Optional default pkl, fits |
+    |     write_format: 'format' or ['format1','format2']                              |
     | db_config: #(Optional -> use obs_file)                                           |
     |     dbfile_path: '/PATH/TO/FILE'                                                 |
+    |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
     |     add_keys: ['keys1', 'keys2', ...] add db file keys to metadata               |
     |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
     |     zp: INSTRUMENTAL ZEROPOINT                                                   |
@@ -127,7 +129,10 @@ class SnSim:
     # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
             self.sim_cfg = param_dic
-            self._yml_path = param_dic['yaml_path']
+            if 'yaml_path' in param_dic:
+                self._yml_path = param_dic['yaml_path']
+            else:
+                self._yml_path = 'No config file'
 
         elif isinstance(param_dic, str):
             self._yml_path = param_dic
@@ -148,8 +153,8 @@ class SnSim:
         self._fit_res = None
         self._random_seed = None
         self._host = None
-        self._obs = ObsTable(**self.obs_parameters)
-        self._generator = SNGen(self.sim_par, host=self.host)
+        self._obs = scls.ObsTable(**self.obs_parameters)
+        self._generator = scls.SNGen(self.sim_par, host=self.host)
 
     @property
     def sim_name(self):
@@ -203,7 +208,7 @@ class SnSim:
         params['band_dic'] = band_dic
         # Additionnal data
         if 'add_keys' in  self.sim_cfg['db_config']:
-            add_keys = self.db_cfg['add_keys']
+            add_keys = self.sim_cfg['db_cfg']['add_keys']
         else:
             add_keys = []
         params['add_keys'] = add_keys
@@ -274,7 +279,7 @@ class SnSim:
     def obs(self):
         """Get the ObsTable object of the simulation """
         if self._obs._survey_prop != self.survey_prop:
-            self._obs = ObsTable(**self.obs_parameters)
+            self._obs = scls.ObsTable(**self.obs_parameters)
         return self._obs
 
     @property
@@ -282,7 +287,7 @@ class SnSim:
         """Get the SNGen object of the simulation """
         not_same = (self._generator._sim_par != self.sim_par)
         if not_same:
-            self._generator = SNGen(self.sim_par)
+            self._generator = scls.SNGen(self.sim_par)
         return self._generator
 
     @property
@@ -291,7 +296,7 @@ class SnSim:
         if self._host is not None:
             return self._host
         elif 'host_file' in self.sim_cfg['vpec_gen']:
-            self._host = SnHost(self.sim_cfg['vpec_gen']['host_file'],self.z_range)
+            self._host = scls.SnHost(self.sim_cfg['vpec_gen']['host_file'],self.z_range)
             return self._host
         else:
             return None
@@ -308,8 +313,8 @@ class SnSim:
                      snc_mintime,
                      snc_maxtime)]
             elif isinstance(nep_cut, (list)):
-                for i in range(len(self.nep_cut)):
-                    if len(self.nep_cut[i]) < 3:
+                for i in range(len(nep_cut)):
+                    if len(nep_cut[i]) < 3:
                         nep_cut[i].append(snc_mintime)
                         nep_cut[i].append(snc_maxtime)
         else:
@@ -374,14 +379,21 @@ class SnSim:
         Returns
         -------
         float, numpy.ndarray(float)
-            One or a list of sn rate corresponding to input redshift(s).
+            One or a list of sn rate(s) corresponding to input redshift(s).
 
         """
         rate_z0, rpw = self.sn_rate_z0
         return  rate_z0 * (1 + z)**rpw
 
     def __time_rate_bins(self):
-        '''Give the rate of SN Ia given a volume'''
+        """Give the time rate SN/years in redshift bins.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            Numpy array containing the time rate in each redshift bin.
+
+        """
         z = self.z_span['z_bins']
         dz = self.z_span['dz']
         cosmo = FlatLambdaCDM(**self.cosmo)
@@ -392,26 +404,51 @@ class SnSim:
         return time_rate
 
     def __gen_n_sn(self,rand_seed):
+        """Generate the number of SN with Poisson law.
+
+        Parameters
+        ----------
+        rand_seed : int
+            The random seed for the random generator.
+
+        Returns
+        -------
+        numpy.ndarray
+            Numpy array containing the simulated number of SN in each redshift
+            bin.
+
+        """
         time_rate = self.__time_rate_bins()
         return np.random.default_rng(rand_seed).poisson(self.survey_duration * time_rate)
 
     def simulate(self):
-        '''Simulation routine :
-        1- READ OBS/DB FILE
-        2- GEN REDSHIFT AND SALT2 PARAM
-        3- GEN LC FLUX WITH sncosmo
-        4- WRITE LC TO A FITS FILE
-        '''
+        """Launch the simulation.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Simulation routine :
+        1- Use either __cadence_sim() or __gen_n_sn()
+        to run the simulation
+        2- Gen all SN parameters inside SNGen class or/and SnHost class
+        3- Check if SN pass cuts and then generate the lightcurves.
+        4- Write LC to fits/pkl file(s)
+
+        """
 
         print(SN_SIM_PRINT)
-        print('-------------------------------------------')
+        print('-----------------------------------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self._yml_path}')
         print(f"OBS FILE : {self.obs_parameters['db_file']}")
-        print(f"SN SIM MODEL: {sim.model_name} from {self.sim_cfg['model_gen']['model_dir']}")
+        print(f"SN SIM MODEL: {self.model_name} from {self.sim_cfg['model_gen']['model_dir']}")
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
-        print(f'-------------------------------------------\n')
+
+        print(f'-----------------------------------------------------------\n')
 
         if self._use_rate:
             duration_str = f'Survey duration is {self.survey_duration} year(s)'
@@ -419,6 +456,8 @@ class SnSim:
             print(duration_str + '\n')
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia")
+
+        print(f'-----------------------------------------------------------\n')
 
         if self.obs_parameters['db_cut'] is not None:
             for k,v in self.obs_parameters['db_cut'].items():
@@ -429,7 +468,8 @@ class SnSim:
                 print(f'Select {k}: '+conditions_str)
         else:
             print('No db cut')
-        print('\n')
+
+        print(f'\n-----------------------------------------------------------\n')
 
         print("SN ligthcurve cuts :")
 
@@ -438,28 +478,28 @@ class SnSim:
             if len(cut)==4:
                 print_cut+=f' in {cut[3]} band'
             print(print_cut)
-        print('\n')
 
-
+        print(f'\n-----------------------------------------------------------\n')
 
         sim_time = time.time()
-
         self._sn_list = []
         if self._use_rate:
             self.__cadence_sim()
         else:
             self.__fix_nsn_sim()
-
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
 
+        print(f'\n-----------------------------------------------------------\n')
 
         write_time = time.time()
         self.__write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
+        print(l)
 
+        print(f'\n-----------------------------------------------------------\n')
 
-        print('\n OUTPUT FILES : ')
+        print('OUTPUT FILE(S) : ')
         if isinstance(self.sim_cfg['data']['write_format'],str):
             print(self.sim_cfg['data']['write_path']
                   + self.sim_name
@@ -472,19 +512,28 @@ class SnSim:
                       + self.sim_name
                       + '.'
                       + f)
-        return
-
 
     def __cadence_sim(self):
-        '''Use a cadence file to produce SN according to a rate:
-                1- Cut the zrange into shell (z,z+dz)
-                2- Compute time rate for the shell r = r_v(z) * V SN/year where r_v is the volume rate
-                3- Generate the number of SN Ia in each shell with a Poisson's law
-                4- Generate ra,dec for all the SN uniform on the sphere
-                5- Generate t0 uniform between mintime and maxtime
-                5- Generate z for in each shell uniform in the interval [z,z+dz]
-                6- Apply observation and selection cuts to SN
-        '''
+        """Simulaton where the number of SN observed is determined by
+        survey properties and poisson law..
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Simulation routine:
+            1- Cut the zrange into shell (z,z+dz)
+            2- Compute time rate for the shell r = r_v(z) * V SN/year where r_v is the volume rate
+            3- Generate the number of SN Ia in each shell with a Poisson's law
+            4- Generate ra, dec for all the SN uniform on the sphere
+            5- Generate t0 uniform between mintime and maxtime
+            5- Generate z for in each shell uniform in the interval [z,z+dz]
+            6- Apply observation and selection cuts to SN
+
+        """
+
         n_sn_seed, sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low=1000, high=100000, size=2)
         n_sn = self.__gen_n_sn(n_sn_seed)
         sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(low=1000, high=100000, size=np.sum(n_sn))
@@ -499,16 +548,20 @@ class SnSim:
                     sn.ID = SN_ID
                     SN_ID+= 1
                     self._sn_list.append(sn)
-        return None
 
     def __fix_nsn_sim(self):
-        '''Use a cadence db file to produce obs :
-                1- Generate SN ra,dec in cadence fields
-                2- Generate SN t0 in the survey time
-                3- For each t0,ra,dec select visits that match
-                4- Capture the information (filter, noise) of these visits
-                5- Create sncosmo obs Table
-         '''
+        """Simulation where the number of SN is fixed.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Just generate SN randomly until we reach the desired number of SN.
+
+        """
+
         raise_trigger = 0
         sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low = 1000, high = 100000, size = self.sim_cfg['sn_gen']['n_sn'])
         rs_id = 0
@@ -530,9 +583,15 @@ class SnSim:
             else:
                 raise_trigger+=1
                 rs = np.random.default_rng(rs).integers(low = 1000, high = 100000)
-        return
 
     def __get_primary_header(self):
+        """Generate the primary header of sim fits file..
+
+        Returns
+        -------
+        None
+
+        """
         header = {'n_sn': self.n_sn,
                   'M0' : self.sim_cfg['sn_gen']['M0'],
                   'sigM': self.sim_cfg['sn_gen']['mag_smear']}
@@ -551,12 +610,19 @@ class SnSim:
                        }
 
         for k,v in fits_dic.items():
-            header[v] = self.sim_cfg['salt_gen'][k]
+            header[v] = self.sim_cfg['model_gen'][k]
 
         return header
 
     def __write_sim(self):
-        '''Write the simulated lc in a fits file'''
+        """Write sim lightcurves in fits or/and pkl format(s).
+
+        Returns
+        -------
+        None
+
+        """
+
         write_path = self.sim_cfg['data']['write_path']
         if 'fits' in self.sim_cfg['data']['write_format']:
             lc_hdu_list = [sn.get_lc_hdu() for sn in self._sn_list]
@@ -575,18 +641,48 @@ class SnSim:
             sim_lc = [sn.sim_lc for sn in self._sn_list]
             with open(write_path+self.sim_name+'_lcs.pkl','wb') as file:
                 pickle.dump(sim_lc, file)
-        return
 
     def plot_lc(self, sn_ID, mag = False, zp=25., plot_sim = True, plot_fit = False):
+        """Plot the given SN lightcurve.
+
+        Parameters
+        ----------
+        sn_ID : int
+            The Supernovae ID.
+        mag : boolean, default = False
+            If True plot the magnitude instead of the flux.
+        zp : float
+            Used zeropoint for the plot.
+        plot_sim : boolean, default = True
+            If True plot the theorical simulated lightcurve.
+        plot_fit : boolean, default = False
+            If True plot the fitted lightcurve.
+
+        Returns
+        -------
+        None
+            Just plot the SN lightcurve !
+
+        Notes
+        -----
+        Use plot_lc from utils.
+
+        """
         sn = self._sn_list[sn_ID]
         if plot_sim:
-            s_model = sim.generator.sim_model.__copy__()
-            dic_par = {**{'z': sn.z,'t0': sn.sim_t0}, **sn.model_par['sncosmo']}
+            s_model = self.generator.sim_model.__copy__()
+            dic_par = {**{'z': sn.z,'t0': sn.sim_t0}, **sn._model_par['sncosmo']}
             s_model.set(**dic_par)
         else:
             s_model = None
 
         if plot_fit:
+            if self.fit_res[sn_ID] is None:
+                print('This SN was not fitted, launch fit')
+                self.fit_lc(sn_ID)
+            if self.fit_res[sn_ID] is np.nan:
+                print('This sn has no fit results')
+                return
             f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
             f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
@@ -602,9 +698,51 @@ class SnSim:
                 snc_fit_model = f_model,
                 fit_cov = cov_x0_x1_c, residuals = residuals)
 
-        return None
+    def plot_ra_dec(self, plot_vpec=False, **kwarg):
+        """Plot a mollweide map of ra, dec.
+
+        Parameters
+        ----------
+        plot_vpec : boolean
+            If True plot a vpec colormap.
+
+        Returns
+        -------
+        None
+            Just plot the map.
+
+        """
+        ra = []
+        dec = []
+        vpec = None
+        if plot_vpec:
+            vpec = []
+        for sn in self.sn_list:
+            r, d = sn.coord
+            ra.append(r)
+            dec.append(d)
+            if plot_vpec:
+                vpec.append(sn.vpec)
+        ut.plot_ra_dec(np.asarray(ra),np.asarray(dec),vpec, **kwarg)
 
     def fit_lc(self, sn_ID = None):
+        """Fit all or just one SN lightcurve(s).
+
+        Parameters
+        ----------
+        sn_ID : int, default is None
+            The SN ID, if not specified all SN are fit.
+
+        Returns
+        -------
+        None
+            Directly modified the _fit_res attribute.
+
+        Notes
+        -----
+        Use snc_fitter from utils
+
+        """
         if self.sn_list is None:
             print('No sn to fit, run the simulation before')
             return
@@ -619,15 +757,27 @@ class SnSim:
 
         if sn_ID is None:
             for i, sn in enumerate(self.sn_list):
-                if self.fit_res[i] is None:
-                    model.set(z=sn.z)
-                    self._fit_res[i] = ut.snc_fitter(sn.sim_lc, model, fit_par)
+                if self._fit_res[i] is None:
+                    fit_model.set(z=sn.z)
+                    self._fit_res[i] = ut.snc_fitter(sn.sim_lc, fit_model, fit_par)
         else:
-            model.set(z=self.sn_list[sn_ID].z)
-            self._fit_res[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, model, fit_par)
-        return
+            fit_model.set(z=self.sn_list[sn_ID].z)
+            self._fit_res[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, fit_model, fit_par)
 
     def write_fit(self):
+        """Write fits results in fits format.
+
+        Returns
+        -------
+        None
+            Write an output file.
+
+        Notes
+        -----
+        Use write_fit from utils.
+
+        """
+
         sim_lc_meta = {'sn_id': [sn.ID for sn in self.sn_list],
                        'ra': [sn.coord[0] for sn in self.sn_list],
                        'dec': [sn.coord[1] for sn in self.sn_list],

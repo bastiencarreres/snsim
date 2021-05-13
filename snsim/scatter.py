@@ -1,10 +1,38 @@
+"""This package contains the smear effects"""
+
 import numpy as np
 import sncosmo as snc
+from . import utils as ut
 
 class G10(snc.PropagationEffect):
-    '''G10 smearing effect for sncosmo
-       Use colordisp file of salt and follow SNANA formalism, see arXiv:1209.2482
-    '''
+    """G10 smearing effect for sncosmo.
+
+    Parameters
+    ----------
+    model : sncosmo.Model
+        The sncosmo Model of the SN.
+
+    Attributes
+    ----------
+    _parameters : list
+        List containing all the model parameters.
+    _minwave : float
+        The minimal wavelength of the effect.
+    _maxwave : float
+        The maximal wavelength of the effect.
+    _colordisp : function
+        The color dispersion of SALT model.
+    _param_names : list(str)
+        Names of the parameters.
+    param_names_latex : list(str)
+        Latex version of parameters names.
+
+    Notes
+    -----
+    Use colordisp file of salt and follow SNANA formalism, see arXiv:1209.2482
+
+    """
+
     _param_names = ['L0', 'F0', 'F1', 'dL','RndS']
     param_names_latex = ['\lambda_0', 'F_0', 'F_1','d_L','RS']
 
@@ -16,7 +44,14 @@ class G10(snc.PropagationEffect):
 
     @property
     def scattering_law(self):
-        '''Initialise scattering law'''
+        """Construct the scattering law.
+
+        Returns
+        -------
+        numpy.ndarray(float), numpy.ndarray(float)
+            wavelength, scatter law at wavelength.
+
+        """
         L0,F0,F1,dL = self._parameters[:-1]
         lam = self._minwave
         sigma_lam=[]
@@ -36,23 +71,70 @@ class G10(snc.PropagationEffect):
 
     @property
     def lam_scatter(self):
-        '''Generate a smear funtion'''
+        """Generate the scatter.
+
+        Returns
+        -------
+        numpy.ndarray(float), numpy.ndarray(float)
+            wavelength, random scatter at wavelength.
+
+        """
         sigma_lam, sigma_val  = self.scattering_law
         RS = self._parameters[-1]
-        scatter = sigma_val*np.random.default_rng(int(RS)).normal(0,1,size=len(sigma_val))
         return sigma_lam, sigma_val*np.random.default_rng(int(RS)).normal(0,1,size=len(sigma_val))
 
     def propagate(self, wave, flux):
-        """Propagate the flux."""
+        """Propagate the effect to the flux.
+
+        Parameters
+        ----------
+        wave : float
+            wavelength.
+        flux : float
+            flux density at wavelength.
+
+        Returns
+        -------
+        numpy.ndaray(float)
+            Flux density with effect applied.
+        """
         lam, scatter = self.lam_scatter
         smear = np.asarray([ut.sine_interp(w, lam, scatter) for w in wave])
         return flux*10**(-0.4*smear)
 
 
 class C11(snc.PropagationEffect):
-    '''C11 smearing effect for sncosmo
-       Use COV matrix from N. Chottard thesis and follow SNANA formalism, see arXiv:1209.2482
-    '''
+    """C11 smearing effect for sncosmo.
+
+    Parameters
+    ----------
+    model : sncosmo.Model
+        The sncosmo Model of the SN.
+
+    Attributes
+    ----------
+    _parameters : list
+        List containing all the model parameters.
+    _minwave : float
+        The minimal wavelength of the effect.
+    _maxwave : float
+        The maximal wavelength of the effect.
+    _sigma_lam : numpy.ndaray(float, size = 6)
+        Value of the effective wavelengths of U'UBVRI bands.
+    _CORR_matrix : numpy.ndaray(float, sizee = (6,6))
+        Correlation matrix of U'UBVRI bands scattering.
+    _sigma : numpy.ndaray(float, size = 6)
+        Mean scattering in U'UBVRI bands.
+    _param_names : list(str)
+        Names of the parameters.
+    param_names_latex : list(str)
+        Latex version of parameters names.
+
+    Notes
+    -----
+    Use COV matrix from N. Chottard thesis and follow SNANA formalism, see arXiv:1209.2482
+
+    """
     _param_names = ['Cuu','Sc','RndS']
     param_names_latex = ["\rho_{u'u}",'Sc','RS']
 
@@ -62,9 +144,9 @@ class C11(snc.PropagationEffect):
         self._maxwave = model.source.maxwave()
 
         # U'UBVRI lambda eff
-        self.sigma_lam = np.array([2500.0, 3560.0, 4390.0, 5490.0, 6545.0, 8045.0])
+        self._sigma_lam = np.array([2500.0, 3560.0, 4390.0, 5490.0, 6545.0, 8045.0])
         # U'UBVRI correlation matrix extract from SNANA, came from N.Chotard thesis
-        self._CORR_matrix = np.array([[+1.000, 0.000,     0.000,     0.000,     0.000,     0.000],
+        self._corr_matrix = np.array([[+1.000, 0.000,     0.000,     0.000,     0.000,     0.000],
                                      [0.000, +1.000000, -0.118516, -0.768635, -0.908202, -0.219447],
                                      [0.000, -0.118516, +1.000000, +0.570333, -0.238470, -0.888611],
                                      [0.000, -0.768635, +0.570333, +1.000000, +0.530320, -0.399538],
@@ -76,12 +158,25 @@ class C11(snc.PropagationEffect):
 
     @property
     def covmat(self):
+        """Define the covariance matrix dependant on
+        the choice made for COV_U'U
+
+        Returns
+        -------
+        numpy.ndarray(float, size = (6,6))
+            Matrice de covariance U'UBVRI.
+
+        Notes
+        -----
+        cor2cov is multiply by _parameters[1] to rescale the error due to the
+        fact taht we pass from broadband to continuous wavelengths.
+        """
         covmat = np.zeros((6,6))
         for i in range(6):
             for j in range(i+1):
-                cor2cov = self._CORR_matrix[i,j]
+                cor2cov = self._corr_matrix[i,j]
                 if  i != 0 and j == 0:
-                    cor2cov = self._parameters[0] * self._CORR_matrix[i,1]
+                    cor2cov = self._parameters[0] * self._corr_matrix[i,1]
                 sigi_sigj = self._sigma[i]*self._sigma[j]
                 cor2cov *= sigi_sigj
                 covmat[i,j] = covmat[j,i] = cor2cov * self._parameters[1]
@@ -89,23 +184,43 @@ class C11(snc.PropagationEffect):
 
     @property
     def scatter(self):
-        '''Use the cov matrix to generate 6 random numbers'''
+        """Generate random scatter.
+
+        Returns
+        -------
+        numpy.ndarray
+            The 6 values of random scatter of the SN.
+        """
         RS = self._parameters[-1]
         mu = np.zeros(6)
         scat = np.random.default_rng(int(RS)).multivariate_normal(mu, self.covmat, check_valid='raise')
         return scat
 
     def propagate(self, wave, flux):
+        """Propagate the effect to the flux.
+
+        Parameters
+        ----------
+        wave : float
+            wavelength.
+        flux : float
+            flux density at wavelength.
+
+        Returns
+        -------
+        numpy.ndaray(float)
+            Flux density with effect applied.
+        """
         if self._parameters[0] not in [0., 1., -1.]:
             raise ValueError('Cov_uu must be 1,-1 or 0')
 
         scatter = self.scatter
         smear = np.zeros(len(wave))
         for i,w in enumerate(wave):
-            if w >= self.sigma_lam[-1]:
-                smear[i] = catter[-1]
-            elif w <= self.sigma_lam[0]:
+            if w >= self._sigma_lam[-1]:
+                smear[i] = scatter[-1]
+            elif w <= self._sigma_lam[0]:
                 smear[i] = scatter[0]
             else:
-                smear[i] = ut.sine_interp(w, self.sigma_lam, scatter)
+                smear[i] = ut.sine_interp(w, self._sigma_lam, scatter)
         return flux*10**(-0.4*smear)

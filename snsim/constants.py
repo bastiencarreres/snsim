@@ -1,9 +1,13 @@
-SN_SIM_PRINT = '     _______..__   __.         _______. __  .___  ___. \n'
-SN_SIM_PRINT += '    /       ||  \\ |  |        /       ||  | |   \\/   | \n'
-SN_SIM_PRINT += '   |   (----`|   \\|  |       |   (----`|  | |  \\  /  | \n'
-SN_SIM_PRINT += '    \\   \\    |  . `  |        \\   \\    |  | |  |\\/|  | \n'
-SN_SIM_PRINT += '.----)   |   |  |\\   |    .----)   |   |  | |  |  |  | \n'
-SN_SIM_PRINT += '|_______/    |__| \\__|    |_______/    |__| |__|  |__| \n'
+"""This module contains all the constants used in the package"""
+
+from astropy import constants as cst
+
+SN_SIM_PRINT =  '       _______..__   __.         _______. __  .___  ___. \n'
+SN_SIM_PRINT += '     /       ||  \\ |  |        /       ||  | |   \\/   | \n'
+SN_SIM_PRINT += '    |   (----`|   \\|  |       |   (----`|  | |  \\  /  | \n'
+SN_SIM_PRINT += '     \\   \\    |  . `  |        \\   \\    |  | |  |\\/|  | \n'
+SN_SIM_PRINT += ' .----)   |   |  |\\   |    .----)   |   |  | |  |  |  | \n'
+SN_SIM_PRINT += ' |_______/    |__| \\__|    |_______/    |__| |__|  |__| \n'
 
 # Light velocity in km/s
 C_LIGHT_KMS = cst.c.to('km/s').value
