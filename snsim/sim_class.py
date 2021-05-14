@@ -11,6 +11,7 @@ from . import utils as ut
 from . import scatter as sct
 from .constants import C_LIGHT_KMS
 
+
 class SN:
     """This class represent SN object.
 
@@ -68,7 +69,7 @@ class SN:
         return self._ID
 
     @ID.setter
-    def ID(self,ID):
+    def ID(self, ID):
         """Set SN ID"""
         if isinstance(ID, int):
             self._ID = ID
@@ -110,12 +111,12 @@ class SN:
     @property
     def zpec(self):
         """Get SN peculiar velocity redshift"""
-        return self.vpec/C_LIGHT_KMS
+        return self.vpec / C_LIGHT_KMS
 
     @property
     def zCMB(self):
         """Get SN CMB frame redshift"""
-        return (1+self.zcos)*(1+self.zpec) - 1.
+        return (1 + self.zcos) * (1 + self.zpec) - 1.
 
     @property
     def z2cmb(self):
@@ -125,7 +126,7 @@ class SN:
     @property
     def z(self):
         """Get SN observed redshift"""
-        return (1+self.zcos)*(1+self.zpec)*(1+self.z2cmb) - 1.
+        return (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
 
     @property
     def epochs(self):
@@ -133,14 +134,15 @@ class SN:
         return self._epochs
 
     @epochs.setter
-    def epochs(self,ep_dic):
+    def epochs(self, ep_dic):
         """Get SN observed epochs"""
         self._epochs = ep_dic
 
     @property
     def sim_mu(self):
         """Get SN distance moduli"""
-        return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) * (1 + self.zpec)**2 * self.como_dist) + 25
+        return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) *
+                            (1 + self.zpec)**2 * self.como_dist) + 25
 
     @property
     def smear_mod_seed(self):
@@ -180,7 +182,7 @@ class SN:
             x1 = self._model_par['sncosmo']['x1']
             c = self._model_par['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * \
-               x1 + beta * c+ self.mag_smear
+                x1 + beta * c + self.mag_smear
 
             x0 = ut.mB_to_x0(mb)
             self.sim_mb = mb
@@ -189,11 +191,11 @@ class SN:
             self.sim_c = c
             self._model_par['sncosmo']['x0'] = x0
 
-        #elif self.sim_model.source.name == 'snoopy':
-            #TODO
+        # elif self.sim_model.source.name == 'snoopy':
+            # TODO
         return None
 
-    def pass_cut(self,nep_cut):
+    def pass_cut(self, nep_cut):
         """Check if the SN pass the given cuts.
 
         Parameters
@@ -232,11 +234,11 @@ class SN:
         Set the sim_lc attribute as an astropy Table
         """
 
-        params = {**{'z': self.z,'t0': self.sim_t0}, **self._model_par['sncosmo']}
+        params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         self.sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
         rs = self._model_par['noise_rand_seed']
         self.sim_lc['flux'] = np.random.default_rng(rs).normal(
-                loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
+            loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
 
         return self.__reformat_sim_table()
 
@@ -254,7 +256,7 @@ class SN:
         """
         for k in self.sim_lc.meta.copy():
             if k != 'z':
-                self.sim_lc.meta['sim_'+k] = self.sim_lc.meta.pop(k)
+                self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
 
         if self.ID is not None:
             self.sim_lc.meta['sn_id'] = self.ID
@@ -316,7 +318,7 @@ class SNGen:
         Configure the sncosmo Model
     """
 
-    def __init__(self,sim_par, host=None):
+    def __init__(self, sim_par, host=None):
         self._sim_par = sim_par
         self.sim_model = self.__init_sim_model()
         self._model_keys = ['M0']
@@ -359,15 +361,15 @@ class SNGen:
 
         """
         model = ut.init_sn_model(self.snc_model_par['model_name'],
-                              self.snc_model_par['model_dir'])
+                                 self.snc_model_par['model_dir'])
 
         if 'smear_mod' in self.snc_model_par:
             smear_mod = self.snc_model_par['smear_mod']
             if smear_mod == 'G10':
-                model.add_effect(sct.G10(model),'G10_','rest')
+                model.add_effect(sct.G10(model), 'G10_', 'rest')
 
             elif smear_mod[:3] == 'C11':
-                model.add_effect(sct.C11(model),'C11_','rest')
+                model.add_effect(sct.C11(model), 'C11_', 'rest')
                 if smear_mod == 'C11_1':
                     model.set(C11_Cuu=1.)
                 elif smear_mod == 'C11_2':
@@ -384,10 +386,10 @@ class SNGen:
         """
         model_name = self.snc_model_par['model_name']
         if model_name == 'salt2' or model_name == 'salt3':
-            model_keys = ['alpha','beta']
+            model_keys = ['alpha', 'beta']
         return model_keys
 
-    def __call__(self,n_sn,z_range,rand_seed):
+    def __call__(self, n_sn, z_range, rand_seed):
         """Launch the simulation of SN.
 
         Parameters
@@ -405,41 +407,42 @@ class SNGen:
             A list containing SN object.
 
         """
-        rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=7)
-        t0 = self.gen_peak_time(n_sn,rand_seeds[0])
-        mag_smear = self.gen_coh_scatter(n_sn,rand_seeds[4])
-        noise_rand_seed = self.gen_noise_rand_seed(n_sn,rand_seeds[5])
-        model_par_sncosmo = self.gen_sncosmo_param(n_sn,rand_seeds[6:8])
+        rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=7)
+        t0 = self.gen_peak_time(n_sn, rand_seeds[0])
+        mag_smear = self.gen_coh_scatter(n_sn, rand_seeds[4])
+        noise_rand_seed = self.gen_noise_rand_seed(n_sn, rand_seeds[5])
+        model_par_sncosmo = self.gen_sncosmo_param(n_sn, rand_seeds[6:8])
         if self.host is not None:
-            host = self.host.random_host(n_sn,z_range,rand_seeds[1])
+            host = self.host.random_host(n_sn, z_range, rand_seeds[1])
             ra = host['ra']
             dec = host['dec']
             zcos = host['redshift']
             vpec = host['vp_sight']
         else:
-            ra, dec = self.gen_coord(n_sn,rand_seeds[1])
-            zcos = self.gen_zcos(n_sn,z_range,rand_seeds[2])
-            vpec = self.gen_vpec(n_sn,rand_seeds[3])
+            ra, dec = self.gen_coord(n_sn, rand_seeds[1])
+            zcos = self.gen_zcos(n_sn, z_range, rand_seeds[2])
+            vpec = self.gen_vpec(n_sn, rand_seeds[3])
 
         sn_par = [{'zcos': z,
                    'como_dist': FlatLambdaCDM(**self.cosmo).comoving_distance(z).value,
-                   'z2cmb': ut.compute_z2cmb(r,d,self.cmb),
+                   'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
                    'sim_t0': t,
                    'ra': r,
                    'dec': d,
                    'vpec': v,
                    'mag_smear': ms
-                   } for z,t,r,d,v,ms in zip(zcos,t0,ra,dec,vpec,mag_smear)]
+                   } for z, t, r, d, v, ms in zip(zcos, t0, ra, dec, vpec, mag_smear)]
 
         model_default = {}
         for k in self._model_keys:
             model_default[k] = self.sn_model_par[k]
 
-        model_par_list = [{**model_default,'sncosmo': mpsn, 'noise_rand_seed': rs } for mpsn, rs in zip(model_par_sncosmo, noise_rand_seed)]
-        SN_list = [SN(snp,self.sim_model,mp) for snp,mp in zip(sn_par,model_par_list)]
+        model_par_list = [{**model_default, 'sncosmo': mpsn, 'noise_rand_seed': rs}
+                          for mpsn, rs in zip(model_par_sncosmo, noise_rand_seed)]
+        SN_list = [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
         return SN_list
 
-    def gen_peak_time(self,n,rand_seed):
+    def gen_peak_time(self, n, rand_seed):
         """Generate uniformly n peak time in the survey time range.
 
         Parameters
@@ -455,10 +458,10 @@ class SNGen:
             A numpy array which contains generated peak time.
 
         """
-        t0 = np.random.default_rng(rand_seed).uniform(*self.sn_model_par['time_range'],size=n)
+        t0 = np.random.default_rng(rand_seed).uniform(*self.sn_model_par['time_range'], size=n)
         return t0
 
-    def gen_coord(self,n,rand_seed):
+    def gen_coord(self, n, rand_seed):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
@@ -474,7 +477,7 @@ class SNGen:
             2 numpy arrays containing generated coordinates.
 
         """
-        coord_seed = np.random.default_rng(rand_seed).integers(low=1000,high=100000,size=2)
+        coord_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
         ra = np.random.default_rng(coord_seed[0]).uniform(
             low=0, high=2 * np.pi, size=n)
         dec_uni = np.random.default_rng(coord_seed[1]).random(size=n)
@@ -502,7 +505,7 @@ class SNGen:
         fix this in general
         """
         zcos = np.random.default_rng(rand_seed).uniform(
-        low=z_range[0], high=z_range[1], size=n)
+            low=z_range[0], high=z_range[1], size=n)
         return zcos
 
     def gen_sncosmo_param(self, n, rand_seed):
@@ -521,20 +524,20 @@ class SNGen:
             One dictionnary containing 'parameters names': numpy.ndaray(float).
 
         """
-        snc_seeds = np.random.default_rng(rand_seed).integers(low=1000,high=100000,size=2)
+        snc_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
         model_name = self.snc_model_par['model_name']
-        if model_name == 'salt2' or   model_name == 'salt3':
+        if model_name == 'salt2' or model_name == 'salt3':
             sim_x1, sim_c = self.gen_salt_par(n, snc_seeds[0])
-            model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1,sim_c)]
+            model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
-            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000,size=n)
-            for par,s in zip(model_par_sncosmo,seeds):
+            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000, size=n)
+            for par, s in zip(model_par_sncosmo, seeds):
                 par['G10_RndS'] = s
 
         elif 'C11_' in self.sim_model.effect_names:
-            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000,size=n)
-            for par,s in zip(model_par_sncosmo,seeds):
+            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000, size=n)
+            for par, s in zip(model_par_sncosmo, seeds):
                 par['C11_RndS'] = s
 
         return model_par_sncosmo
@@ -555,7 +558,7 @@ class SNGen:
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        x1_seed,c_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=2)
+        x1_seed, c_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
         sim_x1 = np.random.default_rng(x1_seed).normal(
             loc=self.sn_model_par['x1_distrib'][0],
             scale=self.sn_model_par['x1_distrib'][1],
@@ -603,7 +606,8 @@ class SNGen:
 
         """
         ''' Generate coherent intrinsic scattering '''
-        mag_smear = np.random.default_rng(rand_seed).normal(loc=0, scale=self.sn_model_par['mag_smear'], size=n)
+        mag_smear = np.random.default_rng(rand_seed).normal(
+            loc=0, scale=self.sn_model_par['mag_smear'], size=n)
         return mag_smear
 
     def gen_noise_rand_seed(self, n, rand_seed):
@@ -622,7 +626,7 @@ class SNGen:
             Description of returned object.
 
         """
-        return np.random.default_rng(rand_seed).integers(low=1000, high=100000,size=n)
+        return np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=n)
 
 
 class ObsTable:
@@ -677,7 +681,7 @@ class ObsTable:
     @property
     def field_size(self):
         """Get field size (ra,dec) in radians"""
-        return self._survey_prop['ra_size'],self._survey_prop['dec_size']
+        return self._survey_prop['ra_size'], self._survey_prop['dec_size']
 
     @property
     def gain(self):
@@ -717,22 +721,22 @@ class ObsTable:
                 'filter',
                 'fieldRA',
                 'fieldDec',
-                'fiveSigmaDepth']+self._add_keys
+                'fiveSigmaDepth'] + self._add_keys
 
-        where=''
-        if self._db_cut != None:
-            where=" WHERE "
+        where = ''
+        if self._db_cut is not None:
+            where = " WHERE "
             for cut_var in self._db_cut:
-                where+="("
+                where += "("
                 for cut in self._db_cut[cut_var]:
-                    cut_str=f"{cut}"
-                    where+=f"{cut_var}{cut_str} OR "
-                where=where[:-4]
-                where+=") AND "
-            where=where[:-5]
-        obs_dic={}
+                    cut_str = f"{cut}"
+                    where += f"{cut_var}{cut_str} OR "
+                where = where[:-4]
+                where += ") AND "
+            where = where[:-5]
+        obs_dic = {}
         for k in keys:
-            query = 'SELECT '+k+' FROM Summary'+where+';'
+            query = 'SELECT ' + k + ' FROM Summary' + where + ';'
             values = dbf.execute(query)
             obs_dic[k] = np.array([a[0] for a in values])
         return Table(obs_dic)
@@ -754,7 +758,7 @@ class ObsTable:
 
         ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
         ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
-        ra,dec = SN.coord
+        ra, dec = SN.coord
         # time selection
         epochs_selec = (self.obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
             (self.obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
@@ -764,15 +768,15 @@ class ObsTable:
         epochs_selec_idx = np.where(epochs_selec)
         # Compute the coord of the SN in the rest frame of each field
         ra_size, dec_size = self.field_size
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra,dec,self.obs_table['fieldRA'][epochs_selec],self.obs_table['fieldDec'][epochs_selec])
-        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < ra_size/2 # ra selection
-        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size/2 # dec selection
+        ra_field_frame, dec_field_frame = ut.change_sph_frame(
+            ra, dec, self.obs_table['fieldRA'][epochs_selec], self.obs_table['fieldDec'][epochs_selec])
+        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < ra_size / 2  # ra selection
+        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size / 2  # dec selection
         if np.sum(epochs_selec) == 0:
             return None
         return self._make_obs_table(epochs_selec)
 
-
-    def _make_obs_table(self,epochs_selec):
+    def _make_obs_table(self, epochs_selec):
         """ Create the astropy table from selection bool array.
 
         Parameters
@@ -793,11 +797,11 @@ class ObsTable:
 
         # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
         if self._band_dic is not None:
-            band = np.array(list(map(self._band_dic.get,band)))
+            band = np.array(list(map(self._band_dic.get, band)))
 
         if self.zp != 'zp_in_obs':
             zp = [self.zp] * np.sum(epochs_selec)
-        elif isinstance(zp,(int, float)):
+        elif isinstance(zp, (int, float)):
             zp = self.obs_table['zp'][epochs_selec]
         else:
             raise ValueError("zp is not define")
@@ -807,11 +811,11 @@ class ObsTable:
 
         # Create obs table
         obs = Table({'time': self.obs_table['expMJD'][epochs_selec],
-                      'band': band,
-                      'gain': [self.gain] * np.sum(epochs_selec),
-                      'skynoise': skynoise,
-                      'zp': zp,
-                      'zpsys': ['ab'] * np.sum(epochs_selec)})
+                     'band': band,
+                     'gain': [self.gain] * np.sum(epochs_selec),
+                     'skynoise': skynoise,
+                     'zp': zp,
+                     'zpsys': ['ab'] * np.sum(epochs_selec)})
 
         for k in self._add_keys:
             obs[k] = self.obs_table[k][epochs_selec]
@@ -849,7 +853,8 @@ class SnHost:
         Random choice of host in a redshift range.
 
     """
-    def __init__(self, host_file, z_range = None):
+
+    def __init__(self, host_file, z_range=None):
         self._z_range = z_range
         self._host_file = host_file
         self._host_table = self.__read_host_file()
@@ -930,7 +935,41 @@ class SnHost:
         elif z_range[0] > z_range[1]:
             raise ValueError(f'z_range[0] must be < to z_range[1]')
         host_available = self.host_in_range(self.host_table, z_range)
-        host_choice = np.random.default_rng(random_seed).choice(host_available, size=n, replace=False)
+        host_choice = np.random.default_rng(random_seed).choice(
+            host_available, size=n, replace=False)
         if len(host_choice) < n:
             raise RuntimeError('Not enough host in the shell')
         return host_choice
+
+
+class SnSimPkl:
+    """Class to store simulation as pickle.
+
+    Parameters
+    ----------
+    sim_lc : list(astropy.Table)
+        The simulated lightcurves.
+    header : dict
+        The metadata of the simulation.
+
+    Attributes
+    ----------
+    _header : dict
+        A copy of input header.
+    _sim_lc : list(astropy.Table)
+        A copy of input sim_lc.
+
+    """
+    def __init__(self,sim_lc,header):
+        self._header = header
+        self._sim_lc = sim_lc
+
+    @property
+    def header(self):
+        """Get header"""
+        return self._header
+
+    @property
+    def sim_lc(self):
+        """Get sim_lc"""
+        return self._sim_lc

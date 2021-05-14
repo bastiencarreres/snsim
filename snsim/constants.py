@@ -2,7 +2,7 @@
 
 from astropy import constants as cst
 
-SN_SIM_PRINT =  '       _______..__   __.         _______. __  .___  ___. \n'
+SN_SIM_PRINT = '       _______..__   __.         _______. __  .___  ___. \n'
 SN_SIM_PRINT += '     /       ||  \\ |  |        /       ||  | |   \\/   | \n'
 SN_SIM_PRINT += '    |   (----`|   \\|  |       |   (----`|  | |  \\  /  | \n'
 SN_SIM_PRINT += '     \\   \\    |  . `  |        \\   \\    |  | |  |\\/|  | \n'

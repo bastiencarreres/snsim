@@ -1,4 +1,6 @@
+
 """Main module of the simulaiton package"""
+
 import pickle
 import time
 import yaml
@@ -9,6 +11,7 @@ from numpy import power as pw
 from . import utils as ut
 from .constants import SN_SIM_PRINT
 from . import sim_class as scls
+
 
 class SnSim:
     """Simulation class using a config file config.yml
@@ -125,8 +128,9 @@ class SnSim:
     |                                                                                  |
     +----------------------------------------------------------------------------------+
     """
+
     def __init__(self, param_dic):
-    # Load param dict from a yaml or by using launch_script.py
+        # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
             self.sim_cfg = param_dic
             if 'yaml_path' in param_dic:
@@ -169,6 +173,7 @@ class SnSim:
             return
         else:
             return len(self._sn_list)
+
     @property
     def model_name(self):
         """Get the name of sn model used"""
@@ -188,9 +193,9 @@ class SnSim:
     def survey_prop(self):
         """Get survey properties"""
         dic = {'ra_size': np.radians(self.sim_cfg['db_config']['ra_size']),
-                'dec_size': np.radians(self.sim_cfg['db_config']['dec_size']),
-                'gain': self.sim_cfg['db_config']['gain']
-                }
+               'dec_size': np.radians(self.sim_cfg['db_config']['dec_size']),
+               'gain': self.sim_cfg['db_config']['gain']
+               }
         # zeropoint
         if 'zp' in self.sim_cfg['db_config']:
             dic['zp'] = self.sim_cfg['db_config']['zp']
@@ -199,22 +204,23 @@ class SnSim:
     @property
     def obs_parameters(self):
         """Get ObsTable class parameters"""
-        params = {'db_file': self.sim_cfg['db_config']['dbfile_path'], 'survey_prop': self.survey_prop}
+        params = {'db_file': self.sim_cfg['db_config']
+                  ['dbfile_path'], 'survey_prop': self.survey_prop}
         # Band dic : band_name_obs/db_file -> band_name_sncosmo
-        if 'band_dic' in  self.sim_cfg['db_config']:
+        if 'band_dic' in self.sim_cfg['db_config']:
             band_dic = self.sim_cfg['db_config']['band_dic']
         else:
             band_dic = None
         params['band_dic'] = band_dic
         # Additionnal data
-        if 'add_keys' in  self.sim_cfg['db_config']:
+        if 'add_keys' in self.sim_cfg['db_config']:
             add_keys = self.sim_cfg['db_cfg']['add_keys']
         else:
             add_keys = []
         params['add_keys'] = add_keys
 
         # Cut on db_file
-        if 'db_cut' in  self.sim_cfg['db_config']:
+        if 'db_cut' in self.sim_cfg['db_config']:
             db_cut = self.sim_cfg['db_config']['db_cut']
         else:
             db_cut = None
@@ -228,7 +234,7 @@ class SnSim:
             raise ValueError(f'The only model implemented are salt')
         params = {'model_name': self.model_name,
                   'model_dir': self.sim_cfg['model_gen']['model_dir']
-                 }
+                  }
         if 'smear_mod' in self.sim_cfg['sn_gen']:
             params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
         return params
@@ -237,17 +243,23 @@ class SnSim:
     def sn_model_par(self):
         """Get general sn simulation parameters"""
         params = {'M0': self.sim_cfg['sn_gen']['M0'],
-                  'time_range': [self.obs.mintime,self.obs.maxtime],
+                  'time_range': [self.obs.mintime, self.obs.maxtime],
                   'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
 
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             params['alpha'] = self.sim_cfg['model_gen']['alpha']
             params['beta'] = self.sim_cfg['model_gen']['beta']
-            params['x1_distrib'] = [self.sim_cfg['model_gen']['mean_x1'],self.sim_cfg['model_gen']['sig_x1']]
-            params['c_distrib'] = [self.sim_cfg['model_gen']['mean_c'],self.sim_cfg['model_gen']['sig_c']]
+            params['x1_distrib'] = [
+                self.sim_cfg['model_gen']['mean_x1'],
+                self.sim_cfg['model_gen']['sig_x1']]
+            params['c_distrib'] = [
+                self.sim_cfg['model_gen']['mean_c'],
+                self.sim_cfg['model_gen']['sig_c']]
 
         if 'host_file' not in self.sim_cfg['vpec_gen']:
-            params['vpec_distrib'] = [self.sim_cfg['vpec_gen']['mean_vpec'], self.sim_cfg['vpec_gen']['sig_vpec']]
+            params['vpec_distrib'] = [
+                self.sim_cfg['vpec_gen']['mean_vpec'],
+                self.sim_cfg['vpec_gen']['sig_vpec']]
         return params
 
     @property
@@ -261,7 +273,7 @@ class SnSim:
         params = {}
         if 'v_cmb' in self.sim_cfg['cosmology']:
             params['v_cmb'] = self.sim_cfg['cosmology']['v_cmb']
-        else :
+        else:
             params['v_cmb'] = 369.82
         params['dec_cmb'] = 48.253
         params['ra_cmb'] = 266.81
@@ -296,7 +308,7 @@ class SnSim:
         if self._host is not None:
             return self._host
         elif 'host_file' in self.sim_cfg['vpec_gen']:
-            self._host = scls.SnHost(self.sim_cfg['vpec_gen']['host_file'],self.z_range)
+            self._host = scls.SnHost(self.sim_cfg['vpec_gen']['host_file'], self.z_range)
             return self._host
         else:
             return None
@@ -335,14 +347,13 @@ class SnSim:
         """Get the simulation cosmological redshift range """
         return self.sim_cfg['sn_gen']['z_range']
 
-
     @property
     def survey_duration(self):
         """Get the survey duration"""
         if 'n_sn' in self.sim_cfg['sn_gen']:
             return None
         elif 'duration' not in self.sim_cfg['sn_gen']:
-            duration = (self.obs.mintime() - self.obs.maxtime())/365.25
+            duration = (self.obs.mintime() - self.obs.maxtime()) / 365.25
         else:
             duration = self.sim_cfg['sn_gen']['duration']
         return duration
@@ -352,23 +363,23 @@ class SnSim:
         """Get the redshift bins parameters"""
         z_min, z_max = self.z_range
         rate_pw = self.sim_cfg['sn_gen']['rate_pw']
-        dz = (z_max-z_min)/(100*(1+rate_pw*z_max))
+        dz = (z_max - z_min) / (100 * (1 + rate_pw * z_max))
         if self.host is not None:
             host_max_dz = self.host.max_dz
             dz = np.max([dz, 2 * host_max_dz])
         n_bins = int((z_max - z_min) / dz)
         z_bins = np.linspace(z_min, z_max - dz, n_bins)
-        return  {'z_bins': z_bins, 'dz': dz, 'n_bins': n_bins }
+        return {'z_bins': z_bins, 'dz': dz, 'n_bins': n_bins}
 
     @property
     def sn_rate_z0(self):
         """Get the sn rate parameters"""
-        if 'sn_rate' and 'rate_pw' in  self.sim_cfg['sn_gen'] :
+        if 'sn_rate' and 'rate_pw' in self.sim_cfg['sn_gen']:
             return float(self.sim_cfg['sn_gen']['sn_rate']), self.sim_cfg['sn_gen']['rate_pw']
         else:
             return 3e-5, 0
 
-    def sn_rate(self,z):
+    def sn_rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
 
         Parameters
@@ -383,7 +394,7 @@ class SnSim:
 
         """
         rate_z0, rpw = self.sn_rate_z0
-        return  rate_z0 * (1 + z)**rpw
+        return rate_z0 * (1 + z)**rpw
 
     def __time_rate_bins(self):
         """Give the time rate SN/years in redshift bins.
@@ -397,13 +408,13 @@ class SnSim:
         z = self.z_span['z_bins']
         dz = self.z_span['dz']
         cosmo = FlatLambdaCDM(**self.cosmo)
-        rate = self.sn_rate(z + 0.5 * dz)# Rate in Nsn/Mpc^3/year
+        rate = self.sn_rate(z + 0.5 * dz)  # Rate in Nsn/Mpc^3/year
         shell_vol = 4 * np.pi / 3 * (pw(cosmo.comoving_distance(
             z + dz).value, 3) - pw(cosmo.comoving_distance(z).value, 3))
         time_rate = rate * shell_vol
         return time_rate
 
-    def __gen_n_sn(self,rand_seed):
+    def __gen_n_sn(self, rand_seed):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -452,7 +463,8 @@ class SnSim:
 
         if self._use_rate:
             duration_str = f'Survey duration is {self.survey_duration} year(s)'
-            print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
+            print(
+                f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
             print(duration_str + '\n')
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia")
@@ -460,12 +472,12 @@ class SnSim:
         print(f'-----------------------------------------------------------\n')
 
         if self.obs_parameters['db_cut'] is not None:
-            for k,v in self.obs_parameters['db_cut'].items():
-                conditions_str=''
+            for k, v in self.obs_parameters['db_cut'].items():
+                conditions_str = ''
                 for cond in v:
-                    conditions_str+=str(cond)+' OR '
-                conditions_str=conditions_str[:-4]
-                print(f'Select {k}: '+conditions_str)
+                    conditions_str += str(cond) + ' OR '
+                conditions_str = conditions_str[:-4]
+                print(f'Select {k}: ' + conditions_str)
         else:
             print('No db cut')
 
@@ -475,8 +487,8 @@ class SnSim:
 
         for cut in self.nep_cut:
             print_cut = f'- At least {cut[0]} epochs between {cut[1]} and {cut[2]}'
-            if len(cut)==4:
-                print_cut+=f' in {cut[3]} band'
+            if len(cut) == 4:
+                print_cut += f' in {cut[3]} band'
             print(print_cut)
 
         print(f'\n-----------------------------------------------------------\n')
@@ -500,7 +512,7 @@ class SnSim:
         print(f'\n-----------------------------------------------------------\n')
 
         print('OUTPUT FILE(S) : ')
-        if isinstance(self.sim_cfg['data']['write_format'],str):
+        if isinstance(self.sim_cfg['data']['write_format'], str):
             print(self.sim_cfg['data']['write_path']
                   + self.sim_name
                   + '.'
@@ -534,19 +546,22 @@ class SnSim:
 
         """
 
-        n_sn_seed, sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low=1000, high=100000, size=2)
+        n_sn_seed, sn_gen_seed = np.random.default_rng(
+            self.rand_seed).integers(
+            low=1000, high=100000, size=2)
         n_sn = self.__gen_n_sn(n_sn_seed)
-        sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(low=1000, high=100000, size=np.sum(n_sn))
+        sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(
+            low=1000, high=100000, size=np.sum(n_sn))
 
         SN_ID = 0
         for n, z, rs in zip(n_sn, self.z_span['z_bins'], sn_bins_seed):
-            sn_list_tmp = self.generator(n,[z,z+self.z_span['dz']],rs)
+            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']], rs)
             for sn in sn_list_tmp:
                 sn.epochs = self.obs.epochs_selection(sn)
                 if sn.pass_cut(self.nep_cut):
                     sn.gen_flux()
                     sn.ID = SN_ID
-                    SN_ID+= 1
+                    SN_ID += 1
                     self._sn_list.append(sn)
 
     def __fix_nsn_sim(self):
@@ -563,7 +578,8 @@ class SnSim:
         """
 
         raise_trigger = 0
-        sn_gen_seed = np.random.default_rng(self.rand_seed).integers(low = 1000, high = 100000, size = self.sim_cfg['sn_gen']['n_sn'])
+        sn_gen_seed = np.random.default_rng(self.rand_seed).integers(
+            low=1000, high=100000, size=self.sim_cfg['sn_gen']['n_sn'])
         rs_id = 0
         SN_ID = 0
         rs = sn_gen_seed[rs_id]
@@ -573,16 +589,16 @@ class SnSim:
             if sn.pass_cut(self.nep_cut):
                 sn.gen_flux()
                 sn.ID = SN_ID
-                SN_ID+=1
+                SN_ID += 1
                 self._sn_list.append(sn)
                 if len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
-                    rs_id+=1
+                    rs_id += 1
                     rs = sn_gen_seed[rs_id]
-            elif raise_trigger > 2*len(self.obs.obs_table['expMJD']):
+            elif raise_trigger > 2 * len(self.obs.obs_table['expMJD']):
                 raise RuntimeError('Cuts are too stricts')
             else:
-                raise_trigger+=1
-                rs = np.random.default_rng(rs).integers(low = 1000, high = 100000)
+                raise_trigger += 1
+                rs = np.random.default_rng(rs).integers(low=1000, high=100000)
 
     def __get_primary_header(self):
         """Generate the primary header of sim fits file..
@@ -593,23 +609,25 @@ class SnSim:
 
         """
         header = {'n_sn': self.n_sn,
-                  'M0' : self.sim_cfg['sn_gen']['M0'],
-                  'sigM': self.sim_cfg['sn_gen']['mag_smear']}
+                  'M0': self.sim_cfg['sn_gen']['M0'],
+                  'sigM': self.sim_cfg['sn_gen']['mag_smear'],
+                  **self.cosmo}
 
         if self.host is None:
             header['m_vp'] = self.sim_cfg['vpec_gen']['mean_vpec']
-            header['s_vp'] =  self.sim_cfg['vpec_gen']['sig_vpec']
-
+            header['s_vp'] = self.sim_cfg['vpec_gen']['sig_vpec']
+        
         if self.model_name == 'salt2' or self.model_name == 'salt3':
-            fits_dic = {'alpha': 'alpha',
+            fits_dic = {'model_name': 'Mname',
+                        'alpha': 'alpha',
                         'beta': 'beta',
                         'mean_x1': 'm_x1',
                         'sig_x1': 's_x1',
                         'mean_c': 'm_c',
                         'sig_c': 's_c'
-                       }
+                        }
 
-        for k,v in fits_dic.items():
+        for k, v in fits_dic.items():
             header[v] = self.sim_cfg['model_gen'][k]
 
         return header
@@ -620,29 +638,31 @@ class SnSim:
         Returns
         -------
         None
+            Just write sim into a file
 
         """
 
         write_path = self.sim_cfg['data']['write_path']
+        sim_header = self.__get_primary_header()
         if 'fits' in self.sim_cfg['data']['write_format']:
             lc_hdu_list = [sn.get_lc_hdu() for sn in self._sn_list]
-            sim_header = self.__get_primary_header()
             hdu_list = fits.HDUList(
-                    [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
+                [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
 
             hdu_list.writeto(
-                    write_path +
-                    self.sim_name +
-                    '.fits',
-                    overwrite=True)
+                write_path +
+                self.sim_name +
+                '.fits',
+                overwrite=True)
 
-        #Export lcs as pickle
+        # Export lcs as pickle
         if 'pkl' in self.sim_cfg['data']['write_format']:
             sim_lc = [sn.sim_lc for sn in self._sn_list]
-            with open(write_path+self.sim_name+'_lcs.pkl','wb') as file:
-                pickle.dump(sim_lc, file)
+            sn_pkl = scls.SnSimPkl(sim_lc, sim_header)
+            with open(write_path + self.sim_name + '_lcs.pkl', 'wb') as file:
+                pickle.dump(sn_pkl, file)
 
-    def plot_lc(self, sn_ID, mag = False, zp=25., plot_sim = True, plot_fit = False):
+    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -671,7 +691,7 @@ class SnSim:
         sn = self._sn_list[sn_ID]
         if plot_sim:
             s_model = self.generator.sim_model.__copy__()
-            dic_par = {**{'z': sn.z,'t0': sn.sim_t0}, **sn._model_par['sncosmo']}
+            dic_par = {**{'z': sn.z, 't0': sn.sim_t0}, **sn._model_par['sncosmo']}
             s_model.set(**dic_par)
         else:
             s_model = None
@@ -686,17 +706,17 @@ class SnSim:
             f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
             f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
-            cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:,1:]
+            cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:, 1:]
             residuals = True
         else:
             f_model = None
             cov_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(sn.sim_lc, mag = mag,
-                snc_sim_model = s_model,
-                snc_fit_model = f_model,
-                fit_cov = cov_x0_x1_c, residuals = residuals)
+        ut.plot_lc(sn.sim_lc, mag=mag,
+                   snc_sim_model=s_model,
+                   snc_fit_model=f_model,
+                   fit_cov=cov_x0_x1_c, residuals=residuals)
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.
@@ -723,9 +743,9 @@ class SnSim:
             dec.append(d)
             if plot_vpec:
                 vpec.append(sn.vpec)
-        ut.plot_ra_dec(np.asarray(ra),np.asarray(dec),vpec, **kwarg)
+        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
 
-    def fit_lc(self, sn_ID = None):
+    def fit_lc(self, sn_ID=None):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -748,7 +768,7 @@ class SnSim:
             return
 
         if self._fit_res is None:
-            self._fit_res = [None]*len(self.sn_list)
+            self._fit_res = [None] * len(self.sn_list)
 
         fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
 
@@ -788,14 +808,19 @@ class SnSim:
                        'zCMB': [sn.zCMB for sn in self.sn_list],
                        'zobs': [sn.z for sn in self.sn_list],
                        'sim_mu': [sn.sim_mu for sn in self.sn_list]}
-        if self.model_name == 'salt2' or self.model_name == 'salt3':
 
+        if self.model_name == 'salt2' or self.model_name == 'salt3':
             sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
             sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
             sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
             sim_lc_meta['m_smear'] = [sn.mag_smear for sn in self.sn_list]
 
-        sim_meta={'n_sn': len(self.sn_list), 'MName': self.model_name, 'M0': self.sim_par['sn_model_par']['M0'], **self.sim_par['cosmo']}
+        sim_meta = {
+            'n_sn': len(
+                self.sn_list),
+            'MName': self.model_name,
+            'M0': self.sim_par['sn_model_par']['M0'],
+            **self.sim_par['cosmo']}
 
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             sim_meta['alpha'] = self.sim_cfg['model_gen']['alpha']
@@ -815,4 +840,178 @@ class SnSim:
             sim_lc_meta['SM_seed'] = [sn.smear_mod_seed for sn in self.sn_list]
 
         write_file = self.sim_cfg['data']['write_path'] + self.sim_name + '_fit.fits'
-        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta = sim_meta)
+        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=sim_meta)
+
+
+class OpenSim:
+    def __init__(self, sim_file, model_dir):
+        '''Copy some function of snsim to allow to use sim file'''
+        self._file_path, self._file_ext = os.path.splitext(sim_file)
+        self._sim_lc, self._header = self.__init_sim_lc()
+        self._model_dir = model_dir
+        self._fit_model = ut.init_sn_model(self.header['model_name'], model_dir)
+        self._fit_res = None
+
+    def __init_sim_lc():
+        if self._file_ext == '.fits':
+            sim_lc = []
+            meta = {}
+            with fits.open(sim_file) as sf:
+                header=sf[0].header
+                meta = True
+                for i,hdu in enumerate(sf[1:]):
+                    data = hdu.data
+                    tab = Table(data)
+                    tab.meta = hdu.header
+                    if meta:
+                        meta=False
+                        for k in tab.meta:
+                            meta[k]=np.zeros(self.n_sn,dtype='object')
+                    for k in tab.meta:
+                        meta[k][i]=tab.meta[k]
+                    sim_lc.append(tab)
+
+        elif self._file_ext == '.pkl':
+            with open(sim_file,'rb') as f:
+                sn_pkl = pickle.load(f)
+                sim_lc = sn_pkl.sim_lc
+                header = sn_pkl.header
+        return sim_lc, header
+
+    @property
+    def sim_lc(self):
+        return self._sim_lc
+
+    @property
+    def header(self):
+        return self._header
+
+    def fit_lc(self, sn_ID=None):
+        """Fit all or just one SN lightcurve(s).
+
+        Parameters
+        ----------
+        sn_ID : int, default is None
+            The SN ID, if not specified all SN are fit.
+
+        Returns
+        -------
+        None
+            Directly modified the _fit_res attribute.
+
+        Notes
+        -----
+        Use snc_fitter from utils
+
+        """
+
+        if self._fit_res is None:
+            self._fit_res = [None] * len(self.sim_lc)
+
+        model_name = self.header['Mname']
+        if model_name == 'salt2' or model_name == 'salt3':
+            fit_par = ['t0', 'x0', 'x1', 'c']
+
+        if sn_ID is None:
+            for i, sn in enumerate(self.sn_list):
+                if self._fit_res[i] is None:
+                    fit_model.set(z=sn.z)
+                    self._fit_res[i] = ut.snc_fitter(sn.sim_lc, self._fit_model, fit_par)
+        else:
+            fit_model.set(z=self.sn_list[sn_ID].z)
+            self._fit_res[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID], self._fit_model, fit_par)
+
+    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False):
+        """Plot the given SN lightcurve.
+
+        Parameters
+        ----------
+        sn_ID : int
+            The Supernovae ID.
+        mag : boolean, default = False
+            If True plot the magnitude instead of the flux.
+        zp : float
+            Used zeropoint for the plot.
+        plot_sim : boolean, default = True
+            If True plot the theorical simulated lightcurve.
+        plot_fit : boolean, default = False
+            If True plot the fitted lightcurve.
+
+        Returns
+        -------
+        None
+            Just plot the SN lightcurve !
+
+        Notes
+        -----
+        Use plot_lc from utils.
+
+        """
+        lc = self.sim_lc[sn_ID]
+        if plot_sim:
+            model_name = self.header['Mname']
+
+            s_model = ut.init_sn_model(model_name, self._model_dir)
+
+            dic_par = {'z': lc.meta['z'],
+                       't0': lc.meta['sim_t0']}
+
+            if model_name == 'salt2' or model_name == 'salt3':
+                dic_par['x0'] = lc.sim_x0
+                dic_par['x1'] = lc.sim_x1
+                dic_par['c'] = lc.sim_c
+
+            s_model.set(**dic_par)
+
+        else:
+            s_model = None
+
+        if plot_fit:
+            if self.fit_res[sn_ID] is None:
+                print('This SN was not fitted, launch fit')
+                self.fit_lc(sn_ID)
+            if self.fit_res[sn_ID] is np.nan:
+                print('This sn has no fit results')
+                return
+            f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
+            x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
+            f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
+            cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:, 1:]
+            residuals = True
+        else:
+            f_model = None
+            cov_x0_x1_c = None
+            residuals = False
+
+        ut.plot_lc(sn.sim_lc, mag=mag,
+                   snc_sim_model=s_model,
+                   snc_fit_model=f_model,
+                   fit_cov=cov_x0_x1_c, residuals=residuals)
+
+
+    def plot_ra_dec(self, plot_vpec=False, **kwarg):
+        """Plot a mollweide map of ra, dec.
+
+        Parameters
+        ----------
+        plot_vpec : boolean
+            If True plot a vpec colormap.
+
+        Returns
+        -------
+        None
+            Just plot the map.
+
+        """
+        ra = []
+        dec = []
+        vpec = None
+        if plot_vpec:
+            vpec = []
+        for lc in self.sim_lc:
+            ra.append(lc.meta['ra'])
+            dec.append(lc.meta['dec'])
+            if plot_vpec:
+                vpec.append(lc.meta['vpec'])
+
+        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)

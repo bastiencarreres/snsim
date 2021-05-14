@@ -14,6 +14,7 @@ from matplotlib.lines import Line2D
 from . import nb_fun as nbf
 from .constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 
+
 def x0_to_mB(x0):
     """Convert SALT x0 to bessellB restframe magnitude.
 
@@ -68,6 +69,7 @@ def cov_x0_to_mb(x0, cov):
     new_cov = J @ cov @ J.T
     return new_cov
 
+
 def compute_z2cmb(ra, dec, cmb):
     """Compute the redshifts of a list of objects relative to the CMB.
 
@@ -97,13 +99,14 @@ def compute_z2cmb(ra, dec, cmb):
 
     galac_coord = coordfk5.transform_to('galactic')
     ra_gal = galac_coord.l.rad - 2 * np.pi * \
-    np.sign(galac_coord.l.rad) * (abs(galac_coord.l.rad) > np.pi)
+        np.sign(galac_coord.l.rad) * (abs(galac_coord.l.rad) > np.pi)
     dec_gal = galac_coord.b.rad
 
     ss = np.sin(dec_gal) * np.sin(dec_cmb * np.pi / 180)
-    ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi / \
-                     180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
+    ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi /
+                                   180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
+
 
 def init_sn_model(name, model_dir):
     """Initialise a sncosmo model.
@@ -125,7 +128,8 @@ def init_sn_model(name, model_dir):
     elif name == 'salt3':
         return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
 
-def snc_fitter(lc,fit_model,fit_par):
+
+def snc_fitter(lc, fit_model, fit_par):
     """Fit a given lightcurve with sncosmo.
 
     Parameters
@@ -144,10 +148,11 @@ def snc_fitter(lc,fit_model,fit_par):
 
     """
     try:
-            res = snc.fit_lc(lc, fit_model, fit_par,  modelcov=True)[0]
+        res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)[0]
     except BaseException:
-            res = np.nan
+        res = np.nan
     return res
+
 
 def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     """Compute fit error on flux from sncosmo fit covariance x0,x1,c.
@@ -201,20 +206,22 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
 
     p = time_th - t0
 
-    dfdx0 = fit_model.bandflux(b, time_th, zp=zp, zpsys = 'ab')/ x0
+    dfdx0 = fit_model.bandflux(b, time_th, zp=zp, zpsys='ab') / x0
 
     fint1 = M1(a * p, a * wave) * 10.**(-0.4 * CL(a * wave) * c)
-    fint2 = (M0(a * p, a * wave) + x1 * M1(a * p, a * wave)) * 10.**(-0.4 * CL(a * wave) * c) * CL(a * wave)
+    fint2 = (M0(a * p, a * wave) + x1 * M1(a * p, a * wave)) * \
+        10.**(-0.4 * CL(a * wave) * c) * CL(a * wave)
     m1int = np.sum(wave * trans * fint1, axis=1) * \
-            dwave / snc.constants.HC_ERG_AA
+        dwave / snc.constants.HC_ERG_AA
     clint = np.sum(wave * trans * fint2, axis=1) * \
-            dwave / snc.constants.HC_ERG_AA
+        dwave / snc.constants.HC_ERG_AA
 
     dfdx1 = a * x0 * m1int * normfactor
     dfdc = -0.4 * np.log(10) * a * x0 * clint * normfactor
-    J = np.asarray([[d1, d2, d3] for d1,d2,d3 in zip(dfdx0, dfdx1, dfdc)])
-    err_th = np.sqrt(np.einsum('ki,ki->k',J, np.einsum('ij,kj->ki', cov, J)))
+    J = np.asarray([[d1, d2, d3] for d1, d2, d3 in zip(dfdx0, dfdx1, dfdc)])
+    err_th = np.sqrt(np.einsum('ki,ki->k', J, np.einsum('ij,kj->ki', cov, J)))
     return err_th
+
 
 def find_filters(filter_table):
     """Find the different filter in a table.
@@ -236,6 +243,7 @@ def find_filters(filter_table):
             filter_list.append(f)
     return filter_list
 
+
 def norm_flux(flux_table, zp):
     """Rescale the flux to a given zeropoint.
 
@@ -256,6 +264,7 @@ def norm_flux(flux_table, zp):
     flux_norm = flux_table['flux'] * norm_factor
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
+
 
 def sine_interp(x_new, fun_x, fun_y):
     """Return the sinus interpolation of a function at x.
@@ -288,17 +297,18 @@ def sine_interp(x_new, fun_x, fun_y):
     elif sup_sel.all():
         idx_inf = 0
     else:
-        idx_inf=np.where(inf_sel*sup_sel)[0][0]
+        idx_inf = np.where(inf_sel * sup_sel)[0][0]
 
     x_inf = fun_x[idx_inf]
-    x_sup = fun_x[idx_inf+1]
+    x_sup = fun_x[idx_inf + 1]
     Value_inf = fun_y[idx_inf]
-    Value_sup = fun_y[idx_inf+1]
-    sin_interp = np.sin(np.pi*(x_new-0.5*(x_inf+x_sup))/(x_sup-x_inf))
+    Value_sup = fun_y[idx_inf + 1]
+    sin_interp = np.sin(np.pi * (x_new - 0.5 * (x_inf + x_sup)) / (x_sup - x_inf))
 
-    return 0.5*(Value_sup+Value_inf)+0.5*(Value_sup-Value_inf)*sin_interp
+    return 0.5 * (Value_sup + Value_inf) + 0.5 * (Value_sup - Value_inf) * sin_interp
 
-def change_sph_frame(ra,dec,ra_frame,dec_frame):
+
+def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.
 
     Parameters
@@ -318,14 +328,22 @@ def change_sph_frame(ra,dec,ra_frame,dec_frame):
         Object coordinates in each of the frames.
 
     """
-    if isinstance(ra_frame,float):
-        ra_frame=np.array([ra_frame])
-        dec_frame=np.array([dec_frame])
-    vec=np.array([np.cos(ra)*np.cos(dec),np.sin(ra)*np.cos(dec),np.sin(dec)])
-    new_ra,new_dec = nbf.new_coord_on_fields(ra_frame,dec_frame,vec)
+    if isinstance(ra_frame, float):
+        ra_frame = np.array([ra_frame])
+        dec_frame = np.array([dec_frame])
+    vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
+    new_ra, new_dec = nbf.new_coord_on_fields(ra_frame, dec_frame, vec)
     return new_ra, new_dec
 
-def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=None, fit_cov=None, residuals=False):
+
+def plot_lc(
+        flux_table,
+        zp=25.,
+        mag=False,
+        snc_sim_model=None,
+        snc_fit_model=None,
+        fit_cov=None,
+        residuals=False):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -359,7 +377,6 @@ def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=Non
     z = flux_table.meta['z']
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
 
-
     if residuals:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
         ax0 = plt.subplot(gs[0])
@@ -380,7 +397,7 @@ def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=Non
             ax0.set_ylabel('Mag')
 
             # Delete < 0 pts
-            flux_mask = flux_b >0
+            flux_mask = flux_b > 0
             flux_b = flux_b[flux_mask]
             fluxerr_b = fluxerr_b[flux_mask]
             time_b = time_b[flux_mask]
@@ -409,10 +426,10 @@ def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=Non
             err = fluxerr_b
 
             if snc_sim_model is not None:
-                plot_th = snc_sim_model.bandflux(b, time_th, zp = zp, zpsys = 'ab')
+                plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab')
 
             if snc_fit_model is not None:
-                plot_fit = snc_fit_model.bandflux(b, time_th, zp = zp, zpsys = 'ab')
+                plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')
                 if fit_cov is not None:
                     if snc_fit_model.source.name == 'salt2' or fit_model.source.name == 'salt3':
                         err_th = compute_salt_fit_error(snc_fit_model, fit_cov, b, time_th, zp)
@@ -420,7 +437,7 @@ def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=Non
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')
                     rsd = plot - fit_pts
 
-        p = ax0.errorbar(time_b - t0,plot,yerr=err, label=b, fmt='o',markersize= 2.5)
+        p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
         handles, labels = ax0.get_legend_handles_labels()
 
         if snc_sim_model is not None:
@@ -429,7 +446,6 @@ def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=Non
             sim_label = 'Sim'
             handles.append(sim_line)
             labels.append(sim_label)
-
 
         if snc_fit_model is not None:
             ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
@@ -454,11 +470,12 @@ def plot_lc(flux_table, zp=25., mag=False, snc_sim_model=None, snc_fit_model=Non
                 ax1.plot(time_th - t0, -err_th, ls='--', color=p[0].get_color())
 
     ax0.legend(handles=handles, labels=labels)
-    plt.xlim(snc_sim_model.mintime()-t0,snc_sim_model.maxtime()-t0)
+    plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
     plt.subplots_adjust(hspace=.0)
     plt.show()
 
-def plot_ra_dec(ra, dec, vpec = None,**kwarg):
+
+def plot_ra_dec(ra, dec, vpec=None, **kwarg):
     """Plot a mollweide map of ra, dec.
 
     Parameters
@@ -477,10 +494,10 @@ def plot_ra_dec(ra, dec, vpec = None,**kwarg):
 
     """
     plt.figure()
-    ax = plt.subplot(111,projection='mollweide')
+    ax = plt.subplot(111, projection='mollweide')
     plt.grid()
     ax.set_axisbelow(True)
-    ra = ra-2*np.pi*(ra > np.pi)
+    ra = ra - 2 * np.pi * (ra > np.pi)
     if vpec is None:
         plt.scatter(ra, dec, **kwarg)
     else:
@@ -489,7 +506,8 @@ def plot_ra_dec(ra, dec, vpec = None,**kwarg):
 
     plt.show()
 
-def write_fit(sim_lc_meta, fit_res, directory,sim_meta={}):
+
+def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
     """Write fit into a fits file.
 
     Parameters
@@ -514,7 +532,7 @@ def write_fit(sim_lc_meta, fit_res, directory,sim_meta={}):
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
     MName = sim_meta['MName']
-    if MName == 'salt2' or MName=='salt3':
+    if MName == 'salt2' or MName == 'salt3':
         fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
                      'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
                      'cov_mb_x1', 'cov_mb_c', 'cov_x1_c']
@@ -528,7 +546,7 @@ def write_fit(sim_lc_meta, fit_res, directory,sim_meta={}):
             data['t0'].append(par[1])
             data['e_t0'].append(np.sqrt(fit_res[i]['covariance'][0, 0]))
 
-            if MName == 'salt2' or MName=='salt3':
+            if MName == 'salt2' or MName == 'salt3':
                 par_cov = fit_res[i]['covariance'][1:, 1:]
                 mb_cov = cov_x0_to_mb(par[2], par_cov)
                 data['x0'].append(par[2])
