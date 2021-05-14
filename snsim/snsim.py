@@ -11,6 +11,7 @@ from astropy.table import Table
 from numpy import power as pw
 from . import utils as ut
 from .constants import SN_SIM_PRINT
+from . import scatter as sct
 from . import sim_class as scls
 
 
@@ -328,8 +329,8 @@ class SnSim:
                      snc_mintime,
                      snc_maxtime)]
             elif isinstance(nep_cut, (list)):
-                for i in range(len(nep_cut)):
-                    if len(nep_cut[i]) < 3:
+                for i, cut in enumerate(nep_cut):
+                    if len(cut) < 3:
                         nep_cut[i].append(snc_mintime)
                         nep_cut[i].append(snc_maxtime)
         else:
@@ -777,7 +778,7 @@ class SnSim:
 
         fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
 
-        if self.model_name == 'salt2' or self.model_name == 'salt3':
+        if self.model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
         if sn_ID is None:
@@ -827,7 +828,7 @@ class SnSim:
             'M0': self.sim_par['sn_model_par']['M0'],
             **self.sim_par['cosmo']}
 
-        if self.model_name == 'salt2' or self.model_name == 'salt3':
+        if self.model_name in ('salt2', 'salt3'):
             sim_meta['alpha'] = self.sim_cfg['model_gen']['alpha']
             sim_meta['beta'] = self.sim_cfg['model_gen']['beta']
             sim_meta['m_x1'] = self.sim_cfg['model_gen']['mean_x1']
@@ -955,7 +956,7 @@ class OpenSim:
             self._fit_res = [None] * len(self.sim_lc)
         fit_model = self._fit_model.__copy__()
         model_name = self.header['Mname']
-        if model_name == 'salt2' or model_name == 'salt3':
+        if model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
         if sn_ID is None:
@@ -1002,7 +1003,7 @@ class OpenSim:
             dic_par = {'z': lc.meta['z'],
                        't0': lc.meta['sim_t0']}
 
-            if model_name == 'salt2' or model_name == 'salt3':
+            if model_name in ('salt2', 'salt3'):
                 dic_par['x0'] = lc.meta['sim_x0']
                 dic_par['x1'] = lc.meta['sim_x1']
                 dic_par['c'] = lc.meta['sim_c']
@@ -1037,10 +1038,13 @@ class OpenSim:
             cov_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(self.sim_lc[sn_ID], mag=mag,
+        ut.plot_lc(self.sim_lc[sn_ID],
+                   mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
-                   fit_cov=cov_x0_x1_c, residuals=residuals)
+                   fit_cov=cov_x0_x1_c,
+                   zp=zp,
+                   residuals=residuals)
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.
@@ -1101,7 +1105,7 @@ class OpenSim:
                        'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc]}
 
         model_name = self.header['Mname']
-        if model_name == 'salt2' or model_name == 'salt3':
+        if model_name in ('salt2', 'salt3'):
             sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
             sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
             sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
