@@ -24,11 +24,11 @@ keys_dic = {
     'data': [
         'write_path',
         'sim_name',
-        'band_dic',
         'write_format',
         'obs_config_path'],
     'db_config': [
         'dbfile_path',
+        'band_dic',
         'db_cut',
         'zp',
         'gain',
