@@ -58,7 +58,7 @@ class SN:
         self._model_par = model_par
         self.__init_model_par()
         self._epochs = None
-        self.sim_lc = None
+        self._sim_lc = None
         self._ID = None
         return
 
@@ -153,6 +153,11 @@ class SN:
         else:
             return None
 
+    @property
+    def sim_lc(self):
+        """Get sim_lc"""
+        return self._sim_lc
+
     def __init_model_par(self):
         """Extract and compute SN parameters that depends on used model.
 
@@ -234,9 +239,9 @@ class SN:
         """
 
         params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
-        self.sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
+        self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
         rs = self._model_par['noise_rand_seed']
-        self.sim_lc['flux'] = np.random.default_rng(rs).normal(
+        self._sim_lc['flux'] = np.random.default_rng(rs).normal(
             loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
 
         return self.__reformat_sim_table()
@@ -254,6 +259,9 @@ class SN:
 
         """
         not_to_change = ['G10','C11']
+        for k in self.epochs.keys():
+            if k not in self.sim_lc.copy().keys():
+                self._sim_lc[k] = self.epochs[k].copy()
 
         for k in self.sim_lc.meta.copy():
             if k != 'z' and k[:3] not in not_to_change:
