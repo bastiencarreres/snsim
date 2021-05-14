@@ -10,11 +10,11 @@ The input file is a .yml with the following structure:
 data :
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
-    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
  correpond to those in sncosmo registery)
     write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
 db_config: 
     dbfile_path: '/PATH/TO/FILE'
+    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
     add_keys: ['keys1', 'keys2', ...] #(Optional add db file keys to metadata)  
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
     zp: INSTRUMENTAL ZEROPOINT  
