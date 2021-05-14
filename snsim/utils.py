@@ -9,9 +9,7 @@ import astropy.units as u
 from numpy import power as pw
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
-from . import scatter as sct
 from . import nb_fun as nbf
 from .constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 
@@ -128,7 +126,7 @@ def init_sn_model(name, model_dir):
         return snc.Model(source=snc.SALT2Source(model_dir, name='salt2'))
     elif name == 'salt3':
         return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
-
+    return None
 
 def snc_fitter(lc, fit_model, fit_par):
     """Fit a given lightcurve with sncosmo.
@@ -412,7 +410,7 @@ def plot_lc(
             if snc_fit_model is not None:
                 plot_fit = snc_fit_model.bandmag(b, 'ab', time_th)
                 if fit_cov is not None:
-                    if snc_fit_model.source.name == 'salt2' or snc_fit_model.source.name == 'salt3':
+                    if snc_fit_model.source.name in ('salt2', 'salt3'):
                         err_th = compute_salt_fit_error(snc_fit_model, fit_cov, b, time_th, zp)
                         err_th = 2.5 / \
                             (np.log(10) * pw(10, -0.4 * (plot_fit - zp))) * err_th
@@ -432,7 +430,7 @@ def plot_lc(
             if snc_fit_model is not None:
                 plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')
                 if fit_cov is not None:
-                    if snc_fit_model.source.name == 'salt2' or fit_model.source.name == 'salt3':
+                    if snc_fit_model.source.name in ('salt2','salt3'):
                         err_th = compute_salt_fit_error(snc_fit_model, fit_cov, b, time_th, zp)
                 if residuals:
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')
@@ -533,7 +531,7 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
     MName = sim_meta['MName']
-    if MName == 'salt2' or MName == 'salt3':
+    if MName in ('salt2', 'salt3'):
         fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
                      'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
                      'cov_mb_x1', 'cov_mb_c', 'cov_x1_c']
@@ -547,7 +545,7 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
             data['t0'].append(par[1])
             data['e_t0'].append(np.sqrt(fit_res[i]['covariance'][0, 0]))
 
-            if MName == 'salt2' or MName == 'salt3':
+            if MName in ('salt2', 'salt3'):
                 par_cov = fit_res[i]['covariance'][1:, 1:]
                 mb_cov = cov_x0_to_mb(par[2], par_cov)
                 data['x0'].append(par[2])

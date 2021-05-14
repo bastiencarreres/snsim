@@ -185,7 +185,6 @@ class C11(snc.PropagationEffect):
                                       [0.000, -0.219447, -0.888611, -0.399538, +0.490134, +1.000000]])
         # U'UBVRI sigma
         self._sigma = np.array([0.5900, 0.06001, 0.040034, 0.050014, 0.040017, 0.080007])
-        return
 
     @property
     def covmat(self):

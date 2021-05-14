@@ -386,7 +386,7 @@ class SNGen:
             A dict containing all the usefull keys of the SN model.
         """
         model_name = self.snc_model_par['model_name']
-        if model_name == 'salt2' or model_name == 'salt3':
+        if model_name in ('salt2', 'salt3'):
             model_keys = ['alpha', 'beta']
         return model_keys
 
@@ -527,7 +527,7 @@ class SNGen:
         """
         snc_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
         model_name = self.snc_model_par['model_name']
-        if model_name == 'salt2' or model_name == 'salt3':
+        if model_name in ('salt2', 'salt3'):
             sim_x1, sim_c = self.gen_salt_par(n, snc_seeds[0])
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
