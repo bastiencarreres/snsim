@@ -2,30 +2,30 @@ from setuptools import setup
 import re
 import os
 
-PACKNAME='snsim'
+PACKNAME = 'snsim'
 AUTHOR = 'Bastien Carreres'
-EMAIL='carreres@cppm.in2p3.fr'
+EMAIL = 'carreres@cppm.in2p3.fr'
 URL = 'https://github.com/bcarreres/snsim'
 LICENSE = 'BSD'
 DESCRIPTION = 'Package to simulate SN survey, using sncosmo SN simulation package'
 VERSION = re.findall(r"__version__ = \"(.*?)\"",
                      open(os.path.join("snsim", "__init__.py")).read())[0]
 setup(
-   name=PACKNAME,
-   version=VERSION,
-   description=DESCRIPTION,
-   author=AUTHOR,
-   author_email=EMAIL,
-   license=LICENSE,
-   packages=['snsim'],
-   url=URL,
-   python_requires='>=3.7',
-   install_requires=[
-       "sncosmo >= 2.5.0",
-       "numpy >= 1.13.3",
-       "scipy >= 0.9.0",
-       "astropy >= 1.0.0",
-       "numba",
-       "pyyaml"
-       ]
+    name=PACKNAME,
+    version=VERSION,
+    description=DESCRIPTION,
+    author=AUTHOR,
+    author_email=EMAIL,
+    license=LICENSE,
+    packages=['snsim'],
+    url=URL,
+    python_requires='>=3.7',
+    install_requires=[
+        "sncosmo >= 2.5.0",
+        "numpy >= 1.13.3",
+        "scipy >= 0.9.0",
+        "astropy >= 1.0.0",
+        "numba",
+        "pyyaml"
+    ]
 )

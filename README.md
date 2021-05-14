@@ -29,13 +29,13 @@ sn_gen:
     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS #(Optional defaut >= 1 ep)
     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional default random)
     z_range: [ZMIN,ZMAX]
-    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
     M0: SN ABSOLUT MAGNITUDE
     mag_smear: SN INTRINSIC SMEARING
     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
 cosmology:
     Om: MATTER DENSITY  
     H0: HUBBLE CONSTANT
+    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
 salt_gen:
     version: 2 or 3
     salt_dir: '/PATH/TO/SALT/MODEL'  
