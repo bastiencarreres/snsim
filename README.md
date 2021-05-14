@@ -36,9 +36,10 @@ cosmology:
     Om: MATTER DENSITY  
     H0: HUBBLE CONSTANT
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
-salt_gen:
-    version: 2 or 3
-    salt_dir: '/PATH/TO/SALT/MODEL'  
+model_gen:
+    model_name: 'THE MODEL NAME' # Example : 'salt2'
+    model_dir: '/PATH/TO/SALT/MODEL'  
+    # Model parameters (here example for salt2)
     alpha: STRETCH CORRECTION = alpha*x1
     beta: COLOR CORRECTION = -beta*c   
     mean_x1: MEAN X1 VALUE
@@ -46,7 +47,7 @@ salt_gen:
     sig_x1: SIGMA X1   
     sig_c: SIGMA C
  vpec_gen:
-     host_file: '/PATH/TO/HOSTFILE'
+     host_file: '/PATH/TO/HOSTFILE' # Optional
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
 ```
@@ -79,15 +80,28 @@ sim = sn_sim('yaml_cfg_file.yml')
 sim.simulate()
 ```
 
-The result is stored in sim.sim_lc table which each entry is a SN light curve. Metadata are given by
+The result is stored in sim.sn_list list which each entry is a SN object. Simulated lc and metadata are given by :
 ```
-sim.sim_lc[i].meta
-```
-The list of ligth curves metadata is given in the following table
+sim.sn_list[i].sim_lc
+sim.sn_list[i].sim_lc.meta
 
-| z | sim_t0 | sim_x0 | sim_x1 | sim_c | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id  | mb | mu | m_smear |
-| :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
-|  Observed redshift | Peaktime | SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | SN magnitude in restframe Bessell B | Simulated distance modulli | Coherent smear term |
+#  For more information :
+help(snsim.SN)
+```
+The basic list of ligth curves metadata is given in the following table
+
+| z |  sim_t0   | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id   | sim_mu | m_smear |
+| :------------:  | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
+|  Observed redshift | Peaktime | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | Simulated distance modulli | Coherent smear term |
+
+If you use SALT model you add some argument to metadata:
+
+
+| sim_x0 | sim_x1 | sim_c | sim_mb |
+| :----: | :----: | :---: | :----: |
+| SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | SN magnitude in restframe Bessell B
+
+Moreover if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
 
 ## Script launch
 The program can be launch with the ./sripts/launch_sim.py python script.
