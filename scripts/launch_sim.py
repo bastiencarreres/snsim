@@ -42,16 +42,15 @@ keys_dic = {
         'duration',
         'nep_cut',
         'z_range',
-        'v_cmb',
         'M0',
         'mag_smear',
         'smear_mod'],
     'cosmology': [
         'Om',
-        'H0'],
-    'salt_gen': [
-        'salt_dir',
-	    'version',
+        'H0', 'v_cmb'],
+    'model_gen': [
+        'model_dir',
+	    'model_name',
         'alpha',
         'beta',
         'mean_x1',
@@ -84,16 +83,16 @@ parser.add_argument("--duration",type=float)
 
 parser.add_argument("--nep_cut", action='append', nargs='+')
 parser.add_argument("--z_range",type=float,nargs=2)
-parser.add_argument("--v_cmb",type=float)
 parser.add_argument("--M0",type=float)
 parser.add_argument("--mag_smear",type=float)
 parser.add_argument("--smear_mod",type=str)
 
 parser.add_argument("--Om",type=float)
 parser.add_argument("--H0",type=float)
+parser.add_argument("--v_cmb",type=float)
 
-parser.add_argument("--salt_dir",type=str)
-parser.add_argument("--version",type=int)
+parser.add_argument("--model_dir",type=str)
+parser.add_argument("--model_name",type=int)
 parser.add_argument("--alpha",type=float)
 parser.add_argument("--beta",type=float)
 parser.add_argument("--mean_x1",type=float)
@@ -134,7 +133,7 @@ for K in param_dic:
 param_dic['yaml_path'] = args.__dict__['config_path']
 
 print(param_dic)
-sim = snsim.sn_sim(param_dic)
+sim = snsim.SnSim(param_dic)
 sim.simulate()
 
 if args.fit:
