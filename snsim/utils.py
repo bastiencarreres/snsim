@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
+from . import scatter as sct
 from . import nb_fun as nbf
 from .constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 

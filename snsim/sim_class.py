@@ -8,9 +8,8 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.io import fits
 from numpy import power as pw
 from . import utils as ut
-from . import scatter as sct
 from .constants import C_LIGHT_KMS
-
+from . import scatter as sct
 
 class SN:
     """This class represent SN object.
@@ -254,8 +253,10 @@ class SN:
         Directly change the sim_lc attribute
 
         """
+        not_to_change = ['G10','C11']
+
         for k in self.sim_lc.meta.copy():
-            if k != 'z':
+            if k != 'z' and k[:3] not in not_to_change:
                 self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
 
         if self.ID is not None:
@@ -365,15 +366,7 @@ class SNGen:
 
         if 'smear_mod' in self.snc_model_par:
             smear_mod = self.snc_model_par['smear_mod']
-            if smear_mod == 'G10':
-                model.add_effect(sct.G10(model), 'G10_', 'rest')
-
-            elif smear_mod[:3] == 'C11':
-                model.add_effect(sct.C11(model), 'C11_', 'rest')
-                if smear_mod == 'C11_1':
-                    model.set(C11_Cuu=1.)
-                elif smear_mod == 'C11_2':
-                    model.set(C11_Cuu=-1.)
+            model = sct.init_sn_smear_model(model, smear_mod)
         return model
 
     def __init_model_keys(self):

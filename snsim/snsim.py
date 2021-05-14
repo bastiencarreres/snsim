@@ -1,12 +1,13 @@
-
 """Main module of the simulaiton package"""
 
+import os
 import pickle
 import time
 import yaml
 import numpy as np
 from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
+from astropy.table import Table
 from numpy import power as pw
 from . import utils as ut
 from .constants import SN_SIM_PRINT
@@ -62,6 +63,8 @@ class SnSim:
         Write sim lightcurves in fits or/and pkl format(s).
     plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)
         Plot the given SN lightcurve.
+    plot_ra_dec(self, plot_vpec=False, **kwarg):
+        Plot a mollweide map of ra, dec.
     fit_lc(sn_ID = None)
         Fit all or just one SN lightcurve(s).
     write_fit()
@@ -616,7 +619,7 @@ class SnSim:
         if self.host is None:
             header['m_vp'] = self.sim_cfg['vpec_gen']['mean_vpec']
             header['s_vp'] = self.sim_cfg['vpec_gen']['sig_vpec']
-        
+
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             fits_dic = {'model_name': 'Mname',
                         'alpha': 'alpha',
@@ -630,6 +633,8 @@ class SnSim:
         for k, v in fits_dic.items():
             header[v] = self.sim_cfg['model_gen'][k]
 
+        if 'smear_mod' in self.sim_cfg['sn_gen']:
+            header['Smod'] = self.sim_cfg['sn_gen']['smear_mod']
         return header
 
     def __write_sim(self):
@@ -844,35 +849,70 @@ class SnSim:
 
 
 class OpenSim:
+    """This class allow to open simulation file, make plot and run the fit.
+
+    Parameters
+    ----------
+    sim_file : str
+        Path to the simulation file fits/pkl.
+    model_dir : str
+        Path to the .model used during simulation
+
+    Attributes
+    ----------
+    _file_path : str
+        The path of the simulation file.
+    _file_ext : str
+        sim file extension.
+    _sim_lc : list(astropy.Table)
+        List containing the simulated lightcurves.
+    _header : dict
+        A dict containing simulation meta.
+    _model_dir : str
+        A copy of input model dir.
+    _fit_model : sncosmo.Model
+        The model used to fit the lightcurves.
+    _fit_res : list(sncomso.utils.Result)
+        The reuslts of sncosmo fit.
+
+    Methods
+    -------
+    __init_sim_lc()
+        Extract data from file.
+    plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)
+        Plot the given SN lightcurve.
+    plot_ra_dec(self, plot_vpec=False, **kwarg):
+        Plot a mollweide map of ra, dec.
+    fit_lc(sn_ID = None)
+        Fit all or just one SN lightcurve(s).
+    write_fit()
+        Write fits results in fits format.
+
+
+    """
+
     def __init__(self, sim_file, model_dir):
         '''Copy some function of snsim to allow to use sim file'''
         self._file_path, self._file_ext = os.path.splitext(sim_file)
         self._sim_lc, self._header = self.__init_sim_lc()
         self._model_dir = model_dir
-        self._fit_model = ut.init_sn_model(self.header['model_name'], model_dir)
+        self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
 
-    def __init_sim_lc():
+    def __init_sim_lc(self):
         if self._file_ext == '.fits':
             sim_lc = []
             meta = {}
-            with fits.open(sim_file) as sf:
-                header=sf[0].header
-                meta = True
-                for i,hdu in enumerate(sf[1:]):
+            with fits.open(self._file_path + self._file_ext) as sf:
+                header = sf[0].header
+                for i, hdu in enumerate(sf[1:]):
                     data = hdu.data
                     tab = Table(data)
                     tab.meta = hdu.header
-                    if meta:
-                        meta=False
-                        for k in tab.meta:
-                            meta[k]=np.zeros(self.n_sn,dtype='object')
-                    for k in tab.meta:
-                        meta[k][i]=tab.meta[k]
                     sim_lc.append(tab)
 
         elif self._file_ext == '.pkl':
-            with open(sim_file,'rb') as f:
+            with open(self._file_path + self._file_ext, 'rb') as f:
                 sn_pkl = pickle.load(f)
                 sim_lc = sn_pkl.sim_lc
                 header = sn_pkl.header
@@ -880,11 +920,18 @@ class OpenSim:
 
     @property
     def sim_lc(self):
+        """Get sim_lc list """
         return self._sim_lc
 
     @property
     def header(self):
+        """Get header dict """
         return self._header
+
+    @property
+    def fit_res(self):
+        """Get fit results list"""
+        return self._fit_res
 
     def fit_lc(self, sn_ID=None):
         """Fit all or just one SN lightcurve(s).
@@ -904,22 +951,21 @@ class OpenSim:
         Use snc_fitter from utils
 
         """
-
         if self._fit_res is None:
             self._fit_res = [None] * len(self.sim_lc)
-
+        fit_model = self._fit_model.__copy__()
         model_name = self.header['Mname']
         if model_name == 'salt2' or model_name == 'salt3':
             fit_par = ['t0', 'x0', 'x1', 'c']
 
         if sn_ID is None:
-            for i, sn in enumerate(self.sn_list):
+            for i, lc in enumerate(self.sim_lc):
                 if self._fit_res[i] is None:
-                    fit_model.set(z=sn.z)
-                    self._fit_res[i] = ut.snc_fitter(sn.sim_lc, self._fit_model, fit_par)
+                    fit_model.set(z=lc.meta['z'])
+                    self._fit_res[i] = ut.snc_fitter(lc, fit_model, fit_par)
         else:
-            fit_model.set(z=self.sn_list[sn_ID].z)
-            self._fit_res[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID], self._fit_model, fit_par)
+            fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
+            self._fit_res[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID], fit_model, fit_par)
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False):
         """Plot the given SN lightcurve.
@@ -948,34 +994,42 @@ class OpenSim:
 
         """
         lc = self.sim_lc[sn_ID]
+
         if plot_sim:
             model_name = self.header['Mname']
 
             s_model = ut.init_sn_model(model_name, self._model_dir)
-
             dic_par = {'z': lc.meta['z'],
                        't0': lc.meta['sim_t0']}
 
             if model_name == 'salt2' or model_name == 'salt3':
-                dic_par['x0'] = lc.sim_x0
-                dic_par['x1'] = lc.sim_x1
-                dic_par['c'] = lc.sim_c
+                dic_par['x0'] = lc.meta['sim_x0']
+                dic_par['x1'] = lc.meta['sim_x1']
+                dic_par['c'] = lc.meta['sim_c']
 
             s_model.set(**dic_par)
 
+            if 'Smod' in self.header:
+                s_model = sct.init_sn_smear_model(s_model, self.header['Smod'])
+                par_rd_name = self.header['Smod'][:3] + '_RndS'
+                s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
         else:
             s_model = None
 
         if plot_fit:
-            if self.fit_res[sn_ID] is None:
+            if self.fit_res is None:
+                print('This SN was not fitted, launch fit')
+                self.fit_lc(sn_ID)
+            elif self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
             if self.fit_res[sn_ID] is np.nan:
                 print('This sn has no fit results')
                 return
-            f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
+            f_model = ut.init_sn_model(self.header['Mname'], self._model_dir)
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
-            f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
+            f_model.set(t0=self.sim_lc[sn_ID].meta['sim_t0'],
+                        z=self.sim_lc[sn_ID].meta['z'], x0=x0, x1=x1, c=c)
             cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:, 1:]
             residuals = True
         else:
@@ -983,11 +1037,10 @@ class OpenSim:
             cov_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(sn.sim_lc, mag=mag,
+        ut.plot_lc(self.sim_lc[sn_ID], mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
                    fit_cov=cov_x0_x1_c, residuals=residuals)
-
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.
@@ -1015,3 +1068,48 @@ class OpenSim:
                 vpec.append(lc.meta['vpec'])
 
         ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
+
+    def write_fit(self):
+        """Write fits results in fits format.
+
+        Returns
+        -------
+        None
+            Write an output file.
+
+        Notes
+        -----
+        Use write_fit from utils.
+
+        """
+        if self.fit_res is None:
+            print('Perform fit before write')
+            self.fit_lc()
+        for i, res in enumerate(self.fit_res):
+            if res is None:
+                self.fit_lc(self.sim_lc[i].meta['sn_ID'])
+
+        sim_lc_meta = {'sn_id': [lc.meta['sn_ID'] for lc in self.sim_lc],
+                       'ra': [lc.meta['ra'] for lc in self.sim_lc],
+                       'dec': [lc.meta['dec'] for lc in self.sim_lc],
+                       'vpec': [lc.meta['vpec'] for lc in self.sim_lc],
+                       'zpec': [lc.meta['zpec'] for lc in self.sim_lc],
+                       'z2cmb': [lc.meta['z2cmb'] for lc in self.sim_lc],
+                       'zcos': [lc.meta['zcos'] for lc in self.sim_lc],
+                       'zCMB': [lc.meta['zCMB'] for lc in self.sim_lc],
+                       'zobs': [lc.meta['z'] for lc in self.sim_lc],
+                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc]}
+
+        model_name = self.header['Mname']
+        if model_name == 'salt2' or model_name == 'salt3':
+            sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
+            sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
+            sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
+            sim_lc_meta['m_smear'] = [lc.meta['m_smear'] for lc in self.sim_lc]
+
+        if 'Smod' in self.header:
+            sim_lc_meta['SM_seed'] = [lc.meta[self.header['Smod'][:3] + '_RndS']
+                                      for lc in self.sim_lc]
+
+        write_file = self._file_path + '_fit.fits'
+        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self.header)

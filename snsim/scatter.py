@@ -5,6 +5,34 @@ import sncosmo as snc
 from . import utils as ut
 
 
+def init_sn_smear_model(model, smear_mod):
+    """Add smear effect on sncomso model.
+
+    Parameters
+    ----------
+    model : sncosmo.Model
+        The model on which add effects.
+    smear_mod : str
+        Name of the model to use.
+
+    Returns
+    -------
+    sncosmo.Model
+        Model with effects added.
+
+    """
+    if smear_mod == 'G10':
+        model.add_effect(G10(model), 'G10_', 'rest')
+
+    elif smear_mod[:3] == 'C11':
+        model.add_effect(C11(model), 'C11_', 'rest')
+        if smear_mod == 'C11_1':
+            model.set(C11_Cuu=1.)
+        elif smear_mod == 'C11_2':
+            model.set(C11_Cuu=-1.)
+    return model
+
+
 class G10(snc.PropagationEffect):
     """G10 smearing effect for sncosmo.
 
