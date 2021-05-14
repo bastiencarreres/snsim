@@ -13,7 +13,7 @@ data :
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
  correpond to those in sncosmo registery)
     write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
-db_config: #(Optional -> use obs_file)
+db_config: 
     dbfile_path: '/PATH/TO/FILE'
     add_keys: ['keys1', 'keys2', ...] #(Optional add db file keys to metadata)  
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
@@ -94,13 +94,13 @@ The program can be launch with the ./sripts/launch_sim.py python script.
 
 The script use argparse to change parameters:
 ```
->python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_keys value (overwrite yaml configuration or add param)
+>python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_key value (overwrite yaml configuration or add param)
 ```
 If the config keys is a float or an int just type as :
 ```
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --int_or_float_key value_nbr
 ```
-If the config keys is a dict you have to pass it like a yaml string :
+If the config key is a dict you have to pass it like a yaml string :
 ```
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
 ```
@@ -116,3 +116,22 @@ In the case of nep_cut key you can pass an int or pass list by typing --nep_cut 
 #Multiple cuts
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
 ```
+## Fit and open_sim class
+You can direct fit after running the simulation 
+```
+# Fit 1 lc by id
+sim.fit_lc(id)
+
+# Fit all the lcs
+sim.fit_lc()
+
+# Write the fit
+sim.write_fit()
+```
+Or you can open register open sim file .fits or .pkl with the open_sim class
+```
+from snsim import open_sim
+
+sim = open_sim('sim_file.pkl/.fits',SALT2_dir)
+```
+
