@@ -217,7 +217,7 @@ class SnSim:
         params['band_dic'] = band_dic
         # Additionnal data
         if 'add_keys' in self.sim_cfg['db_config']:
-            add_keys = self.sim_cfg['db_cfg']['add_keys']
+            add_keys = self.sim_cfg['db_config']['add_keys']
         else:
             add_keys = []
         params['add_keys'] = add_keys
