@@ -265,48 +265,6 @@ def norm_flux(flux_table, zp):
     return flux_norm, fluxerr_norm
 
 
-def sine_interp(x_new, fun_x, fun_y):
-    """Return the sinus interpolation of a function at x.
-
-    Parameters
-    ----------
-    x_new : float
-        New x where evaluate the function.
-    fun_x : list(float)
-        Existing function x.
-    fun_y : list(float)
-        Existing function y.
-
-    Returns
-    -------
-    float
-        The sinus interpolation value of f at x_new.
-
-    """
-    if len(fun_x) != len(fun_y):
-        raise ValueError('x and y must have the same len')
-
-    if (x_new > fun_x[-1]) or (x_new < fun_x[0]):
-        raise ValueError('x_new is out of range of fun_x')
-
-    inf_sel = x_new >= fun_x[:-1]
-    sup_sel = x_new < fun_x[1:]
-    if inf_sel.all():
-        idx_inf = -2
-    elif sup_sel.all():
-        idx_inf = 0
-    else:
-        idx_inf = np.where(inf_sel * sup_sel)[0][0]
-
-    x_inf = fun_x[idx_inf]
-    x_sup = fun_x[idx_inf + 1]
-    Value_inf = fun_y[idx_inf]
-    Value_sup = fun_y[idx_inf + 1]
-    sin_interp = np.sin(np.pi * (x_new - 0.5 * (x_inf + x_sup)) / (x_sup - x_inf))
-
-    return 0.5 * (Value_sup + Value_inf) + 0.5 * (Value_sup - Value_inf) * sin_interp
-
-
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.
 

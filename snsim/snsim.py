@@ -722,7 +722,9 @@ class SnSim:
         ut.plot_lc(sn.sim_lc, mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
-                   fit_cov=cov_x0_x1_c, residuals=residuals)
+                   fit_cov=cov_x0_x1_c,
+                   zp=zp,
+                   residuals=residuals)
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.
@@ -903,10 +905,9 @@ class OpenSim:
     def __init_sim_lc(self):
         if self._file_ext == '.fits':
             sim_lc = []
-            meta = {}
             with fits.open(self._file_path + self._file_ext) as sf:
                 header = sf[0].header
-                for i, hdu in enumerate(sf[1:]):
+                for hdu in sf[1:]:
                     data = hdu.data
                     tab = Table(data)
                     tab.meta = hdu.header
