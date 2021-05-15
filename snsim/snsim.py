@@ -826,7 +826,7 @@ class SnSim:
         sim_meta = {
             'n_sn': len(
                 self.sn_list),
-            'MName': self.model_name,
+            'Mname': self.model_name,
             'M0': self.sim_par['sn_model_par']['M0'],
             **self.sim_par['cosmo']}
 
@@ -1092,9 +1092,9 @@ class OpenSim:
             self.fit_lc()
         for i, res in enumerate(self.fit_res):
             if res is None:
-                self.fit_lc(self.sim_lc[i].meta['sn_ID'])
+                self.fit_lc(self.sim_lc[i].meta['sn_id'])
 
-        sim_lc_meta = {'sn_id': [lc.meta['sn_ID'] for lc in self.sim_lc],
+        sim_lc_meta = {'sn_id': [lc.meta['sn_id'] for lc in self.sim_lc],
                        'ra': [lc.meta['ra'] for lc in self.sim_lc],
                        'dec': [lc.meta['dec'] for lc in self.sim_lc],
                        'vpec': [lc.meta['vpec'] for lc in self.sim_lc],

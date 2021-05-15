@@ -149,7 +149,7 @@ def snc_fitter(lc, fit_model, fit_par):
     try:
         res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)[0]
     except BaseException:
-        res = np.nan
+        res = 'NaN'
     return res
 
 
@@ -488,7 +488,8 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
 
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
-    MName = sim_meta['MName']
+    MName = sim_meta['Mname']
+
     if MName in ('salt2', 'salt3'):
         fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
                      'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
@@ -497,14 +498,14 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
     for k in fit_keys:
         data[k] = []
 
-    for i in sim_lc_meta['sn_id']:
-        if fit_res[i] != np.nan:
-            par = fit_res[i]['parameters']
+    for i,res in enumerate(fit_res):
+        if res != 'NaN':
+            par = res['parameters']
             data['t0'].append(par[1])
-            data['e_t0'].append(np.sqrt(fit_res[i]['covariance'][0, 0]))
+            data['e_t0'].append(np.sqrt(res['covariance'][0, 0]))
 
             if MName in ('salt2', 'salt3'):
-                par_cov = fit_res[i]['covariance'][1:, 1:]
+                par_cov = res['covariance'][1:, 1:]
                 mb_cov = cov_x0_to_mb(par[2], par_cov)
                 data['x0'].append(par[2])
                 data['e_x0'].append(np.sqrt(par_cov[0, 0]))
@@ -520,11 +521,14 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
                 data['cov_mb_x1'].append(mb_cov[0, 1])
                 data['cov_mb_c'].append(mb_cov[0, 2])
 
-            data['chi2'].append(fit_res[i]['chisq'])
-            data['ndof'].append(fit_res[i]['ndof'])
+            data['chi2'].append(res['chisq'])
+            data['ndof'].append(res['ndof'])
         else:
             for k in fit_keys:
                 data[k].append(np.nan)
+
+    for k, v in sim_lc_meta.items():
+        data[k] = v
 
     table = Table(data)
 

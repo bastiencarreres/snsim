@@ -268,7 +268,7 @@ class SN:
                 self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
 
         if self.ID is not None:
-            self.sim_lc.meta['sn_ID'] = self.ID
+            self.sim_lc.meta['sn_id'] = self.ID
 
         self.sim_lc.meta['vpec'] = self.vpec
         self.sim_lc.meta['zcos'] = self.zcos
