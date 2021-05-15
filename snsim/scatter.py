@@ -3,6 +3,7 @@
 import numpy as np
 import sncosmo as snc
 from . import utils as ut
+from . import nb_fun as nb
 
 
 def init_sn_smear_model(model, smear_mod):
@@ -130,7 +131,7 @@ class G10(snc.PropagationEffect):
             Flux density with effect applied.
         """
         lam, scatter = self.lam_scatter
-        smear = np.asarray([ut.sine_interp(w, lam, scatter) for w in wave])
+        smear = np.asarray([nb.sine_interp(w, lam, scatter) for w in wave])
         return flux * 10**(-0.4 * smear)
 
 
@@ -254,5 +255,5 @@ class C11(snc.PropagationEffect):
             elif w <= self._sigma_lam[0]:
                 smear[i] = scatter[0]
             else:
-                smear[i] = ut.sine_interp(w, self._sigma_lam, scatter)
+                smear[i] = nb.sine_interp(w, self._sigma_lam, scatter)
         return flux * 10**(-0.4 * smear)
