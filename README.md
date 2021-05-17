@@ -88,13 +88,13 @@ sim.sn_list[i].sim_lc.meta
 #  For more information :
 help(snsim.SN)
 ```
-The basic list of ligth curves metadata is given in the following table
+The basic list of ligth curves metadata is given in the following table :
 
 | z |  sim_t0   | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id   | sim_mu | m_smear |
 | :------------:  | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
 |  Observed redshift | Peaktime | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | Simulated distance modulli | Coherent smear term |
 
-If you use SALT model you add some argument to metadata:
+If you use SALT model you add some arguments to metadata:
 
 
 | sim_x0 | sim_x1 | sim_c | sim_mb |
