@@ -333,7 +333,7 @@ def plot_lc(
     t0 = flux_table.meta['sim_t0']
     z = flux_table.meta['z']
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-
+    plt.figure()
     if residuals:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
         ax0 = plt.subplot(gs[0])
