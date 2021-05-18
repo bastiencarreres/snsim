@@ -10,6 +10,7 @@ from numpy import power as pw
 from . import utils as ut
 from .constants import C_LIGHT_KMS
 from . import scatter as sct
+from . import nb_fun as nbf
 
 class SN:
     """This class represent SN object.
@@ -678,18 +679,16 @@ class ObsTable:
         self._band_dic = band_dic
         self._add_keys = add_keys
         self._obs_table = self.__extract_from_db()
-        self._fields_dic = self.__init_fields_dic()
+        self._field_dic = self.__init_field_dic()
 
-    def __init_fields_dic(self):
-        field_id = ut.find_diff_elmts(self.obs_table['fieldID'])
-        field_dic = {}
-        print(field_dic)
-        for ID in field_id:
-            elmt = self.obs_table[self.obs_table['fieldID'] == ID][0]
-            field_dic[ID] = {'ra': elmt['fieldRA'],
-                                  'dec': elmt['fieldDec']}
-
-        return field_dic
+    def __init_field_dic(self):
+        field_list = np.unique(self.obs_table['fieldID'])
+        dic={}
+        for f in field_list:
+            idx = nbf.find_first(f, self.obs_table['fieldID'])
+            dic[f]={'ra': self.obs_table['fieldRA'][idx],
+                    'dec': self.obs_table['fieldDec'][idx]}
+        return dic
 
     @property
     def obs_table(self):
@@ -783,22 +782,29 @@ class ObsTable:
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_table['fiveSigmaDepth'] > 0)
 
-        pre_selec_idx = np.where(epochs_selec)
-
+        idx = np.where(epochs_selec)
         # Compute the coord of the SN in the rest frame of each field
         ra_size, dec_size = self.field_size
 
-        pre_select_fields = ut.find_diff_elmts(self.obs_table['fieldID'][epochs_selec])
+        pre_select_fields =np.unique(self.obs_table['fieldID'][epochs_selec])
 
-        ra_fields = np.array([self._fields_dic[ID]['ra'] for ID in pre_select_fields])
-        dec_fields = np.array([self._fields_dic[ID]['dec'] for ID in pre_select_fields])
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec, ra_fields, dec_fields)
+        ra_fields = np.zeros(len(pre_select_fields))
+        dec_fields = np.zeros(len(pre_select_fields))
 
+        for i,f in enumerate(pre_select_fields):
+            ra_fields[i] = self._field_dic[f]['ra']
+            dec_fields[i] = self._field_dic[f]['dec']
+
+        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
+                                                              ra_fields,
+                                                              dec_fields)
+        dic_map = {}
         for i, field in enumerate(pre_select_fields):
-            idx = np.where(self.obs_table['fieldID'][pre_selec_idx] == field)
             is_in_field = abs(ra_field_frame[i]) < ra_size / 2
             is_in_field *= abs(dec_field_frame[i]) < dec_size / 2
-            epochs_selec[pre_selec_idx][idx] *= is_in_field
+            dic_map[field] = is_in_field
+
+        epochs_selec[idx] *= list(map(dic_map.get, self.obs_table['fieldID'][epochs_selec]))
 
         if np.sum(epochs_selec) == 0:
             return None

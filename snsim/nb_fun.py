@@ -111,3 +111,12 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
         new_radec[0][i] = np.arctan2(y, x)
         new_radec[1][i] = np.arcsin(z)
     return new_radec
+
+
+@njit(cache=True)
+def find_first(item, vec):
+    """return the index of the first occurence of item in vec"""
+    for i in range(len(vec)):
+        if item == vec[i]:
+            return i
+    return -1

@@ -221,28 +221,6 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     err_th = np.sqrt(np.einsum('ki,ki->k', J, np.einsum('ij,kj->ki', cov, J)))
     return err_th
 
-def find_diff_elmts(table, elmts = []):
-    """Find the different elmts in a table.
-
-    Parameters
-    ----------
-    filter_table : numpi.ndarray(str)
-        Array of filters names.
-
-    Returns
-    -------
-    list(str)
-        List of the different filters used in the input list.
-
-    """
-    table = np.copy(table)
-
-    if np.isin(table, elmts).all():
-        return elmts
-    else:
-        elmts.append(table[0])
-        table = table[~np.isin(table, elmts)]
-        return find_diff_elmts(table, elmts = elmts)
 
 def norm_flux(flux_table, zp):
     """Rescale the flux to a given zeropoint.
@@ -327,7 +305,7 @@ def plot_lc(
         Just plot the lightcurve.
 
     """
-    bands = find_filters(flux_table['band'])
+    bands = np.unique(flux_table['band'])
     flux_norm, fluxerr_norm = norm_flux(flux_table, zp)
     time = flux_table['time']
 

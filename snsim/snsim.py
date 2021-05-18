@@ -604,6 +604,7 @@ class SnSim:
                 raise_trigger += 1
                 rs = np.random.default_rng(rs).integers(low=1000, high=100000)
 
+
     def __get_primary_header(self):
         """Generate the primary header of sim fits file..
 
