@@ -780,8 +780,8 @@ class ObsTable:
         # time selection
         epochs_selec = (self._obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
             (self._obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
-            
-        # use to avoid 1e43 errors
+
+        # use to avoid errors
         epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
 
         idx = np.where(epochs_selec)
@@ -791,11 +791,11 @@ class ObsTable:
         ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, pre_selec))))
         dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, pre_selec))))
 
+        # Compute the coord of the SN in the rest frame of each field
         ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
                                                               ra_fields,
                                                               dec_fields)
 
-        # Compute the coord of the SN in the rest frame of each field
         epochs_selec[idx] *= nbf.is_in_field(self._obs_table['fieldID'][epochs_selec],
                                             ra_field_frame, dec_field_frame,
                                             self.field_size, pre_selec)
