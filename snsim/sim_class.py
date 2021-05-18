@@ -974,3 +974,6 @@ class SnSimPkl:
     def sim_lc(self):
         """Get sim_lc"""
         return self._sim_lc
+
+    def get(self, key):
+        return np.array([lc.meta[key] for lc in self.sim_lc])
