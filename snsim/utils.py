@@ -222,27 +222,6 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     return err_th
 
 
-def find_filters(filter_table):
-    """Find the different filter in a table.
-
-    Parameters
-    ----------
-    filter_table : numpi.ndarray(str)
-        Array of filters names.
-
-    Returns
-    -------
-    list(str)
-        List of the different filters used in the input list.
-
-    """
-    filter_list = []
-    for f in filter_table:
-        if f not in filter_list:
-            filter_list.append(f)
-    return filter_list
-
-
 def norm_flux(flux_table, zp):
     """Rescale the flux to a given zeropoint.
 
@@ -326,14 +305,14 @@ def plot_lc(
         Just plot the lightcurve.
 
     """
-    bands = find_filters(flux_table['band'])
+    bands = np.unique(flux_table['band'])
     flux_norm, fluxerr_norm = norm_flux(flux_table, zp)
     time = flux_table['time']
 
     t0 = flux_table.meta['sim_t0']
     z = flux_table.meta['z']
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-
+    plt.figure()
     if residuals:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
         ax0 = plt.subplot(gs[0])

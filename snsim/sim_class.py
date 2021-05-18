@@ -10,6 +10,8 @@ from numpy import power as pw
 from . import utils as ut
 from .constants import C_LIGHT_KMS
 from . import scatter as sct
+from . import nb_fun as nbf
+import time
 
 class SN:
     """This class represent SN object.
@@ -677,7 +679,21 @@ class ObsTable:
         self._db_file = db_file
         self._band_dic = band_dic
         self._add_keys = add_keys
-        self.obs_table = self.__extract_from_db()
+        self._obs_table = self.__extract_from_db()
+        self._field_dic = self.__init_field_dic()
+
+    def __init_field_dic(self):
+        field_list = np.unique(self._obs_table['fieldID'])
+        dic={}
+        for f in field_list:
+            idx = nbf.find_first(f, self._obs_table['fieldID'])
+            dic[f]={'ra': self._obs_table['fieldRA'][idx],
+                    'dec': self._obs_table['fieldDec'][idx]}
+        return dic
+
+    @property
+    def obs_table(self):
+        return Table(self._obs_table)
 
     @property
     def field_size(self):
@@ -700,12 +716,12 @@ class ObsTable:
     @property
     def mintime(self):
         """Get observations mintime"""
-        return np.min(self.obs_table['expMJD'])
+        return np.min(self._obs_table['expMJD'])
 
     @property
     def maxtime(self):
         """Get observations maxtime"""
-        return np.max(self.obs_table['expMJD'])
+        return np.max(self._obs_table['expMJD'])
 
     def __extract_from_db(self):
         """Extract the observations table from SQL data base.
@@ -720,6 +736,7 @@ class ObsTable:
 
         keys = ['expMJD',
                 'filter',
+                'fieldID',
                 'fieldRA',
                 'fieldDec',
                 'fiveSigmaDepth'] + self._add_keys
@@ -740,7 +757,7 @@ class ObsTable:
             query = 'SELECT ' + k + ' FROM Summary' + where + ';'
             values = dbf.execute(query)
             obs_dic[k] = np.array([a[0] for a in values])
-        return Table(obs_dic)
+        return obs_dic
 
     def epochs_selection(self, SN):
         """Give the epochs of observations of a given SN.
@@ -761,18 +778,28 @@ class ObsTable:
         ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
         ra, dec = SN.coord
         # time selection
-        epochs_selec = (self.obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
-            (self.obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
-        # use to avoid 1e43 errors
-        epochs_selec *= (self.obs_table['fiveSigmaDepth'] > 0)
-        # Find the index of the field that pass time cut
-        epochs_selec_idx = np.where(epochs_selec)
+        epochs_selec = (self._obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
+            (self._obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
+
+        # use to avoid errors
+        epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
+
+        idx = np.where(epochs_selec)
+
+        pre_selec = np.unique(self._obs_table['fieldID'][epochs_selec])
+
+        ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, pre_selec))))
+        dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, pre_selec))))
+
         # Compute the coord of the SN in the rest frame of each field
-        ra_size, dec_size = self.field_size
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(
-            ra, dec, self.obs_table['fieldRA'][epochs_selec], self.obs_table['fieldDec'][epochs_selec])
-        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < ra_size / 2  # ra selection
-        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size / 2  # dec selection
+        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
+                                                              ra_fields,
+                                                              dec_fields)
+
+        epochs_selec[idx] *= nbf.is_in_field(self._obs_table['fieldID'][epochs_selec],
+                                            ra_field_frame, dec_field_frame,
+                                            self.field_size, pre_selec)
+
         if np.sum(epochs_selec) == 0:
             return None
         return self._make_obs_table(epochs_selec)
@@ -793,8 +820,8 @@ class ObsTable:
         """
 
         # Capture noise and filter
-        mlim5 = self.obs_table['fiveSigmaDepth'][epochs_selec]
-        band = self.obs_table['filter'][epochs_selec].astype('U27')
+        mlim5 = self._obs_table['fiveSigmaDepth'][epochs_selec]
+        band = self._obs_table['filter'][epochs_selec].astype('U27')
 
         # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
         if self._band_dic is not None:
@@ -803,7 +830,7 @@ class ObsTable:
         if self.zp != 'zp_in_obs':
             zp = [self.zp] * np.sum(epochs_selec)
         elif isinstance(zp, (int, float)):
-            zp = self.obs_table['zp'][epochs_selec]
+            zp = self._obs_table['zp'][epochs_selec]
         else:
             raise ValueError("zp is not define")
 
@@ -811,7 +838,7 @@ class ObsTable:
         skynoise = pw(10., 0.4 * (self.zp - mlim5)) / 5
 
         # Create obs table
-        obs = Table({'time': self.obs_table['expMJD'][epochs_selec],
+        obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
                      'band': band,
                      'gain': [self.gain] * np.sum(epochs_selec),
                      'skynoise': skynoise,
@@ -819,7 +846,7 @@ class ObsTable:
                      'zpsys': ['ab'] * np.sum(epochs_selec)})
 
         for k in self._add_keys:
-            obs[k] = self.obs_table[k][epochs_selec]
+            obs[k] = self._obs_table[k][epochs_selec]
         return obs
 
 
@@ -974,3 +1001,6 @@ class SnSimPkl:
     def sim_lc(self):
         """Get sim_lc"""
         return self._sim_lc
+
+    def get(self, key):
+        return np.array([lc.meta[key] for lc in self.sim_lc])

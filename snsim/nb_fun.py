@@ -1,7 +1,8 @@
 """This module contains function with numba decorator to speed up the simulation
 """
-from numba import njit, prange
+from numba import njit, prange, jit
 import numpy as np
+from . import utils as ut
 
 @njit(cache=True)
 def sine_interp(x_new, fun_x, fun_y):
@@ -82,6 +83,7 @@ def R_base(a, t, vec):
     R[2, 0] = -np.cos(a)**2 * np.sin(t) - np.sin(a)**2 * np.sin(t)
     R[2, 1] = 0
     R[2, 2] = np.cos(t)
+
     return R.T @ vec
 
 
@@ -110,3 +112,23 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
         new_radec[0][i] = np.arctan2(y, x)
         new_radec[1][i] = np.arcsin(z)
     return new_radec
+
+
+@njit(cache=True)
+def find_first(item, vec):
+    """return the index of the first occurence of item in vec"""
+    for i in range(len(vec)):
+        if item == vec[i]:
+            return i
+    return -1
+
+@njit(cache=True)
+def is_in_field(field_id, ra_f_frame, dec_f_frame, f_size, pre_select_fields):
+    is_in_field = np.abs(ra_f_frame) < f_size[0] / 2
+    is_in_field *= np.abs(dec_f_frame) < f_size[1] / 2
+
+    dic_map={}
+    for pf, b in zip(pre_select_fields, is_in_field):
+        dic_map[pf] = b
+
+    return [dic_map[id] for id in field_id]
