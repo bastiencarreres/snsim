@@ -815,7 +815,8 @@ class SnSim:
                        'zcos': [sn.zcos for sn in self.sn_list],
                        'zCMB': [sn.zCMB for sn in self.sn_list],
                        'zobs': [sn.z for sn in self.sn_list],
-                       'sim_mu': [sn.sim_mu for sn in self.sn_list]}
+                       'sim_mu': [sn.sim_mu for sn in self.sn_list],
+                       'sim_t0': [sn.sim_t0 for sn in self.sn_list] }
 
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
