@@ -11,6 +11,7 @@ from . import utils as ut
 from .constants import C_LIGHT_KMS
 from . import scatter as sct
 from . import nb_fun as nbf
+import time
 
 class SN:
     """This class represent SN object.
@@ -783,28 +784,20 @@ class ObsTable:
         epochs_selec *= (self.obs_table['fiveSigmaDepth'] > 0)
 
         idx = np.where(epochs_selec)
-        # Compute the coord of the SN in the rest frame of each field
-        ra_size, dec_size = self.field_size
+        pre_selec = np.unique(self.obs_table['fieldID'][epochs_selec])
 
-        pre_select_fields =np.unique(self.obs_table['fieldID'][epochs_selec])
-
-        ra_fields = np.zeros(len(pre_select_fields))
-        dec_fields = np.zeros(len(pre_select_fields))
-
-        for i,f in enumerate(pre_select_fields):
-            ra_fields[i] = self._field_dic[f]['ra']
-            dec_fields[i] = self._field_dic[f]['dec']
+        ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, pre_selec))))
+        dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, pre_selec))))
 
         ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
                                                               ra_fields,
                                                               dec_fields)
-        dic_map = {}
-        for i, field in enumerate(pre_select_fields):
-            is_in_field = abs(ra_field_frame[i]) < ra_size / 2
-            is_in_field *= abs(dec_field_frame[i]) < dec_size / 2
-            dic_map[field] = is_in_field
 
-        epochs_selec[idx] *= list(map(dic_map.get, self.obs_table['fieldID'][epochs_selec]))
+
+        # Compute the coord of the SN in the rest frame of each field
+        epochs_selec[idx] *= nbf.is_in_field(self.obs_table['fieldID'][epochs_selec],
+                                            ra_field_frame,dec_field_frame, self.field_size,
+                                            pre_selec)
 
         if np.sum(epochs_selec) == 0:
             return None

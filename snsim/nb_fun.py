@@ -1,7 +1,8 @@
 """This module contains function with numba decorator to speed up the simulation
 """
-from numba import njit, prange
+from numba import njit, prange, jit
 import numpy as np
+from . import utils as ut
 
 @njit(cache=True)
 def sine_interp(x_new, fun_x, fun_y):
@@ -120,3 +121,14 @@ def find_first(item, vec):
         if item == vec[i]:
             return i
     return -1
+
+@njit(cache=True)
+def is_in_field(field_id, ra_f_frame, dec_f_frame, f_size, pre_select_fields):
+    is_in_field = np.abs(ra_f_frame) < f_size[0] / 2
+    is_in_field *= np.abs(dec_f_frame) < f_size[1] / 2
+
+    dic_map={}
+    for pf, b in zip(pre_select_fields, is_in_field):
+        dic_map[pf] = b
+
+    return [dic_map[id] for id in field_id]
