@@ -221,9 +221,8 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     err_th = np.sqrt(np.einsum('ki,ki->k', J, np.einsum('ij,kj->ki', cov, J)))
     return err_th
 
-
-def find_filters(filter_table):
-    """Find the different filter in a table.
+def find_diff_elmts(table, elmts = []):
+    """Find the different elmts in a table.
 
     Parameters
     ----------
@@ -236,12 +235,14 @@ def find_filters(filter_table):
         List of the different filters used in the input list.
 
     """
-    filter_list = []
-    for f in filter_table:
-        if f not in filter_list:
-            filter_list.append(f)
-    return filter_list
+    table = np.copy(table)
 
+    if np.isin(table, elmts).all():
+        return elmts
+    else:
+        elmts.append(table[0])
+        table = table[~np.isin(table, elmts)]
+        return find_diff_elmts(table, elmts = elmts)
 
 def norm_flux(flux_table, zp):
     """Rescale the flux to a given zeropoint.

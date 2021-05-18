@@ -82,6 +82,7 @@ def R_base(a, t, vec):
     R[2, 0] = -np.cos(a)**2 * np.sin(t) - np.sin(a)**2 * np.sin(t)
     R[2, 1] = 0
     R[2, 2] = np.cos(t)
+
     return R.T @ vec
 
 

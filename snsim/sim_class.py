@@ -677,7 +677,23 @@ class ObsTable:
         self._db_file = db_file
         self._band_dic = band_dic
         self._add_keys = add_keys
-        self.obs_table = self.__extract_from_db()
+        self._obs_table = self.__extract_from_db()
+        self._fields_dic = self.__init_fields_dic()
+
+    def __init_fields_dic(self):
+        field_id = ut.find_diff_elmts(self.obs_table['fieldID'])
+        field_dic = {}
+        print(field_dic)
+        for ID in field_id:
+            elmt = self.obs_table[self.obs_table['fieldID'] == ID][0]
+            field_dic[ID] = {'ra': elmt['fieldRA'],
+                                  'dec': elmt['fieldDec']}
+
+        return field_dic
+
+    @property
+    def obs_table(self):
+        return self._obs_table
 
     @property
     def field_size(self):
@@ -720,6 +736,7 @@ class ObsTable:
 
         keys = ['expMJD',
                 'filter',
+                'fieldID',
                 'fieldRA',
                 'fieldDec',
                 'fiveSigmaDepth'] + self._add_keys
@@ -765,14 +782,24 @@ class ObsTable:
             (self.obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
         # use to avoid 1e43 errors
         epochs_selec *= (self.obs_table['fiveSigmaDepth'] > 0)
-        # Find the index of the field that pass time cut
-        epochs_selec_idx = np.where(epochs_selec)
+
+        pre_selec_idx = np.where(epochs_selec)
+
         # Compute the coord of the SN in the rest frame of each field
         ra_size, dec_size = self.field_size
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(
-            ra, dec, self.obs_table['fieldRA'][epochs_selec], self.obs_table['fieldDec'][epochs_selec])
-        epochs_selec[epochs_selec_idx] *= abs(ra_field_frame) < ra_size / 2  # ra selection
-        epochs_selec[epochs_selec_idx] *= abs(dec_field_frame) < dec_size / 2  # dec selection
+
+        pre_select_fields = ut.find_diff_elmts(self.obs_table['fieldID'][epochs_selec])
+
+        ra_fields = np.array([self._fields_dic[ID]['ra'] for ID in pre_select_fields])
+        dec_fields = np.array([self._fields_dic[ID]['dec'] for ID in pre_select_fields])
+        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec, ra_fields, dec_fields)
+
+        for i, field in enumerate(pre_select_fields):
+            idx = np.where(self.obs_table['fieldID'][pre_selec_idx] == field)
+            is_in_field = abs(ra_field_frame[i]) < ra_size / 2
+            is_in_field *= abs(dec_field_frame[i]) < dec_size / 2
+            epochs_selec[pre_selec_idx][idx] *= is_in_field
+
         if np.sum(epochs_selec) == 0:
             return None
         return self._make_obs_table(epochs_selec)
