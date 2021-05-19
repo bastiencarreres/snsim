@@ -10,8 +10,8 @@ from numpy import power as pw
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
-from . import nb_fun as nbf
-from .constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
+import snsim.nb_fun as nbf
+from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 
 
 def x0_to_mB(x0):

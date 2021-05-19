@@ -7,11 +7,11 @@ The package use sncosmo.
 Github repository : https://github.com/bcarreres/snsim
 """
 
-from .snsim import *
-from .utils import *
-from .scatter import *
-from .sim_class import *
-from .nb_fun import *
-from .constants import *
+#from .snsim import *
+#from .utils import *
+#from .scatter import *
+#from .sim_class import *
+#from .nb_fun import *
+#from .constants import *
 
 __version__ = "0.2.1"

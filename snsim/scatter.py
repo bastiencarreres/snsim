@@ -2,8 +2,8 @@
 
 import numpy as np
 import sncosmo as snc
-from . import utils as ut
-from . import nb_fun as nb
+import snsim.utils as ut
+import snsim.nb_fun as nb
 
 
 def init_sn_smear_model(model, smear_mod):
