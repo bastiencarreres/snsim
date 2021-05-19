@@ -9,13 +9,12 @@ from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 from numpy import power as pw
-from . import utils as ut
-from .constants import SN_SIM_PRINT
-from . import scatter as sct
-from . import sim_class as scls
+import snsim.utils as ut
+from snsim.constants import SN_SIM_PRINT
+import snsim.scatter as sct
+import snsim.sim_class as scls
 
-
-class SnSim:
+class Simulator:
     """Simulation class using a config file config.yml
 
     Parameters
@@ -97,6 +96,7 @@ class SnSim:
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
     |     add_keys: ['keys1', 'keys2', ...] add db file keys to metadata               |
     |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
+    |     start_day: Optional                                                          |
     |     zp: INSTRUMENTAL ZEROPOINT                                                   |
     |     ra_size: RA FIELD SIZE                                                       |
     |     dec_size: DEC FIELD SIZE                                                     |
@@ -204,6 +204,8 @@ class SnSim:
         if 'zp' in self.sim_cfg['db_config']:
             dic['zp'] = self.sim_cfg['db_config']['zp']
         return dic
+
+        #if 'star_time' in sim_cfg['']
 
     @property
     def obs_parameters(self):
@@ -652,9 +654,9 @@ class SnSim:
         write_path = self.sim_cfg['data']['write_path']
         sim_header = self.__get_primary_header()
         if 'fits' in self.sim_cfg['data']['write_format']:
-            lc_hdu_list = [sn.get_lc_hdu() for sn in self._sn_list]
+            lc_hdu_list = (sn.get_lc_hdu() for sn in self._sn_list)
             hdu_list = fits.HDUList(
-                [fits.PrimaryHDU(header=fits.Header(sim_header))] + lc_hdu_list)
+                [fits.PrimaryHDU(header=fits.Header(sim_header))] + list(lc_hdu_list))
 
             hdu_list.writeto(
                 write_path +
