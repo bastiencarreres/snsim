@@ -2,9 +2,7 @@
 
 import numpy as np
 import sncosmo as snc
-import snsim.utils as ut
-import snsim.nb_fun as nb
-
+import snsim.nb_fun as nbf
 
 def init_sn_smear_model(model, smear_mod):
     """Add smear effect on sncomso model.
@@ -131,7 +129,7 @@ class G10(snc.PropagationEffect):
             Flux density with effect applied.
         """
         lam, scatter = self.lam_scatter
-        smear = np.asarray([nb.sine_interp(w, lam, scatter) for w in wave])
+        smear = np.asarray([nbf.sine_interp(w, lam, scatter) for w in wave])
         return flux * 10**(-0.4 * smear)
 
 
@@ -255,5 +253,5 @@ class C11(snc.PropagationEffect):
             elif w <= self._sigma_lam[0]:
                 smear[i] = scatter[0]
             else:
-                smear[i] = nb.sine_interp(w, self._sigma_lam, scatter)
+                smear[i] = nbf.sine_interp(w, self._sigma_lam, scatter)
         return flux * 10**(-0.4 * smear)

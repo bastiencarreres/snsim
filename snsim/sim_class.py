@@ -7,11 +7,12 @@ from astropy.table import Table
 from astropy.cosmology import FlatLambdaCDM
 from astropy.io import fits
 from numpy import power as pw
+import pandas as pd
 import snsim.utils as ut
 from snsim.constants import C_LIGHT_KMS
 import snsim.scatter as sct
 import snsim.nb_fun as nbf
-import time
+
 
 class SN:
     """This class represent SN object.
@@ -426,7 +427,7 @@ class SNGen:
             zcos = self.gen_zcos(n_sn, z_range, rand_seeds[2])
             vpec = self.gen_vpec(n_sn, rand_seeds[3])
 
-        sn_par = [{'zcos': z,
+        sn_par = ({'zcos': z,
                    'como_dist': FlatLambdaCDM(**self.cosmo).comoving_distance(z).value,
                    'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
                    'sim_t0': t,
@@ -434,7 +435,7 @@ class SNGen:
                    'dec': d,
                    'vpec': v,
                    'mag_smear': ms
-                   } for z, t, r, d, v, ms in zip(zcos, t0, ra, dec, vpec, mag_smear)]
+                   } for z, t, r, d, v, ms in zip(zcos, t0, ra, dec, vpec, mag_smear))
 
         model_default = {}
         for k in self._model_keys:
@@ -442,8 +443,8 @@ class SNGen:
 
         model_par_list = [{**model_default, 'sncosmo': mpsn, 'noise_rand_seed': rs}
                           for mpsn, rs in zip(model_par_sncosmo, noise_rand_seed)]
-        SN_list = [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
-        return SN_list
+
+        return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
     def gen_peak_time(self, n, rand_seed):
         """Generate uniformly n peak time in the survey time range.
@@ -683,17 +684,17 @@ class ObsTable:
         self._field_dic = self.__init_field_dic()
 
     def __init_field_dic(self):
-        field_list = np.unique(self._obs_table['fieldID'])
+        field_list = self.obs_table['fieldID'].unique()
         dic={}
         for f in field_list:
-            idx = nbf.find_first(f, self._obs_table['fieldID'])
-            dic[f]={'ra': self._obs_table['fieldRA'][idx],
-                    'dec': self._obs_table['fieldDec'][idx]}
+            idx = nbf.find_first(f, self.obs_table['fieldID'].values)
+            dic[f]={'ra': self.obs_table['fieldRA'][idx],
+                    'dec': self.obs_table['fieldDec'][idx]}
         return dic
 
     @property
     def obs_table(self):
-        return Table(self._obs_table)
+        return self._obs_table
 
     @property
     def field_size(self):
@@ -716,12 +717,12 @@ class ObsTable:
     @property
     def mintime(self):
         """Get observations mintime"""
-        return np.min(self._obs_table['expMJD'])
+        return self.obs_table['expMJD'].min()
 
     @property
     def maxtime(self):
         """Get observations maxtime"""
-        return np.max(self._obs_table['expMJD'])
+        return self.obs_table['expMJD'].max()
 
     def __extract_from_db(self):
         """Extract the observations table from SQL data base.
@@ -732,7 +733,7 @@ class ObsTable:
             The observations table.
 
         """
-        dbf = sqlite3.connect(self._db_file)
+        con = sqlite3.connect(self._db_file)
 
         keys = ['expMJD',
                 'filter',
@@ -752,11 +753,12 @@ class ObsTable:
                 where = where[:-4]
                 where += ") AND "
             where = where[:-5]
-        obs_dic = {}
+        query = 'SELECT '
         for k in keys:
-            query = 'SELECT ' + k + ' FROM Summary' + where + ';'
-            values = dbf.execute(query)
-            obs_dic[k] = np.array([a[0] for a in values])
+            query +=  k+','
+        query=query[:-1]
+        query+= ' FROM Summary' + where + ';'
+        obs_dic = pd.read_sql_query(query, con)
         return obs_dic
 
     def epochs_selection(self, SN):
@@ -777,32 +779,33 @@ class ObsTable:
         ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
         ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
         ra, dec = SN.coord
+
         # time selection
-        epochs_selec = (self._obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
-            (self._obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
-
         # use to avoid errors
-        epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
+        #epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
+        epochs_selec, selec_fields_ID = nbf.time_and_error_comp(self.obs_table['expMJD'].values,
+                                                SN.sim_t0,
+                                                ModelMaxT_obsfrm,
+                                                ModelMinT_obsfrm,
+                                                self.obs_table['fiveSigmaDepth'].values,
+                                                self.obs_table['fieldID'].values)
 
-        idx = np.where(epochs_selec)
-
-        pre_selec = np.unique(self._obs_table['fieldID'][epochs_selec])
-
-        ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, pre_selec))))
-        dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, pre_selec))))
+        ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, selec_fields_ID))))
+        dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, selec_fields_ID))))
 
         # Compute the coord of the SN in the rest frame of each field
         ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
                                                               ra_fields,
                                                               dec_fields)
 
-        epochs_selec[idx] *= nbf.is_in_field(self._obs_table['fieldID'][epochs_selec],
-                                            ra_field_frame, dec_field_frame,
-                                            self.field_size, pre_selec)
+        epochs_selec, is_obs = nbf.is_in_field(epochs_selec,
+                               self._obs_table['fieldID'][epochs_selec].values,
+                               ra_field_frame, dec_field_frame,
+                               self.field_size, selec_fields_ID)
+        if is_obs:
+            return self._make_obs_table(epochs_selec)
 
-        if np.sum(epochs_selec) == 0:
-            return None
-        return self._make_obs_table(epochs_selec)
+        return None
 
     def _make_obs_table(self, epochs_selec):
         """ Create the astropy table from selection bool array.
@@ -820,8 +823,8 @@ class ObsTable:
         """
 
         # Capture noise and filter
-        mlim5 = self._obs_table['fiveSigmaDepth'][epochs_selec]
-        band = self._obs_table['filter'][epochs_selec].astype('U27')
+        mlim5 = self.obs_table['fiveSigmaDepth'][epochs_selec]
+        band = self.obs_table['filter'][epochs_selec].astype('U27')
 
         # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
         if self._band_dic is not None:
@@ -830,7 +833,7 @@ class ObsTable:
         if self.zp != 'zp_in_obs':
             zp = [self.zp] * np.sum(epochs_selec)
         elif isinstance(zp, (int, float)):
-            zp = self._obs_table['zp'][epochs_selec]
+            zp = self.obs_table['zp'][epochs_selec]
         else:
             raise ValueError("zp is not define")
 
@@ -846,7 +849,7 @@ class ObsTable:
                      'zpsys': ['ab'] * np.sum(epochs_selec)})
 
         for k in self._add_keys:
-            obs[k] = self._obs_table[k][epochs_selec]
+            obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
 

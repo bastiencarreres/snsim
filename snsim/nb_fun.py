@@ -2,7 +2,6 @@
 """
 from numba import njit, prange, jit
 import numpy as np
-import snsim.utils as ut
 
 @njit(cache=True)
 def sine_interp(x_new, fun_x, fun_y):
@@ -122,13 +121,69 @@ def find_first(item, vec):
             return i
     return -1
 
+
 @njit(cache=True)
-def is_in_field(field_id, ra_f_frame, dec_f_frame, f_size, pre_select_fields):
+def time_and_error_comp(expMJD, t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldID):
+    """Select observations that are made in the good time to see a t0 peak SN.
+
+    Parameters
+    ----------
+    expMJD : numpy.ndarray(float)
+        MJD date of observations.
+    t0 : numpy.ndarray(float)
+        SN peakmjd.
+    ModelMaxT : float
+        SN model max date.
+    ModelMinT : float
+        SN model minus date.
+    fiveSigmaDepth :
+        5 sigma mag limit of observations.
+    fieldID : numpy.ndarray(float)
+        Field Id of each observation.
+
+    Returns
+    -------
+    numpy.ndarray(bool), numpy.ndarray(int)
+        The boolean array of field selection and the id of selectionned fields.
+    """
+
+    epochs_selec = (expMJD - t0 > ModelMinT) * \
+                   (expMJD - t0 < ModelMaxT)
+    epochs_selec *= (fiveSigmaDepth > 0)
+    return epochs_selec, np.unique(fieldID[epochs_selec])
+
+
+@njit(cache=True)
+def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fieldID):
+    """Chek if a SN is in fields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.ndarray(bool)
+        The boolean array of field selection
+    obs_fieldID : numpy.ndarray(float)
+        Field Id of each observation.
+    ra_f_frame : numpy.ndaray(float)
+        SN Right Ascension in fields frames.
+    dec_f_frame : numpy.ndaray(float)
+        SN Declinaison in fields frames.
+    f_size : list(float)
+        ra and dec size.
+    fieldID : numpy.ndarray(int)
+        The list of preselected fields ID.
+
+    Returns
+    -------
+    numpy.ndaray(bool), bool
+        The boolean array of field selection.
+    """
+
     is_in_field = np.abs(ra_f_frame) < f_size[0] / 2
     is_in_field *= np.abs(dec_f_frame) < f_size[1] / 2
 
     dic_map={}
-    for pf, b in zip(pre_select_fields, is_in_field):
+    for pf, b in zip(fieldID, is_in_field):
         dic_map[pf] = b
 
-    return [dic_map[id] for id in field_id]
+    epochs_selec[np.copy(epochs_selec)]  *= np.array([dic_map[id] for id in obs_fieldID])
+    return epochs_selec, epochs_selec.any()
