@@ -9,10 +9,10 @@ from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 from numpy import power as pw
-from . import utils as ut
-from .constants import SN_SIM_PRINT
-from . import scatter as sct
-from . import sim_class as scls
+import snsim.utils as ut
+from snsim.constants import SN_SIM_PRINT
+import snsim.scatter as sct
+import snsim.sim_class as scls
 
 
 class SnSim:

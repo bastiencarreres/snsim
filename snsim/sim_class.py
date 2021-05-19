@@ -7,10 +7,10 @@ from astropy.table import Table
 from astropy.cosmology import FlatLambdaCDM
 from astropy.io import fits
 from numpy import power as pw
-from . import utils as ut
-from .constants import C_LIGHT_KMS
-from . import scatter as sct
-from . import nb_fun as nbf
+import snsim.utils as ut
+from snsim.constants import C_LIGHT_KMS
+import snsim.scatter as sct
+import snsim.nb_fun as nbf
 import time
 
 class SN:
