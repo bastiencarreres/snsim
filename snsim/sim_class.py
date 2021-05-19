@@ -13,6 +13,7 @@ from snsim.constants import C_LIGHT_KMS
 import snsim.scatter as sct
 import snsim.nb_fun as nbf
 
+
 class SN:
     """This class represent SN object.
 
