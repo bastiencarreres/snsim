@@ -777,16 +777,19 @@ class ObsTable:
         ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
         ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
         ra, dec = SN.coord
+
         # time selection
-        epochs_selec = (self._obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
-            (self._obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
+        #epochs_selec = (self._obs_table['expMJD'] - SN.sim_t0 > ModelMinT_obsfrm) * \
+        #self._obs_table['expMJD'] - SN.sim_t0 < ModelMaxT_obsfrm)
 
         # use to avoid errors
-        epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
-
-        idx = np.where(epochs_selec)
-
-        pre_selec = np.unique(self._obs_table['fieldID'][epochs_selec])
+        #epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
+        epochs_selec, pre_selec = nbf.time_and_error_comp(self._obs_table['expMJD'],
+                                                SN.sim_t0,
+                                                ModelMaxT_obsfrm,
+                                                ModelMinT_obsfrm,
+                                                self._obs_table['fiveSigmaDepth'],
+                                                self._obs_table['fieldID'])
 
         ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, pre_selec))))
         dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, pre_selec))))
@@ -795,10 +798,10 @@ class ObsTable:
         ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
                                                               ra_fields,
                                                               dec_fields)
-
-        epochs_selec[idx] *= nbf.is_in_field(self._obs_table['fieldID'][epochs_selec],
-                                            ra_field_frame, dec_field_frame,
-                                            self.field_size, pre_selec)
+        epochs_selec = nbf.is_in_field(epochs_selec,
+                                       self._obs_table['fieldID'][epochs_selec],
+                                       ra_field_frame, dec_field_frame,
+                                       self.field_size, pre_selec)
 
         if np.sum(epochs_selec) == 0:
             return None

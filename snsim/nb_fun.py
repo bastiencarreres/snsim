@@ -122,8 +122,18 @@ def find_first(item, vec):
             return i
     return -1
 
+
 @njit(cache=True)
-def is_in_field(field_id, ra_f_frame, dec_f_frame, f_size, pre_select_fields):
+def time_and_error_comp(expMJD,t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldID):
+    epochs_selec = (expMJD - t0 > ModelMinT) * \
+                   (expMJD - t0 < ModelMaxT)
+    epochs_selec *= (fiveSigmaDepth > 0)
+    return epochs_selec, np.unique(fieldID[epochs_selec])
+
+
+
+@njit(cache=True)
+def is_in_field(epochs_selec, field_id, ra_f_frame, dec_f_frame, f_size, pre_select_fields):
     is_in_field = np.abs(ra_f_frame) < f_size[0] / 2
     is_in_field *= np.abs(dec_f_frame) < f_size[1] / 2
 
@@ -131,4 +141,5 @@ def is_in_field(field_id, ra_f_frame, dec_f_frame, f_size, pre_select_fields):
     for pf, b in zip(pre_select_fields, is_in_field):
         dic_map[pf] = b
 
-    return [dic_map[id] for id in field_id]
+    epochs_selec[np.copy(epochs_selec)]  *= np.array([dic_map[id] for id in field_id])
+    return epochs_selec
