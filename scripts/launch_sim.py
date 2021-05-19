@@ -1,7 +1,6 @@
 import argparse
 import yaml
-import ast
-import snsim
+from snsim import snsim
 
 def nep_cut(nepc):
     for i in range(len(nepc)):
