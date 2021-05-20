@@ -740,7 +740,10 @@ class ObsTable:
                 'fieldID',
                 'fieldRA',
                 'fieldDec',
-                'fiveSigmaDepth'] + self._add_keys
+                'fiveSigmaDepth']
+
+        add_k = (k for k in self._add_keys if k not in keys)
+        keys+=add_k
 
         where = ''
         if self._db_cut is not None:
@@ -804,7 +807,6 @@ class ObsTable:
                                self.field_size, selec_fields_ID)
         if is_obs:
             return self._make_obs_table(epochs_selec)
-
         return None
 
     def _make_obs_table(self, epochs_selec):
@@ -846,10 +848,12 @@ class ObsTable:
                      'gain': [self.gain] * np.sum(epochs_selec),
                      'skynoise': skynoise,
                      'zp': zp,
-                     'zpsys': ['ab'] * np.sum(epochs_selec)})
+                     'zpsys': ['ab'] * np.sum(epochs_selec),
+                     'fieldID': self._obs_table['fieldID'][epochs_selec]})
 
         for k in self._add_keys:
-            obs[k] = self.obs_table[k][epochs_selec]
+            if k not in obs:
+                obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
 
