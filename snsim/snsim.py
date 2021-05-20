@@ -768,8 +768,6 @@ class Simulator:
             field_dic = None
             field_size = None
             field_list = None
-        print(field_list)
-
         ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, field_list, field_dic, field_size, **kwarg)
 
     def fit_lc(self, sn_ID=None):
