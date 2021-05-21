@@ -729,7 +729,7 @@ class Simulator:
                    zp=zp,
                    residuals=residuals)
 
-    def plot_ra_dec(self, plot_vpec=False, **kwarg):
+    def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
         """Plot a mollweide map of ra, dec.
 
         Parameters
@@ -748,13 +748,27 @@ class Simulator:
         vpec = None
         if plot_vpec:
             vpec = []
+        if plot_fields:
+            field_list = []
+
         for sn in self.sn_list:
             r, d = sn.coord
             ra.append(r)
             dec.append(d)
             if plot_vpec:
                 vpec.append(sn.vpec)
-        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
+            if plot_fields:
+                field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
+
+        if plot_fields:
+            field_dic = self.obs._field_dic
+            field_size = self.obs.field_size
+            field_list = np.unique(field_list)
+        else:
+            field_dic = None
+            field_size = None
+            field_list = None
+        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, field_list, field_dic, field_size, **kwarg)
 
     def fit_lc(self, sn_ID=None):
         """Fit all or just one SN lightcurve(s).

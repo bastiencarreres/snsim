@@ -12,6 +12,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
+from matplotlib.patches import Polygon
 
 
 def x0_to_mB(x0):
@@ -411,7 +412,7 @@ def plot_lc(
     plt.show()
 
 
-def plot_ra_dec(ra, dec, vpec=None, **kwarg):
+def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg):
     """Plot a mollweide map of ra, dec.
 
     Parameters
@@ -431,14 +432,52 @@ def plot_ra_dec(ra, dec, vpec=None, **kwarg):
     """
     plt.figure()
     ax = plt.subplot(111, projection='mollweide')
-    plt.grid()
     ax.set_axisbelow(True)
+    plt.grid()
+
+
     ra = ra - 2 * np.pi * (ra > np.pi)
+
     if vpec is None:
-        plt.scatter(ra, dec, **kwarg)
+        plt.scatter(ra, dec, zorder=5, s=10, **kwarg)
     else:
-        plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, **kwarg)
+        plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, s=10, zorder=5, **kwarg)
         plt.colorbar(plot, label='$v_p$ [km/s]')
+
+    if field_list is not None and field_dic is not None and field_size is not None:
+        ra_edges = np.array([field_size[0]/2,
+                                 field_size[0]/2,
+                                 -field_size[0]/2,
+                                 -field_size[0]/2])
+        dec_edges = np.array([field_size[1]/2,
+                             -field_size[1]/2,
+                             -field_size[1]/2,
+                              field_size[1]/2])
+        vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
+                       np.sin(ra_edges) * np.cos(dec_edges),
+                       np.sin(dec_edges)]).T
+
+        for ID in field_list:
+            #if ID < 880:
+            ra = field_dic[ID]['ra']
+            dec = field_dic[ID]['dec']
+            new_coord = [nbf.R_base(ra,-dec,v, inv=-1) for v in vec]
+            new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
+            if new_radec[3][0] > new_radec[0][0]:
+                if  new_radec[3][0]*new_radec[2][0] > 0:
+                    x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
+                    y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
+                    x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
+                    y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
+                    ax.plot(x1,y1,ls='--', color='blue', lw=1, zorder=2)
+                    ax.plot(x2,y2,ls='--', color='blue', lw=1, zorder=2)
+                else:
+                    if new_radec[2][0] < 0:
+                        new_radec[3][0] = -np.pi
+                        plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1, zorder=2))
+
+            else :
+                plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1, zorder=2))
 
     plt.show()
 
