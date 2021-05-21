@@ -439,9 +439,9 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
     ra = ra - 2 * np.pi * (ra > np.pi)
 
     if vpec is None:
-        plt.scatter(ra, dec, zorder=5, s=4, **kwarg)
+        plt.scatter(ra, dec, zorder=5, s=10, **kwarg)
     else:
-        plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, s=4, zorder=5, **kwarg)
+        plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, s=10, zorder=5, **kwarg)
         plt.colorbar(plot, label='$v_p$ [km/s]')
 
     if field_list is not None and field_dic is not None and field_size is not None:
@@ -458,24 +458,26 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                        np.sin(dec_edges)]).T
 
         for ID in field_list:
-            if ID < 880:
-                ra = field_dic[ID]['ra']
-                dec = field_dic[ID]['dec']
-                new_coord = [nbf.R_base(ra,-dec,v, inv=-1) for v in vec]
-                new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
-                # if new_radec[0][0]-new_radec[3][0] > np.pi:
-                #         x1 = [new_radec[0][0], np.pi]
-                #         y1 = [new_radec[0][1], new_radec[0][1]]
-                #         ax.plot(x1,y1,ls='--')
-                # if new_radec[3][0] - new_radec[0][0] > new_radec[0][0] + 2*np.pi - new_radec[3][0]:
-                #         x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
-                #         y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
-                #         x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
-                #         y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
-                #         ax.plot(x1,y1,ls='--', color='blue', lw=1)
-                #         ax.plot(x2,y2,ls='--', color='blue', lw=1)
+            #if ID < 880:
+            ra = field_dic[ID]['ra']
+            dec = field_dic[ID]['dec']
+            new_coord = [nbf.R_base(ra,-dec,v, inv=-1) for v in vec]
+            new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
+            if new_radec[3][0] > new_radec[0][0]:
+                if  new_radec[3][0]*new_radec[2][0] > 0:
+                    x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
+                    y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
+                    x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
+                    y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
+                    ax.plot(x1,y1,ls='--', color='blue', lw=1, zorder=2)
+                    ax.plot(x2,y2,ls='--', color='blue', lw=1, zorder=2)
+                else:
+                    if new_radec[2][0] < 0:
+                        new_radec[3][0] = -np.pi
+                        plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1, zorder=2))
 
-                plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1))
+            else :
+                plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1, zorder=2))
 
     plt.show()
 
