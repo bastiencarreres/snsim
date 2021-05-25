@@ -224,7 +224,7 @@ class SN:
                 test = (self.epochs['time'] - self.sim_t0 > cutMin_obsfrm)
                 test *= (self.epochs['time'] - self.sim_t0 < cutMax_obsfrm)
                 if len(cut) == 4:
-                    test *= (self.epochs['filter'] == cut[3])
+                    test *= (self.epochs['band'] == cut[3])
                 if np.sum(test) < int(cut[0]):
                     return False
             return True
