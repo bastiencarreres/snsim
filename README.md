@@ -74,9 +74,9 @@ The host file contain coordinates and peculiar velocities to simulate SN, the ne
 
 ## Usage and output
 ```
-from snsim import sn_sim
+from snsim import Simulator
 
-sim = SnSim('yaml_cfg_file.yml')
+sim = Simulator('yaml_cfg_file.yml')
 sim.simulate()
 ```
 
