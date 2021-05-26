@@ -14,6 +14,11 @@ import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 from matplotlib.patches import Polygon
 
+def is_same_cosmo_model(dic,astropy_model):
+    for k,v in dic.items():
+        if v != astropy_model.__dict__['_'+k]:
+            return False
+    return True
 
 def x0_to_mB(x0):
     """Convert SALT x0 to bessellB restframe magnitude.
