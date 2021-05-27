@@ -23,31 +23,34 @@ keys_dic = {
     'data': [
         'write_path',
         'sim_name',
-        'write_format',
-        'obs_config_path'],
-    'db_config': [
-        'dbfile_path',
+        'write_format'],
+    'survey_config': [
+        'survey_file',
         'band_dic',
         'db_cut',
         'zp',
         'gain',
         'ra_size',
-        'dec_size'],
+        'dec_size',
+        'duration'],
     'sn_gen': [
         'randseed',
         'n_sn',
         'sn_rate',
         'rate_pw',
-        'duration',
         'nep_cut',
         'z_range',
         'M0',
         'mag_smear',
         'smear_mod'],
     'cosmology': [
-        'Om',
-        'H0', 'v_cmb'],
-    'model_gen': [
+        'Om0',
+        'H0'],
+    'cmb': [
+        'v_cmb',
+        'ra_cmb',
+        'dec_cmb'],
+    'model_config': [
         'model_dir',
 	    'model_name',
         'alpha',
@@ -65,20 +68,19 @@ parser.add_argument("--write_path",type=str)
 parser.add_argument("--sim_name",type=str)
 parser.add_argument("--band_dic",type=yaml.load)
 parser.add_argument("--write_format", type=str,nargs='+')
-parser.add_argument("--obs_config_path",type=str)
 
-parser.add_argument("--dbfile_path",type=str)
+parser.add_argument("--survey_file",type=str)
 parser.add_argument("--db_cut",type=yaml.load)
 parser.add_argument("--zp",type=float)
 parser.add_argument("--gain",type=float)
 parser.add_argument("--ra_size",type=float)
 parser.add_argument("--dec_size",type=float)
+parser.add_argument("--duration",type=float)
 
 parser.add_argument("--randseed",type=int)
 parser.add_argument("--n_sn",type=int)
 parser.add_argument("--sn_rate",type=float)
 parser.add_argument("--rate_pw",type=float)
-parser.add_argument("--duration",type=float)
 
 parser.add_argument("--nep_cut", action='append', nargs='+')
 parser.add_argument("--z_range",type=float,nargs=2)
@@ -86,9 +88,12 @@ parser.add_argument("--M0",type=float)
 parser.add_argument("--mag_smear",type=float)
 parser.add_argument("--smear_mod",type=str)
 
-parser.add_argument("--Om",type=float)
+parser.add_argument("--Om0",type=float)
 parser.add_argument("--H0",type=float)
+
 parser.add_argument("--v_cmb",type=float)
+parser.add_argument("--ra_cmb",type=float)
+parser.add_argument("--dec_cmb",type=float)
 
 parser.add_argument("--model_dir",type=str)
 parser.add_argument("--model_name",type=int)
