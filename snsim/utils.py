@@ -15,6 +15,21 @@ from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 from matplotlib.patches import Polygon
 
 def is_same_cosmo_model(dic,astropy_model):
+    """Check if cosmo parameters in a dic are the same used in astropy_model.
+
+    Parameters
+    ----------
+    dic : dict
+        Contain som cosmological parameters.
+    astropy_model : astropy.cosmology
+        An astropy cosmological model.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
     for k,v in dic.items():
         if v != astropy_model.__dict__['_'+k]:
             return False

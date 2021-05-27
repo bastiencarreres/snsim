@@ -21,10 +21,24 @@ class SN:
     ----------
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
+        snpar
+        ├── zcos
+        ├── como_dist
+        ├── z2cmb
+        ├── sim_t0
+        ├── ra
+        ├── dec
+        ├── vpec
+        └── mag_smear
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
         Contains general model parameters and sncsomo parameters.
+        model_par
+        ├── M0
+        ├── SN model general parameters
+        └── sncosmo
+            └── SN model parameters needed by sncosmo
 
     Attributes
     ----------
@@ -174,10 +188,10 @@ class SN:
         SALT:
             - alpha -> _model_par['alpha']
             - beta -> _model_par['beta']
-            - mb
-            - x0
-            - x1
-            - c
+            - mb -> self.sim_mb
+            - x0 -> self.sim_x0
+            - x1 -> self.sim_x1
+            - c -> self.sim_c
         """
 
         M0 = self._model_par['M0']
@@ -297,37 +311,84 @@ class SN:
 
 
 class SnGen:
-    """This class set up the random part of the SN generator.
+    """This class set up the random part of the SN simulation.
 
     Parameters
     ----------
-    sim_par : dict
-        All the parameters needed to generate the SN.
-    host : dict
-        SnHost object containing information about SN host.
+    sn_int_par : dict
+        Intrinsic parameters of the supernovae.
+        sn_int_par
+        ├── M0 # Standard absolute magnitude
+        ├── mag_smear # Coherent intrinsic scattering
+        └── smear_mod # Wavelenght dependant smearing (Optional)
+    model_config : dict
+        The parameters of the sn simulation model to use.
+        model_config
+        ├── model_dir # The directory of the model file
+        ├── model_name # The name of the model
+        └── model parameters # All model needed parameters
+    cmb : dict
+        The cmb parameters
+        cmb
+        ├── vcmb
+        ├── ra_cmb
+        └── dec_cmb
+    cosmology : astropy.cosmology
+        The astropy cosmological model to use.
+    vpec_dist : dict
+        The parameters of the peculiar velocity distribution.
+        vpec_dist
+        ├── mean_vpec
+        └── sig_vpec
+    host : class SnHost
+        The host class to introduce sn host.
 
     Attributes
     ----------
-    _sim_par : dict
-        A copy of the input sim_par dict.
+    _sn_int_par : dict
+        A copy of the input sn_int_par dict.
+    _model_config : dict
+        A copy of the input model_config dict.
+    _cmb : dict
+        A copy of the input cmb dict.
     sim_model : sncosmo.Model
-        The base model to generate SN.
+        The model used to simulate supernovae
     _model_keys : dict
         SN model global parameters names.
-    host
-        SnHost object, same as input.
+    _vpec_dist : dict
+        A copy of the input vpec_dist dict.
+    _cosmology : astropy.cosmology
+        A copy of the input cosmology model.
+    _host : class SnHost
+        A copy of the input SnHost class.
 
     Methods
     -------
     __init__(sim_par, host=None)
         Initialise the SNGen object.
-    __call__(n_sn,z_range,rand_seed)
-        Simulate a given number of sn in a given redshift range using the
-        given random seed.
+    __call__(n_sn, z_range, time_range, rand_seed)
+        Simulate a given number of sn in a given redshift range and time range
+        using the given random seed.
     __init_model_keys()
         Init the SN model parameters names.
     __init_sim_model()
         Configure the sncosmo Model
+    gen_peak_time(n, time_range, rand_seed)
+        Randomly generate peak time in the given time range.
+    gen_coord(n, rand_seed)
+        Generate ra, dec uniformly on the sky.
+    gen_zcos(n, z_range, rand_seed)
+        Generate redshift uniformly in a range. #TO CHANGE
+    gen_model_par(self, n, rand_seed)
+        Generate the random parameters of the sncosmo model.
+    gen_salt_par(self, n, rand_seed)
+        Generate the parameters for the SALT2/3 model.
+    gen_vpec(self, n, rand_seed)
+        Generate peculiar velocities on a gaussian law.
+    gen_coh_scatter(self, n, rand_seed)
+        Generate the coherent scattering term.
+    __gen_noise_rand_seed(self, n, rand_seed)
+        Generate the rand seeds for random fluxerror.
     """
 
     def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist, host=None):

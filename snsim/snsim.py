@@ -116,8 +116,8 @@ class Simulator:
     |     H0: HUBBLE CONSTANT                                                          |
     | cmb:                                                                             |
     |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
-    | model_config:                                                                       |
-    |     model_name:                                                                    |
+    | model_config:                                                                    |
+    |     model_name:                                                                  |
     |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
     |     alpha: STRETCH CORRECTION = alpha*x1                                         |
     |     beta: COLOR CORRECTION = -beta*c                                             |
