@@ -10,7 +10,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 from numpy import power as pw
 import snsim.utils as ut
-from snsim.constants import SN_SIM_PRINT
+from snsim.constants import SN_SIM_PRINT, VCMB, RA_CMB, DEC_CMB
 import snsim.scatter as sct
 import snsim.sim_class as scls
 
@@ -91,12 +91,12 @@ class Simulator:
     |     write_path: '/PATH/TO/OUTPUT'                                                |
     |     sim_name: 'NAME OF SIMULATION'                                               |
     |     write_format: 'format' or ['format1','format2']                              |
-    | db_config: #(Optional -> use obs_file)                                           |
-    |     dbfile_path: '/PATH/TO/FILE'                                                 |
+    | survey_config: #(Optional -> use obs_file)                                       |
+    |     survey_file: '/PATH/TO/FILE'                                                 |
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
-    |     add_keys: ['keys1', 'keys2', ...] add db file keys to metadata               |
-    |     db_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1'],...}   |
-    |     start_day: Optional                                                          |
+    |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata               |
+    |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}   |
+    |     duration: DURATION OF THE SURVEY (Optional, default given by survey file)    |
     |     zp: INSTRUMENTAL ZEROPOINT                                                   |
     |     ra_size: RA FIELD SIZE                                                       |
     |     dec_size: DEC FIELD SIZE                                                     |
@@ -105,7 +105,6 @@ class Simulator:
     |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
     |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                      |
     |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                  |
-    |     duration: DURATION OF THE SURVEY (Optional, default given by cadence file)   |
     |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS |
     |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                       |
     |     z_range: [ZMIN,ZMAX]                                                         |
@@ -113,11 +112,14 @@ class Simulator:
     |     mag_smear: SN INTRINSIC SMEARING                                             |
     |     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING      |
     | cosmology:                                                                       |
-    |     Om: MATTER DENSITY                                                           |
+    |     Om0: MATTER DENSITY                                                          |
     |     H0: HUBBLE CONSTANT                                                          |
+    | cmb:                                                                             |
     |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
-    | model_gen:                                                                       |
-    |     model_name                                                                   |
+    |     ra_cmb: RIGHT ASCENSION OF CMB DIPOLE #(Optional, default = 266.81)          |
+    |     dec_cmb: DECLINAISON OF CMB DIPOLE #(Optional, default = 48.253)             |
+    | model_config:                                                                    |
+    |     model_name:                                                                  |
     |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
     |     alpha: STRETCH CORRECTION = alpha*x1                                         |
     |     beta: COLOR CORRECTION = -beta*c                                             |
@@ -148,8 +150,8 @@ class Simulator:
                 self.sim_cfg = yaml.safe_load(f)
 
         # Check if there is a db_file
-        if 'db_config' not in self.sim_cfg:
-            raise RuntimeError("Set a db_file -> type help(sn_sim) to print the syntax")
+        if 'survey_config' not in self.sim_cfg:
+            raise RuntimeError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
         # cadence sim or n fixed
         if 'n_sn' in self.sim_cfg['sn_gen']:
@@ -161,13 +163,50 @@ class Simulator:
         self._fit_res = None
         self._random_seed = None
         self._host = None
-        self._obs = scls.ObsTable(**self.obs_parameters)
-        self._generator = scls.SNGen(self.sim_par, host=self.host)
+        self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
+        self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
+        self._generator = scls.SnGen(self.sn_int_par,
+                                     self.sim_cfg['model_config'],
+                                     self.cmb,
+                                     self.cosmology,
+                                     self.vpec_dist,
+                                     host=self.host)
 
     @property
     def sim_name(self):
         """Get sim name"""
         return self.sim_cfg['data']['sim_name']
+
+    @property
+    def vpec_dist(self):
+        """Get vpec option"""
+        if 'vpec_dist' in self.sim_cfg:
+            return self.sim_cfg['vpec_dist']
+        elif 'host_file' in self.sim_cfg:
+            return None
+        else:
+            return {'mean_vpec': 0., 'sig_vpec': 0.}
+
+    @property
+    def cmb(self):
+        if 'cmb' in  self.sim_cfg:
+            if 'vcmb' in self.sim_cfg['cmb']:
+                vcmb = self.sim_cfg['cmb']['vcmb']
+            else:
+                vcmb = VCMB
+            if 'ra_cmb' in self.sim_cfg['cmb']:
+                ra_cmb = self.sim_cfg['cmb']['ra_cmb']
+            else:
+                ra_cmb =  RA_CMB
+            if 'dec_cmb' in self.sim_cfg['cmb']:
+                dec_cmb = self.sim_cfg['cmb']['dec_cmb']
+            else:
+                dec_cmb = DEC_CMB
+        else:
+            vcmb = VCMB
+            ra_cmb = RA_CMB
+            dec_cmb = DEC_CMB
+        return {'v_cmb': vcmb, 'ra_cmb': ra_cmb, 'dec_cmb': dec_cmb}
 
     @property
     def n_sn(self):
@@ -181,7 +220,7 @@ class Simulator:
     @property
     def model_name(self):
         """Get the name of sn model used"""
-        return self.sim_cfg['model_gen']['model_name']
+        return self.sim_cfg['model_config']['model_name']
 
     @property
     def sn_list(self):
@@ -194,118 +233,41 @@ class Simulator:
         return self._fit_res
 
     @property
-    def survey_prop(self):
-        """Get survey properties"""
-        dic = {'ra_size': np.radians(self.sim_cfg['db_config']['ra_size']),
-               'dec_size': np.radians(self.sim_cfg['db_config']['dec_size']),
-               'gain': self.sim_cfg['db_config']['gain']
-               }
-        # zeropoint
-        if 'zp' in self.sim_cfg['db_config']:
-            dic['zp'] = self.sim_cfg['db_config']['zp']
-        return dic
-
-        #if 'star_time' in sim_cfg['']
-
-    @property
-    def obs_parameters(self):
-        """Get ObsTable class parameters"""
-        params = {'db_file': self.sim_cfg['db_config']
-                  ['dbfile_path'], 'survey_prop': self.survey_prop}
-        # Band dic : band_name_obs/db_file -> band_name_sncosmo
-        if 'band_dic' in self.sim_cfg['db_config']:
-            band_dic = self.sim_cfg['db_config']['band_dic']
-        else:
-            band_dic = None
-        params['band_dic'] = band_dic
-        # Additionnal data
-        if 'add_keys' in self.sim_cfg['db_config']:
-            add_keys = self.sim_cfg['db_config']['add_keys']
-        else:
-            add_keys = []
-        params['add_keys'] = add_keys
-
-        # Cut on db_file
-        if 'db_cut' in self.sim_cfg['db_config']:
-            db_cut = self.sim_cfg['db_config']['db_cut']
-        else:
-            db_cut = None
-        params['db_cut'] = db_cut
-        return params
-
-    @property
-    def snc_model_par(self):
-        """Get sncosmo model parameters"""
-        if self.model_name not in ['salt2', 'salt3']:
-            raise ValueError(f'The only model implemented are salt')
-        params = {'model_name': self.model_name,
-                  'model_dir': self.sim_cfg['model_gen']['model_dir']
-                  }
+    def sn_int_par(self):
+        """Get the intrinsic parameters of SN Ia"""
+        int_params = {'M0': self.sim_cfg['sn_gen']['M0'],
+                      'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
         if 'smear_mod' in self.sim_cfg['sn_gen']:
-            params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
-        return params
+            int_params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
+
+        return int_params
 
     @property
-    def sn_model_par(self):
-        """Get general sn simulation parameters"""
-        params = {'M0': self.sim_cfg['sn_gen']['M0'],
-                  'time_range': [self.obs.mintime, self.obs.maxtime],
-                  'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
-
-        if self.model_name == 'salt2' or self.model_name == 'salt3':
-            params['alpha'] = self.sim_cfg['model_gen']['alpha']
-            params['beta'] = self.sim_cfg['model_gen']['beta']
-            params['x1_distrib'] = [
-                self.sim_cfg['model_gen']['mean_x1'],
-                self.sim_cfg['model_gen']['sig_x1']]
-            params['c_distrib'] = [
-                self.sim_cfg['model_gen']['mean_c'],
-                self.sim_cfg['model_gen']['sig_c']]
-
-        if 'host_file' not in self.sim_cfg['vpec_gen']:
-            params['vpec_distrib'] = [
-                self.sim_cfg['vpec_gen']['mean_vpec'],
-                self.sim_cfg['vpec_gen']['sig_vpec']]
-        return params
-
-    @property
-    def cosmo(self):
-        """Get cosmological parameters used in simulation"""
-        return {'H0': self.sim_cfg['cosmology']['H0'], 'Om0': self.sim_cfg['cosmology']['Om']}
-
-    @property
-    def cmb(self):
-        """Get cmb parameters ra,dec,velocity"""
-        params = {}
-        if 'v_cmb' in self.sim_cfg['cosmology']:
-            params['v_cmb'] = self.sim_cfg['cosmology']['v_cmb']
-        else:
-            params['v_cmb'] = 369.82
-        params['dec_cmb'] = 48.253
-        params['ra_cmb'] = 266.81
-        return params
-
-    @property
-    def sim_par(self):
-        """Get SNGen sim_par parameter"""
-        return {'snc_model_par': self.snc_model_par,
-                'cosmo': self.cosmo,
-                'cmb': self.cmb,
-                'sn_model_par': self.sn_model_par}
+    def cosmology(self):
+        """Get astropy cosmological model used in simulation"""
+        if not ut.is_same_cosmo_model(self.sim_cfg['cosmology'],self._cosmology):
+            self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
+        return self._cosmology
 
     @property
     def obs(self):
         """Get the ObsTable object of the simulation """
-        if self._obs._survey_prop != self.survey_prop:
-            self._obs = scls.ObsTable(**self.obs_parameters)
+        if self._obs._survey_config != self.sim_cfg['survey_config']:
+            self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
         return self._obs
 
     @property
     def generator(self):
         """Get the SNGen object of the simulation """
-        not_same = (self._generator._sim_par != self.sim_par)
+        not_same = (self._generator.sn_int_par != self.sn_int_par)
+        not_same *= (self.sim_cfg['model_config'] != self._generator.model_config)
+        not_same *= (not ut.is_same_cosmo_model(self.sim_cfg['cosmology'],self._cosmology))
         if not_same:
-            self._generator = scls.SNGen(self.sim_par)
+            self._generator = scls.SnGen(self.sn_int_par,
+                                         self.sim_cfg['model_config'],
+                                         self.cmb,
+                                         cosmology=self.cosmology,
+                                         host=self.host)
         return self._generator
 
     @property
@@ -358,10 +320,10 @@ class Simulator:
         """Get the survey duration"""
         if 'n_sn' in self.sim_cfg['sn_gen']:
             return None
-        elif 'duration' not in self.sim_cfg['sn_gen']:
+        elif 'duration' not in self.sim_cfg['survey_config']:
             duration = (self.obs.mintime() - self.obs.maxtime()) / 365.25
         else:
-            duration = self.sim_cfg['sn_gen']['duration']
+            duration = self.sim_cfg['survey_config']['duration']
         return duration
 
     @property
@@ -413,10 +375,10 @@ class Simulator:
         """
         z = self.z_span['z_bins']
         dz = self.z_span['dz']
-        cosmo = FlatLambdaCDM(**self.cosmo)
+
         rate = self.sn_rate(z + 0.5 * dz)  # Rate in Nsn/Mpc^3/year
-        shell_vol = 4 * np.pi / 3 * (pw(cosmo.comoving_distance(
-            z + dz).value, 3) - pw(cosmo.comoving_distance(z).value, 3))
+        shell_vol = 4 * np.pi / 3 * (pw(self.cosmology.comoving_distance(
+            z + dz).value, 3) - pw(self.cosmology.comoving_distance(z).value, 3))
         time_rate = rate * shell_vol
         return time_rate
 
@@ -460,8 +422,8 @@ class Simulator:
         print('-----------------------------------------------------------')
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self._yml_path}')
-        print(f"OBS FILE : {self.obs_parameters['db_file']}")
-        print(f"SN SIM MODEL: {self.model_name} from {self.sim_cfg['model_gen']['model_dir']}")
+        print(f"OBS FILE : {self.sim_cfg['survey_config']['survey_file']}")
+        print(f"SN SIM MODEL: {self.model_name} from {self.sim_cfg['model_config']['model_dir']}")
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
 
@@ -477,7 +439,7 @@ class Simulator:
 
         print(f'-----------------------------------------------------------\n')
 
-        if self.obs_parameters['db_cut'] is not None:
+        if 'survey_cit' in self.sim_cfg['survey_config']:
             for k, v in self.obs_parameters['db_cut'].items():
                 conditions_str = ''
                 for cond in v:
@@ -561,7 +523,7 @@ class Simulator:
 
         SN_ID = 0
         for n, z, rs in zip(n_sn, self.z_span['z_bins'], sn_bins_seed):
-            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']], rs)
+            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']],[self.obs.mintime, self.obs.maxtime], rs)
             for sn in sn_list_tmp:
                 sn.epochs = self.obs.epochs_selection(sn)
                 if sn.pass_cut(self.nep_cut):
@@ -590,7 +552,7 @@ class Simulator:
         SN_ID = 0
         rs = sn_gen_seed[rs_id]
         while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
-            sn = self.generator(1, self.z_range, rs)[0]
+            sn = self.generator(1, self.z_range, [self.obs.mintime, self.obs.maxtime], rs)[0]
             sn.epochs = self.obs.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
                 sn.gen_flux()
@@ -618,7 +580,7 @@ class Simulator:
         header = {'n_sn': self.n_sn,
                   'M0': self.sim_cfg['sn_gen']['M0'],
                   'sigM': self.sim_cfg['sn_gen']['mag_smear'],
-                  **self.cosmo}
+                  **self.sim_cfg['cosmology']}
 
         if self.host is None:
             header['m_vp'] = self.sim_cfg['vpec_gen']['mean_vpec']
@@ -635,7 +597,7 @@ class Simulator:
                         }
 
         for k, v in fits_dic.items():
-            header[v] = self.sim_cfg['model_gen'][k]
+            header[v] = self.sim_cfg['model_config'][k]
 
         if 'smear_mod' in self.sim_cfg['sn_gen']:
             header['Smod'] = self.sim_cfg['sn_gen']['smear_mod']

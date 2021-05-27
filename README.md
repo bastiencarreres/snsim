@@ -10,33 +10,35 @@ The input file is a .yml with the following structure:
 data :
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
- correpond to those in sncosmo registery)
     write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
-db_config: 
-    dbfile_path: '/PATH/TO/FILE'
-    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in db/obs file doesn't
-    add_keys: ['keys1', 'keys2', ...] #(Optional add db file keys to metadata)  
+survey_config: 
+    survey_file: '/PATH/TO/FILE'
+    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in the database doesn't correpond to those in sncosmo registery)
+    add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata) 
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
     zp: INSTRUMENTAL ZEROPOINT  
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
+    duration: DURATION OF THE SURVEY #(Optional, default given by survey file)
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
     sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
     rate_pw: rate = sn_rate*(1+z)^rate_pw #(Optional, default=0)
-    duration: DURATION OF THE SURVEY #(Optional, default given by cadence file)
     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS #(Optional defaut >= 1 ep)
     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional default random)
-    z_range: [ZMIN,ZMAX]
+    z_range: [ZMIN, ZMAX] # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
     mag_smear: SN INTRINSIC SMEARING
     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
-cosmology:
-    Om: MATTER DENSITY  
+cosmology: # Follow astropy formalism
+    Om0: MATTER DENSITY  
     H0: HUBBLE CONSTANT
+cmb:
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
-model_gen:
+    ra_cmb: RIGHT ASCENSION OF CMB DIPOLE #(Optional, default = 266.81)
+    dec_cmb: DECLINAISON OF CMB DIPOLE #(Optional, default = 48.253)
+model_config:
     model_name: 'THE MODEL NAME' # Example : 'salt2'
     model_dir: '/PATH/TO/SALT/MODEL'  
     # Model parameters (here example for salt2)
@@ -61,9 +63,9 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD | filter | fieldRA (rad) |  fieldDec (rad) | fiveSigmaDepth |
+| expMJD | filter | fieldID | fieldRA (rad) |  fieldDec (rad) |
 | :-----------: | :-----: | :----------: | :----------: | :--------------------: |
-| Obs time| Obs band | Right ascension of the obs field| Declinaison of the obs field   |  Limiting magnitude at 5 sigma |
+| Obs time| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field   |
 
 ## Host file
 The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
@@ -73,7 +75,7 @@ The host file contain coordinates and peculiar velocities to simulate SN, the ne
 | Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
 
 ## Usage and output
-```
+```python
 from snsim import Simulator
 
 sim = Simulator('yaml_cfg_file.yml')
@@ -81,7 +83,7 @@ sim.simulate()
 ```
 
 The result is stored in sim.sn_list list which each entry is a SN object. Simulated lc and metadata are given by :
-```
+```python
 sim.sn_list[i].sim_lc
 sim.sn_list[i].sim_lc.meta
 
@@ -94,45 +96,60 @@ The basic list of ligth curves metadata is given in the following table :
 | :------------:  | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
 |  Observed redshift | Peaktime | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | CMB motion redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | Simulated distance modulli | Coherent smear term |
 
-If you use SALT model you add some arguments to metadata:
+If you use SALT2/3 model you add some arguments to metadata:
 
 
-| sim_x0 | sim_x1 | sim_c | sim_mb |
-| :----: | :----: | :---: | :----: |
-| SALT2 x0 (normalisation) parameter  | SALT2 x1 (stretch) parameter  | SALT2 c (color) parameter | SN magnitude in restframe Bessell B
-
-Moreover if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
+|         sim_x0          |      sim_x1       |      sim_c      |               sim_mb                |
+| :---------------------: | :---------------: | :-------------: | :---------------------------------: |
+| Normalization parameter | Stretch parameter | color parameter | SN magnitude in restframe Bessell B |
+Moreover, if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
 
 ## Script launch
+
 The program can be launch with the ./sripts/launch_sim.py python script.
 
 The script use argparse to change parameters:
-```
+```shell
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' -fit (optional if you want to fit) --any_config_key value (overwrite yaml configuration or add param)
 ```
 If the config keys is a float or an int just type as :
-```
+```shell
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --int_or_float_key value_nbr
 ```
 If the config key is a dict you have to pass it like a yaml string :
-```
+```shell
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
 ```
 If the config keys is a list you have to pass it by separate item by space :
-```
+```shell
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --list_key item1 item2 item3
 ```
 In the case of nep_cut key you can pass an int or pass list by typing --nep_cut multiple times, note that filter argument is optional:
-```
+```shell
 #nep_cut is just an int
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut minimal_nbr_of_epoch
 
 #Multiple cuts
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --nep_cut ep_nbr1 time_inf1 time_sup1 optional_filter1 --nep_cut ep_nbr2 time_inf2 time_sup2 optional_filter2
 ```
-## Fit and open_sim class
-You can direct fit after running the simulation 
+## Plot functions  
+
+You can plot simulated lightcurves
+
+``` 
+sim.plot_lc(SN_ID, mag=False, zp=25. , plot_sim=True, plot_fit=False)
 ```
+
+You can also plot a vpec Mollweide map 
+
+```python
+sim.plot_ra_dec(plot_vpec=False, plot_fields=False, **kwarg)
+```
+
+## Fit and OpenSim class
+
+You can direct fit after running the simulation 
+```python
 # Fit 1 lc by id
 sim.fit_lc(id)
 
@@ -143,9 +160,13 @@ sim.fit_lc()
 sim.write_fit()
 ```
 Or you can open register open sim file .fits or .pkl with the open_sim class
-```
-from snsim import open_sim
+```python
+from snsim import OpenSim
 
-sim = open_sim('sim_file.pkl/.fits',SALT2_dir)
+sim = OpenSim('sim_file.pkl/.fits',SALT2_dir)
 ```
+
+
+
+
 

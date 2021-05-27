@@ -21,10 +21,24 @@ class SN:
     ----------
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
+        snpar
+        ├── zcos
+        ├── como_dist
+        ├── z2cmb
+        ├── sim_t0
+        ├── ra
+        ├── dec
+        ├── vpec
+        └── mag_smear
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
         Contains general model parameters and sncsomo parameters.
+        model_par
+        ├── M0
+        ├── SN model general parameters
+        └── sncosmo
+            └── SN model parameters needed by sncosmo
 
     Attributes
     ----------
@@ -174,10 +188,10 @@ class SN:
         SALT:
             - alpha -> _model_par['alpha']
             - beta -> _model_par['beta']
-            - mb
-            - x0
-            - x1
-            - c
+            - mb -> self.sim_mb
+            - x0 -> self.sim_x0
+            - x1 -> self.sim_x1
+            - c -> self.sim_c
         """
 
         M0 = self._model_par['M0']
@@ -296,66 +310,124 @@ class SN:
         return fits.table_to_hdu(self.sim_lc)
 
 
-class SNGen:
-    """This class set up the random part of the SN generator.
+class SnGen:
+    """This class set up the random part of the SN simulation.
 
     Parameters
     ----------
-    sim_par : dict
-        All the parameters needed to generate the SN.
-    host : dict
-        SnHost object containing information about SN host.
+    sn_int_par : dict
+        Intrinsic parameters of the supernovae.
+        sn_int_par
+        ├── M0 # Standard absolute magnitude
+        ├── mag_smear # Coherent intrinsic scattering
+        └── smear_mod # Wavelenght dependant smearing (Optional)
+    model_config : dict
+        The parameters of the sn simulation model to use.
+        model_config
+        ├── model_dir # The directory of the model file
+        ├── model_name # The name of the model
+        └── model parameters # All model needed parameters
+    cmb : dict
+        The cmb parameters
+        cmb
+        ├── vcmb
+        ├── ra_cmb
+        └── dec_cmb
+    cosmology : astropy.cosmology
+        The astropy cosmological model to use.
+    vpec_dist : dict
+        The parameters of the peculiar velocity distribution.
+        vpec_dist
+        ├── mean_vpec
+        └── sig_vpec
+    host : class SnHost
+        The host class to introduce sn host.
 
     Attributes
     ----------
-    _sim_par : dict
-        A copy of the input sim_par dict.
+    _sn_int_par : dict
+        A copy of the input sn_int_par dict.
+    _model_config : dict
+        A copy of the input model_config dict.
+    _cmb : dict
+        A copy of the input cmb dict.
     sim_model : sncosmo.Model
-        The base model to generate SN.
+        The model used to simulate supernovae
     _model_keys : dict
         SN model global parameters names.
-    host
-        SnHost object, same as input.
+    _vpec_dist : dict
+        A copy of the input vpec_dist dict.
+    _cosmology : astropy.cosmology
+        A copy of the input cosmology model.
+    _host : class SnHost
+        A copy of the input SnHost class.
 
     Methods
     -------
     __init__(sim_par, host=None)
         Initialise the SNGen object.
-    __call__(n_sn,z_range,rand_seed)
-        Simulate a given number of sn in a given redshift range using the
-        given random seed.
+    __call__(n_sn, z_range, time_range, rand_seed)
+        Simulate a given number of sn in a given redshift range and time range
+        using the given random seed.
     __init_model_keys()
         Init the SN model parameters names.
     __init_sim_model()
         Configure the sncosmo Model
+    gen_peak_time(n, time_range, rand_seed)
+        Randomly generate peak time in the given time range.
+    gen_coord(n, rand_seed)
+        Generate ra, dec uniformly on the sky.
+    gen_zcos(n, z_range, rand_seed)
+        Generate redshift uniformly in a range. #TO CHANGE
+    gen_model_par(self, n, rand_seed)
+        Generate the random parameters of the sncosmo model.
+    gen_salt_par(self, n, rand_seed)
+        Generate the parameters for the SALT2/3 model.
+    gen_vpec(self, n, rand_seed)
+        Generate peculiar velocities on a gaussian law.
+    gen_coh_scatter(self, n, rand_seed)
+        Generate the coherent scattering term.
+    __gen_noise_rand_seed(self, n, rand_seed)
+        Generate the rand seeds for random fluxerror.
     """
 
-    def __init__(self, sim_par, host=None):
-        self._sim_par = sim_par
+    def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist, host=None):
+        self._sn_int_par = sn_int_par
+        self._model_config = model_config
+        self._cmb = cmb
         self.sim_model = self.__init_sim_model()
-        self._model_keys = ['M0']
-        self._model_keys += self.__init_model_keys()
-        self.host = host
+        self._model_keys = self.__init_model_keys()
+        self._vpec_dist = vpec_dist
+        self._cosmology = cosmology
+        self._host = host
 
     @property
-    def snc_model_par(self):
+    def model_config(self):
         """Get sncosmo model parameters"""
-        return self._sim_par['snc_model_par']
+        return self._model_config
 
     @property
-    def sn_model_par(self):
+    def host(self):
+        return self._host
+
+    @property
+    def vpec_dist(self):
+        return self._vpec_dist
+
+    @property
+    def sn_int_par(self):
         """Get sncosmo configuration parameters"""
-        return self._sim_par['sn_model_par']
+        return self._sn_int_par
 
     @property
-    def cosmo(self):
-        """Get cosmo use_defaults parameters"""
-        return self._sim_par['cosmo']
+    def cosmology(self):
+        """Get astropy cosmological model"""
+        return self._cosmology
 
     @property
     def cmb(self):
         """Get cmb used parameters"""
-        return self._sim_par['cmb']
+        return self._cmb
 
     @property
     def snc_model_time(self):
@@ -372,12 +444,11 @@ class SNGen:
             SN simulation model.
 
         """
-        model = ut.init_sn_model(self.snc_model_par['model_name'],
-                                 self.snc_model_par['model_dir'])
+        model = ut.init_sn_model(self.model_config['model_name'],
+                                 self.model_config['model_dir'])
 
-        if 'smear_mod' in self.snc_model_par:
-            smear_mod = self.snc_model_par['smear_mod']
-            model = sct.init_sn_smear_model(model, smear_mod)
+        if 'smear_mod' in self.sn_int_par:
+            model = sct.init_sn_smear_model(model, self.sn_int_par['smear_mod'])
         return model
 
     def __init_model_keys(self):
@@ -388,12 +459,12 @@ class SNGen:
         list
             A dict containing all the usefull keys of the SN model.
         """
-        model_name = self.snc_model_par['model_name']
+        model_name = self.model_config['model_name']
         if model_name in ('salt2', 'salt3'):
             model_keys = ['alpha', 'beta']
         return model_keys
 
-    def __call__(self, n_sn, z_range, rand_seed):
+    def __call__(self, n_sn, z_range, time_range, rand_seed):
         """Launch the simulation of SN.
 
         Parameters
@@ -412,10 +483,19 @@ class SNGen:
 
         """
         rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=7)
-        t0 = self.gen_peak_time(n_sn, rand_seeds[0])
+
+        #- Generate peak magnitude
+        t0 = self.gen_peak_time(n_sn, time_range, rand_seeds[0])
+
+        #- Generate coherent mag smearing
         mag_smear = self.gen_coh_scatter(n_sn, rand_seeds[4])
-        noise_rand_seed = self.gen_noise_rand_seed(n_sn, rand_seeds[5])
-        model_par_sncosmo = self.gen_sncosmo_param(n_sn, rand_seeds[6:8])
+
+        #- Generate the randseeds for fluxerr
+        noise_rand_seed = self.__gen_noise_rand_seed(n_sn, rand_seeds[5])
+
+        #- Generate random parameters dependants on sn model used
+        rand_model_par = self.gen_model_par(n_sn, rand_seeds[6:8])
+
         if self.host is not None:
             host = self.host.random_host(n_sn, z_range, rand_seeds[1])
             ra = host['ra']
@@ -428,7 +508,7 @@ class SNGen:
             vpec = self.gen_vpec(n_sn, rand_seeds[3])
 
         sn_par = ({'zcos': z,
-                   'como_dist': FlatLambdaCDM(**self.cosmo).comoving_distance(z).value,
+                   'como_dist': self.cosmology.comoving_distance(z).value,
                    'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
                    'sim_t0': t,
                    'ra': r,
@@ -437,16 +517,17 @@ class SNGen:
                    'mag_smear': ms
                    } for z, t, r, d, v, ms in zip(zcos, t0, ra, dec, vpec, mag_smear))
 
-        model_default = {}
+        model_default = {'M0': self.sn_int_par['M0']}
         for k in self._model_keys:
-            model_default[k] = self.sn_model_par[k]
+            model_default[k] = self.model_config[k]
 
         model_par_list = [{**model_default, 'sncosmo': mpsn, 'noise_rand_seed': rs}
-                          for mpsn, rs in zip(model_par_sncosmo, noise_rand_seed)]
+                          for mpsn, rs in zip(rand_model_par, noise_rand_seed)]
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
-    def gen_peak_time(self, n, rand_seed):
+    @staticmethod
+    def gen_peak_time(n, time_range, rand_seed):
         """Generate uniformly n peak time in the survey time range.
 
         Parameters
@@ -462,10 +543,11 @@ class SNGen:
             A numpy array which contains generated peak time.
 
         """
-        t0 = np.random.default_rng(rand_seed).uniform(*self.sn_model_par['time_range'], size=n)
+        t0 = np.random.default_rng(rand_seed).uniform(*time_range, size=n)
         return t0
 
-    def gen_coord(self, n, rand_seed):
+    @staticmethod
+    def gen_coord(n, rand_seed):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
@@ -488,7 +570,8 @@ class SNGen:
         dec = np.arcsin(2 * dec_uni - 1)
         return ra, dec
 
-    def gen_zcos(self, n, z_range, rand_seed):
+    @staticmethod
+    def gen_zcos(n, z_range, rand_seed):
         """Generate n cosmological redshift in a range.
 
         Parameters
@@ -512,7 +595,7 @@ class SNGen:
             low=z_range[0], high=z_range[1], size=n)
         return zcos
 
-    def gen_sncosmo_param(self, n, rand_seed):
+    def gen_model_par(self, n, rand_seed):
         """Generate model dependant parameters.
 
         Parameters
@@ -529,7 +612,8 @@ class SNGen:
 
         """
         snc_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
-        model_name = self.snc_model_par['model_name']
+        model_name = self.model_config['model_name']
+
         if model_name in ('salt2', 'salt3'):
             sim_x1, sim_c = self.gen_salt_par(n, snc_seeds[0])
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
@@ -564,11 +648,11 @@ class SNGen:
         """
         x1_seed, c_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
         sim_x1 = np.random.default_rng(x1_seed).normal(
-            loc=self.sn_model_par['x1_distrib'][0],
-            scale=self.sn_model_par['x1_distrib'][1],
+            loc=self.model_config['mean_x1'],
+            scale=self.model_config['sig_x1'],
             size=n)
         sim_c = np.random.default_rng(c_seed).normal(
-            loc=self.sn_model_par['c_distrib'][0], scale=self.sn_model_par['c_distrib'][1], size=n)
+            loc=self.model_config['mean_c'], scale=self.model_config['sig_c'], size=n)
         return sim_x1, sim_c
 
     def gen_vpec(self, n, rand_seed):
@@ -588,8 +672,8 @@ class SNGen:
 
         """
         vpec = np.random.default_rng(rand_seed).normal(
-            loc=self.sn_model_par['vpec_distrib'][0],
-            scale=self.sn_model_par['vpec_distrib'][1],
+            loc=self.vpec_dist['mean_vpec'],
+            scale=self.vpec_dist['sig_vpec'],
             size=n)
         return vpec
 
@@ -611,10 +695,10 @@ class SNGen:
         """
         ''' Generate coherent intrinsic scattering '''
         mag_smear = np.random.default_rng(rand_seed).normal(
-            loc=0, scale=self.sn_model_par['mag_smear'], size=n)
+            loc=0, scale=self.sn_int_par['mag_smear'], size=n)
         return mag_smear
 
-    def gen_noise_rand_seed(self, n, rand_seed):
+    def __gen_noise_rand_seed(self, n, rand_seed):
         """Generate n seeds for later sn noise simulation.
 
         Parameters
@@ -633,7 +717,7 @@ class SNGen:
         return np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=n)
 
 
-class ObsTable:
+class SurveyObs:
     """This class deals with the observations of the survey.
 
     Parameters
@@ -674,12 +758,8 @@ class ObsTable:
 
     """
 
-    def __init__(self, db_file, survey_prop, band_dic=None, db_cut=None, add_keys=[]):
-        self._survey_prop = survey_prop
-        self._db_cut = db_cut
-        self._db_file = db_file
-        self._band_dic = band_dic
-        self._add_keys = add_keys
+    def __init__(self, survey_config): #db_file, survey_prop, band_dic=None, survey_cut=None, add_keys=[]):
+        self._survey_config = survey_config
         self._obs_table = self.__extract_from_db()
         self._field_dic = self.__init_field_dic()
 
@@ -693,24 +773,31 @@ class ObsTable:
         return dic
 
     @property
+    def survey_config(self):
+        return self._survey_config
+
+    @property
+    def band_dic(self):
+        return self.survey_config['band_dic']
+    @property
     def obs_table(self):
         return self._obs_table
 
     @property
     def field_size(self):
         """Get field size (ra,dec) in radians"""
-        return self._survey_prop['ra_size'], self._survey_prop['dec_size']
+        return np.radians(self._survey_config['ra_size']), np.radians(self._survey_config['dec_size'])
 
     @property
     def gain(self):
         """Get CCD gain in e-/ADU"""
-        return self._survey_prop['gain']
+        return self._survey_config['gain']
 
     @property
     def zp(self):
         """Get zero point"""
-        if 'zp' in self._survey_prop:
-            return self._survey_prop['zp']
+        if 'zp' in self._survey_config:
+            return self._survey_config['zp']
         else:
             return 'zp_in_obs'
 
@@ -733,7 +820,7 @@ class ObsTable:
             The observations table.
 
         """
-        con = sqlite3.connect(self._db_file)
+        con = sqlite3.connect(self._survey_config['survey_file'])
 
         keys = ['expMJD',
                 'filter',
@@ -742,15 +829,17 @@ class ObsTable:
                 'fieldDec',
                 'fiveSigmaDepth']
 
-        add_k = (k for k in self._add_keys if k not in keys)
-        keys+=add_k
+        if 'add_data' in self.survey_config:
+            add_k = (k for k in self.survey_config['add_data'] if k not in keys)
+            keys+=add_k
 
         where = ''
-        if self._db_cut is not None:
+        if 'survey_cut' in self.survey_config:
+            cut_dic = self.survey_config['survey_cut']
             where = " WHERE "
-            for cut_var in self._db_cut:
+            for cut_var in cut_dic:
                 where += "("
-                for cut in self._db_cut[cut_var]:
+                for cut in cut_dic[cut_var]:
                     cut_str = f"{cut}"
                     where += f"{cut_var}{cut_str} OR "
                 where = where[:-4]
@@ -829,8 +918,8 @@ class ObsTable:
         band = self.obs_table['filter'][epochs_selec].astype('U27')
 
         # Change band name to correpond with sncosmo bands -> CHANGE EMPLACEMENT
-        if self._band_dic is not None:
-            band = np.array(list(map(self._band_dic.get, band)))
+        if self.band_dic is not None:
+            band = np.array(list(map(self.band_dic.get, band)))
 
         if self.zp != 'zp_in_obs':
             zp = [self.zp] * np.sum(epochs_selec)
@@ -850,10 +939,10 @@ class ObsTable:
                      'zp': zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
-
-        for k in self._add_keys:
-            if k not in obs:
-                obs[k] = self.obs_table[k][epochs_selec]
+        if 'add_data' in self.survey_config:
+            for k in self.survey_config['add_data']:
+                if k not in obs:
+                    obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
 
