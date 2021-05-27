@@ -10,7 +10,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 from numpy import power as pw
 import snsim.utils as ut
-from snsim.constants import SN_SIM_PRINT
+from snsim.constants import SN_SIM_PRINT, VCMB, RA_CMB, DEC_CMB
 import snsim.scatter as sct
 import snsim.sim_class as scls
 
@@ -116,6 +116,8 @@ class Simulator:
     |     H0: HUBBLE CONSTANT                                                          |
     | cmb:                                                                             |
     |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
+    |     ra_cmb: RIGHT ASCENSION OF CMB DIPOLE #(Optional, default = 266.81)          |
+    |     dec_cmb: DECLINAISON OF CMB DIPOLE #(Optional, default = 48.253)             |
     | model_config:                                                                    |
     |     model_name:                                                                  |
     |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
@@ -149,7 +151,7 @@ class Simulator:
 
         # Check if there is a db_file
         if 'survey_config' not in self.sim_cfg:
-            raise RuntimeError("Set a db_file -> type help(sn_sim) to print the syntax")
+            raise RuntimeError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
         # cadence sim or n fixed
         if 'n_sn' in self.sim_cfg['sn_gen']:
@@ -187,18 +189,23 @@ class Simulator:
 
     @property
     def cmb(self):
-        if 'vcmb' in self.sim_cfg['cmb']:
-            vcmb = self.sim_cfg['cmb']['vcmb']
+        if 'cmb' in  self.sim_cfg:
+            if 'vcmb' in self.sim_cfg['cmb']:
+                vcmb = self.sim_cfg['cmb']['vcmb']
+            else:
+                vcmb = VCMB
+            if 'ra_cmb' in self.sim_cfg['cmb']:
+                ra_cmb = self.sim_cfg['cmb']['ra_cmb']
+            else:
+                ra_cmb =  RA_CMB
+            if 'dec_cmb' in self.sim_cfg['cmb']:
+                dec_cmb = self.sim_cfg['cmb']['dec_cmb']
+            else:
+                dec_cmb = DEC_CMB
         else:
-            vcmb = 369.82
-        if 'ra_cmb' in self.sim_cfg['cmb']:
-            ra_cmb = self.sim_cfg['cmb']['ra_cmb']
-        else:
-            ra_cmb =  266.81
-        if 'dec_cmb' in self.sim_cfg['cmb']:
-            dec_cmb = self.sim_cfg['cmb']['dec_cmb']
-        else:
-            dec_cmb = 48.253
+            vcmb = VCMB
+            ra_cmb = RA_CMB
+            dec_cmb = DEC_CMB
         return {'v_cmb': vcmb, 'ra_cmb': ra_cmb, 'dec_cmb': dec_cmb}
 
     @property

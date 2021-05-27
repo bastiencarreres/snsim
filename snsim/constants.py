@@ -16,4 +16,9 @@ C_LIGHT_KMS = cst.c.to('km/s').value
 # offset=2.5*log10(get_x0) change with magsys
 SNC_MAG_OFFSET_AB = 10.5020699
 
+VCMB = 369.82
+RA_CMB = 266.81
+DEC_CMB = 48.253
+
+
 SEP = '###############################################'
