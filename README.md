@@ -102,6 +102,7 @@ If you use SALT2/3 model you add some arguments to metadata:
 |         sim_x0          |      sim_x1       |      sim_c      |               sim_mb                |
 | :---------------------: | :---------------: | :-------------: | :---------------------------------: |
 | Normalization parameter | Stretch parameter | color parameter | SN magnitude in restframe Bessell B |
+
 Moreover, if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
 
 ## Script launch
