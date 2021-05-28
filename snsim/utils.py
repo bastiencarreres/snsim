@@ -341,7 +341,7 @@ def plot_lc(
     else:
         ax0 = plt.subplot(111)
 
-    plt.xlabel('Time to peak')
+    plt.xlabel('Time relative to peak')
 
     for b in bands:
         band_mask = flux_table['band'] == b
@@ -427,7 +427,12 @@ def plot_lc(
                 ax1.plot(time_th - t0, -err_th, ls='--', color=p[0].get_color())
 
     ax0.legend(handles=handles, labels=labels)
-    plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
+    if snc_sim_model is not None:
+        plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
+    elif snc_fit_model is not None:
+        plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
+    else:
+        plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
     plt.subplots_adjust(hspace=.0)
     plt.show()
 
