@@ -243,7 +243,7 @@ class SN:
                     return False
             return True
 
-    def gen_flux(self):
+    def gen_flux(self, rand_gen):
         """Generate the SN lightcurve.
 
         Returns
@@ -257,9 +257,7 @@ class SN:
 
         params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
-        rs = self._model_par['noise_rand_seed']
-        self._sim_lc['flux'] = np.random.default_rng(rs).normal(
-            loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
+        self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
 
         return self.__reformat_sim_table()
 
@@ -464,7 +462,7 @@ class SnGen:
             model_keys = ['alpha', 'beta']
         return model_keys
 
-    def __call__(self, n_sn, z_range, time_range, rand_seed):
+    def __call__(self, n_sn, z_range, time_range, rand_gen=None):
         """Launch the simulation of SN.
 
         Parameters
@@ -482,30 +480,28 @@ class SnGen:
             A list containing SN object.
 
         """
-        rand_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=7)
+        if rand_gen is None:
+            rand_gen = np.random.default_rng()
 
         #- Generate peak magnitude
-        t0 = self.gen_peak_time(n_sn, time_range, rand_seeds[0])
+        t0 = self.gen_peak_time(n_sn, time_range, rand_gen)
 
         #- Generate coherent mag smearing
-        mag_smear = self.gen_coh_scatter(n_sn, rand_seeds[4])
-
-        #- Generate the randseeds for fluxerr
-        noise_rand_seed = self.__gen_noise_rand_seed(n_sn, rand_seeds[5])
+        mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
 
         #- Generate random parameters dependants on sn model used
-        rand_model_par = self.gen_model_par(n_sn, rand_seeds[6:8])
+        rand_model_par = self.gen_model_par(n_sn, rand_gen)
 
         if self.host is not None:
-            host = self.host.random_host(n_sn, z_range, rand_seeds[1])
+            host = self.host.random_host(n_sn, z_range, rand_gen)
             ra = host['ra']
             dec = host['dec']
             zcos = host['redshift']
             vpec = host['vp_sight']
         else:
-            ra, dec = self.gen_coord(n_sn, rand_seeds[1])
-            zcos = self.gen_zcos(n_sn, z_range, rand_seeds[2])
-            vpec = self.gen_vpec(n_sn, rand_seeds[3])
+            ra, dec = self.gen_coord(n_sn, rand_gen)
+            zcos = self.gen_zcos(n_sn, z_range, rand_gen)
+            vpec = self.gen_vpec(n_sn, rand_gen)
 
         sn_par = ({'zcos': z,
                    'como_dist': self.cosmology.comoving_distance(z).value,
@@ -521,13 +517,12 @@ class SnGen:
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 
-        model_par_list = [{**model_default, 'sncosmo': mpsn, 'noise_rand_seed': rs}
-                          for mpsn, rs in zip(rand_model_par, noise_rand_seed)]
+        model_par_list = [{**model_default, 'sncosmo': mpsn} for mpsn in rand_model_par]
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
     @staticmethod
-    def gen_peak_time(n, time_range, rand_seed):
+    def gen_peak_time(n, time_range, rand_gen):
         """Generate uniformly n peak time in the survey time range.
 
         Parameters
@@ -543,11 +538,11 @@ class SnGen:
             A numpy array which contains generated peak time.
 
         """
-        t0 = np.random.default_rng(rand_seed).uniform(*time_range, size=n)
+        t0 = rand_gen.uniform(*time_range, size=n)
         return t0
 
     @staticmethod
-    def gen_coord(n, rand_seed):
+    def gen_coord(n, rand_gen):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
@@ -563,15 +558,13 @@ class SnGen:
             2 numpy arrays containing generated coordinates.
 
         """
-        coord_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
-        ra = np.random.default_rng(coord_seed[0]).uniform(
-            low=0, high=2 * np.pi, size=n)
-        dec_uni = np.random.default_rng(coord_seed[1]).random(size=n)
+        ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
+        dec_uni = rand_gen.random(size=n)
         dec = np.arcsin(2 * dec_uni - 1)
         return ra, dec
 
     @staticmethod
-    def gen_zcos(n, z_range, rand_seed):
+    def gen_zcos(n, z_range, rand_gen):
         """Generate n cosmological redshift in a range.
 
         Parameters
@@ -591,11 +584,10 @@ class SnGen:
         TODO: Generation is uniform, in small shell not really a problem, maybe
         fix this in general
         """
-        zcos = np.random.default_rng(rand_seed).uniform(
-            low=z_range[0], high=z_range[1], size=n)
+        zcos = rand_gen.uniform(low=z_range[0], high=z_range[1], size=n)
         return zcos
 
-    def gen_model_par(self, n, rand_seed):
+    def gen_model_par(self, n, rand_gen):
         """Generate model dependant parameters.
 
         Parameters
@@ -611,26 +603,25 @@ class SnGen:
             One dictionnary containing 'parameters names': numpy.ndaray(float).
 
         """
-        snc_seeds = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
         model_name = self.model_config['model_name']
 
         if model_name in ('salt2', 'salt3'):
-            sim_x1, sim_c = self.gen_salt_par(n, snc_seeds[0])
+            sim_x1, sim_c = self.gen_salt_par(n, rand_gen)
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
-            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000, size=n)
+            seeds = rand_gen.integers(low=1000, high=100000, size=n)
             for par, s in zip(model_par_sncosmo, seeds):
                 par['G10_RndS'] = s
 
         elif 'C11_' in self.sim_model.effect_names:
-            seeds = np.random.default_rng(snc_seeds[1]).integers(low=1000, high=100000, size=n)
+            seeds = rand_gen.integers(low=1000, high=100000, size=n)
             for par, s in zip(model_par_sncosmo, seeds):
                 par['C11_RndS'] = s
 
         return model_par_sncosmo
 
-    def gen_salt_par(self, n, rand_seed):
+    def gen_salt_par(self, n, rand_gen):
         """Generate n SALT parameters.
 
         Parameters
@@ -646,16 +637,22 @@ class SnGen:
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        x1_seed, c_seed = np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=2)
-        sim_x1 = np.random.default_rng(x1_seed).normal(
-            loc=self.model_config['mean_x1'],
-            scale=self.model_config['sig_x1'],
-            size=n)
-        sim_c = np.random.default_rng(c_seed).normal(
-            loc=self.model_config['mean_c'], scale=self.model_config['sig_c'], size=n)
+        sig_x1_low, sig_x1_high = ut.is_asym(self.model_config['sig_x1'])
+        sig_c_low, sig_c_high = ut.is_asym(self.model_config['sig_c'])
+
+        sim_x1 = [ut.asym_gauss(self.model_config['mean_x1'],
+                                sig_x1_low,
+                                sig_x1_high,
+                                rand_gen) for i in range(n)]
+
+        sim_c = [ut.asym_gauss(self.model_config['mean_c'],
+                               sig_c_low,
+                               sig_c_high,
+                               rand_gen) for i in range(n)]
+
         return sim_x1, sim_c
 
-    def gen_vpec(self, n, rand_seed):
+    def gen_vpec(self, n, rand_gen):
         """Generate n peculiar velocities.
 
         Parameters
@@ -671,13 +668,13 @@ class SnGen:
             numpy array containing vpec (km/s) generated.
 
         """
-        vpec = np.random.default_rng(rand_seed).normal(
+        vpec = rand_gen.normal(
             loc=self.vpec_dist['mean_vpec'],
             scale=self.vpec_dist['sig_vpec'],
             size=n)
         return vpec
 
-    def gen_coh_scatter(self, n, rand_seed):
+    def gen_coh_scatter(self, n, rand_gen):
         """Generate n coherent mag smear term.
 
         Parameters
@@ -694,28 +691,9 @@ class SnGen:
 
         """
         ''' Generate coherent intrinsic scattering '''
-        mag_smear = np.random.default_rng(rand_seed).normal(
+        mag_smear = rand_gen.normal(
             loc=0, scale=self.sn_int_par['mag_smear'], size=n)
         return mag_smear
-
-    def __gen_noise_rand_seed(self, n, rand_seed):
-        """Generate n seeds for later sn noise simulation.
-
-        Parameters
-        ----------
-        n : int
-            Number of noise seeds to generate.
-        rand_seed : int
-            The random seed for the random generator.
-
-        Returns
-        -------
-        type
-            Description of returned object.
-
-        """
-        return np.random.default_rng(rand_seed).integers(low=1000, high=100000, size=n)
-
 
 class SurveyObs:
     """This class deals with the observations of the survey.
