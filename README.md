@@ -11,10 +11,10 @@ data :
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
     write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
-survey_config: 
+survey_config:
     survey_file: '/PATH/TO/FILE'
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in the database doesn't correpond to those in sncosmo registery)
-    add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata) 
+    add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata)
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
     zp: INSTRUMENTAL ZEROPOINT  
     ra_size: RA FIELD SIZE in DEG
@@ -49,9 +49,10 @@ model_config:
     sig_x1: SIGMA X1   
     sig_c: SIGMA C
  vpec_gen:
-     host_file: '/PATH/TO/HOSTFILE' # Optional
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
+ host_file: '/PATH/TO/HOSTFILE' # Optional
+
 ```
 
 * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
@@ -137,7 +138,7 @@ In the case of nep_cut key you can pass an int or pass list by typing --nep_cut 
 
 You can plot simulated lightcurves
 
-``` 
+```
 sim.plot_lc(SN_ID, mag=False, zp=25. , plot_sim=True, plot_fit=False)
 ```
 
@@ -153,13 +154,13 @@ Plot sim and fit:
 
 ![](readme_figures/lc_sim_fit.png)
 
-Just the data : 
+Just the data :
 
 ![lc_data](readme_figures/lc_data.png)
 
 
 
-You can also plot a vpec Mollweide map 
+You can also plot a vpec Mollweide map
 
 ```python
 sim.plot_ra_dec(plot_vpec=False, plot_fields=False, **kwarg)
@@ -179,7 +180,7 @@ Adding the fields :
 
 ## Fit and OpenSim class
 
-You can direct fit after running the simulation 
+You can direct fit after running the simulation
 ```python
 # Fit 1 lc by id
 sim.fit_lc(id)
@@ -196,8 +197,3 @@ from snsim import OpenSim
 
 sim = OpenSim('sim_file.pkl/.fits',SALT2_dir)
 ```
-
-
-
-
-

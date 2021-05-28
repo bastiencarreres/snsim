@@ -128,9 +128,9 @@ class Simulator:
     |     sig_x1: SIGMA X1                                                             |
     |     sig_c: SIGMA C                                                               |
     | vpec_gen:                                                                        |
-    |     host_file: 'PATH/TO/HOSTFILE'                                                |
     |     mean_vpec: MEAN SN PECULIAR VEL                                              |
     |     sig_vpec: SIGMA VPEC                                                         |
+    | host_file: 'PATH/TO/HOSTFILE'  #(Optional)                                       |
     |                                                                                  |
     +----------------------------------------------------------------------------------+
     """

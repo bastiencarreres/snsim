@@ -60,7 +60,6 @@ keys_dic = {
         'sig_x1',
         'sig_c'],
     'vpec_gen': [
-        'host_file',
         'mean_vpec',
         'sig_vpec']}
 
@@ -104,9 +103,10 @@ parser.add_argument("--sig_x1",type=float)
 parser.add_argument("--mean_c",type=float)
 parser.add_argument("--sig_c",type=float)
 
-parser.add_argument("--host_file",type=str)
 parser.add_argument("--mean_vpec",type=float)
 parser.add_argument("--sig_vpec",type=float)
+
+parser.add_argument("--host_file",type=str)
 
 args = parser.parse_args()
 
@@ -126,6 +126,12 @@ for K in keys_dic:
             param_dic[K][k] = args.__dict__[k]
         elif k in yml_config[K]:
             param_dic[K][k] = yml_config[K][k]
+
+if args.__dict__['host_file'] is not None:
+    param_dic['host_file'] = args.__dict__['host_file']
+    
+elif 'host_file' in yml_config:
+        param_dic['host_file'] = yml_config['host_file']
 
 print('Parameters used :\n')
 indent = '    '
