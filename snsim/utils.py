@@ -14,6 +14,62 @@ import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 from matplotlib.patches import Polygon
 
+def is_asym(sigma):
+    """Check if sigma represents an asymetric distribution.
+
+    Parameters
+    ----------
+    sigma : flaot or list
+        The sigma parameter(s) of the Gaussian.
+
+    Returns
+    -------
+    tuple
+        sigma low and sigma high of an asymetric Gaussian.
+
+    """
+    sigma = np.atleast_1d(sigma)
+    if sigma.size == 2:
+        return sigma
+    else:
+        return sigma[0], sigma[0]
+
+def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
+    """Generate random parameters using an asymetric Gaussian distribution.
+
+    Parameters
+    ----------
+    mean : float
+        The central value of the Gaussian.
+    sig_low : float
+        The low sigma.
+    sig_high : float
+        The high sigma.
+    rand_gen : numpy.random.default_rng, optional
+        Numpy random generator.
+
+    Returns
+    -------
+    float
+        Random variable.
+
+    """
+    
+    if sig_high is None:
+        sig_high = sig_low
+    if rand_gen is None:
+        low_or_high = np.random.random()
+        nbr =  abs(np.random.normal())
+    else:
+        low_or_high = rand_gen.random()
+        nbr = abs(rand_gen.normal())
+    if low_or_high < sig_low/(sig_high+sig_low):
+        nbr *= -sig_low
+    else:
+        nbr *= sig_high
+    return mean + nbr
+
+
 def is_same_cosmo_model(dic,astropy_model):
     """Check if cosmo parameters in a dic are the same used in astropy_model.
 

@@ -125,8 +125,8 @@ class Simulator:
     |     beta: COLOR CORRECTION = -beta*c                                             |
     |     mean_x1: MEAN X1 VALUE                                                       |
     |     mean_c: MEAN C VALUE                                                         |
-    |     sig_x1: SIGMA X1                                                             |
-    |     sig_c: SIGMA C                                                               |
+    |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                            |
+    |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                |
     | vpec_gen:                                                                        |
     |     mean_vpec: MEAN SN PECULIAR VEL                                              |
     |     sig_vpec: SIGMA VPEC                                                         |
@@ -256,6 +256,7 @@ class Simulator:
             self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
         return self._obs
 
+
     @property
     def generator(self):
         """Get the SNGen object of the simulation """
@@ -275,8 +276,8 @@ class Simulator:
         """Get the SnHost object of the simulation """
         if self._host is not None:
             return self._host
-        elif 'host_file' in self.sim_cfg['vpec_gen']:
-            self._host = scls.SnHost(self.sim_cfg['vpec_gen']['host_file'], self.z_range)
+        elif 'host_file' in self.sim_cfg:
+            self._host = scls.SnHost(self.sim_cfg['host_file'], self.z_range)
             return self._host
         else:
             return None
@@ -382,7 +383,7 @@ class Simulator:
         time_rate = rate * shell_vol
         return time_rate
 
-    def __gen_n_sn(self, rand_seed):
+    def __gen_n_sn(self, rand_gen):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -398,7 +399,7 @@ class Simulator:
 
         """
         time_rate = self.__time_rate_bins()
-        return np.random.default_rng(rand_seed).poisson(self.survey_duration * time_rate)
+        return rand_gen.poisson(self.survey_duration * time_rate)
 
     def simulate(self):
         """Launch the simulation.
@@ -423,6 +424,8 @@ class Simulator:
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self._yml_path}')
         print(f"OBS FILE : {self.sim_cfg['survey_config']['survey_file']}")
+        if 'host_file' in self.sim_cfg :
+            print(f"HOST FILE : {self.sim_cfg['host_file']}")
         print(f"SN SIM MODEL: {self.model_name} from {self.sim_cfg['model_config']['model_dir']}")
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
@@ -463,10 +466,12 @@ class Simulator:
 
         sim_time = time.time()
         self._sn_list = []
+        #-- Create the random generator object with the rand seed
+        rand_gen = np.random.default_rng(self.rand_seed)
         if self._use_rate:
-            self.__cadence_sim()
+            self.__cadence_sim(rand_gen)
         else:
-            self.__fix_nsn_sim()
+            self.__fix_nsn_sim(rand_gen)
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
 
@@ -493,9 +498,14 @@ class Simulator:
                       + '.'
                       + f)
 
-    def __cadence_sim(self):
+    def __cadence_sim(self, rand_gen):
         """Simulaton where the number of SN observed is determined by
         survey properties and poisson law..
+
+        Parameters
+        ----------
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -514,26 +524,31 @@ class Simulator:
 
         """
 
-        n_sn_seed, sn_gen_seed = np.random.default_rng(
-            self.rand_seed).integers(
-            low=1000, high=100000, size=2)
-        n_sn = self.__gen_n_sn(n_sn_seed)
-        sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(
-            low=1000, high=100000, size=np.sum(n_sn))
+        #n_sn_seed, sn_gen_seed = np.random.default_rng(
+        #    self.rand_seed).integers(
+        #    low=1000, high=100000, size=2)
+        n_sn = self.__gen_n_sn(rand_gen)
+        #sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(
+        #    low=1000, high=100000, size=np.sum(n_sn))
 
         SN_ID = 0
-        for n, z, rs in zip(n_sn, self.z_span['z_bins'], sn_bins_seed):
-            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']],[self.obs.mintime, self.obs.maxtime], rs)
+        for n, z in zip(n_sn, self.z_span['z_bins']):
+            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']],[self.obs.mintime, self.obs.maxtime], rand_gen)
             for sn in sn_list_tmp:
                 sn.epochs = self.obs.epochs_selection(sn)
                 if sn.pass_cut(self.nep_cut):
-                    sn.gen_flux()
+                    sn.gen_flux(rand_gen)
                     sn.ID = SN_ID
                     SN_ID += 1
                     self._sn_list.append(sn)
 
-    def __fix_nsn_sim(self):
+    def __fix_nsn_sim(self, rand_gen):
         """Simulation where the number of SN is fixed.
+
+        Parameters
+        ----------
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -544,30 +559,20 @@ class Simulator:
         Just generate SN randomly until we reach the desired number of SN.
 
         """
-
         raise_trigger = 0
-        sn_gen_seed = np.random.default_rng(self.rand_seed).integers(
-            low=1000, high=100000, size=self.sim_cfg['sn_gen']['n_sn'])
-        rs_id = 0
         SN_ID = 0
-        rs = sn_gen_seed[rs_id]
         while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
-            sn = self.generator(1, self.z_range, [self.obs.mintime, self.obs.maxtime], rs)[0]
+            sn = self.generator(1, self.z_range, [self.obs.mintime, self.obs.maxtime], rand_gen)[0]
             sn.epochs = self.obs.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
-                sn.gen_flux()
+                sn.gen_flux(rand_gen)
                 sn.ID = SN_ID
                 SN_ID += 1
                 self._sn_list.append(sn)
-                if len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
-                    rs_id += 1
-                    rs = sn_gen_seed[rs_id]
             elif raise_trigger > 2 * len(self.obs.obs_table['expMJD']):
                 raise RuntimeError('Cuts are too stricts')
             else:
                 raise_trigger += 1
-                rs = np.random.default_rng(rs).integers(low=1000, high=100000)
-
 
     def __get_primary_header(self):
         """Generate the primary header of sim fits file..
@@ -690,6 +695,10 @@ class Simulator:
                    fit_cov=cov_x0_x1_c,
                    zp=zp,
                    residuals=residuals)
+
+    def get_sn_par(self, key):
+        """Get an array of a sim_lc data"""
+        return np.array([sn.sim_lc.meta[key] for sn in self.sn_list])
 
     def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
         """Plot a mollweide map of ra, dec.
