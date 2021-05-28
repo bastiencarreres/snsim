@@ -125,8 +125,8 @@ class Simulator:
     |     beta: COLOR CORRECTION = -beta*c                                             |
     |     mean_x1: MEAN X1 VALUE                                                       |
     |     mean_c: MEAN C VALUE                                                         |
-    |     sig_x1: SIGMA X1                                                             |
-    |     sig_c: SIGMA C                                                               |
+    |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                            |
+    |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                |
     | vpec_gen:                                                                        |
     |     mean_vpec: MEAN SN PECULIAR VEL                                              |
     |     sig_vpec: SIGMA VPEC                                                         |
@@ -544,7 +544,7 @@ class Simulator:
 
     def __fix_nsn_sim(self, rand_gen):
         """Simulation where the number of SN is fixed.
-        
+
         Parameters
         ----------
         rand_gen : numpy.random.default_rng
@@ -695,6 +695,10 @@ class Simulator:
                    fit_cov=cov_x0_x1_c,
                    zp=zp,
                    residuals=residuals)
+
+    def get_sn_par(self, key):
+        """Get an array of a sim_lc data"""
+        return np.array([sn.sim_lc.meta[key] for sn in self.sn_list])
 
     def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
         """Plot a mollweide map of ra, dec.
