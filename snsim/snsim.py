@@ -180,8 +180,8 @@ class Simulator:
     @property
     def vpec_dist(self):
         """Get vpec option"""
-        if 'vpec_dist' in self.sim_cfg:
-            return self.sim_cfg['vpec_dist']
+        if 'vpec_gen' in self.sim_cfg:
+            return self.sim_cfg['vpec_gen']
         elif 'host_file' in self.sim_cfg:
             return None
         else:
@@ -674,7 +674,7 @@ class Simulator:
             if self.fit_res[sn_ID] is np.nan:
                 print('This sn has no fit results')
                 return
-            f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
+            f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
             f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
             cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:, 1:]
@@ -757,7 +757,7 @@ class Simulator:
         if self._fit_res is None:
             self._fit_res = [None] * len(self.sn_list)
 
-        fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_gen']['model_dir'])
+        fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
 
         if self.model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
@@ -811,12 +811,12 @@ class Simulator:
             **self.sim_par['cosmo']}
 
         if self.model_name in ('salt2', 'salt3'):
-            sim_meta['alpha'] = self.sim_cfg['model_gen']['alpha']
-            sim_meta['beta'] = self.sim_cfg['model_gen']['beta']
-            sim_meta['m_x1'] = self.sim_cfg['model_gen']['mean_x1']
-            sim_meta['s_x1'] = self.sim_cfg['model_gen']['sig_x1']
-            sim_meta['m_c'] = self.sim_cfg['model_gen']['mean_c']
-            sim_meta['s_c'] = self.sim_cfg['model_gen']['sig_c']
+            sim_meta['alpha'] = self.sim_cfg['model_config']['alpha']
+            sim_meta['beta'] = self.sim_cfg['model_config']['beta']
+            sim_meta['m_x1'] = self.sim_cfg['model_config']['mean_x1']
+            sim_meta['s_x1'] = self.sim_cfg['model_config']['sig_x1']
+            sim_meta['m_c'] = self.sim_cfg['model_config']['mean_c']
+            sim_meta['s_c'] = self.sim_cfg['model_config']['sig_c']
 
             sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
             sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
