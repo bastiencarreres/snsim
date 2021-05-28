@@ -15,6 +15,19 @@ from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 from matplotlib.patches import Polygon
 
 def is_asym(sigma):
+    """Check if sigma represents an asymetric distribution.
+
+    Parameters
+    ----------
+    sigma : flaot or list
+        The sigma parameter(s) of the Gaussian.
+
+    Returns
+    -------
+    tuple
+        sigma low and sigma high of an asymetric Gaussian.
+
+    """
     sigma = np.atleast_1d(sigma)
     if sigma.size == 2:
         return sigma
@@ -22,6 +35,26 @@ def is_asym(sigma):
         return sigma[0], sigma[0]
 
 def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
+    """Generate random parameters using an asymetric Gaussian distribution.
+
+    Parameters
+    ----------
+    mean : float
+        The central value of the Gaussian.
+    sig_low : float
+        The low sigma.
+    sig_high : float
+        The high sigma.
+    rand_gen : numpy.random.default_rng, optional
+        Numpy random generator.
+
+    Returns
+    -------
+    float
+        Random variable.
+
+    """
+    
     if sig_high is None:
         sig_high = sig_low
     if rand_gen is None:

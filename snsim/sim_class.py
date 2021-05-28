@@ -246,6 +246,11 @@ class SN:
     def gen_flux(self, rand_gen):
         """Generate the SN lightcurve.
 
+        Parameters
+        ----------
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
+
         Returns
         -------
         None
@@ -529,8 +534,8 @@ class SnGen:
         ----------
         n : int
             Number of time to generate.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -549,8 +554,8 @@ class SnGen:
         ----------
         n : int
             Number of coord to generate.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -573,8 +578,8 @@ class SnGen:
             Number of redshift to generate.
         z_range : list(float)
             The redshift range zmin zmax.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -594,8 +599,8 @@ class SnGen:
         ----------
         n : int
             Number of parameters to generate.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -628,8 +633,8 @@ class SnGen:
         ----------
         n : int
             Number of parameters to generate.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -659,8 +664,8 @@ class SnGen:
         ----------
         n : int
             Number of vpec to generate.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -681,8 +686,8 @@ class SnGen:
         ----------
         n : int
             Number of mag smear terms to generate.
-        rand_seed : int
-            The random seed for the random generator.
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------

@@ -276,8 +276,8 @@ class Simulator:
         """Get the SnHost object of the simulation """
         if self._host is not None:
             return self._host
-        elif 'host_file' in self.sim_cfg['vpec_gen']:
-            self._host = scls.SnHost(self.sim_cfg['vpec_gen']['host_file'], self.z_range)
+        elif 'host_file' in self.sim_cfg:
+            self._host = scls.SnHost(self.sim_cfg['host_file'], self.z_range)
             return self._host
         else:
             return None
@@ -383,7 +383,7 @@ class Simulator:
         time_rate = rate * shell_vol
         return time_rate
 
-    def __gen_n_sn(self, random_generator):
+    def __gen_n_sn(self, rand_gen):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -399,7 +399,7 @@ class Simulator:
 
         """
         time_rate = self.__time_rate_bins()
-        return random_generator.poisson(self.survey_duration * time_rate)
+        return rand_gen.poisson(self.survey_duration * time_rate)
 
     def simulate(self):
         """Launch the simulation.
@@ -424,6 +424,8 @@ class Simulator:
         print(f'SIM NAME : {self.sim_name}')
         print(f'CONFIG FILE : {self._yml_path}')
         print(f"OBS FILE : {self.sim_cfg['survey_config']['survey_file']}")
+        if 'host_file' in self.sim_cfg :
+            print(f"HOST FILE : {self.sim_cfg['host_file']}")
         print(f"SN SIM MODEL: {self.model_name} from {self.sim_cfg['model_config']['model_dir']}")
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
@@ -464,11 +466,12 @@ class Simulator:
 
         sim_time = time.time()
         self._sn_list = []
-        random_generator = np.random.default_rng(self.rand_seed)
+        #-- Create the random generator object with the rand seed
+        rand_gen = np.random.default_rng(self.rand_seed)
         if self._use_rate:
-            self.__cadence_sim(random_generator)
+            self.__cadence_sim(rand_gen)
         else:
-            self.__fix_nsn_sim(random_generator)
+            self.__fix_nsn_sim(rand_gen)
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
 
@@ -495,9 +498,14 @@ class Simulator:
                       + '.'
                       + f)
 
-    def __cadence_sim(self, random_generator):
+    def __cadence_sim(self, rand_gen):
         """Simulaton where the number of SN observed is determined by
         survey properties and poisson law..
+
+        Parameters
+        ----------
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -519,23 +527,28 @@ class Simulator:
         #n_sn_seed, sn_gen_seed = np.random.default_rng(
         #    self.rand_seed).integers(
         #    low=1000, high=100000, size=2)
-        n_sn = self.__gen_n_sn(random_generator)
+        n_sn = self.__gen_n_sn(rand_gen)
         #sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(
         #    low=1000, high=100000, size=np.sum(n_sn))
 
         SN_ID = 0
         for n, z in zip(n_sn, self.z_span['z_bins']):
-            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']],[self.obs.mintime, self.obs.maxtime], random_generator)
+            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']],[self.obs.mintime, self.obs.maxtime], rand_gen)
             for sn in sn_list_tmp:
                 sn.epochs = self.obs.epochs_selection(sn)
                 if sn.pass_cut(self.nep_cut):
-                    sn.gen_flux(random_generator)
+                    sn.gen_flux(rand_gen)
                     sn.ID = SN_ID
                     SN_ID += 1
                     self._sn_list.append(sn)
 
-    def __fix_nsn_sim(self, random_generator):
+    def __fix_nsn_sim(self, rand_gen):
         """Simulation where the number of SN is fixed.
+        
+        Parameters
+        ----------
+        rand_gen : numpy.random.default_rng
+            Numpy random generator.
 
         Returns
         -------
@@ -549,10 +562,10 @@ class Simulator:
         raise_trigger = 0
         SN_ID = 0
         while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
-            sn = self.generator(1, self.z_range, [self.obs.mintime, self.obs.maxtime], random_generator)[0]
+            sn = self.generator(1, self.z_range, [self.obs.mintime, self.obs.maxtime], rand_gen)[0]
             sn.epochs = self.obs.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
-                sn.gen_flux(random_generator)
+                sn.gen_flux(rand_gen)
                 sn.ID = SN_ID
                 SN_ID += 1
                 self._sn_list.append(sn)
