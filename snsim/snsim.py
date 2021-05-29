@@ -328,25 +328,21 @@ class Simulator:
         return duration
 
     @property
-    def z_span(self):
-        """Get the redshift bins parameters"""
-        z_min, z_max = self.z_range
-        rate_pw = self.sim_cfg['sn_gen']['rate_pw']
-        dz = (z_max - z_min) / (100 * (1 + rate_pw * z_max))
-        if self.host is not None:
-            host_max_dz = self.host.max_dz
-            dz = np.max([dz, 2 * host_max_dz])
-        n_bins = int((z_max - z_min) / dz)
-        z_bins = np.linspace(z_min, z_max - dz, n_bins)
-        return {'z_bins': z_bins, 'dz': dz, 'n_bins': n_bins}
-
-    @property
     def sn_rate_z0(self):
         """Get the sn rate parameters"""
         if 'sn_rate' and 'rate_pw' in self.sim_cfg['sn_gen']:
             return float(self.sim_cfg['sn_gen']['sn_rate']), self.sim_cfg['sn_gen']['rate_pw']
         else:
             return 3e-5, 0
+
+    def __init_z_shell(self):
+        """Create redshift shell"""
+        z_min, z_max = self.z_range
+        rate_pw = self.sim_cfg['sn_gen']['rate_pw']
+        dz = (z_max - z_min) / 1000
+        n_bins = int((z_max - z_min) / dz)
+        edges = np.linspace(z_min, z_max, n_bins)
+        return z_shell_edges
 
     def sn_rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
@@ -365,8 +361,13 @@ class Simulator:
         rate_z0, rpw = self.sn_rate_z0
         return rate_z0 * (1 + z)**rpw
 
-    def __time_rate_bins(self):
-        """Give the time rate SN/years in redshift bins.
+    def __z_shell_time_rate(self):
+        """Give the time rate SN/years in redshift shell.
+
+        Parameters
+        ----------
+        z : numpy.ndarray
+            The redshift bins.
 
         Returns
         -------
@@ -374,16 +375,15 @@ class Simulator:
             Numpy array containing the time rate in each redshift bin.
 
         """
-        z = self.z_span['z_bins']
-        dz = self.z_span['dz']
+        z_min, z_max = self.z_range
+        z_shell = np.linspace(z_min,z_max,1000)
+        z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
+        rate = self.sn_rate(z_shell_center)# Rate in Nsn/Mpc^3/year
+        shell_vol = 4 * np.pi / 3 * (pw(self.cosmology.comoving_distance(z_shell[1:] ).value, 3)-pw(self.cosmology.comoving_distance(z_shell[:-1]).value, 3))
+        shell_time_rate = rate * shell_vol
+        return z_shell, shell_time_rate
 
-        rate = self.sn_rate(z + 0.5 * dz)  # Rate in Nsn/Mpc^3/year
-        shell_vol = 4 * np.pi / 3 * (pw(self.cosmology.comoving_distance(
-            z + dz).value, 3) - pw(self.cosmology.comoving_distance(z).value, 3))
-        time_rate = rate * shell_vol
-        return time_rate
-
-    def __gen_n_sn(self, rand_gen):
+    def __gen_n_sn(self, rand_gen, z_shell_time_rate):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -398,8 +398,8 @@ class Simulator:
             bin.
 
         """
-        time_rate = self.__time_rate_bins()
-        return rand_gen.poisson(self.survey_duration * time_rate)
+        return rand_gen.poisson(self.survey_duration * np.sum(z_shell_time_rate))
+
 
     def simulate(self):
         """Launch the simulation.
@@ -465,11 +465,19 @@ class Simulator:
         print(f'\n-----------------------------------------------------------\n')
 
         sim_time = time.time()
+
+        #-- Init the redshift distribution
+        z_shell, shell_time_rate = self.__z_shell_time_rate()
+        self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+        self.generator.time_range = [self.obs.mintime, self.obs.maxtime]
+        #-- Init the sn list
         self._sn_list = []
+
         #-- Create the random generator object with the rand seed
         rand_gen = np.random.default_rng(self.rand_seed)
+
         if self._use_rate:
-            self.__cadence_sim(rand_gen)
+            self.__cadence_sim(rand_gen, shell_time_rate)
         else:
             self.__fix_nsn_sim(rand_gen)
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
@@ -498,7 +506,7 @@ class Simulator:
                       + '.'
                       + f)
 
-    def __cadence_sim(self, rand_gen):
+    def __cadence_sim(self, rand_gen, shell_time_rate):
         """Simulaton where the number of SN observed is determined by
         survey properties and poisson law..
 
@@ -523,24 +531,18 @@ class Simulator:
             6- Apply observation and selection cuts to SN
 
         """
-
-        #n_sn_seed, sn_gen_seed = np.random.default_rng(
-        #    self.rand_seed).integers(
-        #    low=1000, high=100000, size=2)
-        n_sn = self.__gen_n_sn(rand_gen)
-        #sn_bins_seed = np.random.default_rng(sn_gen_seed).integers(
-        #    low=1000, high=100000, size=np.sum(n_sn))
+        #-- Generate the number of SN
+        n_sn = self.__gen_n_sn(rand_gen, shell_time_rate)
 
         SN_ID = 0
-        for n, z in zip(n_sn, self.z_span['z_bins']):
-            sn_list_tmp = self.generator(n, [z, z + self.z_span['dz']],[self.obs.mintime, self.obs.maxtime], rand_gen)
-            for sn in sn_list_tmp:
-                sn.epochs = self.obs.epochs_selection(sn)
-                if sn.pass_cut(self.nep_cut):
-                    sn.gen_flux(rand_gen)
-                    sn.ID = SN_ID
-                    SN_ID += 1
-                    self._sn_list.append(sn)
+        sn_list_tmp = self.generator(n_sn, rand_gen)
+        for sn in sn_list_tmp:
+            sn.epochs = self.obs.epochs_selection(sn)
+            if sn.pass_cut(self.nep_cut):
+                sn.gen_flux(rand_gen)
+                sn.ID = SN_ID
+                SN_ID += 1
+                self._sn_list.append(sn)
 
     def __fix_nsn_sim(self, rand_gen):
         """Simulation where the number of SN is fixed.
@@ -562,7 +564,7 @@ class Simulator:
         raise_trigger = 0
         SN_ID = 0
         while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
-            sn = self.generator(1, self.z_range, [self.obs.mintime, self.obs.maxtime], rand_gen)[0]
+            sn = self.generator(1, rand_gen)[0]
             sn.epochs = self.obs.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
                 sn.gen_flux(rand_gen)

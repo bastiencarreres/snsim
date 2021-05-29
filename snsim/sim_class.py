@@ -380,8 +380,8 @@ class SnGen:
         Randomly generate peak time in the given time range.
     gen_coord(n, rand_seed)
         Generate ra, dec uniformly on the sky.
-    gen_zcos(n, z_range, rand_seed)
-        Generate redshift uniformly in a range. #TO CHANGE
+    gen_zcos(n, rand_seed)
+        Generate redshift following a distribution.
     gen_model_par(self, n, rand_seed)
         Generate the random parameters of the sncosmo model.
     gen_salt_par(self, n, rand_seed)
@@ -403,6 +403,8 @@ class SnGen:
         self._vpec_dist = vpec_dist
         self._cosmology = cosmology
         self._host = host
+        self._time_range = None
+        self._z_cdf = None
 
     @property
     def model_config(self):
@@ -437,6 +439,29 @@ class SnGen:
         """Get the sncosmo model mintime and maxtime"""
         return self.sim_model.mintime(), self.sim_model.maxtime()
 
+    @property
+    def time_range(self):
+        """Get time range"""
+        return self._time_range
+
+    @time_range.setter
+    def time_range(self, time_range):
+        """Set the time range"""
+        if time_range[0] > time_range[1]:
+            print('Time range should be [Tmin,Tmax]')
+        else:
+            self._time_range = time_range
+
+    @property
+    def z_cdf(self):
+        """Get the redshift cumulative distribution"""
+        return self._z_cdf
+
+    @z_cdf.setter
+    def z_cdf(self, cdf):
+        """Set the redshift cumulative distribution"""
+        self._z_cdf = cdf
+
     def __init_sim_model(self):
         """Initialise sncosmo model using the good source.
 
@@ -467,7 +492,7 @@ class SnGen:
             model_keys = ['alpha', 'beta']
         return model_keys
 
-    def __call__(self, n_sn, z_range, time_range, rand_gen=None):
+    def __call__(self, n_sn, rand_gen=None):
         """Launch the simulation of SN.
 
         Parameters
@@ -489,7 +514,7 @@ class SnGen:
             rand_gen = np.random.default_rng()
 
         #- Generate peak magnitude
-        t0 = self.gen_peak_time(n_sn, time_range, rand_gen)
+        t0 = self.gen_peak_time(n_sn, rand_gen)
 
         #- Generate coherent mag smearing
         mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
@@ -498,14 +523,16 @@ class SnGen:
         rand_model_par = self.gen_model_par(n_sn, rand_gen)
 
         if self.host is not None:
-            host = self.host.random_host(n_sn, z_range, rand_gen)
+            z_tmp = self.gen_zcos(n_sn, rand_gen)
+            treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
+            host = self.host.host_near_z(z_tmp, treshold)
             ra = host['ra']
             dec = host['dec']
             zcos = host['redshift']
             vpec = host['vp_sight']
         else:
             ra, dec = self.gen_coord(n_sn, rand_gen)
-            zcos = self.gen_zcos(n_sn, z_range, rand_gen)
+            zcos = self.gen_zcos(n_sn, rand_gen)
             vpec = self.gen_vpec(n_sn, rand_gen)
 
         sn_par = ({'zcos': z,
@@ -526,8 +553,8 @@ class SnGen:
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
-    @staticmethod
-    def gen_peak_time(n, time_range, rand_gen):
+
+    def gen_peak_time(self, n, rand_gen):
         """Generate uniformly n peak time in the survey time range.
 
         Parameters
@@ -543,7 +570,7 @@ class SnGen:
             A numpy array which contains generated peak time.
 
         """
-        t0 = rand_gen.uniform(*time_range, size=n)
+        t0 = rand_gen.uniform(*self.time_range, size=n)
         return t0
 
     @staticmethod
@@ -568,16 +595,13 @@ class SnGen:
         dec = np.arcsin(2 * dec_uni - 1)
         return ra, dec
 
-    @staticmethod
-    def gen_zcos(n, z_range, rand_gen):
+    def gen_zcos(self, n, rand_gen):
         """Generate n cosmological redshift in a range.
 
         Parameters
         ----------
         n : int
             Number of redshift to generate.
-        z_range : list(float)
-            The redshift range zmin zmax.
         rand_gen : numpy.random.default_rng
             Numpy random generator.
 
@@ -585,11 +609,9 @@ class SnGen:
         -------
         numpy.ndarray(float)
             A numpy array which contains generated cosmological redshift.
-
-        TODO: Generation is uniform, in small shell not really a problem, maybe
-        fix this in general
         """
-        zcos = rand_gen.uniform(low=z_range[0], high=z_range[1], size=n)
+        uni_var = rand_gen.random(size=n)
+        zcos = np.interp(uni_var, self.z_cdf[1], self.z_cdf[0])
         return zcos
 
     def gen_model_par(self, n, rand_gen):
@@ -963,8 +985,8 @@ class SnHost:
 
     def __init__(self, host_file, z_range=None):
         self._z_range = z_range
-        self._host_file = host_file
-        self._host_table = self.__read_host_file()
+        self._file = host_file
+        self._table = self.__read_host_file()
         self._max_dz = None
 
     @property
@@ -977,9 +999,9 @@ class SnHost:
         return self._max_dz
 
     @property
-    def host_table(self):
+    def table(self):
         """Get astropy Table of host"""
-        return self._host_table
+        return self._table
 
     def __read_host_file(self):
         """Extract host from host file.
@@ -1019,7 +1041,7 @@ class SnHost:
         selec *= host['redshift'] < z_range[1]
         return host[selec]
 
-    def random_host(self, n, z_range, random_seed):
+    def host_near_z(self, z_list, treshold):
         """Random choice of host in a redshift range.
 
         Parameters
@@ -1037,16 +1059,9 @@ class SnHost:
             astropy Table containing the randomly selected host.
 
         """
-        if z_range[0] < self._z_range[0] or z_range[1] > self._z_range[1]:
-            raise ValueError(f'z_range must be between {self._z_range[0]} and {self._z_range[1]}')
-        elif z_range[0] > z_range[1]:
-            raise ValueError(f'z_range[0] must be < to z_range[1]')
-        host_available = self.host_in_range(self.host_table, z_range)
-        host_choice = np.random.default_rng(random_seed).choice(
-            host_available, size=n, replace=False)
-        if len(host_choice) < n:
-            raise RuntimeError('Not enough host in the shell')
-        return host_choice
+        host_idx = []
+        host_idx = [ut.find_idx_nearest_elmt(z, self.host_table['redshift'],(z_range[1]-z_range[0])/100) for z in z_list]
+        return self.host_table[host_idx]
 
 
 class SnSimPkl:
