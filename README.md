@@ -46,8 +46,8 @@ model_config:
     beta: COLOR CORRECTION = -beta*c   
     mean_x1: MEAN X1 VALUE
     mean_c: MEAN C VALUE
-    sig_x1: SIGMA X1   
-    sig_c: SIGMA C
+    sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
+    sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH] 
  vpec_gen:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC

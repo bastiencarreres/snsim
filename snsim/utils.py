@@ -13,6 +13,51 @@ from matplotlib.lines import Line2D
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 from matplotlib.patches import Polygon
+import warnings
+
+def find_idx_nearest_elmt(val, array, treshold):
+    """find the index of the nearest element of array relative to val.
+
+    Parameters
+    ----------
+    val : float
+        A float number.
+    array : numpy.ndarray(float)
+        An array of float.
+    treshold : float
+        The maximum gap between val and the nearest element.
+
+    Returns
+    -------
+    int
+        The index of the nearest element.
+
+    """
+    diff_array = np.abs(array - val)
+    smallest_diff_idx = diff_array.argmin()
+    if diff_array[smallest_diff_idx]  >  treshold:
+        raise warning.warn('Difference above threshold')
+    return smallest_diff_idx
+
+def compute_z_cdf(z_shell, shell_time_rate):
+    """Compute the cumulative distribution function of redshift.
+
+    Parameters
+    ----------
+    z_shell : numpy.ndarray(float)
+        The redshift of the shell edges.
+    shell_time_rate : numpy.ndarray(float)
+        The time rate of each shell.
+
+    Returns
+    -------
+    list(numpy.ndarray(float), numpy.ndarray(float))
+        redshift, CDF(redshift).
+
+    """
+    dist = np.append(0, np.cumsum(shell_time_rate))
+    norm = dist[-1]
+    return [z_shell, dist/norm]
 
 def is_asym(sigma):
     """Check if sigma represents an asymetric distribution.
@@ -54,7 +99,7 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
         Random variable.
 
     """
-    
+
     if sig_high is None:
         sig_high = sig_low
     if rand_gen is None:
@@ -179,8 +224,7 @@ def compute_z2cmb(ra, dec, cmb):
     dec_gal = galac_coord.b.rad
 
     ss = np.sin(dec_gal) * np.sin(dec_cmb * np.pi / 180)
-    ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi /
-                                   180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
+    ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi / 180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
 
 
