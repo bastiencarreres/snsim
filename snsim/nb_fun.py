@@ -2,7 +2,6 @@
 """
 from numba import njit, prange, jit
 import numpy as np
-import warnings
 
 @njit(cache=True)
 def sine_interp(x_new, fun_x, fun_y):
