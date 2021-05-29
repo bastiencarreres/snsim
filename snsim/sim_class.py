@@ -364,6 +364,10 @@ class SnGen:
         A copy of the input cosmology model.
     _host : class SnHost
         A copy of the input SnHost class.
+    _time_range : list(float,float)
+        The range of time in which simulate the peak.
+    _z_cdf : list(numpy.ndaray(float), numpy.ndaray(float))
+        The cumulative distribution of the redshifts.
 
     Methods
     -------
@@ -376,11 +380,11 @@ class SnGen:
         Init the SN model parameters names.
     __init_sim_model()
         Configure the sncosmo Model
-    gen_peak_time(n, time_range, rand_seed)
+    gen_peak_time(self, n, rand_seed)
         Randomly generate peak time in the given time range.
     gen_coord(n, rand_seed)
         Generate ra, dec uniformly on the sky.
-    gen_zcos(n, rand_seed)
+    gen_zcos(self, n, rand_seed)
         Generate redshift following a distribution.
     gen_model_par(self, n, rand_seed)
         Generate the random parameters of the sncosmo model.
@@ -413,10 +417,12 @@ class SnGen:
 
     @property
     def host(self):
+        """Get the host class"""
         return self._host
 
     @property
     def vpec_dist(self):
+        """Get the peculiar velocity distribution parameters"""
         return self._vpec_dist
 
     @property
@@ -513,15 +519,16 @@ class SnGen:
         if rand_gen is None:
             rand_gen = np.random.default_rng()
 
-        #- Generate peak magnitude
+        #-- Generate peak magnitude
         t0 = self.gen_peak_time(n_sn, rand_gen)
 
-        #- Generate coherent mag smearing
+        #-- Generate coherent mag smearing
         mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
 
         #- Generate random parameters dependants on sn model used
         rand_model_par = self.gen_model_par(n_sn, rand_gen)
 
+        #-- If there is host use them
         if self.host is not None:
             z_tmp = self.gen_zcos(n_sn, rand_gen)
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
@@ -784,6 +791,7 @@ class SurveyObs:
     @property
     def band_dic(self):
         return self.survey_config['band_dic']
+
     @property
     def obs_table(self):
         return self._obs_table
