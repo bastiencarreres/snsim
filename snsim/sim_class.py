@@ -963,13 +963,13 @@ class SnHost:
 
     Attributes
     ----------
-    _host_table : astropy.Table
-        Description of attribute `host_list`.
+    _table : astropy.Table
+        Table that contains host data.
     _max_dz : float
         The maximum redshift gap between 2 host.
     _z_range : list(float)
         A copy of input z_range.
-    _host_file
+    _file
         A copy of input host_file.
 
     Methods
@@ -993,7 +993,7 @@ class SnHost:
     def max_dz(self):
         """Get the maximum redshift gap"""
         if self._max_dz is None:
-            redshift_copy = np.sort(np.copy(self.host_table['redshift']))
+            redshift_copy = np.sort(np.copy(self.table['redshift']))
             diff = redshift_copy[1:] - redshift_copy[:-1]
             self._max_dz = np.max(diff)
         return self._max_dz
@@ -1012,7 +1012,7 @@ class SnHost:
             astropy Table containing host.
 
         """
-        with fits.open(self._host_file) as hostf:
+        with fits.open(self._file) as hostf:
             host_list = hostf[1].data[:]
         host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
         if self._z_range is not None:
@@ -1041,27 +1041,24 @@ class SnHost:
         selec *= host['redshift'] < z_range[1]
         return host[selec]
 
-    def host_near_z(self, z_list, treshold):
-        """Random choice of host in a redshift range.
+    def host_near_z(self, z_list, treshold = 1e-4):
+        """Take the nearest host from a redshift list.
 
         Parameters
         ----------
-        n : int
-            Number of host to choice.
-        z_range : list(float)
-            The redshift range zmin, zmax.
-        random_seed : int
-            The random seed for the random generator.
+        z_list : numpy.ndarray(float)
+            The redshifts.
+        treshold : float, optional
+            The maximum difference tolerance.
 
         Returns
         -------
         astropy.Table
-            astropy Table containing the randomly selected host.
+            astropy Table containing the selected host.
 
         """
-        host_idx = []
-        host_idx = [ut.find_idx_nearest_elmt(z, self.host_table['redshift'],(z_range[1]-z_range[0])/100) for z in z_list]
-        return self.host_table[host_idx]
+        idx = nbf.find_idx_nearest_elmt(z_list, np.array(self.table['redshift'], dtype='f8'), treshold)
+        return self.table[idx]
 
 
 class SnSimPkl:

@@ -13,31 +13,6 @@ from matplotlib.lines import Line2D
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 from matplotlib.patches import Polygon
-import warnings
-
-def find_idx_nearest_elmt(val, array, treshold):
-    """find the index of the nearest element of array relative to val.
-
-    Parameters
-    ----------
-    val : float
-        A float number.
-    array : numpy.ndarray(float)
-        An array of float.
-    treshold : float
-        The maximum gap between val and the nearest element.
-
-    Returns
-    -------
-    int
-        The index of the nearest element.
-
-    """
-    diff_array = np.abs(array - val)
-    smallest_diff_idx = diff_array.argmin()
-    if diff_array[smallest_diff_idx]  >  treshold:
-        raise warning.warn('Difference above threshold')
-    return smallest_diff_idx
 
 def compute_z_cdf(z_shell, shell_time_rate):
     """Compute the cumulative distribution function of redshift.

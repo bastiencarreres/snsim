@@ -2,6 +2,7 @@
 """
 from numba import njit, prange, jit
 import numpy as np
+import warnings
 
 @njit(cache=True)
 def sine_interp(x_new, fun_x, fun_y):
@@ -190,3 +191,31 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
 
     epochs_selec[np.copy(epochs_selec)]  *= np.array([dic_map[id] for id in obs_fieldID])
     return epochs_selec, epochs_selec.any()
+
+@njit(cache=True)
+def find_idx_nearest_elmt(val, array, treshold):
+    """find the index of the nearest element of array relative to val.
+
+    Parameters
+    ----------
+    val : float
+        A float number.
+    array : numpy.ndarray(float)
+        An array of float.
+    treshold : float
+        The maximum gap between val and the nearest element.
+
+    Returns
+    -------
+    int
+        The index of the nearest element.
+
+    """
+    smallest_diff_idx=[]
+    for v in val:
+        diff_array = np.abs(array - v)
+        idx = diff_array.argmin()
+        if diff_array[idx]  >  treshold:
+            raise RuntimeError('Difference above threshold')
+        smallest_diff_idx.append(idx)
+    return smallest_diff_idx
