@@ -128,7 +128,7 @@ class Simulator:
     |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                            |
     |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                |
     | vpec_gen:                                                                        |
-    |     mean_vpec: MEAN SN PECULIAR VEL                                              |
+    |     mean_vpec: MEAN SN PECULIAR VELOCITY                                         |
     |     sig_vpec: SIGMA VPEC                                                         |
     | host_file: 'PATH/TO/HOSTFILE'  #(Optional)                                       |
     |                                                                                  |
@@ -163,6 +163,7 @@ class Simulator:
         self._fit_res = None
         self._random_seed = None
         self._host = None
+
         self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
         self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
         self._generator = scls.SnGen(self.sn_int_par,
@@ -250,11 +251,10 @@ class Simulator:
 
     @property
     def obs(self):
-        """Get the ObsTable object of the simulation """
+        """Get the SurveyObs object of the simulation """
         if self._obs._survey_config != self.sim_cfg['survey_config']:
             self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
         return self._obs
-
 
     @property
     def generator(self):
@@ -379,7 +379,7 @@ class Simulator:
         z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
         rate = self.sn_rate(z_shell_center)# Rate in Nsn/Mpc^3/year
         shell_vol = 4 * np.pi / 3 * (pw(self.cosmology.comoving_distance(z_shell[1:] ).value, 3)-pw(self.cosmology.comoving_distance(z_shell[:-1]).value, 3))
-        shell_time_rate = rate * shell_vol
+        shell_time_rate = rate * shell_vol / (1 + z_shell_center)
         return z_shell, shell_time_rate
 
     def __gen_n_sn(self, rand_gen, z_shell_time_rate):
@@ -471,6 +471,7 @@ class Simulator:
 
         #-- Set the time range
         self.generator.time_range = [self.obs.mintime, self.obs.maxtime]
+
         #-- Init the sn list
         self._sn_list = []
 
