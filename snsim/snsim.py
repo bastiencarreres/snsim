@@ -239,7 +239,6 @@ class Simulator:
                       'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
         if 'smear_mod' in self.sim_cfg['sn_gen']:
             int_params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
-
         return int_params
 
     @property
@@ -469,6 +468,8 @@ class Simulator:
         #-- Init the redshift distribution
         z_shell, shell_time_rate = self.__z_shell_time_rate()
         self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+
+        #-- Set the time range
         self.generator.time_range = [self.obs.mintime, self.obs.maxtime]
         #-- Init the sn list
         self._sn_list = []
