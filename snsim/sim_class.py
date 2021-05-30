@@ -971,8 +971,8 @@ class SnHost:
 
     Attributes
     ----------
-    _table : astropy.Table
-        Table that contains host data.
+    _table : pandas.DataFrame
+        Pandas dataframe that contains host data.
     _max_dz : float
         The maximum redshift gap between 2 host.
     _z_range : list(float)
@@ -984,8 +984,6 @@ class SnHost:
     -------
     __read_host_file()
         Extract host from host file.
-    host_in_range(host, z_range):
-        Give the hosts in the good redshift range.
     random_host(n, z_range, rand_seed)
         Random choice of host in a redshift range.
 
@@ -1026,29 +1024,10 @@ class SnHost:
         ra_mask = host_list['ra'] < 0
         host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
         if self._z_range is not None:
-            return self.host_in_range(host_list, self._z_range)
+            z_min, z_max = self._z_range
+            return host_list.query(f'redshift >= {z_min} & redshift <= {z_max}')
         else:
             return host_list
-
-    @staticmethod
-    def host_in_range(host, z_range):
-        """Give the hosts in the good redshift range.
-
-        Parameters
-        ----------
-        host : astropy.Table
-            astropy Table of host.
-        z_range : type
-            The selection redshift range.
-
-        Returns
-        -------
-        astropy.Table
-            astropy Table containing host in the redshift range.
-
-        """
-        selec = (host['redshift'] > z_range[0]) &  (host['redshift'] < z_range[1])
-        return host[selec]
 
     def host_near_z(self, z_list, treshold = 1e-4):
         """Take the nearest host from a redshift list.
