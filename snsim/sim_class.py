@@ -971,8 +971,8 @@ class SnHost:
 
     Attributes
     ----------
-    _table : astropy.Table
-        Table that contains host data.
+    _table : pandas.DataFrame
+        Pandas dataframe that contains host data.
     _max_dz : float
         The maximum redshift gap between 2 host.
     _z_range : list(float)
@@ -984,8 +984,6 @@ class SnHost:
     -------
     __read_host_file()
         Extract host from host file.
-    host_in_range(host, z_range):
-        Give the hosts in the good redshift range.
     random_host(n, z_range, rand_seed)
         Random choice of host in a redshift range.
 
