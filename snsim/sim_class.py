@@ -1021,12 +1021,14 @@ class SnHost:
 
         """
         with fits.open(self._file) as hostf:
-            host_list = hostf[1].data[:]
-        host_list['ra'] = host_list['ra'] + 2 * np.pi * (host_list['ra'] < 0)
+            host_list = pd.DataFrame.from_records(hostf[1].data[:])
+        host_list = host_list.astype('float64')
+        ra_mask = host_list['ra'] < 0
+        host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
         if self._z_range is not None:
-            return Table(self.host_in_range(host_list, self._z_range))
+            return self.host_in_range(host_list, self._z_range)
         else:
-            return Table(host_list)
+            return host_list
 
     @staticmethod
     def host_in_range(host, z_range):
@@ -1045,8 +1047,7 @@ class SnHost:
             astropy Table containing host in the redshift range.
 
         """
-        selec = host['redshift'] > z_range[0]
-        selec *= host['redshift'] < z_range[1]
+        selec = (host['redshift'] > z_range[0]) &  (host['redshift'] < z_range[1])
         return host[selec]
 
     def host_near_z(self, z_list, treshold = 1e-4):
@@ -1065,8 +1066,8 @@ class SnHost:
             astropy Table containing the selected host.
 
         """
-        idx = nbf.find_idx_nearest_elmt(z_list, np.array(self.table['redshift'], dtype='f8'), treshold)
-        return self.table[idx]
+        idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
+        return self.table.iloc[idx]
 
 
 class SnSimPkl:

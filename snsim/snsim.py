@@ -379,6 +379,8 @@ class Simulator:
         z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
         rate = self.sn_rate(z_shell_center)# Rate in Nsn/Mpc^3/year
         shell_vol = 4 * np.pi / 3 * (pw(self.cosmology.comoving_distance(z_shell[1:] ).value, 3)-pw(self.cosmology.comoving_distance(z_shell[:-1]).value, 3))
+
+        #-- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = rate * shell_vol / (1 + z_shell_center)
         return z_shell, shell_time_rate
 
