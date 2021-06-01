@@ -762,12 +762,14 @@ class SurveyObs:
 
     Methods
     -------
-    __extract_from_db()
+    __extract_from_db(self)
         Extract the observation from SQL data base.
 
-    epochs_selection(SN)
+    epochs_selection(self, SN)
         Give the epochs of observation of a given SN.
 
+     __make_obs_table(self, epochs_selec):
+        Create the astropy table from selection bool array.
     """
 
     def __init__(self, survey_config): #db_file, survey_prop, band_dic=None, survey_cut=None, add_keys=[]):
@@ -908,10 +910,10 @@ class SurveyObs:
                                ra_field_frame, dec_field_frame,
                                self.field_size, selec_fields_ID)
         if is_obs:
-            return self._make_obs_table(epochs_selec)
+            return self.__make_obs_table(epochs_selec)
         return None
 
-    def _make_obs_table(self, epochs_selec):
+    def __make_obs_table(self, epochs_selec):
         """ Create the astropy table from selection bool array.
 
         Parameters
