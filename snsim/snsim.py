@@ -703,7 +703,7 @@ class Simulator:
                    residuals=residuals)
 
     def get_sn_par(self, key):
-        """Get an array of a sim_lc data"""
+        """Get an array of a sim_lc meta data"""
         return np.array([sn.sim_lc.meta[key] for sn in self.sn_list])
 
     def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
