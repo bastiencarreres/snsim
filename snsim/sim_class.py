@@ -211,7 +211,6 @@ class SN:
 
         # elif self.sim_model.source.name == 'snoopy':
             # TODO
-        return None
 
     def pass_cut(self, nep_cut):
         """Check if the SN pass the given cuts.
@@ -776,7 +775,7 @@ class SurveyObs:
     """
 
     def __init__(self, survey_config):
-        self._survey_config = survey_config
+        self._config = survey_config
         self._obs_table, self._start_end_days = self.__extract_from_db()
         self._field_dic = self.__init_field_dic()
 
@@ -800,12 +799,12 @@ class SurveyObs:
         return dic
 
     @property
-    def survey_config(self):
-        return self._survey_config
+    def config(self):
+        return self._config
 
     @property
     def band_dic(self):
-        return self.survey_config['band_dic']
+        return self.config['band_dic']
 
     @property
     def obs_table(self):
@@ -814,20 +813,20 @@ class SurveyObs:
     @property
     def field_size(self):
         """Get field size (ra,dec) in radians"""
-        ra_size_rad = np.radians(self._survey_config['ra_size'])
-        dec_size_rad = np.radians(self._survey_config['dec_size'])
+        ra_size_rad = np.radians(self._config['ra_size'])
+        dec_size_rad = np.radians(self._config['dec_size'])
         return ra_size_rad, dec_size_rad
 
     @property
     def gain(self):
         """Get CCD gain in e-/ADU"""
-        return self._survey_config['gain']
+        return self._config['gain']
 
     @property
     def zp(self):
         """Get zero point"""
-        if 'zp' in self._survey_config:
-            return self._survey_config['zp']
+        if 'zp' in self._config:
+            return self._config['zp']
         return 'zp_in_obs'
 
     @property
@@ -854,19 +853,21 @@ class SurveyObs:
         The final starting and ending days of the survey may differ from the input
         because the survey file maybe not contain exactly observation on the input
         day.
+
+        Note that end_day key has priority on duration
         """
 
-        if 'start_day' in self.survey_config:
-            start_day = self.survey_config['start_day']
+        if 'start_day' in self.config:
+            start_day = self.config['start_day']
         else:
             start_day = obs_dic['expMJD'].min()
 
         start_day = ut.init_astropy_time(start_day)
 
-        if 'end_day' in self.survey_config:
-            end_day = self.survey_config['end_day']
-        elif 'duration' in self.survey_config:
-            end_day = start_day.mjd + self.survey_config['duration']
+        if 'end_day' in self.config:
+            end_day = self.config['end_day']
+        elif 'duration' in self.config:
+            end_day = start_day.mjd + self.config['duration']
         else:
             end_day = obs_dic['expMJD'].max()
 
@@ -885,7 +886,7 @@ class SurveyObs:
             The starting time and ending time of the survey.
         """
 
-        con = sqlite3.connect(self._survey_config['survey_file'])
+        con = sqlite3.connect(self._config['survey_file'])
 
         keys = ['expMJD',
                 'filter',
@@ -894,13 +895,13 @@ class SurveyObs:
                 'fieldDec',
                 'fiveSigmaDepth']
 
-        if 'add_data' in self.survey_config:
-            add_k = (k for k in self.survey_config['add_data'] if k not in keys)
+        if 'add_data' in self.config:
+            add_k = (k for k in self.config['add_data'] if k not in keys)
             keys+=add_k
 
         where = ''
-        if 'survey_cut' in self.survey_config:
-            cut_dic = self.survey_config['survey_cut']
+        if 'survey_cut' in self.config:
+            cut_dic = self.config['survey_cut']
             where = " WHERE "
             for cut_var in cut_dic:
                 where += "("
@@ -1022,8 +1023,8 @@ class SurveyObs:
                      'zp': zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
-        if 'add_data' in self.survey_config:
-            for k in self.survey_config['add_data']:
+        if 'add_data' in self.config:
+            for k in self.config['add_data']:
                 if k not in obs:
                     obs[k] = self.obs_table[k][epochs_selec]
         return obs

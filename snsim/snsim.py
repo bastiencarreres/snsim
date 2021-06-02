@@ -73,8 +73,7 @@ class Simulator:
     -----
     Remarks :
 
-    - obs_file and db_file are optional but you must set one of the two!!!
-    - If the name of bands in the obs/db file doesn't match sncosmo bands
+    - If the name of bands in the survey file doesn't match sncosmo bands
     you can use the key band_dic to translate filters names
     - If you don't set the filter name item in nep_cut, the cut apply to all the bands
     - For wavelength dependent model, nomanclature follow arXiv:1209.2482
@@ -90,7 +89,7 @@ class Simulator:
     |     write_path: '/PATH/TO/OUTPUT'                                                |
     |     sim_name: 'NAME OF SIMULATION'                                               |
     |     write_format: 'format' or ['format1','format2']                              |
-    | survey_config: #(Optional -> use obs_file)                                       |
+    | survey_config:                                                                   |
     |     survey_file: '/PATH/TO/FILE'                                                 |
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
     |  survey_file doesn't match sncosmo name)                                         |
@@ -166,7 +165,7 @@ class Simulator:
         self._host = None
 
         self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
-        self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
+        self._survey = scls.SurveyObs(self.sim_cfg['survey_config'])
         self._generator = scls.SnGen(self.sn_int_par,
                                      self.sim_cfg['model_config'],
                                      self.cmb,
@@ -250,11 +249,11 @@ class Simulator:
         return self._cosmology
 
     @property
-    def obs(self):
+    def survey(self):
         """Get the SurveyObs object of the simulation """
-        if self._obs._survey_config != self.sim_cfg['survey_config']:
-            self._obs = scls.SurveyObs(self.sim_cfg['survey_config'])
-        return self._obs
+        if self._survey._config != self.sim_cfg['survey_config']:
+            self._survey = scls.SurveyObs(self.sim_cfg['survey_config'])
+        return self._survey
 
     @property
     def generator(self):
@@ -341,9 +340,9 @@ class Simulator:
         tuple(float, float)
             Min and max time for SN peak generation.
         """
-        min_peak_time = self.obs.start_end_days[0] - self.generator.snc_model_time[1] \
+        min_peak_time = self.survey.start_end_days[0] - self.generator.snc_model_time[1] \
                    * (1 + self.z_range[1])
-        max_peak_time = self.obs.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
+        max_peak_time = self.survey.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
                    * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
@@ -429,7 +428,7 @@ class Simulator:
         print('-----------------------------------------------------------')
         print(f"SIM NAME : {self.sim_name}\n"
               f"CONFIG FILE : {self._yml_path}\n"
-              f"OBS FILE : {self.sim_cfg['survey_config']['survey_file']}")
+              f"SURVEY FILE : {self.sim_cfg['survey_config']['survey_file']}")
         if 'host_file' in self.sim_cfg :
             print(f"HOST FILE : {self.sim_cfg['host_file']}")
         print(f"SN SIM MODEL : {self.model_name} from {self.sim_cfg['model_config']['model_dir']}\n"
@@ -446,9 +445,9 @@ class Simulator:
              +use_rate_str+"\n"
               f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
               f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n\n"
-              f"First day in survey_file : {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[0].iso}\n"
-              f"Last day in survey_file : {self.obs.start_end_days[1].mjd:.2f} MJD / {self.obs.start_end_days[1].iso}\n"
-              f"Survey effective duration is {self.obs.duration:.2f} days")
+              f"First day in survey_file : {self.survey.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
+              f"Last day in survey_file : {self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}\n"
+              f"Survey effective duration is {self.survey.duration:.2f} days")
 
         print('-----------------------------------------------------------\n')
 
@@ -550,7 +549,7 @@ class Simulator:
         SN_ID = 0
         sn_list_tmp = self.generator(n_sn, rand_gen)
         for sn in sn_list_tmp:
-            sn.epochs = self.obs.epochs_selection(sn)
+            sn.epochs = self.survey.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
                 sn.gen_flux(rand_gen)
                 sn.ID = SN_ID
@@ -578,13 +577,13 @@ class Simulator:
         SN_ID = 0
         while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
             sn = self.generator(1, rand_gen)[0]
-            sn.epochs = self.obs.epochs_selection(sn)
+            sn.epochs = self.survey.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
                 sn.gen_flux(rand_gen)
                 sn.ID = SN_ID
                 SN_ID += 1
                 self._sn_list.append(sn)
-            elif raise_trigger > 2 * len(self.obs.obs_table['expMJD']):
+            elif raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
                 raise RuntimeError('Cuts are too stricts')
             else:
                 raise_trigger += 1
@@ -747,8 +746,8 @@ class Simulator:
                 field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
 
         if plot_fields:
-            field_dic = self.obs._field_dic
-            field_size = self.obs.field_size
+            field_dic = self.survey._field_dic
+            field_size = self.survey.field_size
             field_list = np.unique(field_list)
         else:
             field_dic = None
