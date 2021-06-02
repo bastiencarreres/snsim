@@ -55,15 +55,15 @@ class SN:
 
     Methods
     -------
-    __init_model_par()
+    __init_model_par(self)
         Init model parameters of the SN use dto compute mu.
-    __reformat_sim_table()
+    __reformat_sim_table(self)
         Give the good format to sncosmo output Table.
-    pass_cut(nep_cut)
+    pass_cut(self, nep_cut)
         Test if the SN pass the cuts given in nep_cut.
-    gen_flux()
+    gen_flux(self)
         Generate the ligthcurve flux with sncosmo.
-    get_lc_hdu()
+    get_lc_hdu(self)
         Give a hdu version of the ligthcurve table
     """
 
@@ -743,7 +743,7 @@ class SurveyObs:
         ├── zp FIXED ZEROPOINT -> float, opt
         ├── survey_cut, CUT ON DB FILE -> dict, opt
         └── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
-        
+
     Attributes
     ----------
     _survey_prop : dict
