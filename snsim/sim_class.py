@@ -558,7 +558,6 @@ class SnGen:
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
-
     def gen_peak_time(self, n, rand_gen):
         """Generate uniformly n peak time in the survey time range.
 
@@ -725,6 +724,7 @@ class SnGen:
         mag_smear = rand_gen.normal(
             loc=0, scale=self.sn_int_par['mag_smear'], size=n)
         return mag_smear
+
 
 class SurveyObs:
     """This class deals with the observations of the survey.

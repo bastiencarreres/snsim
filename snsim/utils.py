@@ -15,6 +15,19 @@ import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 
 def init_astropy_time(date):
+    """Take a date and give a astropy.time.Time object.
+
+    Parameters
+    ----------
+    date : int, float or str
+        The date in MJD number or YYYY-MM-DD string.
+
+    Returns
+    -------
+    astropy.time.Time
+        An astropy.time Time object of the given date.
+
+    """
     if isinstance(date, (int,float)):
         format = 'mjd'
     elif isinstance(date, str):
