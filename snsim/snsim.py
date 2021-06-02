@@ -190,6 +190,7 @@ class Simulator:
 
     @property
     def cmb(self):
+        """Get cmb parameters"""
         if 'cmb' in  self.sim_cfg:
             if 'vcmb' in self.sim_cfg['cmb']:
                 vcmb = self.sim_cfg['cmb']['vcmb']

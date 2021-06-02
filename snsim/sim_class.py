@@ -730,17 +730,20 @@ class SurveyObs:
 
     Parameters
     ----------
-    db_file : str
-        Path to the SQL database of observations.
-    survey_prop : dict
-        The properties of the survey.
-    band_dic : dict
-        Translate from band name in database to sncosmo band name.
-    db_cut : dict
-        Selection to add to the SQL query.
-    add_keys : list
-        database keys to add to observation meta.
-
+    survey_config : dic
+        It contains all the survey configuration.
+        survey_config
+        ├── survey_file PATH TO SURVEY FILE
+        ├── ra_size RA FIELD SIZE IN DEG -> float
+        ├── dec_size DEC FIELD SIZE IN DEG -> float
+        ├── gain CCD GAIN e-/ADU -> float
+        ├── start_day STARTING DAY -> float or str, opt
+        ├── end_day ENDING DAY -> float or str, opt
+        ├── duration SURVEY DURATION -> float, opt
+        ├── zp FIXED ZEROPOINT -> float, opt
+        ├── survey_cut, CUT ON DB FILE -> dict, opt
+        └── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+        
     Attributes
     ----------
     _survey_prop : dict
@@ -800,14 +803,17 @@ class SurveyObs:
 
     @property
     def config(self):
+        """Survey configuration"""
         return self._config
 
     @property
     def band_dic(self):
+        """Get the dic band_survey : band_sncosmo"""
         return self.config['band_dic']
 
     @property
     def obs_table(self):
+        """Table of the observations"""
         return self._obs_table
 
     @property
