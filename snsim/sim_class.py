@@ -765,7 +765,7 @@ class SurveyObs:
     __extract_from_db(self)
         Extract the observation from SQL data base.
 
-     __init_start_end_days(self):
+     __read_start_end_days(self):
         Initialise the start and ending day from survey configuration.
 
     epochs_selection(self, SN)
@@ -841,7 +841,7 @@ class SurveyObs:
         """Get the survey start and ending days"""
         return self._start_end_days[0], self._start_end_days[1]
 
-    def __init_start_end_days(self):
+    def __read_start_end_days(self):
         """Initialise the start and ending day from survey configuration.
 
         Returns
@@ -920,7 +920,7 @@ class SurveyObs:
         # avoid crash on errors
         obs_dic.query('fiveSigmaDepth > 0', inplace=True)
 
-        start_day_input, end_day_input = self.__init_start_end_days()
+        start_day_input, end_day_input = self.__read_start_end_days()
         if start_day_input.mjd <= obs_dic['expMJD'].min():
             raise ValueError('start_day before first day in survey file')
         elif end_day_input.mjd >= obs_dic['expMJD'].max():
