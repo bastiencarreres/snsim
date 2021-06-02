@@ -95,7 +95,7 @@ class G10(snc.PropagationEffect):
                 val *= 1 + (lam - L0) * F0
 
             sigma_val.append(val)
-            lam += self._parameters[3]
+            lam += dL
         return np.asarray(sigma_lam), np.asarray(sigma_val)
 
     @property

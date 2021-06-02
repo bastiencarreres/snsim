@@ -6,13 +6,12 @@ from astropy.table import Table
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from numpy import power as pw
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
+from matplotlib.patches import Polygon
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
-from matplotlib.patches import Polygon
 
 def compute_z_cdf(z_shell, shell_time_rate):
     """Compute the cumulative distribution function of redshift.
@@ -51,8 +50,7 @@ def is_asym(sigma):
     sigma = np.atleast_1d(sigma)
     if sigma.size == 2:
         return sigma
-    else:
-        return sigma[0], sigma[0]
+    return sigma[0], sigma[0]
 
 def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
     """Generate random parameters using an asymetric Gaussian distribution.
@@ -142,7 +140,7 @@ def mB_to_x0(mB):
         SALT x0 parameter.
 
     """
-    return pw(10, -0.4 * (mB - SNC_MAG_OFFSET_AB))
+    return 10**(-0.4 * (mB - SNC_MAG_OFFSET_AB))
 
 
 def cov_x0_to_mb(x0, cov):
@@ -224,6 +222,7 @@ def init_sn_model(name, model_dir):
         return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
     return None
 
+
 def snc_fitter(lc, fit_model, fit_par):
     """Fit a given lightcurve with sncosmo.
 
@@ -234,6 +233,7 @@ def snc_fitter(lc, fit_model, fit_par):
     fit_model : sncosmo.Model
         Model used to fit the ligthcurve.
     fit_par : list(str)
+snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
         The parameters to fit.
 
     Returns
@@ -276,11 +276,19 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     -----
     Compute theorical fluxerr from fit err = sqrt(COV)
     where COV = J**T * COV(x0,x1,c) * J with J = (dF/dx0, dF/dx1, dF/dc) the jacobian.
-    According to Fnorm = x0/(1+z) * int_\\lambda (M0(lambda_s,p)+x1*M1(lambda_s,p))*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
-    where norm_factor = 10**(0.4*ZP_norm)/ZP_magsys. We found :
+    According to Fnorm = x0/(1+z)
+                        * int_\lambda (M0(\lambda_s, p) + x1 * M1(\lambda_s, p))
+                        * 10**(-0.4 * c * CL(\lambda_s))
+                        * T_b(\lambda) * \lambda/hc d\lambda * norm_factor
+    where norm_factor = 10**(0.4 * ZP_norm)/ZP_magsys. We found :
     dF/dx0 = F/x0
-    dF/dx1 = x0/(1+z) * int_lambda M1(lambda_s,p))*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
-    dF/dc  =  -0.4*ln(10)*x0/(1+z) * int_\\lambda (M0(lambda_s,p)+x1*M1(lambda_s,p))*CL(lambda_s)*10**(-0.4*c*CL(lambda_s)) * T_b(lambda) * lambda/hc dlambda * norm_factor
+
+    dF/dx1 = x0/(1+z) * int_\lambda M1(\lambda_s,p)) * 10**(-0.4 * c * CL(\lambda_s))
+                                 * T_b(\lambda) * \lambda/hc dlambda * norm_factor
+
+    dF/dc  =  -0.4*ln(10)*x0/(1+z) * int_\lambda (M0(\lambda_s, p) + x1 * M1(\lambda_s, p))
+                                   * CL(\lambda_s) * 10**(-0.4 * c *CL(\lambda_s))
+                                   * T_b(\lambda) * \lambda/hc dl\ambda * norm_factor
 
     """
     a = 1. / (1 + fit_model.parameters[0])
@@ -334,7 +342,7 @@ def norm_flux(flux_table, zp):
         Rescaled flux and fluxerr arry.
 
     """
-    norm_factor = pw(10, 0.4 * (zp - flux_table['zp']))
+    norm_factor = 10**(0.4 * (zp - flux_table['zp']))
     flux_norm = flux_table['flux'] * norm_factor
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
@@ -377,6 +385,7 @@ def plot_lc(
         fit_cov=None,
         residuals=False):
     """Ploting a lightcurve flux table.
+snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
 
     Parameters
     ----------
@@ -446,7 +455,7 @@ def plot_lc(
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
                         err_th = compute_salt_fit_error(snc_fit_model, fit_cov, b, time_th, zp)
                         err_th = 2.5 / \
-                            (np.log(10) * pw(10, -0.4 * (plot_fit - zp))) * err_th
+                            (np.log(10) * 10**(-0.4 * (plot_fit - zp))) * err_th
                 if residuals:
                     fit_pts = snc_fit_model.bandmag(b, 'ab', time_b)
                     rsd = plot - fit_pts
@@ -574,10 +583,20 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                 else:
                     if new_radec[2][0] < 0:
                         new_radec[3][0] = -np.pi
-                        plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1, zorder=2))
+                        plt.gca().add_patch(Polygon(new_radec,
+                                                    fill=False,
+                                                    ls='--',
+                                                    color='blue',
+                                                    lw=1,
+                                                    zorder=2))
 
             else :
-                plt.gca().add_patch(Polygon(new_radec, fill=False, ls='--', color='blue',lw=1, zorder=2))
+                plt.gca().add_patch(Polygon(new_radec,
+                                            fill=False,
+                                            ls='--',
+                                            color='blue',
+                                            lw=1,
+                                            zorder=2))
 
     plt.show()
 
@@ -616,7 +635,7 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
     for k in fit_keys:
         data[k] = []
 
-    for i,res in enumerate(fit_res):
+    for res in fit_res:
         if res != 'NaN':
             par = res['parameters']
             data['t0'].append(par[1])

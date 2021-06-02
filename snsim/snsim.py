@@ -8,7 +8,6 @@ import numpy as np
 from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
-from numpy import power as pw
 import snsim.utils as ut
 from snsim.constants import SN_SIM_PRINT, VCMB, RA_CMB, DEC_CMB
 import snsim.scatter as sct
@@ -127,7 +126,7 @@ class Simulator:
     |     mean_c: MEAN C VALUE                                                         |
     |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                            |
     |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                |
-    | vpec_gen:                                                                        |
+    | vpec_dist:                                                                       |
     |     mean_vpec: MEAN SN PECULIAR VELOCITY                                         |
     |     sig_vpec: SIGMA VPEC                                                         |
     | host_file: 'PATH/TO/HOSTFILE'  #(Optional)                                       |
@@ -181,8 +180,8 @@ class Simulator:
     @property
     def vpec_dist(self):
         """Get vpec option"""
-        if 'vpec_gen' in self.sim_cfg:
-            return self.sim_cfg['vpec_gen']
+        if 'vpec_dist' in self.sim_cfg:
+            return self.sim_cfg['vpec_dist']
         elif 'host_file' in self.sim_cfg:
             return None
         else:
@@ -215,8 +214,7 @@ class Simulator:
         if self._sn_list is None:
             print('You have to run the simulation')
             return
-        else:
-            return len(self._sn_list)
+        return len(self._sn_list)
 
     @property
     def model_name(self):
@@ -261,12 +259,16 @@ class Simulator:
         """Get the SNGen object of the simulation """
         not_same = (self._generator.sn_int_par != self.sn_int_par)
         not_same *= (self.sim_cfg['model_config'] != self._generator.model_config)
+        not_same *= (self.cmb != self._generator.cmb)
         not_same *= (not ut.is_same_cosmo_model(self.sim_cfg['cosmology'],self._cosmology))
+        not_same *= (self.sim_cfg['vpec_dist'] != self._generator.vpec_dist)
+
         if not_same:
             self._generator = scls.SnGen(self.sn_int_par,
                                          self.sim_cfg['model_config'],
                                          self.cmb,
-                                         cosmology=self.cosmology,
+                                         self.cosmology,
+                                         self.vpec_dist,
                                          host=self.host)
         return self._generator
 
@@ -329,19 +331,15 @@ class Simulator:
     @property
     def sn_rate_z0(self):
         """Get the sn rate parameters"""
-        if 'sn_rate' and 'rate_pw' in self.sim_cfg['sn_gen']:
-            return float(self.sim_cfg['sn_gen']['sn_rate']), self.sim_cfg['sn_gen']['rate_pw']
+        if 'sn_rate'  in self.sim_cfg['sn_gen']:
+            sn_rate = float(self.sim_cfg['sn_gen']['sn_rate'])
+        else :
+            sn_rate = 3e-5
+        if 'rate_pw' in self.sim_cfg['sn_gen']:
+            rate_pw = self.sim_cfg['sn_gen']['rate_pw']
         else:
-            return 3e-5, 0
-
-    def __init_z_shell(self):
-        """Create redshift shell"""
-        z_min, z_max = self.z_range
-        rate_pw = self.sim_cfg['sn_gen']['rate_pw']
-        dz = (z_max - z_min) / 1000
-        n_bins = int((z_max - z_min) / dz)
-        edges = np.linspace(z_min, z_max, n_bins)
-        return z_shell_edges
+            rate_pw = 0
+        return sn_rate, rate_pw
 
     def sn_rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
@@ -378,7 +376,8 @@ class Simulator:
         z_shell = np.linspace(z_min,z_max,1000)
         z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
         rate = self.sn_rate(z_shell_center)# Rate in Nsn/Mpc^3/year
-        shell_vol = 4 * np.pi / 3 * (pw(self.cosmology.comoving_distance(z_shell[1:] ).value, 3)-pw(self.cosmology.comoving_distance(z_shell[:-1]).value, 3))
+        co_dist = self.cosmology.comoving_distance(z_shell).value
+        shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
 
         #-- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = rate * shell_vol / (1 + z_shell_center)
@@ -400,7 +399,6 @@ class Simulator:
 
         """
         return rand_gen.poisson(self.survey_duration * np.sum(z_shell_time_rate))
-
 
     def simulate(self):
         """Launch the simulation.
@@ -431,7 +429,7 @@ class Simulator:
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
 
-        print(f'-----------------------------------------------------------\n')
+        print('-----------------------------------------------------------\n')
 
         if self._use_rate:
             duration_str = f'Survey duration is {self.survey_duration} year(s)'
@@ -441,10 +439,10 @@ class Simulator:
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia")
 
-        print(f'-----------------------------------------------------------\n')
+        print('-----------------------------------------------------------\n')
 
-        if 'survey_cit' in self.sim_cfg['survey_config']:
-            for k, v in self.obs_parameters['db_cut'].items():
+        if 'survey_cut' in self.sim_cfg['survey_config']:
+            for k, v in self.sim_cfg['survey_config']['survey_cut'].items():
                 conditions_str = ''
                 for cond in v:
                     conditions_str += str(cond) + ' OR '
@@ -453,7 +451,7 @@ class Simulator:
         else:
             print('No db cut')
 
-        print(f'\n-----------------------------------------------------------\n')
+        print('\n-----------------------------------------------------------\n')
 
         print("SN ligthcurve cuts :")
 
@@ -463,7 +461,7 @@ class Simulator:
                 print_cut += f' in {cut[3]} band'
             print(print_cut)
 
-        print(f'\n-----------------------------------------------------------\n')
+        print('\n-----------------------------------------------------------\n')
 
         sim_time = time.time()
 
@@ -487,14 +485,14 @@ class Simulator:
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
 
-        print(f'\n-----------------------------------------------------------\n')
+        print('\n-----------------------------------------------------------\n')
 
         write_time = time.time()
         self.__write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
         print(l)
 
-        print(f'\n-----------------------------------------------------------\n')
+        print('\n-----------------------------------------------------------\n')
 
         print('OUTPUT FILE(S) : ')
         if isinstance(self.sim_cfg['data']['write_format'], str):
@@ -594,8 +592,8 @@ class Simulator:
                   **self.sim_cfg['cosmology']}
 
         if self.host is None:
-            header['m_vp'] = self.sim_cfg['vpec_gen']['mean_vpec']
-            header['s_vp'] = self.sim_cfg['vpec_gen']['sig_vpec']
+            header['m_vp'] = self.sim_cfg['vpec_dist']['mean_vpec']
+            header['s_vp'] = self.sim_cfg['vpec_dist']['sig_vpec']
 
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             fits_dic = {'model_name': 'Mname',
@@ -822,8 +820,8 @@ class Simulator:
             'n_sn': len(
                 self.sn_list),
             'Mname': self.model_name,
-            'M0': self.sim_par['sn_model_par']['M0'],
-            **self.sim_par['cosmo']}
+            'M0': self.sim_cfg['sn_gen']['M0'],
+            **self.sim_cfg['cosmology']}
 
         if self.model_name in ('salt2', 'salt3'):
             sim_meta['alpha'] = self.sim_cfg['model_config']['alpha']
