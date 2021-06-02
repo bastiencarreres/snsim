@@ -924,7 +924,7 @@ class SurveyObs:
         if start_day_input.mjd <= obs_dic['expMJD'].min():
             raise ValueError('start_day before first day in survey file')
         elif end_day_input.mjd >= obs_dic['expMJD'].max():
-            ValueError('end_day after last day in survey file')
+            raise ValueError('end_day after last day in survey file')
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
                       inplace=True)

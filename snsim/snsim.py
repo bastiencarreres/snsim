@@ -427,14 +427,14 @@ class Simulator:
 
         print(SN_SIM_PRINT)
         print('-----------------------------------------------------------')
-        print(f'SIM NAME : {self.sim_name}')
-        print(f'CONFIG FILE : {self._yml_path}')
-        print(f"OBS FILE : {self.sim_cfg['survey_config']['survey_file']}")
+        print(f"SIM NAME : {self.sim_name}\n"
+              f"CONFIG FILE : {self._yml_path}\n"
+              f"OBS FILE : {self.sim_cfg['survey_config']['survey_file']}")
         if 'host_file' in self.sim_cfg :
             print(f"HOST FILE : {self.sim_cfg['host_file']}")
-        print(f"SN SIM MODEL: {self.model_name} from {self.sim_cfg['model_config']['model_dir']}")
-        print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
-        print(f'SIMULATION RANDSEED : {self.rand_seed}')
+        print(f"SN SIM MODEL : {self.model_name} from {self.sim_cfg['model_config']['model_dir']}\n"
+              f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}\n"
+              f"SIMULATION RANDSEED : {self.rand_seed}")
 
         print('-----------------------------------------------------------')
         if self._use_rate:
@@ -445,10 +445,10 @@ class Simulator:
         print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
              +use_rate_str+"\n"
               f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
-              f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n"
-              f"Survey effective duration is {self.obs.duration:.2f} days \n"
-              f"First day in survey_file: {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[0].iso}\n"
-              f"Last day in survey_file: {self.obs.start_end_days[1].mjd:.2f} MJD / {self.obs.start_end_days[1].iso}")
+              f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n\n"
+              f"First day in survey_file : {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[0].iso}\n"
+              f"Last day in survey_file : {self.obs.start_end_days[1].mjd:.2f} MJD / {self.obs.start_end_days[1].iso}\n"
+              f"Survey effective duration is {self.obs.duration:.2f} days")
 
         print('-----------------------------------------------------------\n')
 
