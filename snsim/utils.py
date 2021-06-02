@@ -3,6 +3,7 @@
 import sncosmo as snc
 import numpy as np
 from astropy.table import Table
+import astropy.time as atime
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -12,6 +13,26 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
+
+def init_astropy_time(date):
+    """Take a date and give a astropy.time.Time object.
+
+    Parameters
+    ----------
+    date : int, float or str
+        The date in MJD number or YYYY-MM-DD string.
+
+    Returns
+    -------
+    astropy.time.Time
+        An astropy.time Time object of the given date.
+
+    """
+    if isinstance(date, (int,float)):
+        format = 'mjd'
+    elif isinstance(date, str):
+        format = 'iso'
+    return atime.Time(date, format=format)
 
 def compute_z_cdf(z_shell, shell_time_rate):
     """Compute the cumulative distribution function of redshift.
@@ -247,7 +268,6 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
     except BaseException:
         res = 'NaN'
     return res
-
 
 def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     """Compute fit error on flux from sncosmo fit covariance x0,x1,c.

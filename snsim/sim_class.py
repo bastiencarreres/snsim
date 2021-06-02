@@ -55,15 +55,15 @@ class SN:
 
     Methods
     -------
-    __init_model_par()
+    __init_model_par(self)
         Init model parameters of the SN use dto compute mu.
-    __reformat_sim_table()
+    __reformat_sim_table(self)
         Give the good format to sncosmo output Table.
-    pass_cut(nep_cut)
+    pass_cut(self, nep_cut)
         Test if the SN pass the cuts given in nep_cut.
-    gen_flux()
+    gen_flux(self)
         Generate the ligthcurve flux with sncosmo.
-    get_lc_hdu()
+    get_lc_hdu(self)
         Give a hdu version of the ligthcurve table
     """
 
@@ -211,7 +211,6 @@ class SN:
 
         # elif self.sim_model.source.name == 'snoopy':
             # TODO
-        return None
 
     def pass_cut(self, nep_cut):
         """Check if the SN pass the given cuts.
@@ -554,10 +553,9 @@ class SnGen:
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 
-        model_par_list = [{**model_default, 'sncosmo': mpsn} for mpsn in rand_model_par]
+        model_par_list = ({**model_default, 'sncosmo': mpsn} for mpsn in rand_model_par)
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
-
 
     def gen_peak_time(self, n, rand_gen):
         """Generate uniformly n peak time in the survey time range.
@@ -726,21 +724,25 @@ class SnGen:
             loc=0, scale=self.sn_int_par['mag_smear'], size=n)
         return mag_smear
 
+
 class SurveyObs:
     """This class deals with the observations of the survey.
 
     Parameters
     ----------
-    db_file : str
-        Path to the SQL database of observations.
-    survey_prop : dict
-        The properties of the survey.
-    band_dic : dict
-        Translate from band name in database to sncosmo band name.
-    db_cut : dict
-        Selection to add to the SQL query.
-    add_keys : list
-        database keys to add to observation meta.
+    survey_config : dic
+        It contains all the survey configuration.
+        survey_config
+        ├── survey_file PATH TO SURVEY FILE
+        ├── ra_size RA FIELD SIZE IN DEG -> float
+        ├── dec_size DEC FIELD SIZE IN DEG -> float
+        ├── gain CCD GAIN e-/ADU -> float
+        ├── start_day STARTING DAY -> float or str, opt
+        ├── end_day ENDING DAY -> float or str, opt
+        ├── duration SURVEY DURATION -> float, opt
+        ├── zp FIXED ZEROPOINT -> float, opt
+        ├── survey_cut, CUT ON DB FILE -> dict, opt
+        └── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
 
     Attributes
     ----------
@@ -765,6 +767,9 @@ class SurveyObs:
     __extract_from_db(self)
         Extract the observation from SQL data base.
 
+     __read_start_end_days(self):
+        Initialise the start and ending day from survey configuration.
+
     epochs_selection(self, SN)
         Give the epochs of observation of a given SN.
 
@@ -773,9 +778,10 @@ class SurveyObs:
     """
 
     def __init__(self, survey_config):
-        self._survey_config = survey_config
-        self._obs_table = self.__extract_from_db()
+        self._config = survey_config
+        self._obs_table, self._start_end_days = self.__extract_from_db()
         self._field_dic = self.__init_field_dic()
+
 
     def __init_field_dic(self):
         """Create a dictionnary with fieldID and coord.
@@ -786,6 +792,7 @@ class SurveyObs:
             fieldID : {'ra' : fieldRA, 'dec': fieldDec}.
 
         """
+
         field_list = self.obs_table['fieldID'].unique()
         dic={}
         for f in field_list:
@@ -795,56 +802,97 @@ class SurveyObs:
         return dic
 
     @property
-    def survey_config(self):
-        return self._survey_config
+    def config(self):
+        """Survey configuration"""
+        return self._config
 
     @property
     def band_dic(self):
-        return self.survey_config['band_dic']
+        """Get the dic band_survey : band_sncosmo"""
+        return self.config['band_dic']
 
     @property
     def obs_table(self):
+        """Table of the observations"""
         return self._obs_table
 
     @property
     def field_size(self):
         """Get field size (ra,dec) in radians"""
-        ra_size_rad = np.radians(self._survey_config['ra_size'])
-        dec_size_rad = np.radians(self._survey_config['dec_size'])
+        ra_size_rad = np.radians(self._config['ra_size'])
+        dec_size_rad = np.radians(self._config['dec_size'])
         return ra_size_rad, dec_size_rad
 
     @property
     def gain(self):
         """Get CCD gain in e-/ADU"""
-        return self._survey_config['gain']
+        return self._config['gain']
 
     @property
     def zp(self):
         """Get zero point"""
-        if 'zp' in self._survey_config:
-            return self._survey_config['zp']
+        if 'zp' in self._config:
+            return self._config['zp']
         return 'zp_in_obs'
 
     @property
-    def mintime(self):
-        """Get observations mintime"""
-        return self.obs_table['expMJD'].min()
+    def duration(self):
+        """Get the survey duration in days"""
+        duration = self.start_end_days[1].mjd - self.start_end_days[0].mjd
+        return duration
 
     @property
-    def maxtime(self):
-        """Get observations maxtime"""
-        return self.obs_table['expMJD'].max()
+    def start_end_days(self):
+        """Get the survey start and ending days"""
+        return self._start_end_days[0], self._start_end_days[1]
+
+    def __read_start_end_days(self):
+        """Initialise the start and ending day from survey configuration.
+
+        Returns
+        -------
+        tuple(astropy.time.Time)
+            astropy Time object of the starting and the ending day of the survey.
+
+        Notes
+        -----
+        The final starting and ending days of the survey may differ from the input
+        because the survey file maybe not contain exactly observation on the input
+        day.
+
+        Note that end_day key has priority on duration
+        """
+
+        if 'start_day' in self.config:
+            start_day = self.config['start_day']
+        else:
+            start_day = obs_dic['expMJD'].min()
+
+        start_day = ut.init_astropy_time(start_day)
+
+        if 'end_day' in self.config:
+            end_day = self.config['end_day']
+        elif 'duration' in self.config:
+            end_day = start_day.mjd + self.config['duration']
+        else:
+            end_day = obs_dic['expMJD'].max()
+
+        end_day = ut.init_astropy_time(end_day)
+
+        return start_day, end_day
 
     def __extract_from_db(self):
         """Extract the observations table from SQL data base.
 
         Returns
         -------
-        astropy.Table
+        pandas.DataFrame
             The observations table.
-
+        tuple(astropy.time.Time)
+            The starting time and ending time of the survey.
         """
-        con = sqlite3.connect(self._survey_config['survey_file'])
+
+        con = sqlite3.connect(self._config['survey_file'])
 
         keys = ['expMJD',
                 'filter',
@@ -853,13 +901,13 @@ class SurveyObs:
                 'fieldDec',
                 'fiveSigmaDepth']
 
-        if 'add_data' in self.survey_config:
-            add_k = (k for k in self.survey_config['add_data'] if k not in keys)
+        if 'add_data' in self.config:
+            add_k = (k for k in self.config['add_data'] if k not in keys)
             keys+=add_k
 
         where = ''
-        if 'survey_cut' in self.survey_config:
-            cut_dic = self.survey_config['survey_cut']
+        if 'survey_cut' in self.config:
+            cut_dic = self.config['survey_cut']
             where = " WHERE "
             for cut_var in cut_dic:
                 where += "("
@@ -875,7 +923,25 @@ class SurveyObs:
         query=query[:-1]
         query+= ' FROM Summary' + where + ';'
         obs_dic = pd.read_sql_query(query, con)
-        return obs_dic
+
+        # avoid crash on errors
+        obs_dic.query('fiveSigmaDepth > 0', inplace=True)
+
+        start_day_input, end_day_input = self.__read_start_end_days()
+        if start_day_input.mjd <= obs_dic['expMJD'].min():
+            raise ValueError('start_day before first day in survey file')
+        elif end_day_input.mjd >= obs_dic['expMJD'].max():
+            raise ValueError('end_day after last day in survey file')
+
+        obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
+                      inplace=True)
+        obs_dic.reset_index(drop=True, inplace=True)
+
+        if obs_dic.size == 0:
+            raise ValueError('No observation for the given survey start_day and duration')
+        start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
+        end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
+        return obs_dic, (start_day, end_day)
 
     def epochs_selection(self, SN):
         """Give the epochs of observations of a given SN.
@@ -897,14 +963,12 @@ class SurveyObs:
         ra, dec = SN.coord
 
         # time selection
-        # use to avoid errors
-        #epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
-        epochs_selec, selec_fields_ID = nbf.time_and_error_comp(self.obs_table['expMJD'].values,
-                                                SN.sim_t0,
-                                                ModelMaxT_obsfrm,
-                                                ModelMinT_obsfrm,
-                                                self.obs_table['fiveSigmaDepth'].values,
-                                                self.obs_table['fieldID'].values)
+        epochs_selec, selec_fields_ID = nbf.time_selec(self.obs_table['expMJD'].values,
+                                                       SN.sim_t0,
+                                                       ModelMaxT_obsfrm,
+                                                       ModelMinT_obsfrm,
+                                                       self.obs_table['fiveSigmaDepth'].values,
+                                                       self.obs_table['fieldID'].values)
 
         ra_fields = np.array(list(map(lambda x: x['ra'],
                                       map(self._field_dic.get, selec_fields_ID))))
@@ -965,8 +1029,8 @@ class SurveyObs:
                      'zp': zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
-        if 'add_data' in self.survey_config:
-            for k in self.survey_config['add_data']:
+        if 'add_data' in self.config:
+            for k in self.config['add_data']:
                 if k not in obs:
                     obs[k] = self.obs_table[k][epochs_selec]
         return obs

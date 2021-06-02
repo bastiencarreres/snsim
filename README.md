@@ -20,7 +20,8 @@ survey_config:
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
-    duration: DURATION OF THE SURVEY #(Optional, default given by survey file)
+    duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
+    start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
     sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
@@ -47,7 +48,7 @@ model_config:
     mean_x1: MEAN X1 VALUE
     mean_c: MEAN C VALUE
     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
-    sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH] 
+    sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]
  vpec_gen:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
