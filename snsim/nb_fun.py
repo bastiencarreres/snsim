@@ -46,7 +46,7 @@ def sine_interp(x_new, fun_x, fun_y):
     return 0.5 * (Value_sup + Value_inf) + 0.5 * (Value_sup - Value_inf) * sin_interp
 
 @njit(cache=True)
-def R_base(a, t, vec, inv=False):
+def R_base(a, t, vec, to_field_frame=True):
     """Return the new carthesian coordinates after z axis and
     vec axis rotations.
 
@@ -83,7 +83,7 @@ def R_base(a, t, vec, inv=False):
     R[2, 1] = 0
     R[2, 2] = np.cos(t)
 
-    if not inv:
+    if to_field_frame:
         return R.T @ vec
     else:
         return R @ vec

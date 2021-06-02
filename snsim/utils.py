@@ -570,7 +570,7 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
             #if ID < 880:
             ra = field_dic[ID]['ra']
             dec = field_dic[ID]['dec']
-            new_coord = [nbf.R_base(ra,-dec,v, inv=True) for v in vec]
+            new_coord = [nbf.R_base(ra,-dec,v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
             if new_radec[3][0] > new_radec[0][0]:
                 if  new_radec[3][0]*new_radec[2][0] > 0:
