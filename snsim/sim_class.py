@@ -823,8 +823,7 @@ class SurveyObs:
         """Get zero point"""
         if 'zp' in self._survey_config:
             return self._survey_config['zp']
-        else:
-            return 'zp_in_obs'
+        return 'zp_in_obs'
 
     @property
     def mintime(self):
@@ -1095,4 +1094,17 @@ class SnSimPkl:
         return self._sim_lc
 
     def get(self, key):
+        """Get an array of sim_lc metadata.
+
+        Parameters
+        ----------
+        key : str
+            The metadata to access.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the key metadata for all SN.
+
+        """
         return np.array([lc.meta[key] for lc in self.sim_lc])

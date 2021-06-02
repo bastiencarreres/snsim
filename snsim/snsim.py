@@ -213,7 +213,7 @@ class Simulator:
         """Get number of sn simulated"""
         if self._sn_list is None:
             print('You have to run the simulation')
-            return
+            return None
         return len(self._sn_list)
 
     @property
@@ -323,7 +323,7 @@ class Simulator:
         if 'n_sn' in self.sim_cfg['sn_gen']:
             return None
         elif 'duration' not in self.sim_cfg['survey_config']:
-            duration = (self.obs.mintime() - self.obs.maxtime()) / 365.25
+            duration = (self.obs.mintime - self.obs.maxtime) / 365.25
         else:
             duration = self.sim_cfg['survey_config']['duration']
         return duration
@@ -433,8 +433,7 @@ class Simulator:
 
         if self._use_rate:
             duration_str = f'Survey duration is {self.survey_duration} year(s)'
-            print(
-                f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
+            print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
             print(duration_str + '\n')
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia")
@@ -743,7 +742,13 @@ class Simulator:
             field_dic = None
             field_size = None
             field_list = None
-        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, field_list, field_dic, field_size, **kwarg)
+        ut.plot_ra_dec(np.asarray(ra),
+                       np.asarray(dec),
+                       vpec,
+                       field_list,
+                       field_dic,
+                       field_size,
+                       **kwarg)
 
     def fit_lc(self, sn_ID=None):
         """Fit all or just one SN lightcurve(s).
