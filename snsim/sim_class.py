@@ -4,9 +4,7 @@ import sqlite3
 import numpy as np
 import sncosmo as snc
 from astropy.table import Table
-from astropy.cosmology import FlatLambdaCDM
 from astropy.io import fits
-from numpy import power as pw
 import pandas as pd
 import snsim.utils as ut
 from snsim.constants import C_LIGHT_KMS
@@ -77,7 +75,6 @@ class SN:
         self._epochs = None
         self._sim_lc = None
         self._ID = None
-        return
 
     @property
     def ID(self):
@@ -262,7 +259,8 @@ class SN:
 
         params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
-        self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'], scale=self.sim_lc['fluxerr'])
+        self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
+                                               scale=self.sim_lc['fluxerr'])
 
         return self.__reformat_sim_table()
 
@@ -724,7 +722,6 @@ class SnGen:
             numpy array containing smear terms generated.
 
         """
-        ''' Generate coherent intrinsic scattering '''
         mag_smear = rand_gen.normal(
             loc=0, scale=self.sn_int_par['mag_smear'], size=n)
         return mag_smear
@@ -762,6 +759,9 @@ class SurveyObs:
 
     Methods
     -------
+    __init_field_dic(self):
+        Create a dictionnary with fieldID and coord.
+
     __extract_from_db(self)
         Extract the observation from SQL data base.
 
@@ -772,12 +772,20 @@ class SurveyObs:
         Create the astropy table from selection bool array.
     """
 
-    def __init__(self, survey_config): #db_file, survey_prop, band_dic=None, survey_cut=None, add_keys=[]):
+    def __init__(self, survey_config):
         self._survey_config = survey_config
         self._obs_table = self.__extract_from_db()
         self._field_dic = self.__init_field_dic()
 
     def __init_field_dic(self):
+        """Create a dictionnary with fieldID and coord.
+
+        Returns
+        -------
+        dict
+            fieldID : {'ra' : fieldRA, 'dec': fieldDec}.
+
+        """
         field_list = self.obs_table['fieldID'].unique()
         dic={}
         for f in field_list:
@@ -801,7 +809,9 @@ class SurveyObs:
     @property
     def field_size(self):
         """Get field size (ra,dec) in radians"""
-        return np.radians(self._survey_config['ra_size']), np.radians(self._survey_config['dec_size'])
+        ra_size_rad = np.radians(self._survey_config['ra_size'])
+        dec_size_rad = np.radians(self._survey_config['dec_size'])
+        return ra_size_rad, dec_size_rad
 
     @property
     def gain(self):
@@ -897,8 +907,10 @@ class SurveyObs:
                                                 self.obs_table['fiveSigmaDepth'].values,
                                                 self.obs_table['fieldID'].values)
 
-        ra_fields = np.array(list(map(lambda x: x['ra'], map(self._field_dic.get, selec_fields_ID))))
-        dec_fields = np.array(list(map(lambda x: x['dec'], map(self._field_dic.get, selec_fields_ID))))
+        ra_fields = np.array(list(map(lambda x: x['ra'],
+                                      map(self._field_dic.get, selec_fields_ID))))
+        dec_fields = np.array(list(map(lambda x: x['dec'],
+                                       map(self._field_dic.get, selec_fields_ID))))
 
         # Compute the coord of the SN in the rest frame of each field
         ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
@@ -944,7 +956,7 @@ class SurveyObs:
             raise ValueError("zp is not define")
 
         # Convert maglim to flux noise (ADU)
-        skynoise = pw(10., 0.4 * (self.zp - mlim5)) / 5
+        skynoise = 10.**(0.4 * (self.zp - mlim5)) / 5
 
         # Create obs table
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
@@ -1028,8 +1040,7 @@ class SnHost:
         if self._z_range is not None:
             z_min, z_max = self._z_range
             return host_list.query(f'redshift >= {z_min} & redshift <= {z_max}')
-        else:
-            return host_list
+        return host_list
 
     def host_near_z(self, z_list, treshold = 1e-4):
         """Take the nearest host from a redshift list.

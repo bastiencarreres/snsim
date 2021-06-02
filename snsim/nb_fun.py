@@ -1,6 +1,6 @@
 """This module contains function with numba decorator to speed up the simulation
 """
-from numba import njit, prange, jit
+from numba import njit
 import numpy as np
 
 @njit(cache=True)
@@ -181,11 +181,11 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
         The boolean array of field selection.
     """
 
-    is_in_field = np.abs(ra_f_frame) < f_size[0] / 2
-    is_in_field *= np.abs(dec_f_frame) < f_size[1] / 2
+    in_field = np.abs(ra_f_frame) < f_size[0] / 2
+    in_field *= np.abs(dec_f_frame) < f_size[1] / 2
 
     dic_map={}
-    for pf, b in zip(fieldID, is_in_field):
+    for pf, b in zip(fieldID, in_field):
         dic_map[pf] = b
 
     epochs_selec[np.copy(epochs_selec)]  *= np.array([dic_map[id] for id in obs_fieldID])
