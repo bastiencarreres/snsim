@@ -3,6 +3,7 @@
 import sqlite3
 import numpy as np
 import sncosmo as snc
+import astropy.time as atime
 from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
@@ -774,8 +775,9 @@ class SurveyObs:
 
     def __init__(self, survey_config):
         self._survey_config = survey_config
-        self._obs_table = self.__extract_from_db()
+        self._obs_table, self._start_end_days = self.__extract_from_db()
         self._field_dic = self.__init_field_dic()
+
 
     def __init_field_dic(self):
         """Create a dictionnary with fieldID and coord.
@@ -786,6 +788,7 @@ class SurveyObs:
             fieldID : {'ra' : fieldRA, 'dec': fieldDec}.
 
         """
+
         field_list = self.obs_table['fieldID'].unique()
         dic={}
         for f in field_list:
@@ -826,14 +829,35 @@ class SurveyObs:
         return 'zp_in_obs'
 
     @property
-    def mintime(self):
-        """Get observations mintime"""
-        return self.obs_table['expMJD'].min()
+    def duration(self):
+        """Get the survey duration in days"""
+        duration = self.start_end_days[1].mjd - self.start_end_days[0].mjd
+        return duration
 
     @property
-    def maxtime(self):
-        """Get observations maxtime"""
-        return self.obs_table['expMJD'].max()
+    def start_end_days(self):
+        """Get the survey start and ending days"""
+        return self._start_end_days[0], self._start_end_days[1]
+
+    def __init_start_end_days(self):
+        if 'start_day' in self.survey_config:
+            start_day = self.survey_config['start_day']
+            if isinstance(start_day, (int,float)):
+                format = 'mjd'
+            elif isinstance(start_day, (int,float)):
+                format = 'iso'
+        else:
+            start_day = obs_dic['expMJD'].min()
+            format = 'mjd'
+
+        start_day = atime.Time(start_day, format=format)
+
+        if 'duration' in self.survey_config:
+            end_day = start_day + self.survey_config['duration']
+        else:
+            end_day =  atime.Time(obs_dic['expMJD'].max())
+
+        return start_day, end_day
 
     def __extract_from_db(self):
         """Extract the observations table from SQL data base.
@@ -875,7 +899,21 @@ class SurveyObs:
         query=query[:-1]
         query+= ' FROM Summary' + where + ';'
         obs_dic = pd.read_sql_query(query, con)
-        return obs_dic
+
+        start_day, end_day = self.__init_start_end_days()
+        if start_day.mjd <= obs_dic['expMJD'].min():
+            raise ValueError('start_day before first day in survey file')
+        elif end_day.mjd >= obs_dic['expMJD'].max():
+            ValueError('end_day after last day in survey file')
+
+        obs_dic.query(f"expMJD >= {start_day.mjd} & expMJD <= {end_day.mjd}", inplace=True)
+        obs_dic.reset_index(drop=True, inplace=True)
+
+        if obs_dic.size == 0:
+            raise ValueError('No observation for the given survey start_day and duration')
+
+        return obs_dic, [atime.Time(obs_dic['expMJD'].min(),format='mjd'),
+                         atime.Time(obs_dic['expMJD'].max(), format='mjd')]
 
     def epochs_selection(self, SN):
         """Give the epochs of observations of a given SN.

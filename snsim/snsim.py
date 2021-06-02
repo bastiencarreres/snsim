@@ -95,7 +95,7 @@ class Simulator:
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
     |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata               |
     |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}   |
-    |     duration: DURATION OF THE SURVEY (Optional, default given by survey file)    |
+    |     duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)    |
     |     zp: INSTRUMENTAL ZEROPOINT                                                   |
     |     ra_size: RA FIELD SIZE                                                       |
     |     dec_size: DEC FIELD SIZE                                                     |
@@ -318,17 +318,6 @@ class Simulator:
         return self.sim_cfg['sn_gen']['z_range']
 
     @property
-    def survey_duration(self):
-        """Get the survey duration"""
-        if 'n_sn' in self.sim_cfg['sn_gen']:
-            return None
-        elif 'duration' not in self.sim_cfg['survey_config']:
-            duration = (self.obs.mintime - self.obs.maxtime) / 365.25
-        else:
-            duration = self.sim_cfg['survey_config']['duration']
-        return duration
-
-    @property
     def sn_rate_z0(self):
         """Get the sn rate parameters"""
         if 'sn_rate'  in self.sim_cfg['sn_gen']:
@@ -373,7 +362,7 @@ class Simulator:
 
         """
         z_min, z_max = self.z_range
-        z_shell = np.linspace(z_min,z_max,1000)
+        z_shell = np.linspace(z_min, z_max, 1000)
         z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
         rate = self.sn_rate(z_shell_center)# Rate in Nsn/Mpc^3/year
         co_dist = self.cosmology.comoving_distance(z_shell).value
@@ -398,7 +387,23 @@ class Simulator:
             bin.
 
         """
-        return rand_gen.poisson(self.survey_duration * np.sum(z_shell_time_rate))
+        min_peak_time, max_peak_time = self.peak_time_range
+        return rand_gen.poisson((max_peak_time.mjd - min_peak_time.mjd)/365.25 * np.sum(z_shell_time_rate))
+
+    @property
+    def peak_time_range(self):
+        """Get the time range for simulate SN peak.
+
+        Returns
+        -------
+        tuple(float, float)
+            Min and max time for SN peak generation.
+        """
+        min_peak_time = self.obs.start_end_days[0] - self.generator.snc_model_time[1] \
+                   * (1 + self.z_range[1])
+        max_peak_time = self.obs.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
+                   * (1 + self.z_range[1])
+        return min_peak_time, max_peak_time
 
     def simulate(self):
         """Launch the simulation.
@@ -429,14 +434,19 @@ class Simulator:
         print(f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}")
         print(f'SIMULATION RANDSEED : {self.rand_seed}')
 
-        print('-----------------------------------------------------------\n')
-
+        print('-----------------------------------------------------------')
         if self._use_rate:
-            duration_str = f'Survey duration is {self.survey_duration} year(s)'
-            print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year")
-            print(duration_str + '\n')
+            use_rate_str= ''
         else:
-            print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia")
+            print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia\n")
+            use_rate_str=' (only for redshifts simulation)'
+        print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
+             +use_rate_str+"\n"
+              f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
+              f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n"
+              f"Survey effective duration is {self.obs.duration:.2f} days \n"
+              f"First day in survey_file: {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[0].iso}\n"
+              f"Last day in survey_file: {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[1].iso}")
 
         print('-----------------------------------------------------------\n')
 
@@ -468,8 +478,8 @@ class Simulator:
         z_shell, shell_time_rate = self.__z_shell_time_rate()
         self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
 
-        #-- Set the time range
-        self.generator.time_range = [self.obs.mintime, self.obs.maxtime]
+        #-- Set the time range with time edges effects
+        self.generator.time_range = [self.peak_time_range[0].mjd, self.peak_time_range[1].mjd]
 
         #-- Init the sn list
         self._sn_list = []

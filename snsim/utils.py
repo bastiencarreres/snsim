@@ -248,7 +248,6 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
         res = 'NaN'
     return res
 
-
 def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     """Compute fit error on flux from sncosmo fit covariance x0,x1,c.
 
