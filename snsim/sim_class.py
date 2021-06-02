@@ -3,7 +3,6 @@
 import sqlite3
 import numpy as np
 import sncosmo as snc
-import astropy.time as atime
 from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
@@ -555,7 +554,7 @@ class SnGen:
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 
-        model_par_list = [{**model_default, 'sncosmo': mpsn} for mpsn in rand_model_par]
+        model_par_list = ({**model_default, 'sncosmo': mpsn} for mpsn in rand_model_par)
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
@@ -766,6 +765,9 @@ class SurveyObs:
     __extract_from_db(self)
         Extract the observation from SQL data base.
 
+     __init_start_end_days(self):
+        Initialise the start and ending day from survey configuration.
+
     epochs_selection(self, SN)
         Give the epochs of observation of a given SN.
 
@@ -840,22 +842,35 @@ class SurveyObs:
         return self._start_end_days[0], self._start_end_days[1]
 
     def __init_start_end_days(self):
+        """Initialise the start and ending day from survey configuration.
+
+        Returns
+        -------
+        tuple(astropy.time.Time)
+            astropy Time object of the starting and the ending day of the survey.
+
+        Notes
+        -----
+        The final starting and ending days of the survey may differ from the input
+        because the survey file maybe not contain exactly observation on the input
+        day.
+        """
+
         if 'start_day' in self.survey_config:
             start_day = self.survey_config['start_day']
-            if isinstance(start_day, (int,float)):
-                format = 'mjd'
-            elif isinstance(start_day, (int,float)):
-                format = 'iso'
         else:
             start_day = obs_dic['expMJD'].min()
-            format = 'mjd'
 
-        start_day = atime.Time(start_day, format=format)
+        start_day = ut.init_astropy_time(start_day)
 
-        if 'duration' in self.survey_config:
-            end_day = start_day + self.survey_config['duration']
+        if 'end_day' in self.survey_config:
+            end_day = self.survey_config['end_day']
+        elif 'duration' in self.survey_config:
+            end_day = start_day.mjd + self.survey_config['duration']
         else:
-            end_day =  atime.Time(obs_dic['expMJD'].max())
+            end_day = obs_dic['expMJD'].max()
+
+        end_day = ut.init_astropy_time(end_day)
 
         return start_day, end_day
 
@@ -864,10 +879,12 @@ class SurveyObs:
 
         Returns
         -------
-        astropy.Table
+        pandas.DataFrame
             The observations table.
-
+        tuple(astropy.time.Time)
+            The starting time and ending time of the survey.
         """
+
         con = sqlite3.connect(self._survey_config['survey_file'])
 
         keys = ['expMJD',
@@ -900,20 +917,24 @@ class SurveyObs:
         query+= ' FROM Summary' + where + ';'
         obs_dic = pd.read_sql_query(query, con)
 
-        start_day, end_day = self.__init_start_end_days()
-        if start_day.mjd <= obs_dic['expMJD'].min():
+        # avoid crash on errors
+        obs_dic.query('fiveSigmaDepth > 0', inplace=True)
+
+        start_day_input, end_day_input = self.__init_start_end_days()
+        if start_day_input.mjd <= obs_dic['expMJD'].min():
             raise ValueError('start_day before first day in survey file')
-        elif end_day.mjd >= obs_dic['expMJD'].max():
+        elif end_day_input.mjd >= obs_dic['expMJD'].max():
             ValueError('end_day after last day in survey file')
 
-        obs_dic.query(f"expMJD >= {start_day.mjd} & expMJD <= {end_day.mjd}", inplace=True)
+        obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
+                      inplace=True)
         obs_dic.reset_index(drop=True, inplace=True)
 
         if obs_dic.size == 0:
             raise ValueError('No observation for the given survey start_day and duration')
-
-        return obs_dic, [atime.Time(obs_dic['expMJD'].min(),format='mjd'),
-                         atime.Time(obs_dic['expMJD'].max(), format='mjd')]
+        start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
+        end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
+        return obs_dic, (start_day, end_day)
 
     def epochs_selection(self, SN):
         """Give the epochs of observations of a given SN.
@@ -935,14 +956,12 @@ class SurveyObs:
         ra, dec = SN.coord
 
         # time selection
-        # use to avoid errors
-        #epochs_selec *= (self._obs_table['fiveSigmaDepth'] > 0)
-        epochs_selec, selec_fields_ID = nbf.time_and_error_comp(self.obs_table['expMJD'].values,
-                                                SN.sim_t0,
-                                                ModelMaxT_obsfrm,
-                                                ModelMinT_obsfrm,
-                                                self.obs_table['fiveSigmaDepth'].values,
-                                                self.obs_table['fieldID'].values)
+        epochs_selec, selec_fields_ID = nbf.time_selec(self.obs_table['expMJD'].values,
+                                                       SN.sim_t0,
+                                                       ModelMaxT_obsfrm,
+                                                       ModelMinT_obsfrm,
+                                                       self.obs_table['fiveSigmaDepth'].values,
+                                                       self.obs_table['fieldID'].values)
 
         ra_fields = np.array(list(map(lambda x: x['ra'],
                                       map(self._field_dic.get, selec_fields_ID))))

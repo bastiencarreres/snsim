@@ -126,7 +126,7 @@ def find_first(item, vec):
 
 
 @njit(cache=True)
-def time_and_error_comp(expMJD, t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldID):
+def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldID):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -152,7 +152,6 @@ def time_and_error_comp(expMJD, t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldI
 
     epochs_selec = (expMJD - t0 > ModelMinT) * \
                    (expMJD - t0 < ModelMaxT)
-    epochs_selec *= (fiveSigmaDepth > 0)
     return epochs_selec, np.unique(fieldID[epochs_selec])
 
 

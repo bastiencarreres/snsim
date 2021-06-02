@@ -93,8 +93,10 @@ class Simulator:
     | survey_config: #(Optional -> use obs_file)                                       |
     |     survey_file: '/PATH/TO/FILE'                                                 |
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
+    |  survey_file doesn't match sncosmo name)                                         |
     |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata               |
     |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}   |
+    |     start_day: MJD NUMBER or 'YYYY-MM-DD'(Optional, default given by survey file)|                                         |
     |     duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)    |
     |     zp: INSTRUMENTAL ZEROPOINT                                                   |
     |     ra_size: RA FIELD SIZE                                                       |
@@ -129,7 +131,7 @@ class Simulator:
     | vpec_dist:                                                                       |
     |     mean_vpec: MEAN SN PECULIAR VELOCITY                                         |
     |     sig_vpec: SIGMA VPEC                                                         |
-    | host_file: 'PATH/TO/HOSTFILE'  #(Optional)                                       |
+    | host_file: 'PATH/TO/HOSTFILE' (Optional)                                         |
     |                                                                                  |
     +----------------------------------------------------------------------------------+
     """
@@ -330,6 +332,21 @@ class Simulator:
             rate_pw = 0
         return sn_rate, rate_pw
 
+    @property
+    def peak_time_range(self):
+        """Get the time range for simulate SN peak.
+
+        Returns
+        -------
+        tuple(float, float)
+            Min and max time for SN peak generation.
+        """
+        min_peak_time = self.obs.start_end_days[0] - self.generator.snc_model_time[1] \
+                   * (1 + self.z_range[1])
+        max_peak_time = self.obs.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
+                   * (1 + self.z_range[1])
+        return min_peak_time, max_peak_time
+
     def sn_rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
 
@@ -390,21 +407,6 @@ class Simulator:
         min_peak_time, max_peak_time = self.peak_time_range
         return rand_gen.poisson((max_peak_time.mjd - min_peak_time.mjd)/365.25 * np.sum(z_shell_time_rate))
 
-    @property
-    def peak_time_range(self):
-        """Get the time range for simulate SN peak.
-
-        Returns
-        -------
-        tuple(float, float)
-            Min and max time for SN peak generation.
-        """
-        min_peak_time = self.obs.start_end_days[0] - self.generator.snc_model_time[1] \
-                   * (1 + self.z_range[1])
-        max_peak_time = self.obs.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
-                   * (1 + self.z_range[1])
-        return min_peak_time, max_peak_time
-
     def simulate(self):
         """Launch the simulation.
 
@@ -440,13 +442,13 @@ class Simulator:
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia\n")
             use_rate_str=' (only for redshifts simulation)'
-        print(f"Generate with a rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
+        print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
              +use_rate_str+"\n"
               f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
               f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n"
               f"Survey effective duration is {self.obs.duration:.2f} days \n"
               f"First day in survey_file: {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[0].iso}\n"
-              f"Last day in survey_file: {self.obs.start_end_days[0].mjd:.2f} MJD / {self.obs.start_end_days[1].iso}")
+              f"Last day in survey_file: {self.obs.start_end_days[1].mjd:.2f} MJD / {self.obs.start_end_days[1].iso}")
 
         print('-----------------------------------------------------------\n')
 

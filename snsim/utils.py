@@ -3,6 +3,7 @@
 import sncosmo as snc
 import numpy as np
 from astropy.table import Table
+import astropy.time as atime
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -12,6 +13,13 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
+
+def init_astropy_time(date):
+    if isinstance(date, (int,float)):
+        format = 'mjd'
+    elif isinstance(date, str):
+        format = 'iso'
+    return atime.Time(date, format=format)
 
 def compute_z_cdf(z_shell, shell_time_rate):
     """Compute the cumulative distribution function of redshift.

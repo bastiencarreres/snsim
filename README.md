@@ -21,6 +21,7 @@ survey_config:
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
     duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
+    start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
     sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
