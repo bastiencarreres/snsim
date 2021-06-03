@@ -438,18 +438,18 @@ def plot_lc(
     z = flux_table.meta['z']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-    plt.figure(figsize=(15,8))
-
+    fig = plt.figure()
     if residuals:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
-        ax0 = plt.subplot(gs[0])
-        ax1 = plt.subplot(gs[1], sharex=ax0)
+        ax0 = fig.add_subplot(gs[0])
+        ax1 = fig.add_subplot(gs[1], sharex=ax0)
     else:
-        ax0 = plt.subplot(111)
+        ax0 = fig.add_subplot(111)
 
-    ax0.set_title(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD')
-    plt.xlabel('Time relative to peak')
-    
+    fig.suptitle(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD',
+                fontsize='xx-large')
+    plt.xlabel('Time relative to peak', fontsize='x-large')
+
     for b in bands:
         band_mask = flux_table['band'] == b
         flux_b = flux_norm[band_mask]
@@ -458,7 +458,7 @@ def plot_lc(
 
         if mag:
             plt.gca().invert_yaxis()
-            ax0.set_ylabel('Mag')
+            ax0.set_ylabel('Mag', fontsize='x-large')
 
             # Delete < 0 pts
             flux_mask = flux_b > 0
@@ -476,7 +476,7 @@ def plot_lc(
                 plot_fit = snc_fit_model.bandmag(b, 'ab', time_th)
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
-                        err_th = compute_salt_fit_error(snc_fit_model, fit_cov, b, time_th, zp)
+                        err_th = compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)
                         err_th = 2.5 / \
                             (np.log(10) * 10**(-0.4 * (plot_fit - zp))) * err_th
                 if residuals:
@@ -484,7 +484,7 @@ def plot_lc(
                     rsd = plot - fit_pts
 
         else:
-            ax0.set_ylabel('Flux')
+            ax0.set_ylabel('Flux', fontsize='x-large')
             ax0.axhline(ls='dashdot', c='black', lw=1.5)
             plot = flux_b
             err = fluxerr_b
@@ -496,7 +496,7 @@ def plot_lc(
                 plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2','salt3'):
-                        err_th = compute_salt_fit_error(snc_fit_model, fit_cov, b, time_th, zp)
+                        err_th = compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)
                 if residuals:
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')
                     rsd = plot - fit_pts
@@ -504,17 +504,13 @@ def plot_lc(
         p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
         handles, labels = ax0.get_legend_handles_labels()
 
+        par_str = ''
         if snc_sim_model is not None:
-            # #par_str = ("Simulated parameters :\n"
-            #            f"x0 = {flux_table.meta['sim_x0']:.2f}\n"
-            #            f"mb = {flux_table.meta['sim_mb']:.2f}\n"
-            #            f"x1 = {flux_table.meta['sim_x1']:.2f}\n"
-            #            f"c = {flux_table.meta['sim_c']:.3f}\n")
-
-            # #plt.figtext(0.21, 0.9, par_str, horizontalalignment='center',
-            #             fontsize=8, multialignment='left',
-            #             bbox=dict(boxstyle="round", facecolor='#D8D8D8',
-            #             ec="0.5", pad=0.5, alpha=1), fontweight='bold')
+            par_str += ("Simulated parameters : "
+                       f"x0 = {flux_table.meta['sim_x0']:.2e}; "
+                       f"mb = {flux_table.meta['sim_mb']:.2f}; "
+                       f"x1 = {flux_table.meta['sim_x1']:.2f}; "
+                       f"c = {flux_table.meta['sim_c']:.3f}\n")
 
             ax0.plot(time_th - t0, plot_th, color=p[0].get_color())
             sim_line = Line2D([0], [0], color='k', linestyle='solid')
@@ -523,6 +519,20 @@ def plot_lc(
             labels.append(sim_label)
 
         if snc_fit_model is not None:
+            mb_fit = x0_to_mB(snc_fit_model.parameters[2])
+            mb_err = np.sqrt(cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:,1:])[0,0])
+
+            par_str += ("Fitted parameters : "
+                       f"t$_0$ = {snc_fit_model.parameters[1]:.2f}"
+                       f"$\pm$ {np.sqrt(fit_cov[0,0]):.2f}; "
+                       f"x0 = {snc_fit_model.parameters[2]:.2e}"
+                       f"$\pm$ {np.sqrt(fit_cov[1,1]):.2e}; "
+                       f"mb = {mb_fit:.2f}"
+                       f"$\pm$ {mb_err:.2f}; "
+                       f"x1 = {snc_fit_model.parameters[3]:.2f}; "
+                       f"$\pm$ {np.sqrt(fit_cov[2,2]):.2f}; "
+                       f"c = {snc_fit_model.parameters[4]:.3f}"
+                       f"$\pm$ {np.sqrt(fit_cov[3,3]):.3f}; ")
 
             ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
             fit_line = Line2D([0], [0], color='k', linestyle='--')
@@ -545,13 +555,18 @@ def plot_lc(
                 ax1.plot(time_th - t0, err_th, ls='--', color=p[0].get_color())
                 ax1.plot(time_th - t0, -err_th, ls='--', color=p[0].get_color())
 
-    ax0.legend(handles=handles, labels=labels)
+    ax0.set_title(par_str, fontsize='x-large', loc='left',pad=12)
+    ax0.legend(handles=handles, labels=labels, fontsize='x-large')
+
     if snc_sim_model is not None:
         plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
     else:
         plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
+
+    manager = plt.get_current_fig_manager()
+    manager.window.showMaximized()
     plt.subplots_adjust(hspace=.0)
     plt.show()
 

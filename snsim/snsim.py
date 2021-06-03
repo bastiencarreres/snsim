@@ -709,17 +709,17 @@ class Simulator:
             f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
             f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
-            cov_x0_x1_c = self.fit_res[sn_ID]['covariance'][1:, 1:]
+            cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
         else:
             f_model = None
-            cov_x0_x1_c = None
+            cov_t0_x0_x1_c = None
             residuals = False
 
         ut.plot_lc(sn.sim_lc, mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
-                   fit_cov=cov_x0_x1_c,
+                   fit_cov=cov_t0_x0_x1_c,
                    zp=zp,
                    residuals=residuals)
 
