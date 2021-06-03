@@ -94,14 +94,16 @@ class Simulator:
     |  survey_file doesn't match sncosmo name)                                         |
     |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata               |
     |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}   |
-    |     start_day: MJD NUMBER or 'YYYY-MM-DD'(Optional, default given by survey file)|                                         |
+    |     start_day: MJD NUMBER or 'YYYY-MM-DD'(Optional, default given by survey file)|
     |     duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)    |
-    |     zp: INSTRUMENTAL ZEROPOINT                                                   |
+    |     zp: INSTRUMENTAL ZEROPOINT (Optional, default given by survey file)          |
+    |     sig_zp: ZEROPOINT ERROR (Optional, default given by survey file)             |
     |     ra_size: RA FIELD SIZE                                                       |
     |     dec_size: DEC FIELD SIZE                                                     |
     |     gain: CCD GAIN e-/ADU                                                        |
     | sn_gen:                                                                          |
     |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
+    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)        |
     |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                      |
     |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                  |
     |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS |
@@ -403,8 +405,12 @@ class Simulator:
             bin.
 
         """
-        min_peak_time, max_peak_time = self.peak_time_range
-        return rand_gen.poisson((max_peak_time.mjd - min_peak_time.mjd)/365.25 * np.sum(z_shell_time_rate))
+        if 'duration_for_rate' in self.sim_cfg['sn_gen']:
+            time_in_days = self.sim_cfg['sn_gen']['duration_for_rate']
+        else:
+            min_peak_time, max_peak_time = self.peak_time_range
+            time_in_days = max_peak_time.mjd - min_peak_time.mjd
+        return rand_gen.poisson(time_in_days/365.25 * np.sum(z_shell_time_rate))
 
     def simulate(self):
         """Launch the simulation.
@@ -436,18 +442,25 @@ class Simulator:
               f"SIMULATION RANDSEED : {self.rand_seed}")
 
         print('-----------------------------------------------------------')
+
         if self._use_rate:
             use_rate_str= ''
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia\n")
             use_rate_str=' (only for redshifts simulation)'
+
         print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
              +use_rate_str+"\n"
               f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
               f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n\n"
               f"First day in survey_file : {self.survey.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
-              f"Last day in survey_file : {self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}\n"
-              f"Survey effective duration is {self.survey.duration:.2f} days")
+              f"Last day in survey_file : {self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}")
+
+        if 'duration_for_rate' in self.sim_cfg['sn_gen']:
+            print(f"N SN is generate for a duration of {self.sim_cfg['sn_gen']['duration_for_rate']:.2f} days")
+        else:
+            print(f"Survey effective duration is {self.survey.duration:.2f} days")
+
 
         print('-----------------------------------------------------------\n')
 

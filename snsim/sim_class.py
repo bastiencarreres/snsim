@@ -258,6 +258,11 @@ class SN:
 
         params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
+
+        self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 + \
+                                 (np.log(10)/2.5 * self.sim_lc['flux'] * \
+                                  self.epochs['sig_zp'])**2)
+
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
 
@@ -552,7 +557,7 @@ class SnGen:
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
 
         #-- SN initialisation part :
-        
+
         sn_par = ({'zcos': z,
                    'como_dist': self.cosmology.comoving_distance(z).value,
                    'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
@@ -844,10 +849,16 @@ class SurveyObs:
 
     @property
     def zp(self):
-        """Get zero point"""
+        """Get zero point and it's uncertainty"""
         if 'zp' in self._config:
-            return self._config['zp']
-        return 'zp_in_obs'
+            zp = self._config['zp']
+        else:
+            zp = 'zp_in_obs'
+        if 'sig_zp' in self._config:
+            sig_zp = self._config['sig_zp']
+        else:
+            sig_zp = 'sig_zp_in_obs'
+        return (zp, sig_zp)
 
     @property
     def duration(self):
@@ -860,8 +871,13 @@ class SurveyObs:
         """Get the survey start and ending days"""
         return self._start_end_days[0], self._start_end_days[1]
 
-    def _read_start_end_days(self):
+    def _read_start_end_days(self, obs_dic):
         """Initialise the start and ending day from survey configuration.
+
+        Parameters
+        ----------
+        obs_dic : pandas.DataFrame
+            The actual obs_dic to take min and max obs date if not given.
 
         Returns
         -------
@@ -915,9 +931,15 @@ class SurveyObs:
                 'fieldDec',
                 'fiveSigmaDepth']
 
+        if not 'zp' in self.config:
+            keys += ['zp']
+
+        if not 'sig_zp' in self.config:
+            keys += ['sig_zp']
+
         if 'add_data' in self.config:
             add_k = (k for k in self.config['add_data'] if k not in keys)
-            keys+=add_k
+            keys += add_k
 
         where = ''
         if 'survey_cut' in self.config:
@@ -941,10 +963,11 @@ class SurveyObs:
         # avoid crash on errors
         obs_dic.query('fiveSigmaDepth > 0', inplace=True)
 
-        start_day_input, end_day_input = self._read_start_end_days()
-        if start_day_input.mjd <= obs_dic['expMJD'].min():
+        start_day_input, end_day_input = self._read_start_end_days(obs_dic)
+
+        if start_day_input.mjd < obs_dic['expMJD'].min():
             raise ValueError('start_day before first day in survey file')
-        elif end_day_input.mjd >= obs_dic['expMJD'].max():
+        elif end_day_input.mjd > obs_dic['expMJD'].max():
             raise ValueError('end_day after last day in survey file')
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
@@ -1025,15 +1048,18 @@ class SurveyObs:
         if self.band_dic is not None:
             band = np.array(list(map(self.band_dic.get, band)))
 
-        if self.zp != 'zp_in_obs':
-            zp = [self.zp] * np.sum(epochs_selec)
-        elif isinstance(zp, (int, float)):
-            zp = self.obs_table['zp'][epochs_selec]
+        if self.zp[0] != 'zp_in_obs':
+            zp = [self.zp[0]] * np.sum(epochs_selec)
         else:
-            raise ValueError("zp is not define")
+            zp = self.obs_table['zp'][epochs_selec]
+
+        if self.zp[1] != 'sig_zp_in_obs':
+            sig_zp = [self.zp[1]] * np.sum(epochs_selec)
+        else:
+            sig_zp = self.obs_table['sig_zp'][epochs_selec]
 
         # Convert maglim to flux noise (ADU)
-        skynoise = 10.**(0.4 * (self.zp - mlim5)) / 5
+        skynoise = 10.**(0.4 * (zp - mlim5)) / 5
 
         # Create obs table
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
@@ -1041,6 +1067,7 @@ class SurveyObs:
                      'gain': [self.gain] * np.sum(epochs_selec),
                      'skynoise': skynoise,
                      'zp': zp,
+                     'sig_zp': sig_zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
         if 'add_data' in self.config:

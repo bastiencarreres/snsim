@@ -20,10 +20,12 @@ survey_config:
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
-    duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
     start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
+    end_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
+    duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
+    duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (DAYS) #(Optional)
     sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
     rate_pw: rate = sn_rate*(1+z)^rate_pw #(Optional, default=0)
     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS #(Optional defaut >= 1 ep)
@@ -55,7 +57,7 @@ model_config:
  host_file: '/PATH/TO/HOSTFILE' # Optional
 
 ```
-
+* If you set end_day and duration, duration will be ignored
 * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
