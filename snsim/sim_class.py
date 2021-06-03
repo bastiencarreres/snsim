@@ -975,7 +975,7 @@ class SurveyObs:
         obs_dic.reset_index(drop=True, inplace=True)
 
         if obs_dic.size == 0:
-            raise ValueError('No observation for the given survey start_day and duration')
+            raise  RuntimeError('No observation for the given survey start_day and duration')
         start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
         end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
         return obs_dic, (start_day, end_day)
@@ -1070,7 +1070,7 @@ class SurveyObs:
                      'sig_zp': sig_zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
-                     
+
         if 'add_data' in self.config:
             for k in self.config['add_data']:
                 if k not in obs:

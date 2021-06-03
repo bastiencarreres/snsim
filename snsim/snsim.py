@@ -152,7 +152,7 @@ class Simulator:
 
         # Check if there is a db_file
         if 'survey_config' not in self.sim_cfg:
-            raise RuntimeError("Set a survey_file -> type help(sn_sim) to print the syntax")
+            raise  KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
         # cadence sim or n fixed
         if 'n_sn' in self.sim_cfg['sn_gen']:
