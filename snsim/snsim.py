@@ -45,21 +45,8 @@ class Simulator:
     -------
     sn_rate(z)
         Give the rate SNs/Mpc^3/year at redshift z.
-    __time_rate_bins()
-        Give the time rate SN/years in redshift bins.
-    __gen_n_sn(rand_seed)
-        Generate the number of SN with Poisson law.
     simulate()
         Launch the simulation.
-    __cadence_sim()
-        Simulaton where the number of SN observed is determined by
-        survey properties and poisson law.
-    __fix_nsn_sim()
-        Simulation where the number of SN is fixed.
-    __get_primary_header()
-        Generate the primary header of sim fits file.
-    __write_sim()
-        Write sim lightcurves in fits or/and pkl format(s).
     plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)
         Plot the given SN lightcurve.
     plot_ra_dec(self, plot_vpec=False, **kwarg):
@@ -68,10 +55,22 @@ class Simulator:
         Fit all or just one SN lightcurve(s).
     write_fit()
         Write fits results in fits format.
+    _time_rate_bins()
+        Give the time rate SN/years in redshift bins.
+    _gen_n_sn(rand_seed)
+        Generate the number of SN with Poisson law.
+    _cadence_sim()
+        Simulaton where the number of SN observed is determined by
+        survey properties and poisson law.
+    _fix_nsn_sim()
+        Simulation where the number of SN is fixed.
+    _get_primary_header()
+        Generate the primary header of sim fits file.
+    _write_sim()
+        Write sim lightcurves in fits or/and pkl format(s).
 
-    NOTES
+    Notes
     -----
-    Remarks :
 
     - If the name of bands in the survey file doesn't match sncosmo bands
     you can use the key band_dic to translate filters names
@@ -364,7 +363,7 @@ class Simulator:
         rate_z0, rpw = self.sn_rate_z0
         return rate_z0 * (1 + z)**rpw
 
-    def __z_shell_time_rate(self):
+    def _z_shell_time_rate(self):
         """Give the time rate SN/years in redshift shell.
 
         Parameters
@@ -389,7 +388,7 @@ class Simulator:
         shell_time_rate = rate * shell_vol / (1 + z_shell_center)
         return z_shell, shell_time_rate
 
-    def __gen_n_sn(self, rand_gen, z_shell_time_rate):
+    def _gen_n_sn(self, rand_gen, z_shell_time_rate):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -417,7 +416,7 @@ class Simulator:
         Notes
         -----
         Simulation routine :
-        1- Use either __cadence_sim() or __gen_n_sn()
+        1- Use either _cadence_sim() or _gen_n_sn()
         to run the simulation
         2- Gen all SN parameters inside SNGen class or/and SnHost class
         3- Check if SN pass cuts and then generate the lightcurves.
@@ -477,7 +476,7 @@ class Simulator:
         sim_time = time.time()
 
         #-- Init the redshift distribution
-        z_shell, shell_time_rate = self.__z_shell_time_rate()
+        z_shell, shell_time_rate = self._z_shell_time_rate()
         self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
 
         #-- Set the time range with time edges effects
@@ -490,16 +489,16 @@ class Simulator:
         rand_gen = np.random.default_rng(self.rand_seed)
 
         if self._use_rate:
-            self.__cadence_sim(rand_gen, shell_time_rate)
+            self._cadence_sim(rand_gen, shell_time_rate)
         else:
-            self.__fix_nsn_sim(rand_gen)
+            self._fix_nsn_sim(rand_gen)
         l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
         print(l)
 
         print('\n-----------------------------------------------------------\n')
 
         write_time = time.time()
-        self.__write_sim()
+        self._write_sim()
         l = f'Sim file write in {time.time() - write_time:.1f} seconds'
         print(l)
 
@@ -519,7 +518,7 @@ class Simulator:
                       + '.'
                       + f)
 
-    def __cadence_sim(self, rand_gen, shell_time_rate):
+    def _cadence_sim(self, rand_gen, shell_time_rate):
         """Simulaton where the number of SN observed is determined by
         survey properties and poisson law..
 
@@ -545,7 +544,7 @@ class Simulator:
 
         """
         #-- Generate the number of SN
-        n_sn = self.__gen_n_sn(rand_gen, shell_time_rate)
+        n_sn = self._gen_n_sn(rand_gen, shell_time_rate)
 
         SN_ID = 0
         sn_list_tmp = self.generator(n_sn, rand_gen)
@@ -557,7 +556,7 @@ class Simulator:
                 SN_ID += 1
                 self._sn_list.append(sn)
 
-    def __fix_nsn_sim(self, rand_gen):
+    def _fix_nsn_sim(self, rand_gen):
         """Simulation where the number of SN is fixed.
 
         Parameters
@@ -589,7 +588,7 @@ class Simulator:
             else:
                 raise_trigger += 1
 
-    def __get_primary_header(self):
+    def _get_primary_header(self):
         """Generate the primary header of sim fits file..
 
         Returns
@@ -623,7 +622,7 @@ class Simulator:
             header['Smod'] = self.sim_cfg['sn_gen']['smear_mod']
         return header
 
-    def __write_sim(self):
+    def _write_sim(self):
         """Write sim lightcurves in fits or/and pkl format(s).
 
         Returns
@@ -634,7 +633,7 @@ class Simulator:
         """
 
         write_path = self.sim_cfg['data']['write_path']
-        sim_header = self.__get_primary_header()
+        sim_header = self._get_primary_header()
         if 'fits' in self.sim_cfg['data']['write_format']:
             lc_hdu_list = (sn.get_lc_hdu() for sn in self._sn_list)
             hdu_list = fits.HDUList(
@@ -890,7 +889,7 @@ class OpenSim:
 
     Methods
     -------
-    __init_sim_lc()
+    _init_sim_lc()
         Extract data from file.
     plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)
         Plot the given SN lightcurve.
@@ -907,12 +906,12 @@ class OpenSim:
     def __init__(self, sim_file, model_dir):
         '''Copy some function of snsim to allow to use sim file'''
         self._file_path, self._file_ext = os.path.splitext(sim_file)
-        self._sim_lc, self._header = self.__init_sim_lc()
+        self._sim_lc, self._header = self._init_sim_lc()
         self._model_dir = model_dir
         self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
 
-    def __init_sim_lc(self):
+    def _init_sim_lc(self):
         if self._file_ext == '.fits':
             sim_lc = []
             with fits.open(self._file_path + self._file_ext) as sf:

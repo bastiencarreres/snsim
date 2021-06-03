@@ -55,9 +55,9 @@ class SN:
 
     Methods
     -------
-    __init_model_par(self)
+    _init_model_par(self)
         Init model parameters of the SN use dto compute mu.
-    __reformat_sim_table(self)
+    _reformat_sim_table(self)
         Give the good format to sncosmo output Table.
     pass_cut(self, nep_cut)
         Test if the SN pass the cuts given in nep_cut.
@@ -71,7 +71,7 @@ class SN:
         self.sim_model = sim_model.__copy__()
         self._sn_par = sn_par
         self._model_par = model_par
-        self.__init_model_par()
+        self._init_model_par()
         self._epochs = None
         self._sim_lc = None
         self._ID = None
@@ -172,7 +172,7 @@ class SN:
         """Get sim_lc"""
         return self._sim_lc
 
-    def __init_model_par(self):
+    def _init_model_par(self):
         """Extract and compute SN parameters that depends on used model.
 
         Returns
@@ -261,9 +261,9 @@ class SN:
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
 
-        return self.__reformat_sim_table()
+        return self._reformat_sim_table()
 
-    def __reformat_sim_table(self):
+    def _reformat_sim_table(self):
         """Give the good format to the sncosmo output Table.
 
         Returns
@@ -368,18 +368,18 @@ class SnGen:
 
     Methods
     -------
-    __init__(sim_par, host=None)
+    __init__(self, sim_par, host=None)
         Initialise the SNGen object.
-    __call__(n_sn, z_range, time_range, rand_seed)
+    _init_model_keys(self)
+        Init the SN model parameters names.
+    _init_sim_model(self)
+        Configure the sncosmo Model
+    __call__(self, n_sn, z_range, time_range, rand_seed)
         Simulate a given number of sn in a given redshift range and time range
         using the given random seed.
-    __init_model_keys()
-        Init the SN model parameters names.
-    __init_sim_model()
-        Configure the sncosmo Model
     gen_peak_time(self, n, rand_seed)
         Randomly generate peak time in the given time range.
-    gen_coord(n, rand_seed)
+    gen_coord(self, n, rand_seed)
         Generate ra, dec uniformly on the sky.
     gen_zcos(self, n, rand_seed)
         Generate redshift following a distribution.
@@ -391,7 +391,7 @@ class SnGen:
         Generate peculiar velocities on a gaussian law.
     gen_coh_scatter(self, n, rand_seed)
         Generate the coherent scattering term.
-    __gen_noise_rand_seed(self, n, rand_seed)
+    _gen_noise_rand_seed(self, n, rand_seed)
         Generate the rand seeds for random fluxerror.
     """
 
@@ -399,8 +399,8 @@ class SnGen:
         self._sn_int_par = sn_int_par
         self._model_config = model_config
         self._cmb = cmb
-        self.sim_model = self.__init_sim_model()
-        self._model_keys = self.__init_model_keys()
+        self.sim_model = self._init_sim_model()
+        self._model_keys = self._init_model_keys()
         self._vpec_dist = vpec_dist
         self._cosmology = cosmology
         self._host = host
@@ -465,7 +465,7 @@ class SnGen:
         """Set the redshift cumulative distribution"""
         self._z_cdf = cdf
 
-    def __init_sim_model(self):
+    def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
 
         Returns
@@ -482,7 +482,7 @@ class SnGen:
             model = sct.init_sn_smear_model(model, self.sn_int_par['smear_mod'])
         return model
 
-    def __init_model_keys(self):
+    def _init_model_keys(self):
         """Initialise the model keys depends on the SN simulation model.
 
         Returns
@@ -761,29 +761,29 @@ class SurveyObs:
 
     Methods
     -------
-    __init_field_dic(self):
+    _init_field_dic(self):
         Create a dictionnary with fieldID and coord.
 
-    __extract_from_db(self)
+    _extract_from_db(self)
         Extract the observation from SQL data base.
 
-     __read_start_end_days(self):
+     _read_start_end_days(self):
         Initialise the start and ending day from survey configuration.
 
     epochs_selection(self, SN)
         Give the epochs of observation of a given SN.
 
-     __make_obs_table(self, epochs_selec):
+     _make_obs_table(self, epochs_selec):
         Create the astropy table from selection bool array.
     """
 
     def __init__(self, survey_config):
         self._config = survey_config
-        self._obs_table, self._start_end_days = self.__extract_from_db()
-        self._field_dic = self.__init_field_dic()
+        self._obs_table, self._start_end_days = self._extract_from_db()
+        self._field_dic = self._init_field_dic()
 
 
-    def __init_field_dic(self):
+    def _init_field_dic(self):
         """Create a dictionnary with fieldID and coord.
 
         Returns
@@ -846,7 +846,7 @@ class SurveyObs:
         """Get the survey start and ending days"""
         return self._start_end_days[0], self._start_end_days[1]
 
-    def __read_start_end_days(self):
+    def _read_start_end_days(self):
         """Initialise the start and ending day from survey configuration.
 
         Returns
@@ -881,7 +881,7 @@ class SurveyObs:
 
         return start_day, end_day
 
-    def __extract_from_db(self):
+    def _extract_from_db(self):
         """Extract the observations table from SQL data base.
 
         Returns
@@ -927,7 +927,7 @@ class SurveyObs:
         # avoid crash on errors
         obs_dic.query('fiveSigmaDepth > 0', inplace=True)
 
-        start_day_input, end_day_input = self.__read_start_end_days()
+        start_day_input, end_day_input = self._read_start_end_days()
         if start_day_input.mjd <= obs_dic['expMJD'].min():
             raise ValueError('start_day before first day in survey file')
         elif end_day_input.mjd >= obs_dic['expMJD'].max():
@@ -985,10 +985,10 @@ class SurveyObs:
                                ra_field_frame, dec_field_frame,
                                self.field_size, selec_fields_ID)
         if is_obs:
-            return self.__make_obs_table(epochs_selec)
+            return self._make_obs_table(epochs_selec)
         return None
 
-    def __make_obs_table(self, epochs_selec):
+    def _make_obs_table(self, epochs_selec):
         """ Create the astropy table from selection bool array.
 
         Parameters
@@ -1059,7 +1059,7 @@ class SnHost:
 
     Methods
     -------
-    __read_host_file()
+    _read_host_file()
         Extract host from host file.
     random_host(n, z_range, rand_seed)
         Random choice of host in a redshift range.
@@ -1069,7 +1069,7 @@ class SnHost:
     def __init__(self, host_file, z_range=None):
         self._z_range = z_range
         self._file = host_file
-        self._table = self.__read_host_file()
+        self._table = self._read_host_file()
         self._max_dz = None
 
     @property
@@ -1086,7 +1086,7 @@ class SnHost:
         """Get astropy Table of host"""
         return self._table
 
-    def __read_host_file(self):
+    def _read_host_file(self):
         """Extract host from host file.
 
         Returns
