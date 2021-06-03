@@ -513,32 +513,46 @@ class SnGen:
             A list containing SN object.
 
         """
+        #-- RANDOM PART :
+        #---- Order is important for reproduce a simulation
+        #---- because of the numpy random generator object
+        #---- The order is : 1. t0 -> SN peak time
+        #----                2. zcos -> SN cosmological redshifts
+        #----                3. mag_smear -> Coherent magnitude scattering
+        #----                4. opt_seeds -> 3 indep randseeds for coord, vpec and model
+
         if rand_gen is None:
             rand_gen = np.random.default_rng()
 
         #-- Generate peak magnitude
         t0 = self.gen_peak_time(n_sn, rand_gen)
 
+        #-- Generate cosmological redshifts
+        zcos = self.gen_zcos(n_sn, rand_gen)
+
         #-- Generate coherent mag smearing
         mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
 
+        #-- Generate 3 randseeds for optionnal parameters randomization
+        opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
+
         #- Generate random parameters dependants on sn model used
-        rand_model_par = self.gen_model_par(n_sn, rand_gen)
+        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]))
 
         #-- If there is host use them
         if self.host is not None:
-            z_tmp = self.gen_zcos(n_sn, rand_gen)
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
-            host = self.host.host_near_z(z_tmp, treshold)
+            host = self.host.host_near_z(zcos, treshold)
             ra = host['ra']
             dec = host['dec']
             zcos = host['redshift']
             vpec = host['vp_sight']
         else:
-            ra, dec = self.gen_coord(n_sn, rand_gen)
-            zcos = self.gen_zcos(n_sn, rand_gen)
-            vpec = self.gen_vpec(n_sn, rand_gen)
+            ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
+            vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
 
+        #-- SN initialisation part :
+        
         sn_par = ({'zcos': z,
                    'como_dist': self.cosmology.comoving_distance(z).value,
                    'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
