@@ -29,12 +29,16 @@ keys_dic = {
         'band_dic',
         'db_cut',
         'zp',
+        'sig_zp',
         'gain',
         'ra_size',
         'dec_size',
+        'start_day',
+        'end_day',
         'duration'],
     'sn_gen': [
         'randseed',
+        'duration_for_rate',
         'n_sn',
         'sn_rate',
         'rate_pw',
@@ -129,7 +133,7 @@ for K in keys_dic:
 
 if args.__dict__['host_file'] is not None:
     param_dic['host_file'] = args.__dict__['host_file']
-    
+
 elif 'host_file' in yml_config:
         param_dic['host_file'] = yml_config['host_file']
 

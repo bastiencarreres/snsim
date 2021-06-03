@@ -1070,6 +1070,7 @@ class SurveyObs:
                      'sig_zp': sig_zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
+                     
         if 'add_data' in self.config:
             for k in self.config['add_data']:
                 if k not in obs:
