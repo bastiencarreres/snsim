@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
+import textwrap as tw
 import snsim.nb_fun as nbf
 from snsim.constants import SNC_MAG_OFFSET_AB, C_LIGHT_KMS
 
@@ -405,7 +406,6 @@ def plot_lc(
         fit_cov=None,
         residuals=False):
     """Ploting a lightcurve flux table.
-snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
 
     Parameters
     ----------
@@ -436,8 +436,10 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
 
     t0 = flux_table.meta['sim_t0']
     z = flux_table.meta['z']
+
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-    plt.figure()
+    plt.figure(figsize=(15,8))
+
     if residuals:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
         ax0 = plt.subplot(gs[0])
@@ -445,8 +447,9 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
     else:
         ax0 = plt.subplot(111)
 
+    ax0.set_title(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD')
     plt.xlabel('Time relative to peak')
-
+    
     for b in bands:
         band_mask = flux_table['band'] == b
         flux_b = flux_norm[band_mask]
@@ -502,6 +505,17 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
         handles, labels = ax0.get_legend_handles_labels()
 
         if snc_sim_model is not None:
+            # #par_str = ("Simulated parameters :\n"
+            #            f"x0 = {flux_table.meta['sim_x0']:.2f}\n"
+            #            f"mb = {flux_table.meta['sim_mb']:.2f}\n"
+            #            f"x1 = {flux_table.meta['sim_x1']:.2f}\n"
+            #            f"c = {flux_table.meta['sim_c']:.3f}\n")
+
+            # #plt.figtext(0.21, 0.9, par_str, horizontalalignment='center',
+            #             fontsize=8, multialignment='left',
+            #             bbox=dict(boxstyle="round", facecolor='#D8D8D8',
+            #             ec="0.5", pad=0.5, alpha=1), fontweight='bold')
+
             ax0.plot(time_th - t0, plot_th, color=p[0].get_color())
             sim_line = Line2D([0], [0], color='k', linestyle='solid')
             sim_label = 'Sim'
@@ -509,6 +523,7 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
             labels.append(sim_label)
 
         if snc_fit_model is not None:
+
             ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
             fit_line = Line2D([0], [0], color='k', linestyle='--')
             fit_label = 'Fit'
