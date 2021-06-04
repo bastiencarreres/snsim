@@ -204,8 +204,8 @@ def compute_z2cmb(ra, dec, cmb):
         Redshifts relative to cmb.
 
     """
-    ra_cmb = cmb['ra_cmb']
-    dec_cmb = cmb['dec_cmb']
+    l_cmb = cmb['l_cmb']
+    b_cmb = cmb['b_cmb']
     v_cmb = cmb['v_cmb']
 
     # use ra dec to simulate the effect of our motion
@@ -214,12 +214,12 @@ def compute_z2cmb(ra, dec, cmb):
                         frame='fk5')  # coord in fk5 frame
 
     galac_coord = coordfk5.transform_to('galactic')
-    ra_gal = galac_coord.l.rad - 2 * np.pi * \
+    l_gal = galac_coord.l.rad - 2 * np.pi * \
         np.sign(galac_coord.l.rad) * (abs(galac_coord.l.rad) > np.pi)
-    dec_gal = galac_coord.b.rad
+    b_gal = galac_coord.b.rad
 
-    ss = np.sin(dec_gal) * np.sin(dec_cmb * np.pi / 180)
-    ccc = np.cos(dec_gal) * np.cos(dec_cmb * np.pi / 180) * np.cos(ra_gal - ra_cmb * np.pi / 180)
+    ss = np.sin(b_gal) * np.sin(b_cmb * np.pi / 180)
+    ccc = np.cos(b_gal) * np.cos(b_cmb * np.pi / 180) * np.cos(l_gal - l_cmb * np.pi / 180)
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
 
 
@@ -440,11 +440,14 @@ def plot_lc(
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
     fig = plt.figure()
     if residuals:
-        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
-        ax0 = fig.add_subplot(gs[0])
-        ax1 = fig.add_subplot(gs[1], sharex=ax0)
+        gs = gridspec.GridSpec(3, 1, height_ratios=[0.5, 2, 1])
+        text_ax = fig.add_subplot(gs[0])
+        ax0 = fig.add_subplot(gs[1])
+        ax1 = fig.add_subplot(gs[2], sharex=ax0)
     else:
-        ax0 = fig.add_subplot(111)
+        gs = gridspec.GridSpec(2, 1, height_ratios=[0.5, 2])
+        text_ax = fig.add_subplot(gs[0])
+        ax0 = fig.add_subplot(gs[1])
 
     fig.suptitle(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD',
                 fontsize='xx-large')
@@ -503,14 +506,9 @@ def plot_lc(
 
         p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
         handles, labels = ax0.get_legend_handles_labels()
+        props = dict(boxstyle='round', facecolor='blue', alpha=0.2)
 
-        par_str = ''
         if snc_sim_model is not None:
-            par_str += ("Simulated parameters : "
-                       f"x0 = {flux_table.meta['sim_x0']:.2e}; "
-                       f"mb = {flux_table.meta['sim_mb']:.2f}; "
-                       f"x1 = {flux_table.meta['sim_x1']:.2f}; "
-                       f"c = {flux_table.meta['sim_c']:.3f}\n")
 
             ax0.plot(time_th - t0, plot_th, color=p[0].get_color())
             sim_line = Line2D([0], [0], color='k', linestyle='solid')
@@ -521,18 +519,6 @@ def plot_lc(
         if snc_fit_model is not None:
             mb_fit = x0_to_mB(snc_fit_model.parameters[2])
             mb_err = np.sqrt(cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:,1:])[0,0])
-
-            par_str += ("Fitted parameters : "
-                       f"t$_0$ = {snc_fit_model.parameters[1]:.2f}"
-                       f"$\pm$ {np.sqrt(fit_cov[0,0]):.2f}; "
-                       f"x0 = {snc_fit_model.parameters[2]:.2e}"
-                       f"$\pm$ {np.sqrt(fit_cov[1,1]):.2e}; "
-                       f"mb = {mb_fit:.2f}"
-                       f"$\pm$ {mb_err:.2f}; "
-                       f"x1 = {snc_fit_model.parameters[3]:.2f}; "
-                       f"$\pm$ {np.sqrt(fit_cov[2,2]):.2f}; "
-                       f"c = {snc_fit_model.parameters[4]:.3f}"
-                       f"$\pm$ {np.sqrt(fit_cov[3,3]):.3f}; ")
 
             ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
             fit_line = Line2D([0], [0], color='k', linestyle='--')
@@ -555,15 +541,50 @@ def plot_lc(
                 ax1.plot(time_th - t0, err_th, ls='--', color=p[0].get_color())
                 ax1.plot(time_th - t0, -err_th, ls='--', color=p[0].get_color())
 
-    ax0.set_title(par_str, fontsize='x-large', loc='left',pad=12)
     ax0.legend(handles=handles, labels=labels, fontsize='x-large')
+
+    # title_str = ""
+    # x0_str = ""
+    # mb_str = ""
+    # x1_str = ""
+    # c_str = ""
 
     if snc_sim_model is not None:
         plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
+        # title_str += "SIMULATED PARAMETERS : "
+        # x0_str += f"x0 = {flux_table.meta['sim_x0']:.2e}"
+        # mb_str += f"mb = {flux_table.meta['sim_mb']:.2f}"
+        # x1_str += f"x1 = {flux_table.meta['sim_x1']:.2f}"
+        # c_str +=  f"c = {flux_table.meta['sim_c']:.3f}"
+
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
+
     else:
         plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
+
+    # if snc_fit_model is not None:
+        # max_str = np.max([len(title_str), len(mb_str), len(x0_str), len(x1_str), len(c_str)])
+        #
+        # title_str += " "*(max_str - len(title_str)) + " | FITTED PARAMETERS :"
+        #
+        # x0_str += (" "*(max_str - len(x0_str)) + f" | x0 = {snc_fit_model.parameters[2]:.2e}"
+        #            f"$\pm$ {np.sqrt(fit_cov[1,1]):.2e}")
+        #
+        # mb_str += (" "*(max_str - len(mb_str)) + f" | mb = {mb_fit:.2f}"
+        #            f"$\pm$ {mb_err:.2f}")
+        #
+        # x1_str += (" "*(max_str + 3) + f" | x1 = {snc_fit_model.parameters[3]:.2f}"
+        #            f"$\pm$ {np.sqrt(fit_cov[2,2]):.2f}")
+        #
+        # c_str += (" "*(max_str + 3) + f" | c = {snc_fit_model.parameters[4]:.3f}"
+        #           f"$\pm$ {np.sqrt(fit_cov[3,3]):.3f}")
+
+    text_ax.axis('off')
+    #
+    # param_str = title_str +"\n\n" + x0_str + "\n" + mb_str+ "\n" + x1_str + "\n" + c_str
+    # text_ax.text(0.01, 0.2, param_str, transform=text_ax.transAxes, fontsize=14,
+    #                  bbox=props)
 
     manager = plt.get_current_fig_manager()
     manager.window.showMaximized()

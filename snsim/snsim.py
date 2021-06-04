@@ -9,7 +9,7 @@ from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 import snsim.utils as ut
-from snsim.constants import SN_SIM_PRINT, VCMB, RA_CMB, DEC_CMB
+from snsim.constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 import snsim.scatter as sct
 import snsim.sim_class as scls
 
@@ -116,9 +116,9 @@ class Simulator:
     |     Om0: MATTER DENSITY                                                          |
     |     H0: HUBBLE CONSTANT                                                          |
     | cmb:                                                                             |
-    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
-    |     ra_cmb: RIGHT ASCENSION OF CMB DIPOLE #(Optional, default = 266.81)          |
-    |     dec_cmb: DECLINAISON OF CMB DIPOLE #(Optional, default = 48.253)             |
+    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 620 km/s)                 |
+    |     l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)                      |
+    |     b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)                       |
     | model_config:                                                                    |
     |     model_name:                                                                  |
     |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
@@ -197,19 +197,19 @@ class Simulator:
                 vcmb = self.sim_cfg['cmb']['vcmb']
             else:
                 vcmb = VCMB
-            if 'ra_cmb' in self.sim_cfg['cmb']:
-                ra_cmb = self.sim_cfg['cmb']['ra_cmb']
+            if 'l_cmb' in self.sim_cfg['cmb']:
+                l_cmb = self.sim_cfg['cmb']['l_cmb']
             else:
-                ra_cmb =  RA_CMB
-            if 'dec_cmb' in self.sim_cfg['cmb']:
-                dec_cmb = self.sim_cfg['cmb']['dec_cmb']
+                l_cmb =  L_CMB
+            if 'b_cmb' in self.sim_cfg['cmb']:
+                b_cmb = self.sim_cfg['cmb']['b_cmb']
             else:
-                dec_cmb = DEC_CMB
+                b_cmb = B_CMB
         else:
             vcmb = VCMB
-            ra_cmb = RA_CMB
-            dec_cmb = DEC_CMB
-        return {'v_cmb': vcmb, 'ra_cmb': ra_cmb, 'dec_cmb': dec_cmb}
+            l_cmb = L_CMB
+            b_cmb = B_CMB
+        return {'v_cmb': vcmb, 'l_cmb': l_cmb, 'b_cmb': b_cmb}
 
     @property
     def n_sn(self):

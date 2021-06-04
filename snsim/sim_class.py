@@ -336,8 +336,8 @@ class SnGen:
         The cmb parameters
         cmb
         ├── vcmb
-        ├── ra_cmb
-        └── dec_cmb
+        ├── l_cmb
+        └── b_cmb
     cosmology : astropy.cosmology
         The astropy cosmological model to use.
     vpec_dist : dict
