@@ -919,7 +919,10 @@ class OpenSim:
     def __init__(self, sim_file, model_dir):
         '''Copy some function of snsim to allow to use sim file'''
         self._file_path, self._file_ext = os.path.splitext(sim_file)
-        self._sim_lc, self._header = self._init_sim_lc()
+        self._sn = None
+        self._sim_lc = None
+        self._header = None
+        self._init_sim_lc()
         self._model_dir = model_dir
         self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
@@ -934,22 +937,33 @@ class OpenSim:
                     tab = Table(data)
                     tab.meta = hdu.header
                     sim_lc.append(tab)
+            self._sim_lc = sim_lc
+            self._header = header
 
         elif self._file_ext == '.pkl':
             with open(self._file_path + self._file_ext, 'rb') as f:
-                sn_pkl = pickle.load(f)
-                sim_lc = sn_pkl.sim_lc
-                header = sn_pkl.header
-        return sim_lc, header
+                self._sn = pickle.load(f)
+
+    @property
+    def sn(self):
+        """Get SnSimPkl object"""
+        if self._sn is None:
+            print('You open a fits file => No SnSimPkl object')
+        else:
+            return self._sn
 
     @property
     def sim_lc(self):
         """Get sim_lc list """
+        if self._sim_lc is None:
+            return self.sn.sim_lc
         return self._sim_lc
 
     @property
     def header(self):
         """Get header dict """
+        if self._header is None:
+            return self.sn.header
         return self._header
 
     @property
