@@ -68,9 +68,9 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD | filter | fieldID | fieldRA (rad) |  fieldDec (rad) |
-| :-----------: | :-----: | :----------: | :----------: | :--------------------: |
-| Obs time| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field   |
+|     expMJD     | filter   | fieldID             | fieldRA (rad)                   |  fieldDec (rad)              | zp                            | sig_zp |
+| :-----------:  | :-----:  | :-----------------: | :-----------------------------: | :--------------------------: | :---------------------------: | :------: |
+| Obs time in MJD| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field | Zero point of the observation (Optional if given in yaml) | Uncertainty of the zeropoint (Optional if given in yaml) |
 
 ## Host file
 The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
