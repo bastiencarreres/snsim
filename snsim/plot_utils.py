@@ -50,7 +50,6 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
         The fitted parameters and errors.
 
     """
-
     par_dic = { 'salt' : [('t0','.2f'), ('x0','.2e'), ('mb','.2f'), ('x1','.2f'), ('c','.3f')]}
     par = par_dic[model_name]
 
@@ -193,7 +192,7 @@ def plot_lc(
                     rsd = plot - fit_pts
 
         else:
-            ax0.set_ylabel(f'Flux (ZP ={zp})', fontsize='x-large')
+            ax0.set_ylabel(f'Flux (ZP = {zp})', fontsize='x-large')
             ax0.axhline(ls='dashdot', c='black', lw=1.5)
             plot = flux_b
             err = fluxerr_b
@@ -258,7 +257,7 @@ def plot_lc(
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
     else:
         plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
-        
+
     if residuals:
         ax1.set_ylim(-np.max(ax1_y_lim), np.max(ax1_y_lim))
 
@@ -280,8 +279,9 @@ def plot_lc(
         plt_maximize()
     except:
         pass
-
     plt.show()
+
+
 
 
 def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg):
