@@ -10,6 +10,7 @@ import snsim.utils as ut
 from snsim.constants import C_LIGHT_KMS
 import snsim.scatter as sct
 import snsim.nb_fun as nbf
+import snsim.SALT_utils as salt_ut
 
 
 class SN:
@@ -202,7 +203,7 @@ class SN:
             mb = self.sim_mu + M0 - alpha * \
                 x1 + beta * c + self.mag_smear
 
-            x0 = ut.mB_to_x0(mb)
+            x0 = salt_ut.mB_to_x0(mb)
             self.sim_mb = mb
             self.sim_x0 = x0
             self.sim_x1 = x1

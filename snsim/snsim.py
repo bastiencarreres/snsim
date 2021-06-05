@@ -12,6 +12,7 @@ import snsim.utils as ut
 from snsim.constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 import snsim.scatter as sct
 import snsim.sim_class as scls
+import snsim.plot_utils as plot_ut
 
 class Simulator:
     """Simulation class using a config file config.yml
@@ -597,6 +598,7 @@ class Simulator:
                 SN_ID += 1
                 self._sn_list.append(sn)
             elif raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
+                print(len(self.survey.obs_table['expMJD']))
                 raise RuntimeError('Cuts are too stricts')
             else:
                 raise_trigger += 1
@@ -716,7 +718,7 @@ class Simulator:
             cov_t0_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(sn.sim_lc, mag=mag,
+        plot_ut.plot_lc(sn.sim_lc, mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
                    fit_cov=cov_t0_x0_x1_c,
@@ -766,7 +768,7 @@ class Simulator:
             field_dic = None
             field_size = None
             field_list = None
-        ut.plot_ra_dec(np.asarray(ra),
+        plot_ut.plot_ra_dec(np.asarray(ra),
                        np.asarray(dec),
                        vpec,
                        field_list,
@@ -1075,7 +1077,7 @@ class OpenSim:
             cov_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(self.sim_lc[sn_ID],
+        plot_ut.plot_lc(self.sim_lc[sn_ID],
                    mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
@@ -1108,7 +1110,7 @@ class OpenSim:
             if plot_vpec:
                 vpec.append(lc.meta['vpec'])
 
-        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
+        plot_ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
 
     def write_fit(self):
         """Write fits results in fits format.
