@@ -223,7 +223,7 @@ Where z<sub>cosmo</sub> is the cosmological redshift, z<sub>2cmb</sub> is the re
 
 The error is computed with the formula :
 
-<center>![](readme_figures/noise_eq.svg)<\center> 
+![noise_eq](readme_figures/noise_eq.svg)
 
 
 
