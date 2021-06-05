@@ -702,11 +702,11 @@ class Simulator:
             s_model = None
 
         if plot_fit:
-            if self.fit_res[sn_ID] is None:
+            if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
-            if self.fit_res[sn_ID] is np.nan:
-                print('This sn has no fit results')
+            if self.fit_res[sn_ID] == 'NaN':
+                print('This sn has cannot be fitted')
                 return
             f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
