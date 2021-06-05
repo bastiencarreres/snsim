@@ -26,7 +26,7 @@ def plt_maximize():
             cfm.window.state('zoomed')  # This is windows only
         else:
             cfm.resize(*cfm.window.maxsize())
-    elif backend == 'QT4Agg':
+    elif backend == 'QT4Agg' or backend == 'QT5Agg':
         cfm.window.showMaximized()
     elif callable(getattr(cfm, "full_screen_toggle", None)):
         if not getattr(cfm, "flag_is_max", None):
@@ -92,7 +92,8 @@ def plot_lc(
         snc_sim_model=None,
         snc_fit_model=None,
         fit_cov=None,
-        residuals=False):
+        residuals=False,
+        full_screen=False):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -128,7 +129,7 @@ def plot_lc(
     z = flux_table.meta['z']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-    fig = plt.figure(figsize=(80,60), dpi=120)
+    fig = plt.figure(figsize=(35/2.54, 20/2.54), dpi=120)
 
     ###################
     # INIT THE FIGURE #
@@ -275,13 +276,13 @@ def plot_lc(
 
     plt.subplots_adjust(hspace=.0)
 
-    try :
-        plt_maximize()
-    except:
-        pass
+    if full_screen:
+        try :
+            plt_maximize()
+        except:
+            pass
+
     plt.show()
-
-
 
 
 def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg):
