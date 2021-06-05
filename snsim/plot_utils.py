@@ -92,7 +92,8 @@ def plot_lc(
         snc_sim_model=None,
         snc_fit_model=None,
         fit_cov=None,
-        residuals=False):
+        residuals=False,
+        full_screen=False):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -272,13 +273,16 @@ def plot_lc(
 
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name = 'salt', sim_par = sim_par, fit_par = fit_par)
-    plt.subplots_adjust(hspace=.0)
-    # try :
-    #     plt_maximize()
-    # except:
-    #     pass
-    plt.show()
 
+    plt.subplots_adjust(hspace=.0)
+
+    if full_screen:
+        try :
+            plt_maximize()
+        except:
+            pass
+
+    plt.show()
 
 
 def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg):
