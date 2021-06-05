@@ -6,7 +6,7 @@ In the setup.py directory use:
 ```
 ## Input file :
 The input file is a .yml with the following structure:
-```
+```yaml
 data :
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
@@ -223,7 +223,9 @@ Where z<sub>cosmo</sub> is the cosmological redshift, z<sub>2cmb</sub> is the re
 
 The error is computed with the formula :
 
-![noise_eq](readme_figures/noise_eq.svg)
+<center>![](readme_figures/noise_eq.svg)<\center> 
+
+
 
 Where the first term is the poissonian random noise with G the CCD gain in e<sup>-</sup> / ADU, the second term is the skynoise computed with the limiting magnitude at 5 σ using :
 
