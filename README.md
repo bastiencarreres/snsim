@@ -200,3 +200,34 @@ from snsim import OpenSim
 
 sim = OpenSim('sim_file.pkl/.fits',SALT2_dir)
 ```
+
+## Simulation formula
+
+The flux in ADU is simulated following the formula :
+
+![flux_eq](readme_figures/flux_eq.svg)
+
+Where the magnitude in rest-frame Bessell B band m<sub>B</sub>is given by :
+
+![](readme_figures/mb_eq.svg)
+
+With M<sub>B</sub> the absolute magnitude of SN Ia in the Bessell B band.
+
+The distance moduli is computed with the peculiar velocity effect :
+
+![](readme_figures/mu_eq.svg)
+
+Where z<sub>cosmo</sub> is the cosmological redshift, z<sub>2cmb</sub> is the redshift from our peculiar motion to the CMB frame and z<sub>vp</sub> is the redshift due to the peculiar velocity of the object.
+
+
+
+The error is computed with the formula :
+
+![noise_eq](readme_figures/noise_eq.svg)
+
+Where the first term is the poissonian random noise with G the CCD gain in e<sup>-</sup> / ADU, the second term is the skynoise computed with the limiting magnitude at 5 σ using :
+
+![skynoise_eq](readme_figures/skynoise_eq.svg)
+
+The last term is the propagation to flux of the uncertainty on zero point determination.
+
