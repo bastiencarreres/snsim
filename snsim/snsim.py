@@ -9,9 +9,10 @@ from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 import snsim.utils as ut
-from snsim.constants import SN_SIM_PRINT, VCMB, RA_CMB, DEC_CMB
+from snsim.constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 import snsim.scatter as sct
 import snsim.sim_class as scls
+import snsim.plot_utils as plot_ut
 
 class Simulator:
     """Simulation class using a config file config.yml
@@ -116,9 +117,9 @@ class Simulator:
     |     Om0: MATTER DENSITY                                                          |
     |     H0: HUBBLE CONSTANT                                                          |
     | cmb:                                                                             |
-    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)              |
-    |     ra_cmb: RIGHT ASCENSION OF CMB DIPOLE #(Optional, default = 266.81)          |
-    |     dec_cmb: DECLINAISON OF CMB DIPOLE #(Optional, default = 48.253)             |
+    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 620 km/s)                 |
+    |     l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)                      |
+    |     b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)                       |
     | model_config:                                                                    |
     |     model_name:                                                                  |
     |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
@@ -197,19 +198,19 @@ class Simulator:
                 vcmb = self.sim_cfg['cmb']['vcmb']
             else:
                 vcmb = VCMB
-            if 'ra_cmb' in self.sim_cfg['cmb']:
-                ra_cmb = self.sim_cfg['cmb']['ra_cmb']
+            if 'l_cmb' in self.sim_cfg['cmb']:
+                l_cmb = self.sim_cfg['cmb']['l_cmb']
             else:
-                ra_cmb =  RA_CMB
-            if 'dec_cmb' in self.sim_cfg['cmb']:
-                dec_cmb = self.sim_cfg['cmb']['dec_cmb']
+                l_cmb =  L_CMB
+            if 'b_cmb' in self.sim_cfg['cmb']:
+                b_cmb = self.sim_cfg['cmb']['b_cmb']
             else:
-                dec_cmb = DEC_CMB
+                b_cmb = B_CMB
         else:
             vcmb = VCMB
-            ra_cmb = RA_CMB
-            dec_cmb = DEC_CMB
-        return {'v_cmb': vcmb, 'ra_cmb': ra_cmb, 'dec_cmb': dec_cmb}
+            l_cmb = L_CMB
+            b_cmb = B_CMB
+        return {'v_cmb': vcmb, 'l_cmb': l_cmb, 'b_cmb': b_cmb}
 
     @property
     def n_sn(self):
@@ -597,6 +598,7 @@ class Simulator:
                 SN_ID += 1
                 self._sn_list.append(sn)
             elif raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
+                print(len(self.survey.obs_table['expMJD']))
                 raise RuntimeError('Cuts are too stricts')
             else:
                 raise_trigger += 1
@@ -716,7 +718,7 @@ class Simulator:
             cov_t0_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(sn.sim_lc, mag=mag,
+        plot_ut.plot_lc(sn.sim_lc, mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
                    fit_cov=cov_t0_x0_x1_c,
@@ -766,7 +768,7 @@ class Simulator:
             field_dic = None
             field_size = None
             field_list = None
-        ut.plot_ra_dec(np.asarray(ra),
+        plot_ut.plot_ra_dec(np.asarray(ra),
                        np.asarray(dec),
                        vpec,
                        field_list,
@@ -919,7 +921,10 @@ class OpenSim:
     def __init__(self, sim_file, model_dir):
         '''Copy some function of snsim to allow to use sim file'''
         self._file_path, self._file_ext = os.path.splitext(sim_file)
-        self._sim_lc, self._header = self._init_sim_lc()
+        self._sn = None
+        self._sim_lc = None
+        self._header = None
+        self._init_sim_lc()
         self._model_dir = model_dir
         self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
@@ -934,22 +939,33 @@ class OpenSim:
                     tab = Table(data)
                     tab.meta = hdu.header
                     sim_lc.append(tab)
+            self._sim_lc = sim_lc
+            self._header = header
 
         elif self._file_ext == '.pkl':
             with open(self._file_path + self._file_ext, 'rb') as f:
-                sn_pkl = pickle.load(f)
-                sim_lc = sn_pkl.sim_lc
-                header = sn_pkl.header
-        return sim_lc, header
+                self._sn = pickle.load(f)
+
+    @property
+    def sn(self):
+        """Get SnSimPkl object"""
+        if self._sn is None:
+            print('You open a fits file => No SnSimPkl object')
+        else:
+            return self._sn
 
     @property
     def sim_lc(self):
         """Get sim_lc list """
+        if self._sim_lc is None:
+            return self.sn.sim_lc
         return self._sim_lc
 
     @property
     def header(self):
         """Get header dict """
+        if self._header is None:
+            return self.sn.header
         return self._header
 
     @property
@@ -1061,7 +1077,7 @@ class OpenSim:
             cov_x0_x1_c = None
             residuals = False
 
-        ut.plot_lc(self.sim_lc[sn_ID],
+        plot_ut.plot_lc(self.sim_lc[sn_ID],
                    mag=mag,
                    snc_sim_model=s_model,
                    snc_fit_model=f_model,
@@ -1094,7 +1110,7 @@ class OpenSim:
             if plot_vpec:
                 vpec.append(lc.meta['vpec'])
 
-        ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
+        plot_ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
 
     def write_fit(self):
         """Write fits results in fits format.
