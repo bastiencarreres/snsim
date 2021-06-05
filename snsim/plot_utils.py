@@ -26,7 +26,7 @@ def plt_maximize():
             cfm.window.state('zoomed')  # This is windows only
         else:
             cfm.resize(*cfm.window.maxsize())
-    elif backend == 'QT4Agg':
+    elif backend == 'QT4Agg' or backend == 'QT5Agg':
         cfm.window.showMaximized()
     elif callable(getattr(cfm, "full_screen_toggle", None)):
         if not getattr(cfm, "flag_is_max", None):
@@ -128,7 +128,7 @@ def plot_lc(
     z = flux_table.meta['z']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-    fig = plt.figure(figsize=(80,60), dpi=120)
+    fig = plt.figure(figsize=(35/2.54, 20/2.54), dpi=120)
 
     ###################
     # INIT THE FIGURE #
@@ -272,15 +272,12 @@ def plot_lc(
 
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name = 'salt', sim_par = sim_par, fit_par = fit_par)
-
     plt.subplots_adjust(hspace=.0)
-
-    try :
-        plt_maximize()
-    except:
-        pass
+    # try :
+    #     plt_maximize()
+    # except:
+    #     pass
     plt.show()
-
 
 
 
