@@ -207,7 +207,7 @@ The flux in ADU is simulated following the formula :
 
 ![flux_eq](readme_figures/flux_eq.svg)
 
-Where the magnitude in rest-frame Bessell B band m<sub>B</sub>is given by :
+Where the magnitude in rest-frame Bessell B band m<sub>B</sub> is given by :
 
 ![](readme_figures/mb_eq.svg)
 
