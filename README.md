@@ -16,7 +16,8 @@ survey_config:
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in the database doesn't correpond to those in sncosmo registery)
     add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata)
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
-    zp: INSTRUMENTAL ZEROPOINT  
+    zp: INSTRUMENTAL ZEROPOINT  #(Optional, default given by survey file)
+    sig_zp: UNCERTAINTY ON ZEROPOINT #(Optional, default given by survey file)
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
@@ -67,9 +68,9 @@ It's a sql database file which contain cadence information. It's used to find ob
 
 The required data keys are resumed in the next table
 
-| expMJD | filter | fieldID | fieldRA (rad) |  fieldDec (rad) |
-| :-----------: | :-----: | :----------: | :----------: | :--------------------: |
-| Obs time| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field   |
+|     expMJD     | filter   | fieldID             | fieldRA (rad)                   |  fieldDec (rad)              | zp                            | sig_zp |
+| :-----------:  | :-----:  | :-----------------: | :-----------------------------: | :--------------------------: | :---------------------------: | :------: |
+| Obs time in MJD| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field | Zero point of the observation (Optional if given in yaml) | Uncertainty of the zeropoint (Optional if given in yaml) |
 
 ## Host file
 The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
@@ -207,7 +208,7 @@ The flux in ADU is simulated following the formula :
 
 ![flux_eq](readme_figures/flux_eq.svg)
 
-Where the magnitude in rest-frame Bessell B band m<sub>B</sub>is given by :
+Where the magnitude in rest-frame Bessell B band m<sub>B</sub> is given by :
 
 ![](readme_figures/mb_eq.svg)
 
