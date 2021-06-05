@@ -50,7 +50,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
         The fitted parameters and errors.
 
     """
-    
+
     par_dic = { 'salt' : [('t0','.2f'), ('x0','.2e'), ('mb','.2f'), ('x1','.2f'), ('c','.3f')]}
     par = par_dic[model_name]
 
@@ -130,11 +130,20 @@ def plot_lc(
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
     fig = plt.figure(figsize=(80,60), dpi=120)
+
+    ###################
+    # INIT THE FIGURE #
+    ###################
+
     if residuals:
         gs = gridspec.GridSpec(3, 1, height_ratios=[0.5, 2, 1])
         text_ax = fig.add_subplot(gs[0])
         ax0 = fig.add_subplot(gs[1])
         ax1 = fig.add_subplot(gs[2], sharex=ax0)
+        ax1_y_lim = []
+    elif snc_sim_model is None and (snc_fit_model is None or fit_cov is None):
+        gs = gridspec.GridSpec(1, 1, height_ratios=[1])
+        ax0 = fig.add_subplot(gs[0])
     else:
         gs = gridspec.GridSpec(2, 1, height_ratios=[0.5, 2])
         text_ax = fig.add_subplot(gs[0])
@@ -144,6 +153,10 @@ def plot_lc(
                 fontsize='xx-large')
     plt.xlabel('Time relative to peak', fontsize='x-large')
 
+    ################
+    # PLOT SECTION #
+    ################
+
     for b in bands:
         band_mask = flux_table['band'] == b
         flux_b = flux_norm[band_mask]
@@ -151,7 +164,7 @@ def plot_lc(
         time_b = time[band_mask]
 
         if mag:
-            plt.gca().invert_yaxis()
+            ax0.invert_yaxis()
             ax0.set_ylabel('Mag', fontsize='x-large')
 
             # Delete < 0 pts
@@ -170,7 +183,9 @@ def plot_lc(
                 plot_fit = snc_fit_model.bandmag(b, 'ab', time_th)
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
-                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)
+                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model,
+                                                                fit_cov[1:,1:],
+                                                                b, time_th, zp)
                         err_th = 2.5 / \
                             (np.log(10) * 10**(-0.4 * (plot_fit - zp))) * err_th
                 if residuals:
@@ -178,7 +193,7 @@ def plot_lc(
                     rsd = plot - fit_pts
 
         else:
-            ax0.set_ylabel('Flux', fontsize='x-large')
+            ax0.set_ylabel(f'Flux (ZP ={zp})', fontsize='x-large')
             ax0.axhline(ls='dashdot', c='black', lw=1.5)
             plot = flux_b
             err = fluxerr_b
@@ -197,10 +212,8 @@ def plot_lc(
 
         p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
         handles, labels = ax0.get_legend_handles_labels()
-        props = dict(boxstyle='round', facecolor='blue', alpha=0.2)
 
         if snc_sim_model is not None:
-
             ax0.plot(time_th - t0, plot_th, color=p[0].get_color())
             sim_line = Line2D([0], [0], color='k', linestyle='solid')
             sim_label = 'Sim'
@@ -208,14 +221,11 @@ def plot_lc(
             labels.append(sim_label)
 
         if snc_fit_model is not None:
-            mb_fit = salt_ut.x0_to_mB(snc_fit_model.parameters[2])
-            mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:,1:])[0,0])
-
-            ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
             fit_line = Line2D([0], [0], color='k', linestyle='--')
             fit_label = 'Fit'
             handles.append(fit_line)
             labels.append(fit_label)
+            ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
 
             if fit_cov is not None:
                 ax0.fill_between(
@@ -228,7 +238,7 @@ def plot_lc(
                 ax1.set_ylabel('Data - Model', fontsize='x-large')
                 ax1.errorbar(time_b - t0, rsd, yerr=err, fmt='o')
                 ax1.axhline(0, ls='dashdot', c='black', lw=1.5)
-                ax1.set_ylim(-np.max(abs(rsd)) * 2, np.max(abs(rsd)) * 2)
+                ax1_y_lim.append(3 * np.std(rsd))
                 ax1.plot(time_th - t0, err_th, ls='--', color=p[0].get_color())
                 ax1.plot(time_th - t0, -err_th, ls='--', color=p[0].get_color())
 
@@ -244,22 +254,25 @@ def plot_lc(
                    flux_table.meta['sim_x1'],
                    flux_table.meta['sim_c']]
 
-        if snc_fit_model is not None:
-            mb_fit = salt_ut.x0_to_mB(snc_fit_model.parameters[2])
-            mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:,1:])[0,0])
-            fit_par = [(snc_fit_model.parameters[1], np.sqrt(fit_cov[0,0])),
-                       (snc_fit_model.parameters[2], np.sqrt(fit_cov[1,1])),
-                       (mb_fit, mb_err),
-                       (snc_fit_model.parameters[3], np.sqrt(fit_cov[2,2])),
-                       (snc_fit_model.parameters[4], np.sqrt(fit_cov[3,3]))]
-
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
-
     else:
         plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
+        
+    if residuals:
+        ax1.set_ylim(-np.max(ax1_y_lim), np.max(ax1_y_lim))
 
-    param_text_box(text_ax, model_name = 'salt', sim_par = sim_par, fit_par = fit_par)
+    if snc_fit_model is not None and fit_cov is not None:
+        mb_fit = salt_ut.x0_to_mB(snc_fit_model.parameters[2])
+        mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:,1:])[0,0])
+        fit_par = [(snc_fit_model.parameters[1], np.sqrt(fit_cov[0,0])),
+                   (snc_fit_model.parameters[2], np.sqrt(fit_cov[1,1])),
+                   (mb_fit, mb_err),
+                   (snc_fit_model.parameters[3], np.sqrt(fit_cov[2,2])),
+                   (snc_fit_model.parameters[4], np.sqrt(fit_cov[3,3]))]
+
+    if fit_par is not None or sim_par is not None:
+        param_text_box(text_ax, model_name = 'salt', sim_par = sim_par, fit_par = fit_par)
 
     plt.subplots_adjust(hspace=.0)
 
