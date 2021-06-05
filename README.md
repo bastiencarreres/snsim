@@ -158,7 +158,7 @@ Plot sim and fit:
 
 ![](readme_figures/lc_sim_fit.png)
 
-Just the data :
+Just the data alone :
 
 ![lc_data](readme_figures/lc_data.png)
 
