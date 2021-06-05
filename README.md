@@ -16,7 +16,8 @@ survey_config:
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in the database doesn't correpond to those in sncosmo registery)
     add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata)
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
-    zp: INSTRUMENTAL ZEROPOINT  
+    zp: INSTRUMENTAL ZEROPOINT  #(Optional, default given by survey file)
+    sig_zp: UNCERTAINTY ON ZEROPOINT #(Optional, default given by survey file)
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
