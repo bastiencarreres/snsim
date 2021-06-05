@@ -8,7 +8,49 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 import snsim.SALT_utils as salt_ut
 
+
+def plt_maximize():
+    """Enable full screen.
+
+    Notes
+    -----
+    Come from https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python/22418354#22418354
+    """
+    # See discussion: https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python
+    backend = plt.get_backend()
+    cfm = plt.get_current_fig_manager()
+    if backend == "wxAgg":
+        cfm.frame.Maximize(True)
+    elif backend == "TkAgg":
+        if system() == "win32":
+            cfm.window.state('zoomed')  # This is windows only
+        else:
+            cfm.resize(*cfm.window.maxsize())
+    elif backend == 'QT4Agg':
+        cfm.window.showMaximized()
+    elif callable(getattr(cfm, "full_screen_toggle", None)):
+        if not getattr(cfm, "flag_is_max", None):
+            cfm.full_screen_toggle()
+            cfm.flag_is_max = True
+    else:
+        raise RuntimeError("plt_maximize() is not implemented for current backend:", backend)
+
 def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
+    """Add a text legend with model parameters to the plot.
+
+    Parameters
+    ----------
+    text_ax : matplotlib.axes
+        Axes where place the text.
+    model_name : str
+        The name of the sn model that is used.
+    sim_par : list(float)
+        The parameters of the model.
+    fit_par : list(tuple(float,float))
+        The fitted parameters and errors.
+
+    """
+    
     par_dic = { 'salt' : [('t0','.2f'), ('x0','.2e'), ('mb','.2f'), ('x1','.2f'), ('c','.3f')]}
     par = par_dic[model_name]
 
@@ -221,6 +263,11 @@ def plot_lc(
 
     plt.subplots_adjust(hspace=.0)
 
+    try :
+        plt_maximize()
+    except:
+        pass
+
     plt.show()
 
 
@@ -300,5 +347,4 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                                             color='blue',
                                             lw=1,
                                             zorder=2))
-
     plt.show()
