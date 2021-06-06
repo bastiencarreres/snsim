@@ -1,8 +1,7 @@
 """This module contains all the constants used in the package"""
-from astropy import constants as cst
 import re
-import os
 from pathlib import Path
+from astropy import constants as cst
 
 path_location = Path(__file__).absolute().parent
 init_location = path_location / '__init__.py'

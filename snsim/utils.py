@@ -7,8 +7,9 @@ import astropy.time as atime
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-import snsim.nb_fun as nbf
-from snsim.constants import C_LIGHT_KMS
+from . import nb_fun as nbf
+from . import salt_utils as salt_ut
+from .constants import C_LIGHT_KMS
 
 def init_astropy_time(date):
     """Take a date and give a astropy.time.Time object.
@@ -24,11 +25,11 @@ def init_astropy_time(date):
         An astropy.time Time object of the given date.
 
     """
-    if isinstance(date, (int,float)):
-        format = 'mjd'
+    if isinstance(date, (int, float)):
+        date_format = 'mjd'
     elif isinstance(date, str):
-        format = 'iso'
-    return atime.Time(date, format=format)
+        date_format = 'iso'
+    return atime.Time(date, format=date_format)
 
 def compute_z_cdf(z_shell, shell_time_rate):
     """Compute the cumulative distribution function of redshift.
@@ -94,7 +95,7 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
         sig_high = sig_low
     if rand_gen is None:
         low_or_high = np.random.random()
-        nbr =  abs(np.random.normal())
+        nbr = abs(np.random.normal())
     else:
         low_or_high = rand_gen.random()
         nbr = abs(rand_gen.normal())
@@ -105,7 +106,7 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
     return mean + nbr
 
 
-def is_same_cosmo_model(dic,astropy_model):
+def is_same_cosmo_model(dic, astropy_model):
     """Check if cosmo parameters in a dic are the same used in astropy_model.
 
     Parameters
@@ -121,7 +122,7 @@ def is_same_cosmo_model(dic,astropy_model):
         Description of returned object.
 
     """
-    for k,v in dic.items():
+    for k, v in dic.items():
         if v != astropy_model.__dict__['_'+k]:
             return False
     return True
@@ -251,14 +252,13 @@ def flux_to_Jansky(zp, band):
     """
     magsys = snc.get_magsystem('ab')
     b = snc.get_bandpass(band)
-    nu, dnu = snc.utils.integration_grid(
-         snc.constants.C_AA_PER_S/b.maxwave(),
-         snc.constants.C_AA_PER_S/b.minwave(),
-         snc.constants.C_AA_PER_S/snc.constants.MODEL_BANDFLUX_SPACING)
+    nu, dnu = snc.utils.integration_grid(snc.constants.C_AA_PER_S/b.maxwave(),
+                                         snc.constants.C_AA_PER_S/b.minwave(),
+                                         snc.constants.C_AA_PER_S/snc.constants.MODEL_BANDFLUX_SPACING)
 
     trans = b(snc.constants.C_AA_PER_S/nu)
-    int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
-    norm = 10**(-0.4*zp) * magsys.zpbandflux(b) / int * 10**23 * 10**6
+    trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
+    norm = 10**(-0.4*zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
 
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
@@ -331,10 +331,10 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
 
             if MName in ('salt2', 'salt3'):
                 par_cov = res['covariance'][1:, 1:]
-                mb_cov = cov_x0_to_mb(par[2], par_cov)
+                mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
                 data['x0'].append(par[2])
                 data['e_x0'].append(np.sqrt(par_cov[0, 0]))
-                data['mb'].append(x0_to_mB(par[2]))
+                data['mb'].append(salt_ut.x0_to_mB(par[2]))
                 data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
                 data['x1'].append(par[3])
                 data['e_x1'].append(np.sqrt(par_cov[1, 1]))

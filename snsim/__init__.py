@@ -7,6 +7,6 @@ The package use sncosmo.
 Github repository : https://github.com/bcarreres/snsim
 """
 
-from .snsim import Simulator, OpenSim
+from .simu import *
 
 __version__ = "0.2.5"

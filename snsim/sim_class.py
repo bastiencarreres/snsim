@@ -6,11 +6,11 @@ import sncosmo as snc
 from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
-import snsim.utils as ut
-from snsim.constants import C_LIGHT_KMS
-import snsim.scatter as sct
-import snsim.nb_fun as nbf
-import snsim.SALT_utils as salt_ut
+from . import utils as ut
+from . import salt_utils as salt_ut
+from .constants import C_LIGHT_KMS
+from . import scatter as sct
+from . import nb_fun as nbf
 
 
 class SN:
@@ -980,7 +980,7 @@ class SurveyObs:
         end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
         return obs_dic, (start_day, end_day)
 
-    def epochs_selection(self, SN):
+    def epochs_selection(self, SN_obj):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -995,16 +995,15 @@ class SurveyObs:
 
         """
 
-        ModelMinT_obsfrm = SN.sim_model.mintime() * (1 + SN.z)
-        ModelMaxT_obsfrm = SN.sim_model.maxtime() * (1 + SN.z)
-        ra, dec = SN.coord
+        ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.z)
+        ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.z)
+        ra, dec = SN_obj.coord
 
         # time selection
         epochs_selec, selec_fields_ID = nbf.time_selec(self.obs_table['expMJD'].values,
-                                                       SN.sim_t0,
+                                                       SN_obj.sim_t0,
                                                        ModelMaxT_obsfrm,
                                                        ModelMinT_obsfrm,
-                                                       self.obs_table['fiveSigmaDepth'].values,
                                                        self.obs_table['fieldID'].values)
 
         ra_fields = np.array(list(map(lambda x: x['ra'],

@@ -8,12 +8,11 @@ import numpy as np
 from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
-import snsim.utils as ut
-from snsim.constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
-import snsim.scatter as sct
-import snsim.sim_class as scls
-import snsim.plot_utils as plot_ut
-
+from . import utils as ut
+from . import scatter as sct
+from . import sim_class as scls
+from . import plot_utils as plot_ut
+from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 
 class Simulator:
     """Simulation class using a config file config.yml
@@ -953,6 +952,7 @@ class OpenSim:
         """Get SnSimPkl object"""
         if self._sn is None:
             print('You open a fits file => No SnSimPkl object')
+            return None
         else:
             return self._sn
 

@@ -2,7 +2,7 @@
 
 import numpy as np
 import sncosmo as snc
-import snsim.nb_fun as nbf
+from . import nb_fun as nbf
 
 
 def init_sn_smear_model(model, smear_mod):
@@ -66,8 +66,7 @@ class G10(snc.PropagationEffect):
     param_names_latex = [r'\lambda_0', 'F_0', 'F_1', 'd_L', 'RS']
 
     def __init__(self, model):
-        self._parameters = np.array(
-            [2157.3, 0.0, 1.08e-4, 800, np.random.randint(low=1000, high=100000)])
+        self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800, np.random.randint(low=1000, high=100000)])
         self._minwave = model.source.minwave()
         self._maxwave = model.source.maxwave()
         self._colordisp = model.source._colordisp
@@ -223,9 +222,9 @@ class C11(snc.PropagationEffect):
         """
         RS = self._parameters[-1]
         mu = np.zeros(6)
-        scat = np.random.default_rng(
-            int(RS)).multivariate_normal(
-            mu, self.covmat, check_valid='raise')
+        scat = np.random.default_rng(int(RS)).multivariate_normal(mu,
+                                                                  self.covmat,
+                                                                  check_valid='raise')
         return scat
 
     def propagate(self, wave, flux):

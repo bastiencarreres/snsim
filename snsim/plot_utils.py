@@ -1,12 +1,13 @@
 """Contains plot functions"""
 
 import numpy as np
-import snsim.utils as ut
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
-import snsim.SALT_utils as salt_ut
+from . import utils as ut
+from . import salt_utils as salt_ut
+from . import nb_fun as nbf
 
 
 def plt_maximize():
@@ -331,12 +332,12 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                              -field_size[0]/2,
                              -field_size[0]/2])
         dec_edges = np.array([field_size[1]/2,
-                             -field_size[1]/2,
-                             -field_size[1]/2,
+                              -field_size[1]/2,
+                              -field_size[1]/2,
                               field_size[1]/2])
         vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
-                       np.sin(ra_edges) * np.cos(dec_edges),
-                       np.sin(dec_edges)]).T
+                        np.sin(ra_edges) * np.cos(dec_edges),
+                        np.sin(dec_edges)]).T
 
         for ID in field_list:
             # if ID < 880:

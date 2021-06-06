@@ -128,7 +128,7 @@ def find_first(item, vec):
 
 
 @njit(cache=True)
-def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldID):
+def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
