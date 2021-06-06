@@ -197,14 +197,14 @@ def plot_lc(
         else:
             if Jy:
                 ax0.set_ylabel(f'Flux [$\mu$Jy]', fontsize='x-large')
-                norm = ut.Flux_to_Jansky(flux_b, fluxerr_b, zp, b)
+                norm = ut.flux_to_Jansky(zp, b)
             else:
                 ax0.set_ylabel(f'Flux (ZP = {zp})', fontsize='x-large')
-                norm = 1
+                norm = 1.0
 
             ax0.axhline(ls='dashdot', c='black', lw=1.5)
-            plot = flux_b*norm
-            err = fluxerr_b*norm
+            plot = flux_b * norm
+            err = fluxerr_b * norm
 
             if snc_sim_model is not None:
                 plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
@@ -266,7 +266,6 @@ def plot_lc(
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
     else:
         plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
-
     if residuals:
         ax1.set_ylim(-np.max(ax1_y_lim), np.max(ax1_y_lim))
 

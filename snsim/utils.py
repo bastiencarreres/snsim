@@ -233,7 +233,22 @@ def norm_flux(flux_table, zp):
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
 
-def Flux_to_Jansky(flux, fluxerr, zp, band):
+def flux_to_Jansky(zp, band):
+    """Give the factor to convert flux in uJy.
+
+    Parameters
+    ----------
+    zp : float
+        The actual zeropoint of flux.
+    band : str
+        The sncosmo band in which compute the factor.
+
+    Returns
+    -------
+    float
+        The conversion factor.
+
+    """
     magsys = snc.get_magsystem('ab')
     b = snc.get_bandpass(band)
     nu, dnu = snc.utils.integration_grid(
