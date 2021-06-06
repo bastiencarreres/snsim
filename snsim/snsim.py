@@ -194,10 +194,10 @@ class Simulator:
     def cmb(self):
         """Get cmb parameters"""
         if 'cmb' in  self.sim_cfg:
-            if 'vcmb' in self.sim_cfg['cmb']:
-                vcmb = self.sim_cfg['cmb']['vcmb']
+            if 'v_cmb' in self.sim_cfg['cmb']:
+                v_cmb = self.sim_cfg['cmb']['v_cmb']
             else:
-                vcmb = VCMB
+                v_cmb = VCMB
             if 'l_cmb' in self.sim_cfg['cmb']:
                 l_cmb = self.sim_cfg['cmb']['l_cmb']
             else:
@@ -207,10 +207,10 @@ class Simulator:
             else:
                 b_cmb = B_CMB
         else:
-            vcmb = VCMB
+            v_cmb = VCMB
             l_cmb = L_CMB
             b_cmb = B_CMB
-        return {'v_cmb': vcmb, 'l_cmb': l_cmb, 'b_cmb': b_cmb}
+        return {'v_cmb': v_cmb, 'l_cmb': l_cmb, 'b_cmb': b_cmb}
 
     @property
     def n_sn(self):
@@ -667,7 +667,7 @@ class Simulator:
             with open(write_path + self.sim_name + '_lcs.pkl', 'wb') as file:
                 pickle.dump(sn_pkl, file)
 
-    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False):
+    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -723,7 +723,8 @@ class Simulator:
                    snc_fit_model=f_model,
                    fit_cov=cov_t0_x0_x1_c,
                    zp=zp,
-                   residuals=residuals)
+                   residuals=residuals,
+                   Jy=Jy)
 
     def get_sn_par(self, key):
         """Get an array of a sim_lc meta data"""

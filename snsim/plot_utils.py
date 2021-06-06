@@ -1,4 +1,4 @@
-"""Contains plots functions"""
+"""Contains plot functions"""
 
 import numpy as np
 import snsim.utils as ut
@@ -89,6 +89,7 @@ def plot_lc(
         flux_table,
         zp=25.,
         mag=False,
+        Jy = False,
         snc_sim_model=None,
         snc_fit_model=None,
         fit_cov=None,
@@ -123,6 +124,7 @@ def plot_lc(
 
     bands = np.unique(flux_table['band'])
     flux_norm, fluxerr_norm = ut.norm_flux(flux_table, zp)
+
     time = flux_table['time']
 
     t0 = flux_table.meta['sim_t0']
@@ -193,21 +195,27 @@ def plot_lc(
                     rsd = plot - fit_pts
 
         else:
-            ax0.set_ylabel(f'Flux (ZP = {zp})', fontsize='x-large')
+            if Jy:
+                ax0.set_ylabel(f'Flux [$\mu$Jy]', fontsize='x-large')
+                norm = ut.Flux_to_Jansky(flux_b, fluxerr_b, zp, b)
+            else:
+                ax0.set_ylabel(f'Flux (ZP = {zp})', fontsize='x-large')
+                norm = 1
+
             ax0.axhline(ls='dashdot', c='black', lw=1.5)
-            plot = flux_b
-            err = fluxerr_b
+            plot = flux_b*norm
+            err = fluxerr_b*norm
 
             if snc_sim_model is not None:
-                plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab')
+                plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
 
             if snc_fit_model is not None:
-                plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')
+                plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2','salt3'):
-                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)
+                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)*norm
                 if residuals:
-                    fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')
+                    fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')*norm
                     rsd = plot - fit_pts
 
         p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
