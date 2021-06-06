@@ -7,7 +7,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 import snsim.SALT_utils as salt_ut
-
+from . import nb_fun as nbf
 
 def plt_maximize():
     """Enable full screen.
@@ -326,22 +326,24 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
 
     if field_list is not None and field_dic is not None and field_size is not None:
         ra_edges = np.array([field_size[0]/2,
-                                 field_size[0]/2,
-                                 -field_size[0]/2,
-                                 -field_size[0]/2])
+                             field_size[0]/2,
+                            -field_size[0]/2,
+                            -field_size[0]/2])
+
         dec_edges = np.array([field_size[1]/2,
                              -field_size[1]/2,
                              -field_size[1]/2,
                               field_size[1]/2])
+
         vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
-                       np.sin(ra_edges) * np.cos(dec_edges),
-                       np.sin(dec_edges)]).T
+                        np.sin(ra_edges) * np.cos(dec_edges),
+                        np.sin(dec_edges)]).T
 
         for ID in field_list:
             #if ID < 880:
             ra = field_dic[ID]['ra']
             dec = field_dic[ID]['dec']
-            new_coord = [nbf.R_base(ra,-dec,v, to_field_frame=False) for v in vec]
+            new_coord = [nbf.R_base(ra,-dec, v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
             if new_radec[3][0] > new_radec[0][0]:
                 if  new_radec[3][0]*new_radec[2][0] > 0:
