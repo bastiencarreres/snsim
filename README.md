@@ -143,7 +143,7 @@ In the case of nep_cut key you can pass an int or pass list by typing --nep_cut 
 You can plot simulated lightcurves
 
 ```
-sim.plot_lc(SN_ID, mag=False, zp=25. , plot_sim=True, plot_fit=False)
+sim.plot_lc(SN_ID, mag=False, zp=25. , plot_sim=True, plot_fit=False, Jy=False)
 ```
 
 Plot sim :
@@ -162,7 +162,13 @@ Just the data alone :
 
 ![lc_data](readme_figures/lc_data.png)
 
+The same plot can be show in magnitude :
 
+![lc_mag](readme_figures/lc_mag.png)
+
+Or in Jansky :
+
+![lc_jy](readme_figures/lc_jy.png)
 
 You can also plot a vpec Mollweide map
 
@@ -220,14 +226,12 @@ The distance moduli is computed with the peculiar velocity effect :
 
 Where z<sub>cosmo</sub> is the cosmological redshift, z<sub>2cmb</sub> is the redshift from our peculiar motion to the CMB frame and z<sub>vp</sub> is the redshift due to the peculiar velocity of the object.
 
-
-
 The error is computed with the formula :
 
 ![noise_eq](readme_figures/noise_eq.svg)
-
-
-
+$$
+\mu = 5\log\left((1+z_\text{cosmo})(1+z_{2\text{cmb}})(1+z_\text{vp})^2 r(z_\text{cosmo}) \right ) +25
+$$
 Where the first term is the poissonian random noise with G the CCD gain in e<sup>-</sup> / ADU, the second term is the skynoise computed with the limiting magnitude at 5 σ using :
 
 ![skynoise_eq](readme_figures/skynoise_eq.svg)
