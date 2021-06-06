@@ -229,9 +229,7 @@ Where z<sub>cosmo</sub> is the cosmological redshift, z<sub>2cmb</sub> is the re
 The error is computed with the formula :
 
 ![noise_eq](readme_figures/noise_eq.svg)
-$$
-\mu = 5\log\left((1+z_\text{cosmo})(1+z_{2\text{cmb}})(1+z_\text{vp})^2 r(z_\text{cosmo}) \right ) +25
-$$
+
 Where the first term is the poissonian random noise with G the CCD gain in e<sup>-</sup> / ADU, the second term is the skynoise computed with the limiting magnitude at 5 σ using :
 
 ![skynoise_eq](readme_figures/skynoise_eq.svg)
