@@ -26,7 +26,7 @@ def plt_maximize():
             cfm.window.state('zoomed')  # This is windows only
         else:
             cfm.resize(*cfm.window.maxsize())
-    elif backend == 'QT4Agg' or backend == 'QT5Agg':
+    elif backend in ('QT4Agg', 'QT5Agg'):
         cfm.window.showMaximized()
     elif callable(getattr(cfm, "full_screen_toggle", None)):
         if not getattr(cfm, "flag_is_max", None):
@@ -213,7 +213,7 @@ def plot_lc(
             if snc_fit_model is not None:
                 plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
                 if fit_cov is not None:
-                    if snc_fit_model.source.name in ('salt2','salt3'):
+                    if snc_fit_model.source.name in ('salt2', 'salt3'):
                         err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp) * norm
 
                 if residuals:
@@ -346,7 +346,7 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
             dec = field_dic[ID]['dec']
             new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
-            
+
             if new_radec[3][0] > new_radec[0][0]:
                 if new_radec[3][0]*new_radec[2][0] > 0:
                     x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
