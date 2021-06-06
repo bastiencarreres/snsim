@@ -226,6 +226,8 @@ The distance moduli is computed with the peculiar velocity effect :
 
 Where z<sub>cosmo</sub> is the cosmological redshift, z<sub>2cmb</sub> is the redshift from our peculiar motion to the CMB frame and z<sub>vp</sub> is the redshift due to the peculiar velocity of the object.
 
+
+
 The error is computed with the formula :
 
 ![noise_eq](readme_figures/noise_eq.svg)
