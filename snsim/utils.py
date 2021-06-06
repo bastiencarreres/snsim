@@ -233,6 +233,33 @@ def norm_flux(flux_table, zp):
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
 
+def flux_to_Jansky(zp, band):
+    """Give the factor to convert flux in uJy.
+
+    Parameters
+    ----------
+    zp : float
+        The actual zeropoint of flux.
+    band : str
+        The sncosmo band in which compute the factor.
+
+    Returns
+    -------
+    float
+        The conversion factor.
+
+    """
+    magsys = snc.get_magsystem('ab')
+    b = snc.get_bandpass(band)
+    nu, dnu = snc.utils.integration_grid(
+         snc.constants.C_AA_PER_S/b.maxwave(),
+         snc.constants.C_AA_PER_S/b.minwave(),
+         snc.constants.C_AA_PER_S/snc.constants.MODEL_BANDFLUX_SPACING)
+
+    trans = b(snc.constants.C_AA_PER_S/nu)
+    int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
+    norm = 10**(-0.4*zp) * magsys.zpbandflux(b) / int * 10**23 * 10**6
+    return norm
 
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.
