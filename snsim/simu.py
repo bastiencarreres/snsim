@@ -706,7 +706,7 @@ class Simulator:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
             if self.fit_res[sn_ID] == 'NaN':
-                print('This sn has cannot be fitted')
+                print('This sn cannot be fitted')
                 return
             f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
