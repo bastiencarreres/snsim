@@ -2,9 +2,12 @@
 from astropy import constants as cst
 import re
 import os
+from pathlib import Path
 
+path_location = Path(__file__).absolute().parent
+init_location = path_location / '__init__.py'
 VERSION = re.findall(r"__version__ = \"(.*?)\"",
-                     open(os.path.join("snsim", "__init__.py")).read())[0]
+                     init_location.open().read())[0]
 SN_SIM_PRINT =  '      _______..__   __.         _______. __  .___  ___. \n'
 SN_SIM_PRINT += '     /       ||  \\ |  |        /       ||  | |   \\/   | \n'
 SN_SIM_PRINT += '    |   (----`|   \\|  |       |   (----`|  | |  \\  /  | \n'
