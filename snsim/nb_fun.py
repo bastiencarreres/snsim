@@ -3,6 +3,7 @@
 from numba import njit
 import numpy as np
 
+
 @njit(cache=True)
 def sine_interp(x_new, fun_x, fun_y):
     """Return the sinus interpolation of a function at x.
@@ -44,6 +45,7 @@ def sine_interp(x_new, fun_x, fun_y):
     sin_interp = np.sin(np.pi * (x_new - 0.5 * (x_inf + x_sup)) / (x_sup - x_inf))
 
     return 0.5 * (Value_sup + Value_inf) + 0.5 * (Value_sup - Value_inf) * sin_interp
+
 
 @njit(cache=True)
 def R_base(a, t, vec, to_field_frame=True):
@@ -126,7 +128,7 @@ def find_first(item, vec):
 
 
 @njit(cache=True)
-def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fiveSigmaDepth, fieldID):
+def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -183,12 +185,13 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
     in_field = np.abs(ra_f_frame) < f_size[0] / 2
     in_field *= np.abs(dec_f_frame) < f_size[1] / 2
 
-    dic_map={}
+    dic_map = {}
     for pf, b in zip(fieldID, in_field):
         dic_map[pf] = b
 
-    epochs_selec[np.copy(epochs_selec)]  *= np.array([dic_map[id] for id in obs_fieldID])
+    epochs_selec[np.copy(epochs_selec)] *= np.array([dic_map[id] for id in obs_fieldID])
     return epochs_selec, epochs_selec.any()
+
 
 @njit(cache=True)
 def find_idx_nearest_elmt(val, array, treshold):
@@ -209,11 +212,11 @@ def find_idx_nearest_elmt(val, array, treshold):
         The index of the nearest element.
 
     """
-    smallest_diff_idx=[]
+    smallest_diff_idx = []
     for v in val:
         diff_array = np.abs(array - v)
         idx = diff_array.argmin()
-        if diff_array[idx]  >  treshold:
+        if diff_array[idx] > treshold:
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
