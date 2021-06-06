@@ -8,7 +8,7 @@ path_location = Path(__file__).absolute().parent
 init_location = path_location / '__init__.py'
 VERSION = re.findall(r"__version__ = \"(.*?)\"",
                      init_location.open().read())[0]
-SN_SIM_PRINT =  '      _______..__   __.         _______. __  .___  ___. \n'
+SN_SIM_PRINT = '      _______..__   __.         _______. __  .___  ___. \n'
 SN_SIM_PRINT += '     /       ||  \\ |  |        /       ||  | |   \\/   | \n'
 SN_SIM_PRINT += '    |   (----`|   \\|  |       |   (----`|  | |  \\  /  | \n'
 SN_SIM_PRINT += '     \\   \\    |  . `  |        \\   \\    |  | |  |\\/|  | \n'

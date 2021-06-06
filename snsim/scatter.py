@@ -4,6 +4,7 @@ import numpy as np
 import sncosmo as snc
 import snsim.nb_fun as nbf
 
+
 def init_sn_smear_model(model, smear_mod):
     """Add smear effect on sncomso model.
 

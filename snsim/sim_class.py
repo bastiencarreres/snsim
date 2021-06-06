@@ -260,9 +260,9 @@ class SN:
         params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
 
-        self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 + \
-                                 (np.log(10)/2.5 * self.sim_lc['flux'] * \
-                                  self.epochs['sig_zp'])**2)
+        self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 +
+                                          (np.log(10)/2.5 * self.sim_lc['flux'] *
+                                           self.epochs['sig_zp'])**2)
 
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
@@ -281,7 +281,7 @@ class SN:
         Directly change the sim_lc attribute
 
         """
-        not_to_change = ['G10','C11']
+        not_to_change = ['G10', 'C11']
         for k in self.epochs.keys():
             if k not in self.sim_lc.copy().keys():
                 self._sim_lc[k] = self.epochs[k].copy()
@@ -519,33 +519,33 @@ class SnGen:
             A list containing SN object.
 
         """
-        #-- RANDOM PART :
-        #---- Order is important for reproduce a simulation
-        #---- because of the numpy random generator object
-        #---- The order is : 1. t0 -> SN peak time
-        #----                2. zcos -> SN cosmological redshifts
-        #----                3. mag_smear -> Coherent magnitude scattering
-        #----                4. opt_seeds -> 3 indep randseeds for coord, vpec and model
+        # -- RANDOM PART :
+        # ---- Order is important for reproduce a simulation
+        # ---- because of the numpy random generator object
+        # ---- The order is : 1. t0 -> SN peak time
+        # ----                2. zcos -> SN cosmological redshifts
+        # ----                3. mag_smear -> Coherent magnitude scattering
+        # ----                4. opt_seeds -> 3 indep randseeds for coord, vpec and model
 
         if rand_gen is None:
             rand_gen = np.random.default_rng()
 
-        #-- Generate peak magnitude
+        # -- Generate peak magnitude
         t0 = self.gen_peak_time(n_sn, rand_gen)
 
-        #-- Generate cosmological redshifts
+        # -- Generate cosmological redshifts
         zcos = self.gen_zcos(n_sn, rand_gen)
 
-        #-- Generate coherent mag smearing
+        # -- Generate coherent mag smearing
         mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
 
-        #-- Generate 3 randseeds for optionnal parameters randomization
+        # -- Generate 3 randseeds for optionnal parameters randomization
         opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
 
-        #- Generate random parameters dependants on sn model used
+        # - Generate random parameters dependants on sn model used
         rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]))
 
-        #-- If there is host use them
+        # -- If there is host use them
         if self.host is not None:
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
             host = self.host.host_near_z(zcos, treshold)
@@ -557,7 +557,7 @@ class SnGen:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
 
-        #-- SN initialisation part :
+        # -- SN initialisation part :
 
         sn_par = ({'zcos': z,
                    'como_dist': self.cosmology.comoving_distance(z).value,
@@ -802,7 +802,6 @@ class SurveyObs:
         self._obs_table, self._start_end_days = self._extract_from_db()
         self._field_dic = self._init_field_dic()
 
-
     def _init_field_dic(self):
         """Create a dictionnary with fieldID and coord.
 
@@ -814,11 +813,11 @@ class SurveyObs:
         """
 
         field_list = self.obs_table['fieldID'].unique()
-        dic={}
+        dic = {}
         for f in field_list:
             idx = nbf.find_first(f, self.obs_table['fieldID'].values)
-            dic[f]={'ra': self.obs_table['fieldRA'][idx],
-                    'dec': self.obs_table['fieldDec'][idx]}
+            dic[f] = {'ra': self.obs_table['fieldRA'][idx],
+                      'dec': self.obs_table['fieldDec'][idx]}
         return dic
 
     @property
@@ -956,9 +955,9 @@ class SurveyObs:
             where = where[:-5]
         query = 'SELECT '
         for k in keys:
-            query +=  k+','
-        query=query[:-1]
-        query+= ' FROM Summary' + where + ';'
+            query += k+','
+        query = query[:-1]
+        query += ' FROM Summary' + where + ';'
         obs_dic = pd.read_sql_query(query, con)
 
         # avoid crash on errors
@@ -976,7 +975,7 @@ class SurveyObs:
         obs_dic.reset_index(drop=True, inplace=True)
 
         if obs_dic.size == 0:
-            raise  RuntimeError('No observation for the given survey start_day and duration')
+            raise RuntimeError('No observation for the given survey start_day and duration')
         start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
         end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
         return obs_dic, (start_day, end_day)
@@ -1019,9 +1018,9 @@ class SurveyObs:
                                                               dec_fields)
 
         epochs_selec, is_obs = nbf.is_in_field(epochs_selec,
-                               self._obs_table['fieldID'][epochs_selec].values,
-                               ra_field_frame, dec_field_frame,
-                               self.field_size, selec_fields_ID)
+                                               self._obs_table['fieldID'][epochs_selec].values,
+                                               ra_field_frame, dec_field_frame,
+                                               self.field_size, selec_fields_ID)
         if is_obs:
             return self._make_obs_table(epochs_selec)
         return None
@@ -1148,7 +1147,7 @@ class SnHost:
             return host_list.query(f'redshift >= {z_min} & redshift <= {z_max}')
         return host_list
 
-    def host_near_z(self, z_list, treshold = 1e-4):
+    def host_near_z(self, z_list, treshold=1e-4):
         """Take the nearest host from a redshift list.
 
         Parameters
@@ -1186,7 +1185,8 @@ class SnSimPkl:
         A copy of input sim_lc.
 
     """
-    def __init__(self,sim_lc,header):
+
+    def __init__(self, sim_lc, header):
         self._header = header
         self._sim_lc = sim_lc
 

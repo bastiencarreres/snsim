@@ -4,6 +4,7 @@ import sncosmo as snc
 import numpy as np
 from snsim.constants import SNC_MAG_OFFSET_AB
 
+
 def x0_to_mB(x0):
     """Convert SALT x0 to bessellB restframe magnitude.
 

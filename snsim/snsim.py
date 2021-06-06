@@ -14,6 +14,7 @@ import snsim.scatter as sct
 import snsim.sim_class as scls
 import snsim.plot_utils as plot_ut
 
+
 class Simulator:
     """Simulation class using a config file config.yml
 
@@ -153,7 +154,7 @@ class Simulator:
 
         # Check if there is a db_file
         if 'survey_config' not in self.sim_cfg:
-            raise  KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
+            raise KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
         # cadence sim or n fixed
         if 'n_sn' in self.sim_cfg['sn_gen']:
@@ -193,7 +194,7 @@ class Simulator:
     @property
     def cmb(self):
         """Get cmb parameters"""
-        if 'cmb' in  self.sim_cfg:
+        if 'cmb' in self.sim_cfg:
             if 'v_cmb' in self.sim_cfg['cmb']:
                 v_cmb = self.sim_cfg['cmb']['v_cmb']
             else:
@@ -201,7 +202,7 @@ class Simulator:
             if 'l_cmb' in self.sim_cfg['cmb']:
                 l_cmb = self.sim_cfg['cmb']['l_cmb']
             else:
-                l_cmb =  L_CMB
+                l_cmb = L_CMB
             if 'b_cmb' in self.sim_cfg['cmb']:
                 b_cmb = self.sim_cfg['cmb']['b_cmb']
             else:
@@ -247,7 +248,7 @@ class Simulator:
     @property
     def cosmology(self):
         """Get astropy cosmological model used in simulation"""
-        if not ut.is_same_cosmo_model(self.sim_cfg['cosmology'],self._cosmology):
+        if not ut.is_same_cosmo_model(self.sim_cfg['cosmology'], self._cosmology):
             self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
         return self._cosmology
 
@@ -264,7 +265,7 @@ class Simulator:
         not_same = (self._generator.sn_int_par != self.sn_int_par)
         not_same *= (self.sim_cfg['model_config'] != self._generator.model_config)
         not_same *= (self.cmb != self._generator.cmb)
-        not_same *= (not ut.is_same_cosmo_model(self.sim_cfg['cosmology'],self._cosmology))
+        not_same *= (not ut.is_same_cosmo_model(self.sim_cfg['cosmology'], self._cosmology))
         not_same *= (self.sim_cfg['vpec_dist'] != self._generator.vpec_dist)
 
         if not_same:
@@ -324,9 +325,9 @@ class Simulator:
     @property
     def sn_rate_z0(self):
         """Get the sn rate parameters"""
-        if 'sn_rate'  in self.sim_cfg['sn_gen']:
+        if 'sn_rate' in self.sim_cfg['sn_gen']:
             sn_rate = float(self.sim_cfg['sn_gen']['sn_rate'])
-        else :
+        else:
             sn_rate = 3e-5
         if 'rate_pw' in self.sim_cfg['sn_gen']:
             rate_pw = self.sim_cfg['sn_gen']['rate_pw']
@@ -344,9 +345,9 @@ class Simulator:
             Min and max time for SN peak generation.
         """
         min_peak_time = self.survey.start_end_days[0] - self.generator.snc_model_time[1] \
-                   * (1 + self.z_range[1])
+            * (1 + self.z_range[1])
         max_peak_time = self.survey.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
-                   * (1 + self.z_range[1])
+            * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
     def sn_rate(self, z):
@@ -383,11 +384,11 @@ class Simulator:
         z_min, z_max = self.z_range
         z_shell = np.linspace(z_min, z_max, 1000)
         z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
-        rate = self.sn_rate(z_shell_center)# Rate in Nsn/Mpc^3/year
+        rate = self.sn_rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
         co_dist = self.cosmology.comoving_distance(z_shell).value
         shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
 
-        #-- Compute the sn time rate in each volume shell [( SN / year )(z)]
+        # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = rate * shell_vol / (1 + z_shell_center)
         return z_shell, shell_time_rate
 
@@ -436,7 +437,7 @@ class Simulator:
         print(f"SIM NAME : {self.sim_name}\n"
               f"CONFIG FILE : {self._yml_path}\n"
               f"SURVEY FILE : {self.sim_cfg['survey_config']['survey_file']}")
-        if 'host_file' in self.sim_cfg :
+        if 'host_file' in self.sim_cfg:
             print(f"HOST FILE : {self.sim_cfg['host_file']}")
         print(f"SN SIM MODEL : {self.model_name} from {self.sim_cfg['model_config']['model_dir']}\n"
               f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}\n"
@@ -445,23 +446,23 @@ class Simulator:
         print('-----------------------------------------------------------')
 
         if self._use_rate:
-            use_rate_str= ''
+            use_rate_str = ''
         else:
             print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia\n")
-            use_rate_str=' (only for redshifts simulation)'
+            use_rate_str = ' (only for redshifts simulation)'
 
         print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
-             +use_rate_str+"\n"
+              + use_rate_str+"\n"
               f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
               f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n\n"
               f"First day in survey_file : {self.survey.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
               f"Last day in survey_file : {self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}")
 
         if 'duration_for_rate' in self.sim_cfg['sn_gen']:
-            print(f"N SN is generate for a duration of {self.sim_cfg['sn_gen']['duration_for_rate']:.2f} days")
+            print(
+                f"N SN is generate for a duration of {self.sim_cfg['sn_gen']['duration_for_rate']:.2f} days")
         else:
             print(f"Survey effective duration is {self.survey.duration:.2f} days")
-
 
         print('-----------------------------------------------------------\n')
 
@@ -489,17 +490,17 @@ class Simulator:
 
         sim_time = time.time()
 
-        #-- Init the redshift distribution
+        # -- Init the redshift distribution
         z_shell, shell_time_rate = self._z_shell_time_rate()
         self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
 
-        #-- Set the time range with time edges effects
+        # -- Set the time range with time edges effects
         self.generator.time_range = [self.peak_time_range[0].mjd, self.peak_time_range[1].mjd]
 
-        #-- Init the sn list
+        # -- Init the sn list
         self._sn_list = []
 
-        #-- Create the random generator object with the rand seed
+        # -- Create the random generator object with the rand seed
         rand_gen = np.random.default_rng(self.rand_seed)
 
         if self._use_rate:
@@ -557,7 +558,7 @@ class Simulator:
             6- Apply observation and selection cuts to SN
 
         """
-        #-- Generate the number of SN
+        # -- Generate the number of SN
         n_sn = self._gen_n_sn(rand_gen, shell_time_rate)
 
         SN_ID = 0
@@ -719,12 +720,12 @@ class Simulator:
             residuals = False
 
         plot_ut.plot_lc(sn.sim_lc, mag=mag,
-                   snc_sim_model=s_model,
-                   snc_fit_model=f_model,
-                   fit_cov=cov_t0_x0_x1_c,
-                   zp=zp,
-                   residuals=residuals,
-                   Jy=Jy)
+                        snc_sim_model=s_model,
+                        snc_fit_model=f_model,
+                        fit_cov=cov_t0_x0_x1_c,
+                        zp=zp,
+                        residuals=residuals,
+                        Jy=Jy)
 
     def get_sn_par(self, key):
         """Get an array of a sim_lc meta data"""
@@ -770,12 +771,12 @@ class Simulator:
             field_size = None
             field_list = None
         plot_ut.plot_ra_dec(np.asarray(ra),
-                       np.asarray(dec),
-                       vpec,
-                       field_list,
-                       field_dic,
-                       field_size,
-                       **kwarg)
+                            np.asarray(dec),
+                            vpec,
+                            field_list,
+                            field_dic,
+                            field_size,
+                            **kwarg)
 
     def fit_lc(self, sn_ID=None):
         """Fit all or just one SN lightcurve(s).
@@ -840,7 +841,7 @@ class Simulator:
                        'zCMB': [sn.zCMB for sn in self.sn_list],
                        'zobs': [sn.z for sn in self.sn_list],
                        'sim_mu': [sn.sim_mu for sn in self.sn_list],
-                       'sim_t0': [sn.sim_t0 for sn in self.sn_list] }
+                       'sim_t0': [sn.sim_t0 for sn in self.sn_list]}
 
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
@@ -1079,12 +1080,12 @@ class OpenSim:
             residuals = False
 
         plot_ut.plot_lc(self.sim_lc[sn_ID],
-                   mag=mag,
-                   snc_sim_model=s_model,
-                   snc_fit_model=f_model,
-                   fit_cov=cov_x0_x1_c,
-                   zp=zp,
-                   residuals=residuals)
+                        mag=mag,
+                        snc_sim_model=s_model,
+                        snc_fit_model=f_model,
+                        fit_cov=cov_x0_x1_c,
+                        zp=zp,
+                        residuals=residuals)
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.

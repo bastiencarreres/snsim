@@ -35,6 +35,7 @@ def plt_maximize():
     else:
         raise RuntimeError("plt_maximize() is not implemented for current backend:", backend)
 
+
 def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
     """Add a text legend with model parameters to the plot.
 
@@ -50,7 +51,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
         The fitted parameters and errors.
 
     """
-    par_dic = { 'salt' : [('t0','.2f'), ('x0','.2e'), ('mb','.2f'), ('x1','.2f'), ('c','.3f')]}
+    par_dic = {'salt': [('t0', '.2f'), ('x0', '.2e'), ('mb', '.2f'), ('x1', '.2f'), ('c', '.3f')]}
     par = par_dic[model_name]
 
     str_list = ['']*(len(par)+1)
@@ -66,7 +67,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
         if fit_par is not None:
             str_list[i+1] += f"{p[0]} = {fit_par[i][0]:{p[1]}} $\pm$ {fit_par[i][1]:{p[1]}}@"
 
-    final_str=""
+    final_str = ""
     if str_list[0].count('@') == 2:
         len_str = []
         for i, s in enumerate(str_list):
@@ -89,7 +90,7 @@ def plot_lc(
         flux_table,
         zp=25.,
         mag=False,
-        Jy = False,
+        Jy=False,
         snc_sim_model=None,
         snc_fit_model=None,
         fit_cov=None,
@@ -152,7 +153,7 @@ def plot_lc(
         ax0 = fig.add_subplot(gs[1])
 
     fig.suptitle(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD',
-                fontsize='xx-large')
+                 fontsize='xx-large')
     plt.xlabel('Time relative to peak', fontsize='x-large')
 
     ################
@@ -186,7 +187,7 @@ def plot_lc(
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
                         err_th = salt_ut.compute_salt_fit_error(snc_fit_model,
-                                                                fit_cov[1:,1:],
+                                                                fit_cov[1:, 1:],
                                                                 b, time_th, zp)
                         err_th = 2.5 / \
                             (np.log(10) * 10**(-0.4 * (plot_fit - zp))) * err_th
@@ -212,8 +213,9 @@ def plot_lc(
             if snc_fit_model is not None:
                 plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
                 if fit_cov is not None:
-                    if snc_fit_model.source.name in ('salt2','salt3'):
-                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)*norm
+                    if snc_fit_model.source.name in ('salt2', 'salt3'):
+                        err_th = salt_ut.compute_salt_fit_error(
+                            snc_fit_model, fit_cov[1:, 1:], b, time_th, zp)*norm
                 if residuals:
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')*norm
                     rsd = plot - fit_pts
@@ -271,20 +273,20 @@ def plot_lc(
 
     if snc_fit_model is not None and fit_cov is not None:
         mb_fit = salt_ut.x0_to_mB(snc_fit_model.parameters[2])
-        mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:,1:])[0,0])
-        fit_par = [(snc_fit_model.parameters[1], np.sqrt(fit_cov[0,0])),
-                   (snc_fit_model.parameters[2], np.sqrt(fit_cov[1,1])),
+        mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0])
+        fit_par = [(snc_fit_model.parameters[1], np.sqrt(fit_cov[0, 0])),
+                   (snc_fit_model.parameters[2], np.sqrt(fit_cov[1, 1])),
                    (mb_fit, mb_err),
-                   (snc_fit_model.parameters[3], np.sqrt(fit_cov[2,2])),
-                   (snc_fit_model.parameters[4], np.sqrt(fit_cov[3,3]))]
+                   (snc_fit_model.parameters[3], np.sqrt(fit_cov[2, 2])),
+                   (snc_fit_model.parameters[4], np.sqrt(fit_cov[3, 3]))]
 
     if fit_par is not None or sim_par is not None:
-        param_text_box(text_ax, model_name = 'salt', sim_par = sim_par, fit_par = fit_par)
+        param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)
 
     plt.subplots_adjust(hspace=.0)
 
     if full_screen:
-        try :
+        try:
             plt_maximize()
         except:
             pass
@@ -315,7 +317,6 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
     ax.set_axisbelow(True)
     plt.grid()
 
-
     ra = ra - 2 * np.pi * (ra > np.pi)
 
     if vpec is None:
@@ -326,9 +327,9 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
 
     if field_list is not None and field_dic is not None and field_size is not None:
         ra_edges = np.array([field_size[0]/2,
-                                 field_size[0]/2,
-                                 -field_size[0]/2,
-                                 -field_size[0]/2])
+                             field_size[0]/2,
+                             -field_size[0]/2,
+                             -field_size[0]/2])
         dec_edges = np.array([field_size[1]/2,
                              -field_size[1]/2,
                              -field_size[1]/2,
@@ -338,19 +339,19 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                        np.sin(dec_edges)]).T
 
         for ID in field_list:
-            #if ID < 880:
+            # if ID < 880:
             ra = field_dic[ID]['ra']
             dec = field_dic[ID]['dec']
-            new_coord = [nbf.R_base(ra,-dec,v, to_field_frame=False) for v in vec]
+            new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
             if new_radec[3][0] > new_radec[0][0]:
-                if  new_radec[3][0]*new_radec[2][0] > 0:
+                if new_radec[3][0]*new_radec[2][0] > 0:
                     x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
                     y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
                     x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
                     y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
-                    ax.plot(x1,y1,ls='--', color='blue', lw=1, zorder=2)
-                    ax.plot(x2,y2,ls='--', color='blue', lw=1, zorder=2)
+                    ax.plot(x1, y1, ls='--', color='blue', lw=1, zorder=2)
+                    ax.plot(x2, y2, ls='--', color='blue', lw=1, zorder=2)
                 else:
                     if new_radec[2][0] < 0:
                         new_radec[3][0] = -np.pi
@@ -361,7 +362,7 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                                                     lw=1,
                                                     zorder=2))
 
-            else :
+            else:
                 plt.gca().add_patch(Polygon(new_radec,
                                             fill=False,
                                             ls='--',
