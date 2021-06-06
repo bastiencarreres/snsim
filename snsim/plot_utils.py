@@ -213,9 +213,9 @@ def plot_lc(
                 plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2','salt3'):
-                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp)*norm
+                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp) * norm
                 if residuals:
-                    fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab')*norm
+                    fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab') * norm
                     rsd = plot - fit_pts
 
         p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
