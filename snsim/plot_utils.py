@@ -9,7 +9,6 @@ from . import utils as ut
 from . import salt_utils as salt_ut
 from . import nb_fun as nbf
 
-
 def plt_maximize():
     """Enable full screen.
 
@@ -331,10 +330,12 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
                              field_size[0]/2,
                              -field_size[0]/2,
                              -field_size[0]/2])
+
         dec_edges = np.array([field_size[1]/2,
                               -field_size[1]/2,
                               -field_size[1]/2,
                               field_size[1]/2])
+
         vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
                         np.sin(ra_edges) * np.cos(dec_edges),
                         np.sin(dec_edges)]).T
@@ -345,6 +346,7 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
             dec = field_dic[ID]['dec']
             new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
+            
             if new_radec[3][0] > new_radec[0][0]:
                 if new_radec[3][0]*new_radec[2][0] > 0:
                     x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
