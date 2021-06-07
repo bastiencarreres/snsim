@@ -627,14 +627,14 @@ class Simulator:
                         'mean_x1': 'm_x1',
                         'mean_c': 'm_c'}
             if isinstance(self.sim_cfg['model_config']['sig_x1'], list):
-                    header['s_x1-'] =  self.sim_cfg['model_config']['sig_x1'][0]
-                    header['s_x1+'] =  self.sim_cfg['model_config']['sig_x1'][1]
+                    header['s_x1_sup'] =  self.sim_cfg['model_config']['sig_x1'][0]
+                    header['s_x1_inf'] =  self.sim_cfg['model_config']['sig_x1'][1]
             else:
                 fits_dic['sig_x1'] = 's_x1'
-                
+
             if isinstance(self.sim_cfg['model_config']['sig_c'], list):
-                    header['s_c-'] =  self.sim_cfg['model_config']['sig_c'][0]
-                    header['s_c+'] =  self.sim_cfg['model_config']['sig_c'][1]
+                    header['s_c_sup'] =  self.sim_cfg['model_config']['sig_c'][0]
+                    header['s_c_inf'] =  self.sim_cfg['model_config']['sig_c'][1]
             else:
                 fits_dic['sig_c'] = 's_c'
 
