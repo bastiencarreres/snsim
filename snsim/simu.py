@@ -778,6 +778,7 @@ class Simulator:
             field_dic = None
             field_size = None
             field_list = None
+
         plot_ut.plot_ra_dec(np.asarray(ra),
                             np.asarray(dec),
                             vpec,
@@ -1003,7 +1004,7 @@ class OpenSim:
             fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
             self._fit_res[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID], fit_model, fit_par)
 
-    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False):
+    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -1053,7 +1054,7 @@ class OpenSim:
             s_model = None
 
         if plot_fit:
-            if self.fit_res is None:
+            if self.fit_res is None or self.fit_res[sn_ID] is None::
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
             elif self.fit_res[sn_ID] is None:
@@ -1079,7 +1080,8 @@ class OpenSim:
                         snc_fit_model=f_model,
                         fit_cov=cov_x0_x1_c,
                         zp=zp,
-                        residuals=residuals)
+                        residuals=residuals
+                        Jy=Jy)
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.
@@ -1105,8 +1107,13 @@ class OpenSim:
             dec.append(lc.meta['dec'])
             if plot_vpec:
                 vpec.append(lc.meta['vpec'])
+            if plot_fields:
+                field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
 
-        plot_ut.plot_ra_dec(np.asarray(ra), np.asarray(dec), vpec, **kwarg)
+        plot_ut.plot_ra_dec(np.asarray(ra),
+                            np.asarray(dec),
+                            vpec,
+                            **kwarg)
 
     def write_fit(self):
         """Write fits results in fits format.
