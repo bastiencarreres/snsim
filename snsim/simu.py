@@ -1083,7 +1083,7 @@ class OpenSim:
                         residuals=residuals
                         Jy=Jy)
 
-    def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
+    def plot_ra_dec(self, plot_vpec=False, **kwarg):
         """Plot a mollweide map of ra, dec.
 
         Parameters
@@ -1110,21 +1110,9 @@ class OpenSim:
             if plot_fields:
                 field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
 
-        if plot_fields:
-            field_dic = self.survey._field_dic
-            field_size = self.survey.field_size
-            field_list = np.unique(field_list)
-        else:
-            field_dic = None
-            field_size = None
-            field_list = None
-
         plot_ut.plot_ra_dec(np.asarray(ra),
                             np.asarray(dec),
                             vpec,
-                            field_list,
-                            field_dic,
-                            field_size,
                             **kwarg)
 
     def write_fit(self):
