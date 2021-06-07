@@ -197,7 +197,7 @@ def plot_lc(
 
         else:
             if Jy:
-                ax0.set_ylabel(f'Flux [$\mu$Jy]', fontsize='x-large')
+                ax0.set_ylabel('Flux [$\mu$Jy]', fontsize='x-large')
                 norm = ut.flux_to_Jansky(zp, b)
             else:
                 ax0.set_ylabel(f'Flux (ZP = {zp})', fontsize='x-large')
