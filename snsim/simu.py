@@ -857,32 +857,17 @@ class Simulator:
             sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
             sim_lc_meta['m_smear'] = [sn.mag_smear for sn in self.sn_list]
 
-        sim_meta = {
-            'n_sn': len(
-                self.sn_list),
-            'Mname': self.model_name,
-            'M0': self.sim_cfg['sn_gen']['M0'],
-            **self.sim_cfg['cosmology']}
-
         if self.model_name in ('salt2', 'salt3'):
-            sim_meta['alpha'] = self.sim_cfg['model_config']['alpha']
-            sim_meta['beta'] = self.sim_cfg['model_config']['beta']
-            sim_meta['m_x1'] = self.sim_cfg['model_config']['mean_x1']
-            sim_meta['s_x1'] = self.sim_cfg['model_config']['sig_x1']
-            sim_meta['m_c'] = self.sim_cfg['model_config']['mean_c']
-            sim_meta['s_c'] = self.sim_cfg['model_config']['sig_c']
-
             sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
             sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
             sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
             sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
 
         if 'smear_mod' in self.sim_cfg['sn_gen']:
-            sim_meta['SMod'] = self.sim_cfg['sn_gen']['smear_mod']
             sim_lc_meta['SM_seed'] = [sn.smear_mod_seed for sn in self.sn_list]
 
         write_file = self.sim_cfg['data']['write_path'] + self.sim_name + '_fit.fits'
-        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=sim_meta)
+        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self._get_primary_header())
 
 
 class OpenSim:
