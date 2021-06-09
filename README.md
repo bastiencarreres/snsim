@@ -7,7 +7,7 @@ In the setup.py directory use:
 ## Input file :
 The input file is a .yml with the following structure:
 ```yaml
-data :
+data:
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
     write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
@@ -40,8 +40,8 @@ cosmology: # Follow astropy formalism
     H0: HUBBLE CONSTANT
 cmb:
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
-    ra_cmb: RIGHT ASCENSION OF CMB DIPOLE #(Optional, default = 266.81)
-    dec_cmb: DECLINAISON OF CMB DIPOLE #(Optional, default = 48.253)
+    l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)            
+    b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)     
 model_config:
     model_name: 'THE MODEL NAME' # Example : 'salt2'
     model_dir: '/PATH/TO/SALT/MODEL'  
@@ -237,4 +237,3 @@ Where the first term is the poissonian random noise with G the CCD gain in e<sup
 ![skynoise_eq](readme_figures/skynoise_eq.svg)
 
 The last term is the propagation to flux of the uncertainty on zero point determination.
-
