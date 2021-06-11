@@ -861,6 +861,15 @@ class SurveyObs:
         return (zp, sig_zp)
 
     @property
+    def sig_psf(self):
+        """Get PSF width"""
+        if 'sig_psf' in self._config:
+            sig_psf = self._config['zp']
+        else:
+            sig_psf = 'psf_in_obs'
+        return sig_psf
+
+    @property
     def duration(self):
         """Get the survey duration in days"""
         duration = self.start_end_days[1].mjd - self.start_end_days[0].mjd
@@ -936,6 +945,9 @@ class SurveyObs:
 
         if not 'sig_zp' in self.config:
             keys += ['sig_zp']
+
+        if not 'sig_psf' in self.config:
+            keys += ['FWHMeff']
 
         if 'add_data' in self.config:
             add_k = (k for k in self.config['add_data'] if k not in keys)
@@ -1057,8 +1069,13 @@ class SurveyObs:
         else:
             sig_zp = self.obs_table['sig_zp'][epochs_selec]
 
-        # Convert maglim to flux noise (ADU)
-        skynoise = 10.**(0.4 * (zp - mlim5)) / 5
+        if self.sig_psf != 'psf_in_obs':
+            sig_psf = [self.sig_psf] * np.sum(epochs_selec)
+        else:
+            sig_psf = self.obs_table['FWHMeff'][epochs_selec]/(2*np.sqrt(2*np.log(2)))
+
+        # Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
+        skynoise = 10.**(0.4 * (zp - mlim5)) / 5 * np.sqrt(4 * np.pi * sig_psf**2)
 
         # Create obs table
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
