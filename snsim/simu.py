@@ -84,57 +84,58 @@ class Simulator:
 
     yaml file format :
 
-    +----------------------------------------------------------------------------------+
-    | data :                                                                           |
-    |     write_path: '/PATH/TO/OUTPUT'                                                |
-    |     sim_name: 'NAME OF SIMULATION'                                               |
-    |     write_format: 'format' or ['format1','format2']                              |
-    | survey_config:                                                                   |
-    |     survey_file: '/PATH/TO/FILE'                                                 |
-    |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in    |
-    |  survey_file doesn't match sncosmo name)                                         |
-    |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata               |
-    |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}   |
-    |     start_day: MJD NUMBER or 'YYYY-MM-DD'(Optional, default given by survey file)|
-    |     duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)    |
-    |     zp: INSTRUMENTAL ZEROPOINT (Optional, default given by survey file)          |
-    |     sig_zp: ZEROPOINT ERROR (Optional, default given by survey file)             |
-    |     ra_size: RA FIELD SIZE                                                       |
-    |     dec_size: DEC FIELD SIZE                                                     |
-    |     gain: CCD GAIN e-/ADU                                                        |
-    | sn_gen:                                                                          |
-    |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                     |
-    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)        |
-    |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                      |
-    |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                  |
-    |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS |
-    |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                       |
-    |     z_range: [ZMIN,ZMAX]                                                         |
-    |     M0: SN ABSOLUT MAGNITUDE                                                     |
-    |     mag_smear: SN INTRINSIC SMEARING                                             |
-    |     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING      |
-    | cosmology:                                                                       |
-    |     Om0: MATTER DENSITY                                                          |
-    |     H0: HUBBLE CONSTANT                                                          |
-    | cmb:                                                                             |
-    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 620 km/s)                 |
-    |     l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)                      |
-    |     b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)                       |
-    | model_config:                                                                    |
-    |     model_name:                                                                  |
-    |     model_dir: '/PATH/TO/SALT/MODEL'                                             |
-    |     alpha: STRETCH CORRECTION = alpha*x1                                         |
-    |     beta: COLOR CORRECTION = -beta*c                                             |
-    |     mean_x1: MEAN X1 VALUE                                                       |
-    |     mean_c: MEAN C VALUE                                                         |
-    |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                            |
-    |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                |
-    | vpec_dist:                                                                       |
-    |     mean_vpec: MEAN SN PECULIAR VELOCITY                                         |
-    |     sig_vpec: SIGMA VPEC                                                         |
-    | host_file: 'PATH/TO/HOSTFILE' (Optional)                                         |
-    |                                                                                  |
-    +----------------------------------------------------------------------------------+
+    +------------------------------------------------------------------------------------+
+    | data :                                                                             |
+    |     write_path: '/PATH/TO/OUTPUT'                                                  |
+    |     sim_name: 'NAME OF SIMULATION'                                                 |
+    |     write_format: 'format' or ['format1','format2']                                |
+    | survey_config:                                                                     |
+    |     survey_file: '/PATH/TO/FILE'                                                   |
+    |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in      |
+    |  survey_file doesn't match sncosmo name)                                           |
+    |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata                 |
+    |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}     |
+    |     start_day: MJD NUMBER or 'YYYY-MM-DD'(Optional, default given by survey file)  |
+    |     duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)      |
+    |     zp: INSTRUMENTAL ZEROPOINT (Optional, default given by survey file)            |
+    |     sig_zp: ZEROPOINT ERROR (Optional, default given by survey file)               |
+    |     sig_psf: GAUSSIAN PSF SIGMA (Otional, default given by survey file as FWHMeff) |
+    |     ra_size: RA FIELD SIZE                                                         |
+    |     dec_size: DEC FIELD SIZE                                                       |
+    |     gain: CCD GAIN e-/ADU                                                          |
+    | sn_gen:                                                                            |
+    |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                       |
+    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)          |
+    |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                        |
+    |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                    |
+    |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS   |
+    |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                         |
+    |     z_range: [ZMIN,ZMAX]                                                           |
+    |     M0: SN ABSOLUT MAGNITUDE                                                       |
+    |     mag_smear: SN INTRINSIC SMEARING                                               |
+    |     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING        |
+    | cosmology:                                                                         |
+    |     Om0: MATTER DENSITY                                                            |
+    |     H0: HUBBLE CONSTANT                                                            |
+    | cmb:                                                                               |
+    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 620 km/s)                   |
+    |     l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)                        |
+    |     b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)                         |
+    | model_config:                                                                      |
+    |     model_name:                                                                    |
+    |     model_dir: '/PATH/TO/SALT/MODEL'                                               |
+    |     alpha: STRETCH CORRECTION = alpha*x1                                           |
+    |     beta: COLOR CORRECTION = -beta*c                                               |
+    |     mean_x1: MEAN X1 VALUE                                                         |
+    |     mean_c: MEAN C VALUE                                                           |
+    |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                              |
+    |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                  |
+    | vpec_dist:                                                                         |
+    |     mean_vpec: MEAN SN PECULIAR VELOCITY                                           |
+    |     sig_vpec: SIGMA VPEC                                                           |
+    | host_file: 'PATH/TO/HOSTFILE' (Optional)                                           |
+    |                                                                                    |
+    +------------------------------------------------------------------------------------+
     """
 
     def __init__(self, param_dic):
@@ -1054,7 +1055,7 @@ class OpenSim:
             s_model = None
 
         if plot_fit:
-            if self.fit_res is None or self.fit_res[sn_ID] is None::
+            if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
             elif self.fit_res[sn_ID] is None:
@@ -1080,7 +1081,7 @@ class OpenSim:
                         snc_fit_model=f_model,
                         fit_cov=cov_x0_x1_c,
                         zp=zp,
-                        residuals=residuals
+                        residuals=residuals,
                         Jy=Jy)
 
     def plot_ra_dec(self, plot_vpec=False, **kwarg):

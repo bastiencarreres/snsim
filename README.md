@@ -18,6 +18,7 @@ survey_config:
     db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
     zp: INSTRUMENTAL ZEROPOINT  #(Optional, default given by survey file)
     sig_zp: UNCERTAINTY ON ZEROPOINT #(Optional, default given by survey file)
+    sig_psf: GAUSSIAN PSF SIGMA #(Optional, default given by survey file as FWHMeff)
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
     gain: CCD GAIN e-/ADU
@@ -62,6 +63,7 @@ model_config:
 * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
+* Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf 
 
 ## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
