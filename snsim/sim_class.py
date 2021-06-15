@@ -864,7 +864,7 @@ class SurveyObs:
     def sig_psf(self):
         """Get PSF width"""
         if 'sig_psf' in self._config:
-            sig_psf = self._config['zp']
+            sig_psf = self._config['sig_psf']
         else:
             sig_psf = 'psf_in_obs'
         return sig_psf
@@ -1060,22 +1060,25 @@ class SurveyObs:
             band = np.array(list(map(self.band_dic.get, band)))
 
         if self.zp[0] != 'zp_in_obs':
-            zp = [self.zp[0]] * np.sum(epochs_selec)
+            zp = np.ones(np.sum(epochs_selec)) * self.zp[0]
         else:
             zp = self.obs_table['zp'][epochs_selec]
 
         if self.zp[1] != 'sig_zp_in_obs':
-            sig_zp = [self.zp[1]] * np.sum(epochs_selec)
+            sig_zp = np.ones(np.sum(epochs_selec)) * self.zp[1]
         else:
             sig_zp = self.obs_table['sig_zp'][epochs_selec]
 
+
         if self.sig_psf != 'psf_in_obs':
-            sig_psf = [self.sig_psf] * np.sum(epochs_selec)
+            sig_psf = np.ones(np.sum(epochs_selec)) * self.sig_psf
         else:
             sig_psf = self.obs_table['FWHMeff'][epochs_selec]/(2*np.sqrt(2*np.log(2)))
 
         # Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
-        skynoise = 10.**(0.4 * (zp - mlim5)) / 5 * np.sqrt(4 * np.pi * sig_psf**2)
+        skynoise = 10.**(0.4 * (zp - mlim5)) / 5
+
+        skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
 
         # Create obs table
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
