@@ -938,7 +938,8 @@ class SurveyObs:
                 'fieldID',
                 'fieldRA',
                 'fieldDec',
-                'fiveSigmaDepth']
+                'fiveSigmaDepth',
+                'skypixADU']
 
         if not 'zp' in self.config:
             keys += ['zp']
@@ -1068,7 +1069,6 @@ class SurveyObs:
             sig_zp = np.ones(np.sum(epochs_selec)) * self.zp[1]
         else:
             sig_zp = self.obs_table['sig_zp'][epochs_selec]
-
 
         if self.sig_psf != 'psf_in_obs':
             sig_psf = np.ones(np.sum(epochs_selec)) * self.sig_psf
