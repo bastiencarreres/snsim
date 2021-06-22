@@ -1077,9 +1077,9 @@ class SurveyObs:
 
         # Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
         #skynoise = 10.**(0.4 * (zp - mlim5)) / 5
-        #skynoise = np.sqrt(self.obs_table['skypixADU'][epochs_selec] / self.gain)
+        skynoise = np.sqrt(self.obs_table['skypixADU'][epochs_selec] / self.gain)
         skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
-
+        
         # Create obs table
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
                      'band': band,
