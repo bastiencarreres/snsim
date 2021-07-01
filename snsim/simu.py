@@ -100,6 +100,7 @@ class Simulator:
     |     zp: INSTRUMENTAL ZEROPOINT (Optional, default given by survey file)            |
     |     sig_zp: ZEROPOINT ERROR (Optional, default given by survey file)               |
     |     sig_psf: GAUSSIAN PSF SIGMA (Otional, default given by survey file as FWHMeff) |
+    |     noise_key: [key, type] type can be 'mlim5' or 'skysigADU'                      |
     |     ra_size: RA FIELD SIZE                                                         |
     |     dec_size: DEC FIELD SIZE                                                       |
     |     gain: CCD GAIN e-/ADU                                                          |
@@ -110,7 +111,7 @@ class Simulator:
     |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                    |
     |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS   |
     |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                         |
-    |     z_range: [ZMIN,ZMAX]                                                           |
+    |     z_range: [ZMIN, ZMAX]                                                          |
     |     M0: SN ABSOLUT MAGNITUDE                                                       |
     |     mag_smear: SN INTRINSIC SMEARING                                               |
     |     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING        |
@@ -692,6 +693,8 @@ class Simulator:
             If True plot the theorical simulated lightcurve.
         plot_fit : boolean, default = False
             If True plot the fitted lightcurve.
+        Jy : boolean, default = False
+            If True plot in Jansky
 
         Returns
         -------
