@@ -54,7 +54,7 @@ model_config:
     mean_c: MEAN C VALUE
     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]
- vpec_gen:
+ vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
  host_file: '/PATH/TO/HOSTFILE' # Optional
