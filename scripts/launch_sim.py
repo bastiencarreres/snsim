@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from snsim import snsim
+from snsim import Simulator
 
 def nep_cut(nepc):
     for i in range(len(nepc)):
@@ -147,7 +147,7 @@ for K in param_dic:
 param_dic['yaml_path'] = args.__dict__['config_path']
 
 print(param_dic)
-sim = snsim.SnSim(param_dic)
+sim = Simulator(param_dic)
 sim.simulate()
 
 if args.fit:
