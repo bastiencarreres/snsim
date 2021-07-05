@@ -30,6 +30,8 @@ keys_dic = {
         'db_cut',
         'zp',
         'sig_zp',
+        'sig_psf',
+        'noise_key',
         'gain',
         'ra_size',
         'dec_size',
@@ -70,23 +72,29 @@ keys_dic = {
 parser.add_argument("--write_path",type=str)
 parser.add_argument("--sim_name",type=str)
 parser.add_argument("--band_dic",type=yaml.load)
-parser.add_argument("--write_format", type=str,nargs='+')
+parser.add_argument("--write_format", type=str, nargs='+')
 
 parser.add_argument("--survey_file",type=str)
+parser.add_argument("--add_data", type=str, nargs='+')
 parser.add_argument("--db_cut",type=yaml.load)
 parser.add_argument("--zp",type=float)
+parser.add_argument("--sig_zp",type=float)
+parser.add_argument("--sig_psf",type=float)
+parser.add_argument("--noise_key", type=str, nargs=2)
 parser.add_argument("--gain",type=float)
 parser.add_argument("--ra_size",type=float)
 parser.add_argument("--dec_size",type=float)
+parser.add_argument("--start_day",type=float)
+parser.add_argument("--end_day",type=float)
 parser.add_argument("--duration",type=float)
 
 parser.add_argument("--randseed",type=int)
+parser.add_argument("--duration_for_rate",type=float)
 parser.add_argument("--n_sn",type=int)
 parser.add_argument("--sn_rate",type=float)
 parser.add_argument("--rate_pw",type=float)
-
 parser.add_argument("--nep_cut", action='append', nargs='+')
-parser.add_argument("--z_range",type=float,nargs=2)
+parser.add_argument("--z_range", type=float, nargs=2)
 parser.add_argument("--M0",type=float)
 parser.add_argument("--mag_smear",type=float)
 parser.add_argument("--smear_mod",type=str)
