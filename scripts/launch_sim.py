@@ -65,7 +65,7 @@ keys_dic = {
         'mean_c',
         'sig_x1',
         'sig_c'],
-    'vpec_gen': [
+    'vpec_dist': [
         'mean_vpec',
         'sig_vpec']}
 
