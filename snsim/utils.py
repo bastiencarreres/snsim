@@ -186,6 +186,10 @@ def init_sn_model(name, model_dir):
         return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
     return None
 
+def add_mw_to_fit(fit_model, sn, rv=3.1):
+    if 'mw_' in fit_model.effect_names:
+        fit_model.set(mw_ebv=sn.mw_ebv)
+        fit_model.set(mw_r_v = rv)
 
 def snc_fitter(lc, fit_model, fit_par):
     """Fit a given lightcurve with sncosmo.

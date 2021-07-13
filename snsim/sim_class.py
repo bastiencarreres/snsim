@@ -11,7 +11,7 @@ from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
 from . import scatter as sct
 from . import nb_fun as nbf
-
+from . import dust_utils as dst_ut
 
 class SN:
     """This class represent SN object.
@@ -212,6 +212,8 @@ class SN:
 
         # elif self.sim_model.source.name == 'snoopy':
             # TODO
+        if 'mw_' in self.sim_model.effect_names:
+            self.mw_ebv = self._model_par['sncosmo']['mw_ebv']
 
     def pass_cut(self, nep_cut):
         """Check if the SN pass the given cuts.
@@ -281,13 +283,15 @@ class SN:
         Directly change the sim_lc attribute
 
         """
-        not_to_change = ['G10', 'C11']
+        not_to_change = ['G10', 'C11', 'mw_']
+        dont_touch = ['z', 'mw_r_v']
+
         for k in self.epochs.keys():
             if k not in self.sim_lc.copy().keys():
                 self._sim_lc[k] = self.epochs[k].copy()
 
         for k in self.sim_lc.meta.copy():
-            if k != 'z' and k[:3] not in not_to_change:
+            if k not in dont_touch and k[:3] not in not_to_change :
                 self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
 
         if self.ID is not None:
@@ -485,7 +489,11 @@ class SnGen:
                                  self.model_config['model_dir'])
 
         if 'smear_mod' in self.sn_int_par:
-            model = sct.init_sn_smear_model(model, self.sn_int_par['smear_mod'])
+            sct.init_sn_smear_model(model, self.sn_int_par['smear_mod'])
+
+        if 'mw_dust' in self.model_config:
+            dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
+
         return model
 
     def _init_model_keys(self):
@@ -545,6 +553,7 @@ class SnGen:
         # - Generate random parameters dependants on sn model used
         rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]))
 
+
         # -- If there is host use them
         if self.host is not None:
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
@@ -557,8 +566,11 @@ class SnGen:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
 
-        # -- SN initialisation part :
+        # -- Add dust if necessary
+        if 'mw_' in self.sim_model.effect_names:
+            dust_par = self._dust_par(ra, dec)
 
+        # -- SN initialisation part :
         sn_par = ({'zcos': z,
                    'como_dist': self.cosmology.comoving_distance(z).value,
                    'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
@@ -573,7 +585,7 @@ class SnGen:
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 
-        model_par_list = ({**model_default, 'sncosmo': mpsn} for mpsn in rand_model_par)
+        model_par_list = ({**model_default, 'sncosmo': {**mpsn, **dstp}} for mpsn, dstp in zip(rand_model_par, dust_par))
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 
@@ -744,6 +756,15 @@ class SnGen:
             loc=0, scale=self.sn_int_par['mag_smear'], size=n)
         return mag_smear
 
+    def _dust_par(self, ra, dec):
+        ebv = dst_ut.compute_ebv(ra, dec)
+        if isinstance(self.model_config['mw_dust'], str):
+            r_v = np.ones(len(ra)) * 3.1
+        elif isinstance(self.model_config['mw_dust'], (list, np.ndarray)):
+            r_v = np.ones(len(ra)) * self.model_config['mw_dust'][1]
+        dust_par = [{'mw_r_v': r, 'mw_ebv': e } for r, e in zip(r_v, ebv)]
+
+        return dust_par
 
 class SurveyObs:
     """This class deals with the observations of the survey.

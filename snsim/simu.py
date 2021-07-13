@@ -13,6 +13,7 @@ from . import scatter as sct
 from . import sim_class as scls
 from . import plot_utils as plot_ut
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
+from . import dust_utils as dst_ut
 
 class Simulator:
     """Simulation class using a config file config.yml
@@ -628,6 +629,7 @@ class Simulator:
                         'beta': 'beta',
                         'mean_x1': 'm_x1',
                         'mean_c': 'm_c'}
+
             if isinstance(self.sim_cfg['model_config']['sig_x1'], list):
                     header['s_x1_sup'] =  self.sim_cfg['model_config']['sig_x1'][0]
                     header['s_x1_inf'] =  self.sim_cfg['model_config']['sig_x1'][1]
@@ -640,6 +642,11 @@ class Simulator:
             else:
                 fits_dic['sig_c'] = 's_c'
 
+        if 'mw_dust' in self.sim_cfg['model_config']:
+            if isinstance(self.sim_cfg['model_config']['mw_dust'], (list, np.ndarray)):
+                header['mw_rv'] = self.sim_cfg['model_config']['mw_dust'][1]
+            else:
+                header['mw_rv'] = 3.1
 
         for k, v in fits_dic.items():
             header[v] = self.sim_cfg['model_config'][k]
@@ -675,7 +682,7 @@ class Simulator:
         if 'pkl' in self.sim_cfg['data']['write_format']:
             sim_lc = [sn.sim_lc for sn in self._sn_list]
             sn_pkl = scls.SnSimPkl(sim_lc, sim_header)
-            with open(write_path + self.sim_name + '_lcs.pkl', 'wb') as file:
+            with open(write_path + self.sim_name + '.pkl', 'wb') as file:
                 pickle.dump(sn_pkl, file)
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
@@ -791,7 +798,7 @@ class Simulator:
                             field_size,
                             **kwarg)
 
-    def fit_lc(self, sn_ID=None):
+    def fit_lc(self, sn_ID=None, mw_dust=None):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -818,6 +825,13 @@ class Simulator:
 
         fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
 
+        if mw_dust is not None:
+            dst_ut.init_mw_dust(fit_model, mw_dust)
+            if isinstance(mw_dust, (list, np.ndarray)):
+                rv = mw_dust[1]
+            else:
+                rv = 3.1
+
         if self.model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
@@ -825,9 +839,11 @@ class Simulator:
             for i, sn in enumerate(self.sn_list):
                 if self._fit_res[i] is None:
                     fit_model.set(z=sn.z)
+                    ut.add_mw_to_fit(fit_model, sn, rv=rv)
                     self._fit_res[i] = ut.snc_fitter(sn.sim_lc, fit_model, fit_par)
         else:
             fit_model.set(z=self.sn_list[sn_ID].z)
+            ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID], rv=rv)
             self._fit_res[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, fit_model, fit_par)
 
     def write_fit(self):
@@ -870,6 +886,9 @@ class Simulator:
 
         if 'smear_mod' in self.sim_cfg['sn_gen']:
             sim_lc_meta['SM_seed'] = [sn.smear_mod_seed for sn in self.sn_list]
+
+        if 'mw_dust' in self.model_config:
+            sim_lc_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]
 
         write_file = self.sim_cfg['data']['write_path'] + self.sim_name + '_fit.fits'
         ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self._get_primary_header())
