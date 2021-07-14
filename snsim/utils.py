@@ -197,7 +197,6 @@ def snc_fitter(lc, fit_model, fit_par):
     fit_model : sncosmo.Model
         Model used to fit the ligthcurve.
     fit_par : list(str)
-snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
         The parameters to fit.
 
     Returns
@@ -207,9 +206,9 @@ snsim/utils.py:637:8: W0612: Unused variable 'i' (unused-variable)
 
     """
     try:
-        res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)[0]
+        res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)
     except BaseException:
-        res = 'NaN'
+        res = ['NaN', 'NaN']
     return res
 
 

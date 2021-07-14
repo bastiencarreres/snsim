@@ -17,8 +17,7 @@ def init_sn_smear_model(model, smear_mod):
 
     Returns
     -------
-    sncosmo.Model
-        Model with effects added.
+    None
 
     """
     if smear_mod == 'G10':
@@ -30,8 +29,6 @@ def init_sn_smear_model(model, smear_mod):
             model.set(C11_Cuu=1.)
         elif smear_mod == 'C11_2':
             model.set(C11_Cuu=-1.)
-    return model
-
 
 class G10(snc.PropagationEffect):
     """G10 smearing effect for sncosmo.
