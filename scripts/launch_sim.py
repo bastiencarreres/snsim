@@ -115,6 +115,7 @@ parser.add_argument("--mean_x1",type=float)
 parser.add_argument("--sig_x1",type=float)
 parser.add_argument("--mean_c",type=float)
 parser.add_argument("--sig_c",type=float)
+parser.add_argument("--mw_dust",type=str)
 
 parser.add_argument("--mean_vpec",type=float)
 parser.add_argument("--sig_vpec",type=float)
