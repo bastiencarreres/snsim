@@ -158,6 +158,10 @@ class Simulator:
         if 'survey_config' not in self.sim_cfg:
             raise KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
+        #Check if the sfdmap need to be download
+        if 'mw_dust' in self.sim_cfg['model_config']:
+            dst_ut.check_files_and_dowload()
+
         # cadence sim or n fixed
         if 'n_sn' in self.sim_cfg['sn_gen']:
             self._use_rate = False
@@ -166,6 +170,7 @@ class Simulator:
 
         self._sn_list = None
         self._fit_res = None
+        self._fit_resmod = None
         self._random_seed = None
         self._host = None
 
@@ -237,6 +242,10 @@ class Simulator:
     def fit_res(self):
         """Get the sn fit results"""
         return self._fit_res
+    @property
+    def fit_resmod(self):
+        """Get the sn fit results sncosmo models"""
+        return self._fit_resmod
 
     @property
     def sn_int_par(self):
@@ -725,12 +734,11 @@ class Simulator:
             if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
-            if self.fit_res[sn_ID] == 'NaN':
+            if np.isnan(self.fit_res[sn_ID]):
                 print('This sn cannot be fitted')
                 return
-            f_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
+            f_model = self.fit_resmod[sn_ID]
             x0, x1, c = self.fit_res[sn_ID]['parameters'][2:]
-            f_model.set(t0=sn.sim_t0, z=sn.z, x0=x0, x1=x1, c=c)
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
         else:
@@ -822,6 +830,7 @@ class Simulator:
 
         if self._fit_res is None:
             self._fit_res = [None] * len(self.sn_list)
+            self._fit_resmod = [None] * len(self.sn_list)
 
         fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
 
@@ -840,11 +849,11 @@ class Simulator:
                 if self._fit_res[i] is None:
                     fit_model.set(z=sn.z)
                     ut.add_mw_to_fit(fit_model, sn, rv=rv)
-                    self._fit_res[i] = ut.snc_fitter(sn.sim_lc, fit_model, fit_par)
+                    self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(sn.sim_lc, fit_model, fit_par)
         else:
             fit_model.set(z=self.sn_list[sn_ID].z)
             ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID], rv=rv)
-            self._fit_res[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, fit_model, fit_par)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, fit_model, fit_par)
 
     def write_fit(self):
         """Write fits results in fits format.
