@@ -569,6 +569,8 @@ class SnGen:
         # -- Add dust if necessary
         if 'mw_' in self.sim_model.effect_names:
             dust_par = self._dust_par(ra, dec)
+        else:
+            dust_par = [{}] * len(ra)
 
         # -- SN initialisation part :
         sn_par = ({'zcos': z,

@@ -51,7 +51,8 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
         The fitted parameters and errors.
 
     """
-    par_dic = {'salt': [('t0', '.2f'), ('x0', '.2e'), ('mb', '.2f'), ('x1', '.2f'), ('c', '.3f')]}
+    par_dic = {'salt': [('t0', '.2f'), ('x0', '.2e'), ('mb', '.2f'), ('x1', '.2f'), ('c', '.3f')],
+               'mw_': [('Rv', '.2f'), ('E(B-V)', '.3f')]}
     par = par_dic[model_name]
 
     str_list = ['']*(len(par)+1)
@@ -282,6 +283,24 @@ def plot_lc(
 
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)
+
+
+    # if 'mw_' in snc_sim_model.effect_names or 'mw_' in snc_fit_model.effect_names:
+    #     if 'mw_' in snc_sim_model.effect_names:
+    #         par_idx = np.where(np.asarray(snc_sim_model.effect_names) == 'mw_r_v')[0]
+    #         par_idx = np.concatenate(rv_idx, np.where(np.asarray(snc_sim_model.effect_names) == 'mw_ebv')[0])
+    #         sim_par = snc_sim_model.parameters[par_idx]
+    #     else:
+    #         sim_par = None
+    #     if 'mw_' in snc_fit_model.effect_names:
+    #         par_idx = np.where(np.asarray(snc_fit_model.effect_names) == 'mw_r_v')[0]
+    #         par_idx = np.concatenate(rv_idx, np.where(np.asarray(snc_fit_model.effect_names) == 'mw_ebv')[0])
+    #         fit_par = snc_fit_model.parameters[par_idx]
+    #     else:
+    #         fit_par = None
+    #
+    #     param_text_box(text_ax, model_name='mw_', sim_par=sim_par, fit_par=fit_par)
+
 
     plt.subplots_adjust(hspace=.0)
 

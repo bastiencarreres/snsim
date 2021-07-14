@@ -44,6 +44,11 @@ def init_mw_dust(model, mw_dust_mod):
 
     model.add_effect(dust, frame='obs', name='mw_')
 
+def add_mw_to_fit(fit_model, mwebv, rv=3.1):
+    if 'mw_' in fit_model.effect_names:
+        fit_model.set(mw_ebv = mwebv)
+        fit_model.set(mw_r_v = rv)
+
 def compute_ebv(ra, dec):
     map = sfdmap.SFDMap(__snsim_dir_path__+'/dust_data')
     ebv = map.ebv(ra, dec)

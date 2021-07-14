@@ -10,4 +10,5 @@ import os
 __snsim_dir_path__ = os.path.dirname(__file__)
 __version__ = "0.2.6"
 
-from .simu import *
+from .simu import Simulator
+from .open_sim import OpenSim

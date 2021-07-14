@@ -54,6 +54,7 @@ model_config:
     mean_c: MEAN C VALUE
     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]
+    mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional) 
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
