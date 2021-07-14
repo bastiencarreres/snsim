@@ -51,5 +51,5 @@ def add_mw_to_fit(fit_model, mwebv, rv=3.1):
 
 def compute_ebv(ra, dec):
     map = sfdmap.SFDMap(__snsim_dir_path__+'/dust_data')
-    ebv = map.ebv(ra, dec)
+    ebv = map.ebv(ra, dec, unit='radian')
     return ebv
