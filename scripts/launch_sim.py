@@ -64,7 +64,8 @@ keys_dic = {
         'mean_x1',
         'mean_c',
         'sig_x1',
-        'sig_c'],
+        'sig_c',
+        'mw_dust'],
     'vpec_dist': [
         'mean_vpec',
         'sig_vpec']}
