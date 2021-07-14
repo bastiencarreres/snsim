@@ -6,7 +6,8 @@ The package use sncosmo.
 
 Github repository : https://github.com/bcarreres/snsim
 """
+import os
+__snsim_dir_path__ = os.path.dirname(__file__)
+__version__ = "0.2.6"
 
 from .simu import *
-
-__version__ = "0.2.6"
