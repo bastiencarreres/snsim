@@ -36,7 +36,7 @@ def plt_maximize():
         raise RuntimeError("plt_maximize() is not implemented for current backend:", backend)
 
 
-def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
+def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.25]):
     """Add a text legend with model parameters to the plot.
 
     Parameters
@@ -62,11 +62,13 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
         str_list[0] += 'FITTED PARAMETERS :@'
 
     for i, p in enumerate(par):
-
         if sim_par is not None:
             str_list[i+1] += f"{p[0]} = {sim_par[i]:{p[1]}}@"
         if fit_par is not None:
-            str_list[i+1] += f"{p[0]} = {fit_par[i][0]:{p[1]}} $\pm$ {fit_par[i][1]:{p[1]}}@"
+            if isinstance(fit_par[i], (int, float)):
+                str_list[i+1] += f"{p[0]} = {fit_par[i]:{p[1]}}"
+            else:
+                str_list[i+1] += f"{p[0]} = {fit_par[i][0]:{p[1]}} $\pm$ {fit_par[i][1]:{p[1]}}@"
 
     final_str = ""
     if str_list[0].count('@') == 2:
@@ -84,8 +86,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None):
 
     props = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
     text_ax.axis('off')
-    text_ax.text(0.01, 0.25, final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=props)
-
+    b = text_ax.text(pos[0], pos[1], final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=props)
 
 def plot_lc(
         flux_table,
@@ -256,7 +257,9 @@ def plot_lc(
     ax0.legend(handles=handles, labels=labels, fontsize='x-large')
 
     sim_par = None
+    sim_mwd_par = None
     fit_par = None
+    fit_mwd_par = None
     if snc_sim_model is not None:
         plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
         sim_par = [flux_table.meta['sim_t0'],
@@ -264,6 +267,9 @@ def plot_lc(
                    flux_table.meta['sim_mb'],
                    flux_table.meta['sim_x1'],
                    flux_table.meta['sim_c']]
+        if 'mw_' in snc_sim_model.effect_names:
+            sim_mwd_par = [flux_table.meta['mw_r_v'],
+                           flux_table.meta['mw_ebv']]
 
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
@@ -281,26 +287,17 @@ def plot_lc(
                    (snc_fit_model.parameters[3], np.sqrt(fit_cov[2, 2])),
                    (snc_fit_model.parameters[4], np.sqrt(fit_cov[3, 3]))]
 
+        if 'mw_' in snc_fit_model.effect_names:
+            par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0]
+            par_idx = np.concatenate((par_idx, np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]))
+            fit_mwd_par= snc_fit_model.parameters[par_idx]
+
+
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)
 
-
-    # if 'mw_' in snc_sim_model.effect_names or 'mw_' in snc_fit_model.effect_names:
-    #     if 'mw_' in snc_sim_model.effect_names:
-    #         par_idx = np.where(np.asarray(snc_sim_model.effect_names) == 'mw_r_v')[0]
-    #         par_idx = np.concatenate(rv_idx, np.where(np.asarray(snc_sim_model.effect_names) == 'mw_ebv')[0])
-    #         sim_par = snc_sim_model.parameters[par_idx]
-    #     else:
-    #         sim_par = None
-    #     if 'mw_' in snc_fit_model.effect_names:
-    #         par_idx = np.where(np.asarray(snc_fit_model.effect_names) == 'mw_r_v')[0]
-    #         par_idx = np.concatenate(rv_idx, np.where(np.asarray(snc_fit_model.effect_names) == 'mw_ebv')[0])
-    #         fit_par = snc_fit_model.parameters[par_idx]
-    #     else:
-    #         fit_par = None
-    #
-    #     param_text_box(text_ax, model_name='mw_', sim_par=sim_par, fit_par=fit_par)
-
+    if fit_mwd_par is not None or sim_mwd_par is not None:
+        param_text_box(text_ax, model_name='mw_', sim_par=sim_mwd_par, fit_par=fit_mwd_par, pos=[0.4, 0.25])
 
     plt.subplots_adjust(hspace=.0)
 
