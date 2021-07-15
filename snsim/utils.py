@@ -1,4 +1,4 @@
-"""This module contains usefull function for the simulation"""
+"""This module contains usefull function for the simulation."""
 
 import numpy as np
 import sncosmo as snc
@@ -51,7 +51,7 @@ def compute_z_cdf(z_shell, shell_time_rate):
     """
     dist = np.append(0, np.cumsum(shell_time_rate))
     norm = dist[-1]
-    return [z_shell, dist/norm]
+    return [z_shell, dist / norm]
 
 
 def is_asym(sigma):
@@ -94,7 +94,6 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
         Random variable.
 
     """
-
     if sig_high is None:
         sig_high = sig_low
     if rand_gen is None:
@@ -103,7 +102,7 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
     else:
         low_or_high = rand_gen.random()
         nbr = abs(rand_gen.normal())
-    if low_or_high < sig_low/(sig_high+sig_low):
+    if low_or_high < sig_low / (sig_high + sig_low):
         nbr *= -sig_low
     else:
         nbr *= sig_high
@@ -127,7 +126,7 @@ def is_same_cosmo_model(dic, astropy_model):
 
     """
     for k, v in dic.items():
-        if v != astropy_model.__dict__['_'+k]:
+        if v != astropy_model.__dict__['_' + k]:
             return False
     return True
 
@@ -257,13 +256,13 @@ def flux_to_Jansky(zp, band):
     magsys = snc.get_magsystem('ab')
     b = snc.get_bandpass(band)
     nu, dnu = snc.utils.integration_grid(
-                                    snc.constants.C_AA_PER_S/b.maxwave(),
-                                    snc.constants.C_AA_PER_S/b.minwave(),
-                                    snc.constants.C_AA_PER_S/snc.constants.MODEL_BANDFLUX_SPACING)
+        snc.constants.C_AA_PER_S / b.maxwave(),
+        snc.constants.C_AA_PER_S / b.minwave(),
+        snc.constants.C_AA_PER_S / snc.constants.MODEL_BANDFLUX_SPACING)
 
-    trans = b(snc.constants.C_AA_PER_S/nu)
+    trans = b(snc.constants.C_AA_PER_S / nu)
     trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
-    norm = 10**(-0.4*zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
+    norm = 10**(-0.4 * zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
 
 
