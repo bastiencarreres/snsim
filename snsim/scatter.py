@@ -30,6 +30,7 @@ def init_sn_smear_model(model, smear_mod):
         elif smear_mod == 'C11_2':
             model.set(C11_Cuu=-1.)
 
+
 class G10(snc.PropagationEffect):
     """G10 smearing effect for sncosmo.
 
@@ -63,7 +64,8 @@ class G10(snc.PropagationEffect):
     param_names_latex = [r'\lambda_0', 'F_0', 'F_1', 'd_L', 'RS']
 
     def __init__(self, model):
-        self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800, np.random.randint(low=1000, high=100000)])
+        self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800,
+                                     np.random.randint(low=1000, high=100000)])
         self._minwave = model.source.minwave()
         self._maxwave = model.source.maxwave()
         self._colordisp = model.source._colordisp
@@ -173,12 +175,13 @@ class C11(snc.PropagationEffect):
         # U'UBVRI lambda eff
         self._sigma_lam = np.array([2500.0, 3560.0, 4390.0, 5490.0, 6545.0, 8045.0])
         # U'UBVRI correlation matrix extract from SNANA, came from N.Chotard thesis
-        self._corr_matrix = np.array([[+1.000, 0.000, 0.000, 0.000, 0.000, 0.000],
-                                      [0.000, +1.000000, -0.118516, -0.768635, -0.908202, -0.219447],
-                                      [0.000, -0.118516, +1.000000, +0.570333, -0.238470, -0.888611],
-                                      [0.000, -0.768635, +0.570333, +1.000000, +0.530320, -0.399538],
-                                      [0.000, -0.908202, -0.238470, +0.530320, +1.000000, +0.490134],
-                                      [0.000, -0.219447, -0.888611, -0.399538, +0.490134, +1.000000]])
+        self._corr_matrix = np.array(
+                               [[+1.000, 0.000, 0.000, 0.000, 0.000, 0.000],
+                                [0.000, +1.000000, -0.118516, -0.768635, -0.908202, -0.219447],
+                                [0.000, -0.118516, +1.000000, +0.570333, -0.238470, -0.888611],
+                                [0.000, -0.768635, +0.570333, +1.000000, +0.530320, -0.399538],
+                                [0.000, -0.908202, -0.238470, +0.530320, +1.000000, +0.490134],
+                                [0.000, -0.219447, -0.888611, -0.399538, +0.490134, +1.000000]])
         # U'UBVRI sigma
         self._sigma = np.array([0.5900, 0.06001, 0.040034, 0.050014, 0.040017, 0.080007])
 

@@ -11,6 +11,7 @@ from . import nb_fun as nbf
 from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
 
+
 def init_astropy_time(date):
     """Take a date and give a astropy.time.Time object.
 
@@ -30,6 +31,7 @@ def init_astropy_time(date):
     elif isinstance(date, str):
         date_format = 'iso'
     return atime.Time(date, format=date_format)
+
 
 def compute_z_cdf(z_shell, shell_time_rate):
     """Compute the cumulative distribution function of redshift.
@@ -51,6 +53,7 @@ def compute_z_cdf(z_shell, shell_time_rate):
     norm = dist[-1]
     return [z_shell, dist/norm]
 
+
 def is_asym(sigma):
     """Check if sigma represents an asymetric distribution.
 
@@ -69,6 +72,7 @@ def is_asym(sigma):
     if sigma.size == 2:
         return sigma
     return sigma[0], sigma[0]
+
 
 def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
     """Generate random parameters using an asymetric Gaussian distribution.
@@ -233,6 +237,7 @@ def norm_flux(flux_table, zp):
     fluxerr_norm = flux_table['fluxerr'] * norm_factor
     return flux_norm, fluxerr_norm
 
+
 def flux_to_Jansky(zp, band):
     """Give the factor to convert flux in uJy.
 
@@ -259,6 +264,7 @@ def flux_to_Jansky(zp, band):
     trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
     norm = 10**(-0.4*zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
+
 
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.

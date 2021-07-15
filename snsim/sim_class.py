@@ -13,6 +13,7 @@ from . import scatter as sct
 from . import nb_fun as nbf
 from . import dust_utils as dst_ut
 
+
 class SN:
     """This class represent SN object.
 
@@ -291,7 +292,7 @@ class SN:
                 self._sim_lc[k] = self.epochs[k].copy()
 
         for k in self.sim_lc.meta.copy():
-            if k not in dont_touch and k[:3] not in not_to_change :
+            if k not in dont_touch and k[:3] not in not_to_change:
                 self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
 
         if self.ID is not None:
@@ -553,7 +554,6 @@ class SnGen:
         # - Generate random parameters dependants on sn model used
         rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]))
 
-
         # -- If there is host use them
         if self.host is not None:
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
@@ -764,9 +764,10 @@ class SnGen:
             r_v = np.ones(len(ra)) * 3.1
         elif isinstance(self.model_config['mw_dust'], (list, np.ndarray)):
             r_v = np.ones(len(ra)) * self.model_config['mw_dust'][1]
-        dust_par = [{'mw_r_v': r, 'mw_ebv': e } for r, e in zip(r_v, ebv)]
+        dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
 
         return dust_par
+
 
 class SurveyObs:
     """This class deals with the observations of the survey.
@@ -964,13 +965,13 @@ class SurveyObs:
 
         keys += [self.config['noise_key'][0]]
 
-        if not 'zp' in self.config:
+        if 'zp' not in self.config:
             keys += ['zp']
 
-        if not 'sig_zp' in self.config:
+        if 'sig_zp' not in self.config:
             keys += ['sig_zp']
 
-        if not 'sig_psf' in self.config:
+        if 'sig_psf' not in self.config:
             keys += ['FWHMeff']
 
         if 'add_data' in self.config:
@@ -1102,7 +1103,7 @@ class SurveyObs:
 
         # Skynoise selection
         if self.config['noise_key'][1] == 'mlim5':
-            #- Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
+            # Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
             mlim5 = self.obs_table[self.config['noise_key'][0]][epochs_selec]
             skynoise = 10.**(0.4 * (zp - mlim5)) / 5
         elif self.config['noise_key'][1] == 'skysigADU':

@@ -1,12 +1,13 @@
 import os
 import pickle
 import numpy as np
+from astropy.io import fits
+from astropy.table import Table
 from . import utils as ut
 from . import scatter as sct
-from . import sim_class as scls
 from . import plot_utils as plot_ut
-from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
+
 
 class OpenSim:
     """This class allow to open simulation file, make plot and run the fit.
@@ -156,8 +157,10 @@ class OpenSim:
         else:
             fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model,self.sim_lc[sn_ID].meta['mw_ebv'] , rv=rv)
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID], fit_model, fit_par)
+                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], rv=rv)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID],
+                                                                          fit_model,
+                                                                          fit_par)
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
         """Plot the given SN lightcurve.
@@ -199,8 +202,6 @@ class OpenSim:
                 dic_par['x0'] = lc.meta['sim_x0']
                 dic_par['x1'] = lc.meta['sim_x1']
                 dic_par['c'] = lc.meta['sim_c']
-
-
             s_model.set(**dic_par)
 
             if 'Smod' in self.header:
@@ -210,7 +211,7 @@ class OpenSim:
 
             if 'mwd_mod' in self.header:
                 dst_ut.init_mw_dust(s_model, self.header['mwd_mod'])
-                s_model.set(mw_r_v = lc.meta['mw_r_v'], mw_ebv = lc.meta['mw_ebv'])
+                s_model.set(mw_r_v=lc.meta['mw_r_v'], mw_ebv=lc.meta['mw_ebv'])
         else:
             s_model = None
 
@@ -223,7 +224,7 @@ class OpenSim:
                         mw_dust = [self.header['mwd_mod'], self.header['mw_rv']]
                     else:
                         mw_dust = [self.header['mwd_mod'], 3.1]
-                self.fit_lc(sn_ID, mw_dust = mw_dust)
+                self.fit_lc(sn_ID, mw_dust=mw_dust)
             elif self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(sn_ID)
@@ -274,9 +275,6 @@ class OpenSim:
             dec.append(lc.meta['dec'])
             if plot_vpec:
                 vpec.append(lc.meta['vpec'])
-            if plot_fields:
-                field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
-
         plot_ut.plot_ra_dec(np.asarray(ra),
                             np.asarray(dec),
                             vpec,

@@ -1,19 +1,17 @@
 """Main module of the simulaiton package"""
 
-import os
 import pickle
 import time
 import yaml
 import numpy as np
 from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
-from astropy.table import Table
 from . import utils as ut
-from . import scatter as sct
 from . import sim_class as scls
 from . import plot_utils as plot_ut
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
+
 
 class Simulator:
     """Simulation class using a config file config.yml
@@ -159,7 +157,7 @@ class Simulator:
         if 'survey_config' not in self.sim_cfg:
             raise KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
-        #Check if the sfdmap need to be download
+        # Check if the sfdmap need to be download
         if 'mw_dust' in self.sim_cfg['model_config']:
             dst_ut.check_files_and_dowload()
 
@@ -243,6 +241,7 @@ class Simulator:
     def fit_res(self):
         """Get the sn fit results"""
         return self._fit_res
+
     @property
     def fit_resmod(self):
         """Get the sn fit results sncosmo models"""
@@ -519,15 +518,15 @@ class Simulator:
             self._cadence_sim(rand_gen, shell_time_rate)
         else:
             self._fix_nsn_sim(rand_gen)
-        l = f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds'
-        print(l)
+
+        print(f'{len(self._sn_list)} SN lcs generated in {time.time() - sim_time:.1f} seconds')
 
         print('\n-----------------------------------------------------------\n')
 
         write_time = time.time()
         self._write_sim()
-        l = f'Sim file write in {time.time() - write_time:.1f} seconds'
-        print(l)
+
+        print(f'Sim file write in {time.time() - write_time:.1f} seconds')
 
         print('\n-----------------------------------------------------------\n')
 
@@ -641,14 +640,14 @@ class Simulator:
                         'mean_c': 'm_c'}
 
             if isinstance(self.sim_cfg['model_config']['sig_x1'], list):
-                    header['s_x1_sup'] =  self.sim_cfg['model_config']['sig_x1'][0]
-                    header['s_x1_inf'] =  self.sim_cfg['model_config']['sig_x1'][1]
+                header['s_x1_sup'] = self.sim_cfg['model_config']['sig_x1'][0]
+                header['s_x1_inf'] = self.sim_cfg['model_config']['sig_x1'][1]
             else:
                 fits_dic['sig_x1'] = 's_x1'
 
             if isinstance(self.sim_cfg['model_config']['sig_c'], list):
-                    header['s_c_sup'] =  self.sim_cfg['model_config']['sig_c'][0]
-                    header['s_c_inf'] =  self.sim_cfg['model_config']['sig_c'][1]
+                header['s_c_sup'] = self.sim_cfg['model_config']['sig_c'][0]
+                header['s_c_inf'] = self.sim_cfg['model_config']['sig_c'][1]
             else:
                 fits_dic['sig_c'] = 's_c'
 
@@ -741,7 +740,7 @@ class Simulator:
                     mw_dust = self.sim_cfg['model_config']['mw_dust']
                 else:
                     mw_dust = None
-                self.fit_lc(sn_ID, mw_dust = mw_dust)
+                self.fit_lc(sn_ID, mw_dust=mw_dust)
 
             if self.fit_res[sn_ID] == 'NaN':
                 print('This sn cannot be fitted')
@@ -859,12 +858,16 @@ class Simulator:
                     fit_model.set(z=sn.z)
                     if mw_dust is not None:
                         dst_ut.add_mw_to_fit(fit_model, sn.mw_ebv, rv=rv)
-                    self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(sn.sim_lc, fit_model, fit_par)
+                    self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(sn.sim_lc,
+                                                                          fit_model,
+                                                                          fit_par)
         else:
             fit_model.set(z=self.sn_list[sn_ID].z)
             if mw_dust is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, rv=rv)
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc, fit_model, fit_par)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc,
+                                                                          fit_model,
+                                                                          fit_par)
 
     def write_fit(self):
         """Write fits results in fits format.

@@ -5,18 +5,22 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
+from platform import system
 from . import utils as ut
 from . import salt_utils as salt_ut
 from . import nb_fun as nbf
+
 
 def plt_maximize():
     """Enable full screen.
 
     Notes
     -----
-    Come from https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python/22418354#22418354
+    Come from
+    https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python/22418354#22418354
     """
-    # See discussion: https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python
+    # See discussion on:
+    # https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python
     backend = plt.get_backend()
     cfm = plt.get_current_fig_manager()
     if backend == "wxAgg":
@@ -36,7 +40,7 @@ def plt_maximize():
         raise RuntimeError("plt_maximize() is not implemented for current backend:", backend)
 
 
-def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.25]):
+def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0.25]):
     """Add a text legend with model parameters to the plot.
 
     Parameters
@@ -84,9 +88,10 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.
         for i, s in enumerate(str_list):
             final_str += str_list[i][:-1]+'\n'
 
-    props = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
+    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
     text_ax.axis('off')
-    b = text_ax.text(pos[0], pos[1], final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=props)
+    text_ax.text(pos[0], pos[1], final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=prop)
+
 
 def plot_lc(
         flux_table,
@@ -216,7 +221,8 @@ def plot_lc(
                 plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
-                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp) * norm
+                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:, 1:],
+                                                                b, time_th, zp) * norm
 
                 if residuals:
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab') * norm
@@ -290,14 +296,14 @@ def plot_lc(
         if 'mw_' in snc_fit_model.effect_names:
             par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0]
             par_idx = np.concatenate((par_idx, np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]))
-            fit_mwd_par= snc_fit_model.parameters[par_idx]
-
+            fit_mwd_par = snc_fit_model.parameters[par_idx]
 
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)
 
     if fit_mwd_par is not None or sim_mwd_par is not None:
-        param_text_box(text_ax, model_name='mw_', sim_par=sim_mwd_par, fit_par=fit_mwd_par, pos=[0.4, 0.25])
+        param_text_box(text_ax, model_name='mw_', sim_par=sim_mwd_par, fit_par=fit_mwd_par,
+                       pos=[0.4, 0.25])
 
     plt.subplots_adjust(hspace=.0)
 
@@ -306,7 +312,6 @@ def plot_lc(
             plt_maximize()
         except:
             pass
-
     plt.show()
 
 
