@@ -1,3 +1,5 @@
+"""OpenSim class used to open simulations file."""
+
 import os
 import pickle
 import numpy as np
@@ -53,7 +55,7 @@ class OpenSim:
     """
 
     def __init__(self, sim_file, model_dir):
-        '''Copy some function of snsim to allow to use sim file'''
+        """Copy some function of snsim to allow to use sim file."""
         self._file_path, self._file_ext = os.path.splitext(sim_file)
         self._sn = None
         self._sim_lc = None
@@ -83,7 +85,7 @@ class OpenSim:
 
     @property
     def sn(self):
-        """Get SnSimPkl object"""
+        """Get SnSimPkl object."""
         if self._sn is None:
             print('You open a fits file => No SnSimPkl object')
             return None
@@ -92,26 +94,26 @@ class OpenSim:
 
     @property
     def sim_lc(self):
-        """Get sim_lc list """
+        """Get sim_lc list."""
         if self._sim_lc is None:
             return self.sn.sim_lc
         return self._sim_lc
 
     @property
     def header(self):
-        """Get header dict """
+        """Get header dict."""
         if self._header is None:
             return self.sn.header
         return self._header
 
     @property
     def fit_res(self):
-        """Get fit results list"""
+        """Get fit results list."""
         return self._fit_res
 
     @property
     def fit_resmod(self):
-        """Get fit sncosmo model results"""
+        """Get fit sncosmo model results."""
         return self._fit_resmod
 
     def fit_lc(self, sn_ID=None, mw_dust=None):
@@ -234,7 +236,6 @@ class OpenSim:
                 return
 
             f_model = self.fit_resmod[sn_ID]
-            x0, x1, c = self.fit_res[sn_ID]['parameters'][2:5]
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
         else:

@@ -745,7 +745,6 @@ class Simulator:
                 print('This sn cannot be fitted')
                 return
             f_model = self.fit_resmod[sn_ID]
-            x0, x1, c = self.fit_res[sn_ID]['parameters'][2:5]
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
         else:
