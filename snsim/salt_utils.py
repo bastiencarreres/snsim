@@ -1,4 +1,4 @@
-"""Contains function related to SALT model"""
+"""Contains function related to SALT model."""
 
 import sncosmo as snc
 import numpy as np
@@ -61,7 +61,7 @@ def cov_x0_to_mb(x0, cov):
 
 
 def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
-    """Compute fit error on flux from sncosmo fit covariance x0,x1,c.
+    r"""Compute fit error on flux from sncosmo fit covariance x0,x1,c.
 
     Parameters
     ----------

@@ -1,4 +1,4 @@
-"""Main module of the simulaiton package"""
+"""Main module of the simulaiton package."""
 
 import pickle
 import time
@@ -14,7 +14,7 @@ from . import dust_utils as dst_ut
 
 
 class Simulator:
-    """Simulation class using a config file config.yml
+    """Simulation class using a config file config.yml.
 
     Parameters
     ----------
@@ -71,7 +71,6 @@ class Simulator:
 
     Notes
     -----
-
     - If the name of bands in the survey file doesn't match sncosmo bands
     you can use the key band_dic to translate filters names
     - If you don't set the filter name item in nep_cut, the cut apply to all the bands
@@ -140,6 +139,7 @@ class Simulator:
     """
 
     def __init__(self, param_dic):
+        """Initialise Simulator class."""
         # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
             self.sim_cfg = param_dic
@@ -184,12 +184,12 @@ class Simulator:
 
     @property
     def sim_name(self):
-        """Get sim name"""
+        """Get sim name."""
         return self.sim_cfg['data']['sim_name']
 
     @property
     def vpec_dist(self):
-        """Get vpec option"""
+        """Get vpec option."""
         if 'vpec_dist' in self.sim_cfg:
             return self.sim_cfg['vpec_dist']
         elif 'host_file' in self.sim_cfg:
@@ -199,7 +199,7 @@ class Simulator:
 
     @property
     def cmb(self):
-        """Get cmb parameters"""
+        """Get cmb parameters."""
         if 'cmb' in self.sim_cfg:
             if 'v_cmb' in self.sim_cfg['cmb']:
                 v_cmb = self.sim_cfg['cmb']['v_cmb']
@@ -221,7 +221,7 @@ class Simulator:
 
     @property
     def n_sn(self):
-        """Get number of sn simulated"""
+        """Get number of sn simulated."""
         if self._sn_list is None:
             print('You have to run the simulation')
             return None
@@ -229,27 +229,27 @@ class Simulator:
 
     @property
     def model_name(self):
-        """Get the name of sn model used"""
+        """Get the name of sn model used."""
         return self.sim_cfg['model_config']['model_name']
 
     @property
     def sn_list(self):
-        """Get the list of simulated sn"""
+        """Get the list of simulated sn."""
         return self._sn_list
 
     @property
     def fit_res(self):
-        """Get the sn fit results"""
+        """Get the sn fit results."""
         return self._fit_res
 
     @property
     def fit_resmod(self):
-        """Get the sn fit results sncosmo models"""
+        """Get the sn fit results sncosmo models."""
         return self._fit_resmod
 
     @property
     def sn_int_par(self):
-        """Get the intrinsic parameters of SN Ia"""
+        """Get the intrinsic parameters of SN Ia."""
         int_params = {'M0': self.sim_cfg['sn_gen']['M0'],
                       'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
         if 'smear_mod' in self.sim_cfg['sn_gen']:
@@ -258,21 +258,21 @@ class Simulator:
 
     @property
     def cosmology(self):
-        """Get astropy cosmological model used in simulation"""
+        """Get astropy cosmological model used in simulation."""
         if not ut.is_same_cosmo_model(self.sim_cfg['cosmology'], self._cosmology):
             self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
         return self._cosmology
 
     @property
     def survey(self):
-        """Get the SurveyObs object of the simulation """
+        """Get the SurveyObs object of the simulation."""
         if self._survey._config != self.sim_cfg['survey_config']:
             self._survey = scls.SurveyObs(self.sim_cfg['survey_config'])
         return self._survey
 
     @property
     def generator(self):
-        """Get the SNGen object of the simulation """
+        """Get the SNGen object of the simulation."""
         not_same = (self._generator.sn_int_par != self.sn_int_par)
         not_same *= (self.sim_cfg['model_config'] != self._generator.model_config)
         not_same *= (self.cmb != self._generator.cmb)
@@ -290,7 +290,7 @@ class Simulator:
 
     @property
     def host(self):
-        """Get the SnHost object of the simulation """
+        """Get the SnHost object of the simulation."""
         if self._host is not None:
             return self._host
         elif 'host_file' in self.sim_cfg:
@@ -301,7 +301,7 @@ class Simulator:
 
     @property
     def nep_cut(self):
-        """Get the list of epochs cuts"""
+        """Get the list of epochs cuts."""
         snc_mintime, snc_maxtime = self.generator.snc_model_time
         if 'nep_cut' in self.sim_cfg['sn_gen']:
             nep_cut = self.sim_cfg['sn_gen']['nep_cut']
@@ -321,7 +321,7 @@ class Simulator:
 
     @property
     def rand_seed(self):
-        """Get primary random seed of the simulation"""
+        """Get primary random seed of the simulation."""
         if 'randseed' in self.sim_cfg['sn_gen']:
             return int(self.sim_cfg['sn_gen']['randseed'])
         elif self._random_seed is None:
@@ -330,12 +330,12 @@ class Simulator:
 
     @property
     def z_range(self):
-        """Get the simulation cosmological redshift range """
+        """Get the simulation cosmological redshift range."""
         return self.sim_cfg['sn_gen']['z_range']
 
     @property
     def sn_rate_z0(self):
-        """Get the sn rate parameters"""
+        """Get the sn rate parameters."""
         if 'sn_rate' in self.sim_cfg['sn_gen']:
             sn_rate = float(self.sim_cfg['sn_gen']['sn_rate'])
         else:
@@ -394,7 +394,7 @@ class Simulator:
         """
         z_min, z_max = self.z_range
         z_shell = np.linspace(z_min, z_max, 1000)
-        z_shell_center = 0.5*(z_shell[1:] + z_shell[:-1])
+        z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
         rate = self.sn_rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
         co_dist = self.cosmology.comoving_distance(z_shell).value
         shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
@@ -423,7 +423,7 @@ class Simulator:
         else:
             min_peak_time, max_peak_time = self.peak_time_range
             time_in_days = max_peak_time.mjd - min_peak_time.mjd
-        return rand_gen.poisson(time_in_days/365.25 * np.sum(z_shell_time_rate))
+        return rand_gen.poisson(time_in_days / 365.25 * np.sum(z_shell_time_rate))
 
     def simulate(self):
         """Launch the simulation.
@@ -442,7 +442,6 @@ class Simulator:
         4- Write LC to fits/pkl file(s)
 
         """
-
         print(SN_SIM_PRINT)
         print('-----------------------------------------------------------')
         print(f"SIM NAME : {self.sim_name}\n"
@@ -463,7 +462,7 @@ class Simulator:
             use_rate_str = ' (only for redshifts simulation)'
 
         print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
-              + use_rate_str+"\n"
+              + use_rate_str + "\n"
               "SN peak mintime : "
               f"{self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
               "SN peak maxtime : "
@@ -550,8 +549,7 @@ class Simulator:
                       + f)
 
     def _cadence_sim(self, rand_gen, shell_time_rate):
-        """Simulaton where the number of SN observed is determined by
-        survey properties and poisson law..
+        """Simulate a number of SN according to poisson law.
 
         Parameters
         ----------
@@ -588,7 +586,7 @@ class Simulator:
                 self._sn_list.append(sn)
 
     def _fix_nsn_sim(self, rand_gen):
-        """Simulation where the number of SN is fixed.
+        """Simulate a fixed number of SN.
 
         Parameters
         ----------
@@ -680,7 +678,6 @@ class Simulator:
             Just write sim into a file
 
         """
-
         write_path = self.sim_cfg['data']['write_path']
         sim_header = self._get_primary_header()
         if 'fits' in self.sim_cfg['data']['write_format']:
@@ -688,9 +685,7 @@ class Simulator:
             hdu_list = fits.HDUList(
                 [fits.PrimaryHDU(header=fits.Header(sim_header))] + list(lc_hdu_list))
 
-            hdu_list.writeto(write_path +
-                             self.sim_name +
-                             '.fits',
+            hdu_list.writeto(write_path + self.sim_name + '.fits',
                              overwrite=True)
 
         # Export lcs as pickle
@@ -767,7 +762,7 @@ class Simulator:
                         Jy=Jy)
 
     def get_sn_par(self, key):
-        """Get an array of a sim_lc meta data"""
+        """Get an array of a sim_lc meta data."""
         return np.array([sn.sim_lc.meta[key] for sn in self.sn_list])
 
     def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
@@ -870,9 +865,9 @@ class Simulator:
             if mw_dust is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(
-                                                                         self.sn_list[sn_ID].sim_lc,
-                                                                         fit_model,
-                                                                         fit_par)
+                self.sn_list[sn_ID].sim_lc,
+                fit_model,
+                fit_par)
 
     def write_fit(self):
         """Write fits results in fits format.
@@ -887,7 +882,6 @@ class Simulator:
         Use write_fit from utils.
 
         """
-
         sim_lc_meta = {'sn_id': [sn.ID for sn in self.sn_list],
                        'ra': [sn.coord[0] for sn in self.sn_list],
                        'dec': [sn.coord[1] for sn in self.sn_list],
@@ -915,7 +909,7 @@ class Simulator:
         if 'smear_mod' in self.sim_cfg['sn_gen']:
             sim_lc_meta['SM_seed'] = [sn.smear_mod_seed for sn in self.sn_list]
 
-        if 'mw_dust' in self.model_config:
+        if 'mw_dust' in self.sim_cfg['model_config']:
             sim_lc_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]
 
         write_file = self.sim_cfg['data']['write_path'] + self.sim_name + '_fit.fits'

@@ -1,5 +1,4 @@
-"""This module contains function with numba decorator to speed up the simulation
-"""
+"""This module contains function with numba decorator to speed up the simulation."""
 from numba import njit
 import numpy as np
 
@@ -49,8 +48,7 @@ def sine_interp(x_new, fun_x, fun_y):
 
 @njit(cache=True)
 def R_base(a, t, vec, to_field_frame=True):
-    """Return the new carthesian coordinates after z axis and
-    vec axis rotations.
+    """Return the new carthesian coordinates after z axis and vec axis rotations.
 
     Parameters
     ----------
@@ -120,7 +118,7 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
 
 @njit(cache=True)
 def find_first(item, vec):
-    """return the index of the first occurence of item in vec"""
+    """Return the index of the first occurence of item in vec."""
     for i in range(len(vec)):
         if item == vec[i]:
             return i
@@ -151,7 +149,6 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     numpy.ndarray(bool), numpy.ndarray(int)
         The boolean array of field selection and the id of selectionned fields.
     """
-
     epochs_selec = (expMJD - t0 > ModelMinT) * \
                    (expMJD - t0 < ModelMaxT)
     return epochs_selec, np.unique(fieldID[epochs_selec])
@@ -181,7 +178,6 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
     numpy.ndaray(bool), bool
         The boolean array of field selection.
     """
-
     in_field = np.abs(ra_f_frame) < f_size[0] / 2
     in_field *= np.abs(dec_f_frame) < f_size[1] / 2
 
@@ -195,7 +191,7 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
 
 @njit(cache=True)
 def find_idx_nearest_elmt(val, array, treshold):
-    """find the index of the nearest element of array relative to val.
+    """Find the index of the nearest element of array relative to val.
 
     Parameters
     ----------

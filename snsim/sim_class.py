@@ -1,4 +1,4 @@
-"""This module contains the class which are used in the simulation"""
+"""This module contains the class which are used in the simulation."""
 
 import sqlite3
 import numpy as np
@@ -70,6 +70,7 @@ class SN:
     """
 
     def __init__(self, sn_par, sim_model, model_par):
+        """Initialize SN class."""
         self.sim_model = sim_model.__copy__()
         self._sn_par = sn_par
         self._model_par = model_par
@@ -80,12 +81,12 @@ class SN:
 
     @property
     def ID(self):
-        """Get SN ID"""
+        """Get SN ID."""
         return self._ID
 
     @ID.setter
     def ID(self, ID):
-        """Set SN ID"""
+        """Set SN ID."""
         if isinstance(ID, int):
             self._ID = ID
         else:
@@ -95,73 +96,73 @@ class SN:
 
     @property
     def sim_t0(self):
-        """Get SN peakmag time"""
+        """Get SN peakmag time."""
         return self._sn_par['sim_t0']
 
     @property
     def vpec(self):
-        """Get SN peculiar velocity"""
+        """Get SN peculiar velocity."""
         return self._sn_par['vpec']
 
     @property
     def zcos(self):
-        """Get SN cosmological redshift"""
+        """Get SN cosmological redshift."""
         return self._sn_par['zcos']
 
     @property
     def como_dist(self):
-        """Get SN comoving distance"""
+        """Get SN comoving distance."""
         return self._sn_par['como_dist']
 
     @property
     def coord(self):
-        """Get SN coordinates (ra,dec)"""
+        """Get SN coordinates (ra,dec)."""
         return self._sn_par['ra'], self._sn_par['dec']
 
     @property
     def mag_smear(self):
-        """Get SN coherent scattering term"""
+        """Get SN coherent scattering term."""
         return self._sn_par['mag_smear']
 
     @property
     def zpec(self):
-        """Get SN peculiar velocity redshift"""
+        """Get SN peculiar velocity redshift."""
         return self.vpec / C_LIGHT_KMS
 
     @property
     def zCMB(self):
-        """Get SN CMB frame redshift"""
+        """Get SN CMB frame redshift."""
         return (1 + self.zcos) * (1 + self.zpec) - 1.
 
     @property
     def z2cmb(self):
-        """Get SN redshift due to our motion relative to CMB"""
+        """Get SN redshift due to our motion relative to CMB."""
         return self._sn_par['z2cmb']
 
     @property
     def z(self):
-        """Get SN observed redshift"""
+        """Get SN observed redshift."""
         return (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
 
     @property
     def epochs(self):
-        """Get SN observed redshift"""
+        """Get SN observed redshift."""
         return self._epochs
 
     @epochs.setter
     def epochs(self, ep_dic):
-        """Get SN observed epochs"""
+        """Get SN observed epochs."""
         self._epochs = ep_dic
 
     @property
     def sim_mu(self):
-        """Get SN distance moduli"""
+        """Get SN distance moduli."""
         return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) *
                             (1 + self.zpec)**2 * self.como_dist) + 25
 
     @property
     def smear_mod_seed(self):
-        """Get SN  smear model if exist"""
+        """Get SN  smear model if exist."""
         if 'G10_RndS' in self._model_par['sncosmo']:
             return self._model_par['sncosmo']['G10_RndS']
         elif 'C11_RndS' in self._model_par['sncosmo']:
@@ -171,7 +172,7 @@ class SN:
 
     @property
     def sim_lc(self):
-        """Get sim_lc"""
+        """Get sim_lc."""
         return self._sim_lc
 
     def _init_model_par(self):
@@ -192,7 +193,6 @@ class SN:
             - x1 -> self.sim_x1
             - c -> self.sim_c
         """
-
         M0 = self._model_par['M0']
         if self.sim_model.source.name in ['salt2', 'salt3']:
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
@@ -222,7 +222,7 @@ class SN:
         Parameters
         ----------
         nep_cut : list
-            nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...].
+            nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...]
 
         Returns
         -------
@@ -259,12 +259,11 @@ class SN:
         -----
         Set the sim_lc attribute as an astropy Table
         """
-
         params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
 
         self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 +
-                                          (np.log(10)/2.5 * self.sim_lc['flux'] *
+                                          (np.log(10) / 2.5 * self.sim_lc['flux'] *
                                            self.epochs['sig_zp'])**2)
 
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
@@ -407,6 +406,7 @@ class SnGen:
     """
 
     def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist, host=None):
+        """Initialize SnGen class."""
         self._sn_int_par = sn_int_par
         self._model_config = model_config
         self._cmb = cmb
@@ -420,47 +420,47 @@ class SnGen:
 
     @property
     def model_config(self):
-        """Get sncosmo model parameters"""
+        """Get sncosmo model parameters."""
         return self._model_config
 
     @property
     def host(self):
-        """Get the host class"""
+        """Get the host class."""
         return self._host
 
     @property
     def vpec_dist(self):
-        """Get the peculiar velocity distribution parameters"""
+        """Get the peculiar velocity distribution parameters."""
         return self._vpec_dist
 
     @property
     def sn_int_par(self):
-        """Get sncosmo configuration parameters"""
+        """Get sncosmo configuration parameters."""
         return self._sn_int_par
 
     @property
     def cosmology(self):
-        """Get astropy cosmological model"""
+        """Get astropy cosmological model."""
         return self._cosmology
 
     @property
     def cmb(self):
-        """Get cmb used parameters"""
+        """Get cmb used parameters."""
         return self._cmb
 
     @property
     def snc_model_time(self):
-        """Get the sncosmo model mintime and maxtime"""
+        """Get the sncosmo model mintime and maxtime."""
         return self.sim_model.mintime(), self.sim_model.maxtime()
 
     @property
     def time_range(self):
-        """Get time range"""
+        """Get time range."""
         return self._time_range
 
     @time_range.setter
     def time_range(self, time_range):
-        """Set the time range"""
+        """Set the time range."""
         if time_range[0] > time_range[1]:
             print('Time range should be [Tmin,Tmax]')
         else:
@@ -468,12 +468,12 @@ class SnGen:
 
     @property
     def z_cdf(self):
-        """Get the redshift cumulative distribution"""
+        """Get the redshift cumulative distribution."""
         return self._z_cdf
 
     @z_cdf.setter
     def z_cdf(self, cdf):
-        """Set the redshift cumulative distribution"""
+        """Set the redshift cumulative distribution."""
         self._z_cdf = cdf
 
     def _init_sim_model(self):
@@ -556,7 +556,7 @@ class SnGen:
 
         # -- If there is host use them
         if self.host is not None:
-            treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0])/100
+            treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
             host = self.host.host_near_z(zcos, treshold)
             ra = host['ra']
             dec = host['dec']
@@ -823,6 +823,7 @@ class SurveyObs:
     """
 
     def __init__(self, survey_config):
+        """Initialize SurveyObs class."""
         self._config = survey_config
         self._obs_table, self._start_end_days = self._extract_from_db()
         self._field_dic = self._init_field_dic()
@@ -836,7 +837,6 @@ class SurveyObs:
             fieldID : {'ra' : fieldRA, 'dec': fieldDec}.
 
         """
-
         field_list = self.obs_table['fieldID'].unique()
         dic = {}
         for f in field_list:
@@ -847,34 +847,34 @@ class SurveyObs:
 
     @property
     def config(self):
-        """Survey configuration"""
+        """Survey configuration."""
         return self._config
 
     @property
     def band_dic(self):
-        """Get the dic band_survey : band_sncosmo"""
+        """Get the dic band_survey : band_sncosmo."""
         return self.config['band_dic']
 
     @property
     def obs_table(self):
-        """Table of the observations"""
+        """Table of the observations."""
         return self._obs_table
 
     @property
     def field_size(self):
-        """Get field size (ra,dec) in radians"""
+        """Get field size (ra,dec) in radians."""
         ra_size_rad = np.radians(self._config['ra_size'])
         dec_size_rad = np.radians(self._config['dec_size'])
         return ra_size_rad, dec_size_rad
 
     @property
     def gain(self):
-        """Get CCD gain in e-/ADU"""
+        """Get CCD gain in e-/ADU."""
         return self._config['gain']
 
     @property
     def zp(self):
-        """Get zero point and it's uncertainty"""
+        """Get zero point and it's uncertainty."""
         if 'zp' in self._config:
             zp = self._config['zp']
         else:
@@ -887,7 +887,7 @@ class SurveyObs:
 
     @property
     def sig_psf(self):
-        """Get PSF width"""
+        """Get PSF width."""
         if 'sig_psf' in self._config:
             sig_psf = self._config['sig_psf']
         else:
@@ -896,13 +896,13 @@ class SurveyObs:
 
     @property
     def duration(self):
-        """Get the survey duration in days"""
+        """Get the survey duration in days."""
         duration = self.start_end_days[1].mjd - self.start_end_days[0].mjd
         return duration
 
     @property
     def start_end_days(self):
-        """Get the survey start and ending days"""
+        """Get the survey start and ending days."""
         return self._start_end_days[0], self._start_end_days[1]
 
     def _read_start_end_days(self, obs_dic):
@@ -926,7 +926,6 @@ class SurveyObs:
 
         Note that end_day key has priority on duration
         """
-
         if 'start_day' in self.config:
             start_day = self.config['start_day']
         else:
@@ -955,7 +954,6 @@ class SurveyObs:
         tuple(astropy.time.Time)
             The starting time and ending time of the survey.
         """
-
         con = sqlite3.connect(self.config['survey_file'])
 
         keys = ['expMJD',
@@ -993,7 +991,7 @@ class SurveyObs:
             where = where[:-5]
         query = 'SELECT '
         for k in keys:
-            query += k+','
+            query += k + ','
         query = query[:-1]
         query += ' FROM Summary' + where + ';'
         obs_dic = pd.read_sql_query(query, con)
@@ -1032,7 +1030,6 @@ class SurveyObs:
             astropy table containing the SN observations.
 
         """
-
         ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.z)
         ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.z)
         ra, dec = SN_obj.coord
@@ -1063,7 +1060,7 @@ class SurveyObs:
         return None
 
     def _make_obs_table(self, epochs_selec):
-        """ Create the astropy table from selection bool array.
+        """Create the astropy table from selection bool array.
 
         Parameters
         ----------
@@ -1076,7 +1073,6 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
-
         # Capture noise and filter
         band = self.obs_table['filter'][epochs_selec].astype('U27')
 
@@ -1100,7 +1096,7 @@ class SurveyObs:
         if self.sig_psf != 'psf_in_obs':
             sig_psf = np.ones(np.sum(epochs_selec)) * self.sig_psf
         else:
-            sig_psf = self.obs_table['FWHMeff'][epochs_selec]/(2*np.sqrt(2*np.log(2)))
+            sig_psf = self.obs_table['FWHMeff'][epochs_selec] / (2 * np.sqrt(2 * np.log(2)))
 
         # Skynoise selection
         if self.config['noise_key'][1] == 'mlim5':
@@ -1133,7 +1129,7 @@ class SurveyObs:
 
 
 class SnHost:
-    """ Class containing the SN Host parameters.
+    """Class containing the SN Host parameters.
 
     Parameters
     ----------
@@ -1163,6 +1159,7 @@ class SnHost:
     """
 
     def __init__(self, host_file, z_range=None):
+        """Initialize SnHost class."""
         self._z_range = z_range
         self._file = host_file
         self._table = self._read_host_file()
@@ -1170,7 +1167,7 @@ class SnHost:
 
     @property
     def max_dz(self):
-        """Get the maximum redshift gap"""
+        """Get the maximum redshift gap."""
         if self._max_dz is None:
             redshift_copy = np.sort(np.copy(self.table['redshift']))
             diff = redshift_copy[1:] - redshift_copy[:-1]
@@ -1179,7 +1176,7 @@ class SnHost:
 
     @property
     def table(self):
-        """Get astropy Table of host"""
+        """Get astropy Table of host."""
         return self._table
 
     def _read_host_file(self):
@@ -1241,17 +1238,18 @@ class SnSimPkl:
     """
 
     def __init__(self, sim_lc, header):
+        """Initialize SnSimPkl class."""
         self._header = header
         self._sim_lc = sim_lc
 
     @property
     def header(self):
-        """Get header"""
+        """Get header."""
         return self._header
 
     @property
     def sim_lc(self):
-        """Get sim_lc"""
+        """Get sim_lc."""
         return self._sim_lc
 
     def get(self, key):
