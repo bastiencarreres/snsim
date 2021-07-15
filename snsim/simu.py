@@ -479,6 +479,14 @@ class Simulator:
         else:
             print(f"Survey effective duration is {self.survey.duration:.2f} days")
 
+        if 'smear_mod' in self.sim_cfg['sn_gen']:
+            print("\nUse intrinsic scattering model : "
+                  f"{self.sim_cfg['sn_gen']['smear_mod']}")
+
+        if 'mw_dust' in self.sim_cfg['model_config']:
+            print("\nUse mw dust model : "
+                  f"{np.atleast_1d(self.sim_cfg['model_config']['mw_dust'])[0]}")
+
         print('-----------------------------------------------------------\n')
 
         if 'survey_cut' in self.sim_cfg['survey_config']:
