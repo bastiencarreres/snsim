@@ -464,14 +464,19 @@ class Simulator:
 
         print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
               + use_rate_str+"\n"
-              f"SN peak mintime : {self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
-              f"SN peak maxtime : {self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n\n"
-              f"First day in survey_file : {self.survey.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
-              f"Last day in survey_file : {self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}")
+              "SN peak mintime : "
+              f"{self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
+              "SN peak maxtime : "
+              f"{self.peak_time_range[1].mjd:.2f} MJD / {self.peak_time_range[1].iso} \n\n"
+              "First day in survey_file : "
+              f"{self.survey.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
+              "Last day in survey_file : "
+              f"{self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}")
 
         if 'duration_for_rate' in self.sim_cfg['sn_gen']:
             print(
-                f"N SN is generate for a duration of {self.sim_cfg['sn_gen']['duration_for_rate']:.2f} days")
+                "N SN is generate for a duration of "
+                f"{self.sim_cfg['sn_gen']['duration_for_rate']:.2f} days")
         else:
             print(f"Survey effective duration is {self.survey.duration:.2f} days")
 
@@ -683,11 +688,10 @@ class Simulator:
             hdu_list = fits.HDUList(
                 [fits.PrimaryHDU(header=fits.Header(sim_header))] + list(lc_hdu_list))
 
-            hdu_list.writeto(
-                write_path +
-                self.sim_name +
-                '.fits',
-                overwrite=True)
+            hdu_list.writeto(write_path +
+                             self.sim_name +
+                             '.fits',
+                             overwrite=True)
 
         # Export lcs as pickle
         if 'pkl' in self.sim_cfg['data']['write_format']:
@@ -865,9 +869,10 @@ class Simulator:
             fit_model.set(z=self.sn_list[sn_ID].z)
             if mw_dust is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, rv=rv)
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sn_list[sn_ID].sim_lc,
-                                                                          fit_model,
-                                                                          fit_par)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(
+                                                                         self.sn_list[sn_ID].sim_lc,
+                                                                         fit_model,
+                                                                         fit_par)
 
     def write_fit(self):
         """Write fits results in fits format.

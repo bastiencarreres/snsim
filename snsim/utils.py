@@ -256,9 +256,10 @@ def flux_to_Jansky(zp, band):
     """
     magsys = snc.get_magsystem('ab')
     b = snc.get_bandpass(band)
-    nu, dnu = snc.utils.integration_grid(snc.constants.C_AA_PER_S/b.maxwave(),
-                                         snc.constants.C_AA_PER_S/b.minwave(),
-                                         snc.constants.C_AA_PER_S/snc.constants.MODEL_BANDFLUX_SPACING)
+    nu, dnu = snc.utils.integration_grid(
+                                    snc.constants.C_AA_PER_S/b.maxwave(),
+                                    snc.constants.C_AA_PER_S/b.minwave(),
+                                    snc.constants.C_AA_PER_S/snc.constants.MODEL_BANDFLUX_SPACING)
 
     trans = b(snc.constants.C_AA_PER_S/nu)
     trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S

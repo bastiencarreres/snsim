@@ -587,7 +587,8 @@ class SnGen:
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 
-        model_par_list = ({**model_default, 'sncosmo': {**mpsn, **dstp}} for mpsn, dstp in zip(rand_model_par, dust_par))
+        model_par_list = ({**model_default, 'sncosmo': {**mpsn, **dstp}}
+                          for mpsn, dstp in zip(rand_model_par, dust_par))
 
         return [SN(snp, self.sim_model, mp) for snp, mp in zip(sn_par, model_par_list)]
 

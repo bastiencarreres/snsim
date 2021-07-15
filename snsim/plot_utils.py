@@ -295,7 +295,9 @@ def plot_lc(
 
         if 'mw_' in snc_fit_model.effect_names:
             par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0]
-            par_idx = np.concatenate((par_idx, np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]))
+            par_idx = np.concatenate((par_idx,
+                                      np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]
+                                      ))
             fit_mwd_par = snc_fit_model.parameters[par_idx]
 
     if fit_par is not None or sim_par is not None:
