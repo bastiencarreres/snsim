@@ -547,6 +547,7 @@ class Simulator:
                       + self.sim_name
                       + '.'
                       + f)
+        print("\n")
 
     def _cadence_sim(self, rand_gen, shell_time_rate):
         """Simulate a number of SN according to poisson law.
@@ -555,6 +556,8 @@ class Simulator:
         ----------
         rand_gen : numpy.random.default_rng
             Numpy random generator.
+        shell_time_rate : numpy.ndarray
+            An array that contains sn time rate in each shell.
 
         Returns
         -------
