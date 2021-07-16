@@ -1,22 +1,26 @@
-"""Contains plot functions"""
+"""Contains plot functions."""
 
+from platform import system
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+from matplotlib import gridspec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 from . import utils as ut
 from . import salt_utils as salt_ut
 from . import nb_fun as nbf
 
+
 def plt_maximize():
     """Enable full screen.
 
     Notes
     -----
-    Come from https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python/22418354#22418354
+    Come from
+    https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python/22418354#22418354
     """
-    # See discussion: https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python
+    # See discussion on:
+    # https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python
     backend = plt.get_backend()
     cfm = plt.get_current_fig_manager()
     if backend == "wxAgg":
@@ -36,7 +40,7 @@ def plt_maximize():
         raise RuntimeError("plt_maximize() is not implemented for current backend:", backend)
 
 
-def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.25]):
+def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0.25]):
     """Add a text legend with model parameters to the plot.
 
     Parameters
@@ -55,7 +59,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.
                'mw_': [('Rv', '.2f'), ('E(B-V)', '.3f')]}
     par = par_dic[model_name]
 
-    str_list = ['']*(len(par)+1)
+    str_list = [''] * (len(par) + 1)
     if sim_par is not None:
         str_list[0] += 'SIMULATED PARAMETERS :@'
     if fit_par is not None:
@@ -63,12 +67,12 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.
 
     for i, p in enumerate(par):
         if sim_par is not None:
-            str_list[i+1] += f"{p[0]} = {sim_par[i]:{p[1]}}@"
+            str_list[i + 1] += f"{p[0]} = {sim_par[i]:{p[1]}}@"
         if fit_par is not None:
             if isinstance(fit_par[i], (int, float)):
-                str_list[i+1] += f"{p[0]} = {fit_par[i]:{p[1]}}"
+                str_list[i + 1] += f"{p[0]} = {fit_par[i]:{p[1]}}"
             else:
-                str_list[i+1] += f"{p[0]} = {fit_par[i][0]:{p[1]}} $\pm$ {fit_par[i][1]:{p[1]}}@"
+                str_list[i + 1] += f"{p[0]} = {fit_par[i][0]:{p[1]}} $\pm$ {fit_par[i][1]:{p[1]}}@"
 
     final_str = ""
     if str_list[0].count('@') == 2:
@@ -82,11 +86,12 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01,0.
             final_str += str_list[i][1] + "\n"
     elif str_list[0].count('@') == 1:
         for i, s in enumerate(str_list):
-            final_str += str_list[i][:-1]+'\n'
+            final_str += str_list[i][:-1] + '\n'
 
-    props = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
+    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
     text_ax.axis('off')
-    b = text_ax.text(pos[0], pos[1], final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=props)
+    text_ax.text(pos[0], pos[1], final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=prop)
+
 
 def plot_lc(
         flux_table,
@@ -106,16 +111,18 @@ def plot_lc(
         The lightcurve to plot.
     zp : float, default = 25.
         Zeropoint at which rescale the flux.
-    mag : boolean
+    mag : bool
         If True plot the magnitude.
     snc_sim_model : sncosmo.Model
         Model used to simulate the lightcurve.
     snc_fit_model : sncosmo.Model
         Model used to fit the lightcurve.
-    fit_cov : numpy.ndaray(float, size=(3,3))
-        sncosmo x0,x1,c covariance matrix from SALT fit.
-    residuals : boolean
+    fit_cov : numpy.ndaray(float, size=(4, 4))
+        sncosmo t0, x0, x1, c covariance matrix from SALT fit.
+    residuals : bool
         If True plot fit residuals.
+    full_screen : bool
+        Try to plot the figure in full screen.
 
     Returns
     -------
@@ -134,7 +141,7 @@ def plot_lc(
     z = flux_table.meta['z']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-    fig = plt.figure(figsize=(35/2.54, 20/2.54), dpi=120)
+    fig = plt.figure(figsize=(35 / 2.54, 20 / 2.54), dpi=120)
 
     ###################
     # INIT THE FIGURE #
@@ -210,19 +217,22 @@ def plot_lc(
             err = fluxerr_b * norm
 
             if snc_sim_model is not None:
-                plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
+                plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab') * norm
 
             if snc_fit_model is not None:
-                plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab')*norm
+                plot_fit = snc_fit_model.bandflux(
+                    b, time_th, zp=zp, zpsys='ab') * norm
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
-                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:,1:], b, time_th, zp) * norm
+                        err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:, 1:],
+                                                                b, time_th, zp) * norm
 
                 if residuals:
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab') * norm
                     rsd = plot - fit_pts
 
-        p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
+        p = ax0.errorbar(time_b - t0, plot, yerr=err,
+                         label=b, fmt='o', markersize=2.5)
         handles, labels = ax0.get_legend_handles_labels()
 
         if snc_sim_model is not None:
@@ -274,7 +284,7 @@ def plot_lc(
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
     else:
-        plt.xlim(np.min(time)-1-t0, np.max(time)+1-t0)
+        plt.xlim(np.min(time) - 1 - t0, np.max(time) + 1 - t0)
     if residuals:
         ax1.set_ylim(-np.max(ax1_y_lim), np.max(ax1_y_lim))
 
@@ -288,25 +298,27 @@ def plot_lc(
                    (snc_fit_model.parameters[4], np.sqrt(fit_cov[3, 3]))]
 
         if 'mw_' in snc_fit_model.effect_names:
-            par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0]
-            par_idx = np.concatenate((par_idx, np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]))
-            fit_mwd_par= snc_fit_model.parameters[par_idx]
-
+            par_idx = np.where(np.asarray(
+                snc_fit_model.param_names) == 'mw_r_v')[0]
+            par_idx = np.concatenate((par_idx,
+                                      np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]
+                                      ))
+            fit_mwd_par = snc_fit_model.parameters[par_idx]
 
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)
 
     if fit_mwd_par is not None or sim_mwd_par is not None:
-        param_text_box(text_ax, model_name='mw_', sim_par=sim_mwd_par, fit_par=fit_mwd_par, pos=[0.4, 0.25])
+        param_text_box(text_ax, model_name='mw_', sim_par=sim_mwd_par, fit_par=fit_mwd_par,
+                       pos=[0.4, 0.25])
 
     plt.subplots_adjust(hspace=.0)
 
     if full_screen:
         try:
             plt_maximize()
-        except:
+        except Exception:
             pass
-
     plt.show()
 
 
@@ -342,15 +354,15 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
         plt.colorbar(plot, label='$v_p$ [km/s]')
 
     if field_list is not None and field_dic is not None and field_size is not None:
-        ra_edges = np.array([field_size[0]/2,
-                             field_size[0]/2,
-                             -field_size[0]/2,
-                             -field_size[0]/2])
+        ra_edges = np.array([field_size[0] / 2,
+                             field_size[0] / 2,
+                             -field_size[0] / 2,
+                             -field_size[0] / 2])
 
-        dec_edges = np.array([field_size[1]/2,
-                              -field_size[1]/2,
-                              -field_size[1]/2,
-                              field_size[1]/2])
+        dec_edges = np.array([field_size[1] / 2,
+                              -field_size[1] / 2,
+                              -field_size[1] / 2,
+                              field_size[1] / 2])
 
         vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
                         np.sin(ra_edges) * np.cos(dec_edges),
@@ -360,15 +372,18 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
             # if ID < 880:
             ra = field_dic[ID]['ra']
             dec = field_dic[ID]['dec']
-            new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
+            new_coord = [nbf.R_base(
+                ra, -dec, v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
 
             if new_radec[3][0] > new_radec[0][0]:
-                if new_radec[3][0]*new_radec[2][0] > 0:
+                if new_radec[3][0] * new_radec[2][0] > 0:
                     x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
-                    y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
+                    y1 = [new_radec[0][1], new_radec[0][1],
+                          new_radec[1][1], new_radec[1][1]]
                     x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
-                    y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
+                    y2 = [new_radec[2][1], new_radec[2][1],
+                          new_radec[3][1], new_radec[3][1]]
                     ax.plot(x1, y1, ls='--', color='blue', lw=1, zorder=2)
                     ax.plot(x2, y2, ls='--', color='blue', lw=1, zorder=2)
                 else:
