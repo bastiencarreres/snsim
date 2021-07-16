@@ -259,12 +259,14 @@ class SN:
         -----
         Set the sim_lc attribute as an astropy Table
         """
-        params = {**{'z': self.z, 't0': self.sim_t0}, **self._model_par['sncosmo']}
-        self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [params], scatter=False)[0]
+        params = {**{'z': self.z, 't0': self.sim_t0},
+                  **self._model_par['sncosmo']}
+        self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [
+                                       params], scatter=False)[0]
 
         self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 +
                                           (np.log(10) / 2.5 * self.sim_lc['flux'] *
-                                           self.epochs['sig_zp'])**2)
+                                          self.epochs['sig_zp'])**2)
 
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
@@ -401,8 +403,8 @@ class SnGen:
         Generate peculiar velocities on a gaussian law.
     gen_coh_scatter(self, n, rand_seed)
         Generate the coherent scattering term.
-    _gen_noise_rand_seed(self, n, rand_seed)
-        Generate the rand seeds for random fluxerror.
+    _dust_par(self, ra, dec):
+        Compute dust parameters.
     """
 
     def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist, host=None):
@@ -760,6 +762,21 @@ class SnGen:
         return mag_smear
 
     def _dust_par(self, ra, dec):
+        """Compute dust parameters.
+
+        Parameters
+        ----------
+        ra : numpy.ndaray(float)
+            SN Right Ascension.
+        dec : numpy.ndarray(float)
+            SN Declinaison.
+
+        Returns
+        -------
+        list(dict)
+            List of Dictionnaries that contains Rv and E(B-V) for each SN.
+
+        """
         ebv = dst_ut.compute_ebv(ra, dec)
         if isinstance(self.model_config['mw_dust'], str):
             r_v = np.ones(len(ra)) * 3.1

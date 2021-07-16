@@ -111,16 +111,18 @@ def plot_lc(
         The lightcurve to plot.
     zp : float, default = 25.
         Zeropoint at which rescale the flux.
-    mag : boolean
+    mag : bool
         If True plot the magnitude.
     snc_sim_model : sncosmo.Model
         Model used to simulate the lightcurve.
     snc_fit_model : sncosmo.Model
         Model used to fit the lightcurve.
-    fit_cov : numpy.ndaray(float, size=(3,3))
-        sncosmo x0,x1,c covariance matrix from SALT fit.
-    residuals : boolean
+    fit_cov : numpy.ndaray(float, size=(4, 4))
+        sncosmo t0, x0, x1, c covariance matrix from SALT fit.
+    residuals : bool
         If True plot fit residuals.
+    full_screen : bool
+        Try to plot the figure in full screen.
 
     Returns
     -------
@@ -218,7 +220,8 @@ def plot_lc(
                 plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys='ab') * norm
 
             if snc_fit_model is not None:
-                plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys='ab') * norm
+                plot_fit = snc_fit_model.bandflux(
+                    b, time_th, zp=zp, zpsys='ab') * norm
                 if fit_cov is not None:
                     if snc_fit_model.source.name in ('salt2', 'salt3'):
                         err_th = salt_ut.compute_salt_fit_error(snc_fit_model, fit_cov[1:, 1:],
@@ -228,7 +231,8 @@ def plot_lc(
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab') * norm
                     rsd = plot - fit_pts
 
-        p = ax0.errorbar(time_b - t0, plot, yerr=err, label=b, fmt='o', markersize=2.5)
+        p = ax0.errorbar(time_b - t0, plot, yerr=err,
+                         label=b, fmt='o', markersize=2.5)
         handles, labels = ax0.get_legend_handles_labels()
 
         if snc_sim_model is not None:
@@ -294,7 +298,8 @@ def plot_lc(
                    (snc_fit_model.parameters[4], np.sqrt(fit_cov[3, 3]))]
 
         if 'mw_' in snc_fit_model.effect_names:
-            par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0]
+            par_idx = np.where(np.asarray(
+                snc_fit_model.param_names) == 'mw_r_v')[0]
             par_idx = np.concatenate((par_idx,
                                       np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]
                                       ))
@@ -367,15 +372,18 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
             # if ID < 880:
             ra = field_dic[ID]['ra']
             dec = field_dic[ID]['dec']
-            new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
+            new_coord = [nbf.R_base(
+                ra, -dec, v, to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
 
             if new_radec[3][0] > new_radec[0][0]:
                 if new_radec[3][0] * new_radec[2][0] > 0:
                     x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
-                    y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
+                    y1 = [new_radec[0][1], new_radec[0][1],
+                          new_radec[1][1], new_radec[1][1]]
                     x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
-                    y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
+                    y2 = [new_radec[2][1], new_radec[2][1],
+                          new_radec[3][1], new_radec[3][1]]
                     ax.plot(x1, y1, ls='--', color='blue', lw=1, zorder=2)
                     ax.plot(x2, y2, ls='--', color='blue', lw=1, zorder=2)
                 else:
