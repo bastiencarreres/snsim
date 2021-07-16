@@ -1,5 +1,7 @@
-"""The snsim module is design to simulate supernovae lightcurve
-in a survey defined by an observations data base.
+"""Init file of snsim package.
+
+The snsim module is design to simulate supernovae lightcurve in a
+survey defined by an observations data base.
 Moreover the simulation can use a host file to simulate a velocity field.
 
 The package use sncosmo.
