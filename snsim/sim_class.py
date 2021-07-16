@@ -607,7 +607,7 @@ class SnGen:
                        ('mag_smear', mag_smear)]
 
         if self.alpha_dipole is not None:
-            sn_int_args .append(('adip_dM', self._compute_alpha_dipole(ra, dec)))
+            sn_int_args.append(('adip_dM', self._compute_alpha_dipole(ra, dec)))
 
         # -- SN initialisation part :
         sn_par = self._construct_sn_int(*sn_int_args)
