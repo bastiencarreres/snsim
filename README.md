@@ -54,7 +54,7 @@ model_config:
     mean_c: MEAN C VALUE
     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]
-    mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional) 
+    mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
@@ -66,6 +66,7 @@ model_config:
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
+* mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
 ## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
@@ -236,7 +237,9 @@ The error is computed with the formula :
 
 ![noise_eq](readme_figures/noise_eq.svg)
 
-Where the first term is the poissonian random noise with G the CCD gain in e<sup>-</sup> / ADU, the second term is the skynoise computed with the limiting magnitude at 5 σ using :
+Where the first term is the poissonian random noise with G the CCD gain in e<sup>-</sup> / ADU, the second term is the skynoise.
+
+If you use limiting magnitude at 5σ, skynoise is computed as :
 
 ![skynoise_eq](readme_figures/skynoise_eq.svg)
 
