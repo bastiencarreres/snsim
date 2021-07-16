@@ -22,14 +22,15 @@ class SN:
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
         snpar
-        ├── zcos
-        ├── como_dist
-        ├── z2cmb
-        ├── sim_t0
-        ├── ra
-        ├── dec
-        ├── vpec
-        └── mag_smear
+        ├── zcos # Cosmological redshift
+        ├── como_dist # Comoving distance
+        ├── z2cmb # CMB dipole contribution to redshift
+        ├── sim_t0 # Peak time in Bessell-B band in mjd
+        ├── ra # Right Ascension
+        ├── dec # Declinaison
+        ├── vpec # Peculiar velocity
+        ├── mag_smear # Coherent scattering
+        └── adip_dM # Alpha dipole magnitude variation, opt
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
@@ -361,8 +362,14 @@ class SnGen:
         vpec_dist
         ├── mean_vpec
         └── sig_vpec
-    host : class SnHost
+    host : class SnHost, opt
         The host class to introduce sn host.
+    alpha_dipole : dict, opt
+        The alpha dipole parameters.
+        alpha_dipole
+        ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
+        ├── A # A parameter of the A + B * cos(theta) dipole
+        └── B # B parameter of the A + B * cos(theta) dipole
 
     Attributes
     ----------
