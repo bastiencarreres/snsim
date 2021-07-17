@@ -180,7 +180,8 @@ class Simulator:
                                      self.cmb,
                                      self.cosmology,
                                      self.vpec_dist,
-                                     host=self.host)
+                                     host=self.host,
+                                     alpha_dipole=self.alpha_dipole)
 
     @property
     def sim_name(self):
@@ -278,6 +279,8 @@ class Simulator:
         not_same *= (self.cmb != self._generator.cmb)
         not_same *= (not ut.is_same_cosmo_model(self.sim_cfg['cosmology'], self._cosmology))
         not_same *= (self.sim_cfg['vpec_dist'] != self._generator.vpec_dist)
+        if 'alpha_dipole' in self.sim_cfg:
+            not_same *= (self.sim_cfg['alpha_dipole'] != self._generator.alpha_dipole)
 
         if not_same:
             self._generator = scls.SnGen(self.sn_int_par,
@@ -360,6 +363,13 @@ class Simulator:
         max_peak_time = self.survey.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
             * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
+
+    @property
+    def alpha_dipole(self):
+        """Get alpha dipole parameters."""
+        if 'alpha_dipole' in self.sim_cfg:
+            return self.sim_cfg['alpha_dipole']
+        return None
 
     def sn_rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.

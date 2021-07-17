@@ -22,14 +22,15 @@ class SN:
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
         snpar
-        ├── zcos
-        ├── como_dist
-        ├── z2cmb
-        ├── sim_t0
-        ├── ra
-        ├── dec
-        ├── vpec
-        └── mag_smear
+        ├── zcos # Cosmological redshift
+        ├── como_dist # Comoving distance
+        ├── z2cmb # CMB dipole contribution to redshift
+        ├── sim_t0 # Peak time in Bessell-B band in mjd
+        ├── ra # Right Ascension
+        ├── dec # Declinaison
+        ├── vpec # Peculiar velocity
+        ├── mag_smear # Coherent scattering
+        └── adip_dM # Alpha dipole magnitude variation, opt
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
@@ -205,7 +206,6 @@ class SN:
                 x1 + beta * c + self.mag_smear
 
             x0 = salt_ut.mB_to_x0(mb)
-            self.sim_mb = mb
             self.sim_x0 = x0
             self.sim_x1 = x1
             self.sim_c = c
@@ -215,6 +215,13 @@ class SN:
             # TODO
         if 'mw_' in self.sim_model.effect_names:
             self.mw_ebv = self._model_par['sncosmo']['mw_ebv']
+
+        # Alpha dipole
+        if 'adip_dM' in self._sn_par:
+            mb += self._sn_par['adip_dM']
+            self.adip_dM = self._sn_par['adip_dM']
+
+        self.sim_mb = mb
 
     def pass_cut(self, nep_cut):
         """Check if the SN pass the given cuts.
@@ -310,6 +317,9 @@ class SN:
         self.sim_lc.meta['sim_mu'] = self.sim_mu
         self.sim_lc.meta['m_smear'] = self.mag_smear
 
+        if 'adip_dM' in self._sn_par:
+            self.sim_lc.meta['adip_dM'] = self.adip_dM
+
     def get_lc_hdu(self):
         """Convert the astropy Table to a hdu.
 
@@ -352,8 +362,14 @@ class SnGen:
         vpec_dist
         ├── mean_vpec
         └── sig_vpec
-    host : class SnHost
+    host : class SnHost, opt
         The host class to introduce sn host.
+    alpha_dipole : dict, opt
+        The alpha dipole parameters.
+        alpha_dipole
+        ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
+        ├── A # A parameter of the A + B * cos(theta) dipole
+        └── B # B parameter of the A + B * cos(theta) dipole
 
     Attributes
     ----------
@@ -407,7 +423,8 @@ class SnGen:
         Compute dust parameters.
     """
 
-    def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist, host=None):
+    def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist,
+                 host=None, alpha_dipole=None):
         """Initialize SnGen class."""
         self._sn_int_par = sn_int_par
         self._model_config = model_config
@@ -417,6 +434,7 @@ class SnGen:
         self._vpec_dist = vpec_dist
         self._cosmology = cosmology
         self._host = host
+        self._alpha_dipole = alpha_dipole
         self._time_range = None
         self._z_cdf = None
 
@@ -439,6 +457,11 @@ class SnGen:
     def sn_int_par(self):
         """Get sncosmo configuration parameters."""
         return self._sn_int_par
+
+    @property
+    def alpha_dipole(self):
+        """Get alpha dipole parameters."""
+        return self._alpha_dipole
 
     @property
     def cosmology(self):
@@ -512,6 +535,13 @@ class SnGen:
             model_keys = ['alpha', 'beta']
         return model_keys
 
+    @staticmethod
+    def _construct_sn_int(*arg):
+        keys = [a[0] for a in arg]
+        data = [a[1] for a in arg]
+        dic = ({k: val for k, val in zip(keys, values)} for values in zip(*data))
+        return dic
+
     def __call__(self, n_sn, rand_gen=None):
         """Launch the simulation of SN.
 
@@ -574,16 +604,20 @@ class SnGen:
         else:
             dust_par = [{}] * len(ra)
 
+        sn_int_args = [('zcos', zcos),
+                       ('como_dist', self.cosmology.comoving_distance(zcos).value),
+                       ('z2cmb', ut.compute_z2cmb(ra, dec, self.cmb)),
+                       ('sim_t0', t0),
+                       ('ra', ra),
+                       ('dec', dec),
+                       ('vpec', vpec),
+                       ('mag_smear', mag_smear)]
+
+        if self.alpha_dipole is not None:
+            sn_int_args.append(('adip_dM', self._compute_alpha_dipole(ra, dec)))
+
         # -- SN initialisation part :
-        sn_par = ({'zcos': z,
-                   'como_dist': self.cosmology.comoving_distance(z).value,
-                   'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
-                   'sim_t0': t,
-                   'ra': r,
-                   'dec': d,
-                   'vpec': v,
-                   'mag_smear': ms
-                   } for z, t, r, d, v, ms in zip(zcos, t0, ra, dec, vpec, mag_smear))
+        sn_par = self._construct_sn_int(*sn_int_args)
 
         model_default = {'M0': self.sn_int_par['M0']}
         for k in self._model_keys:
@@ -785,6 +819,13 @@ class SnGen:
         dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
 
         return dust_par
+
+    def _compute_alpha_dipole(self, ra, dec):
+        cart_vec = ut.radec_to_cart(self.alpha_dipole['coord'][0],
+                                    self.alpha_dipole['coord'][1])
+        sn_vec = ut.radec_to_cart(ra, dec)
+        delta_M = 1 / 0.98 * (self.alpha_dipole['A'] + self.alpha_dipole['B'] * cart_vec @ sn_vec)
+        return delta_M
 
 
 class SurveyObs:
