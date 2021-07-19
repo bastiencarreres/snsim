@@ -26,6 +26,7 @@ setup(
         "scipy >= 0.9.0",
         "astropy >= 1.0.0",
         "numba",
-        "pyyaml"
+        "pyyaml",
+        "sfdmap"
     ]
 )
