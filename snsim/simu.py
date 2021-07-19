@@ -111,8 +111,8 @@ class Simulator:
     |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                         |
     |     z_range: [ZMIN, ZMAX]                                                          |
     |     M0: SN ABSOLUT MAGNITUDE                                                       |
-    |     mag_smear: SN INTRINSIC SMEARING                                               |
-    |     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING        |
+    |     mag_sct: SN INTRINSIC COHERENT SCATTERING                                      |
+    |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING        |
     | cosmology:                                                                         |
     |     Om0: MATTER DENSITY                                                            |
     |     H0: HUBBLE CONSTANT                                                            |
@@ -121,7 +121,7 @@ class Simulator:
     |     l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)                        |
     |     b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)                         |
     | model_config:                                                                      |
-    |     model_name:                                                                    |
+    |     model_name: 'THE MODEL NAME'  Example : 'salt2'                                |
     |     model_dir: '/PATH/TO/SALT/MODEL'                                               |
     |     alpha: STRETCH CORRECTION = alpha*x1                                           |
     |     beta: COLOR CORRECTION = -beta*c                                               |
@@ -134,6 +134,10 @@ class Simulator:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY                                           |
     |     sig_vpec: SIGMA VPEC                                                           |
     | host_file: 'PATH/TO/HOSTFILE' (Optional)                                           |
+    | alpha_dipole: #Experimental alpha fine structure constant dipole, optional         |
+    |     coord: [RA, Dec] # Direction of the dipole                                     |
+    |     A: A_parameter # alpha dipole = A + B * cos(theta)                             |
+    |     B: B_parameter                                                                 |
     |                                                                                    |
     +------------------------------------------------------------------------------------+
     """
@@ -252,9 +256,9 @@ class Simulator:
     def sn_int_par(self):
         """Get the intrinsic parameters of SN Ia."""
         int_params = {'M0': self.sim_cfg['sn_gen']['M0'],
-                      'mag_smear': self.sim_cfg['sn_gen']['mag_smear']}
-        if 'smear_mod' in self.sim_cfg['sn_gen']:
-            int_params['smear_mod'] = self.sim_cfg['sn_gen']['smear_mod']
+                      'mag_sct': self.sim_cfg['sn_gen']['mag_sct']}
+        if 'sct_model' in self.sim_cfg['sn_gen']:
+            int_params['sct_model'] = self.sim_cfg['sn_gen']['sct_model']
         return int_params
 
     @property
@@ -489,9 +493,9 @@ class Simulator:
         else:
             print(f"Survey effective duration is {self.survey.duration:.2f} days")
 
-        if 'smear_mod' in self.sim_cfg['sn_gen']:
+        if 'sct_model' in self.sim_cfg['sn_gen']:
             print("\nUse intrinsic scattering model : "
-                  f"{self.sim_cfg['sn_gen']['smear_mod']}")
+                  f"{self.sim_cfg['sn_gen']['sct_model']}")
 
         if 'mw_dust' in self.sim_cfg['model_config']:
             print("\nUse mw dust model : "
@@ -649,7 +653,7 @@ class Simulator:
         """
         header = {'n_sn': self.n_sn,
                   'M0': self.sim_cfg['sn_gen']['M0'],
-                  'sigM': self.sim_cfg['sn_gen']['mag_smear'],
+                  'sigM': self.sim_cfg['sn_gen']['mag_sct'],
                   **self.sim_cfg['cosmology']}
 
         if self.host is None:
@@ -686,8 +690,8 @@ class Simulator:
         for k, v in fits_dic.items():
             header[v] = self.sim_cfg['model_config'][k]
 
-        if 'smear_mod' in self.sim_cfg['sn_gen']:
-            header['Smod'] = self.sim_cfg['sn_gen']['smear_mod']
+        if 'sct_model' in self.sim_cfg['sn_gen']:
+            header['Smod'] = self.sim_cfg['sn_gen']['sct_model']
         return header
 
     def _write_sim(self):
@@ -918,7 +922,7 @@ class Simulator:
             sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
             sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
             sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
-            sim_lc_meta['m_smear'] = [sn.mag_smear for sn in self.sn_list]
+            sim_lc_meta['m_sct'] = [sn.mag_sct for sn in self.sn_list]
 
         if self.model_name in ('salt2', 'salt3'):
             sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
@@ -926,8 +930,8 @@ class Simulator:
             sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
             sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
 
-        if 'smear_mod' in self.sim_cfg['sn_gen']:
-            sim_lc_meta['SM_seed'] = [sn.smear_mod_seed for sn in self.sn_list]
+        if 'sct_model' in self.sim_cfg['sn_gen']:
+            sim_lc_meta['SM_seed'] = [sn.sct_mod_seed for sn in self.sn_list]
 
         if 'mw_dust' in self.sim_cfg['model_config']:
             sim_lc_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]

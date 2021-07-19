@@ -1,18 +1,18 @@
-"""This package contains the smear effects."""
+"""This package contains the scattering effects."""
 
 import numpy as np
 import sncosmo as snc
 from . import nb_fun as nbf
 
 
-def init_sn_smear_model(model, smear_mod):
-    """Add smear effect on sncomso model.
+def init_sn_sct_model(model, sct_mod):
+    """Add scattering effect on sncomso model.
 
     Parameters
     ----------
     model : sncosmo.Model
         The model on which add effects.
-    smear_mod : str
+    sct_mod : str
         Name of the model to use.
 
     Returns
@@ -20,19 +20,19 @@ def init_sn_smear_model(model, smear_mod):
     None
 
     """
-    if smear_mod == 'G10':
+    if sct_mod == 'G10':
         model.add_effect(G10(model), 'G10_', 'rest')
 
-    elif smear_mod[:3] == 'C11':
+    elif sct_mod[:3] == 'C11':
         model.add_effect(C11(model), 'C11_', 'rest')
-        if smear_mod == 'C11_1':
+        if sct_mod == 'C11_1':
             model.set(C11_Cuu=1.)
-        elif smear_mod == 'C11_2':
+        elif sct_mod == 'C11_2':
             model.set(C11_Cuu=-1.)
 
 
 class G10(snc.PropagationEffect):
-    """G10 smearing effect for sncosmo.
+    """G10 scattering effect for sncosmo.
 
     Parameters
     ----------
@@ -129,12 +129,12 @@ class G10(snc.PropagationEffect):
             Flux density with effect applied.
         """
         lam, scatter = self.lam_scatter
-        smear = np.asarray([nbf.sine_interp(w, lam, scatter) for w in wave])
-        return flux * 10**(-0.4 * smear)
+        scattering = np.asarray([nbf.sine_interp(w, lam, scatter) for w in wave])
+        return flux * 10**(-0.4 * scattering)
 
 
 class C11(snc.PropagationEffect):
-    """C11 smearing effect for sncosmo.
+    """C11 scattering effect for sncosmo.
 
     Parameters
     ----------
@@ -248,12 +248,12 @@ class C11(snc.PropagationEffect):
             raise ValueError('Cov_uu must be 1,-1 or 0')
 
         scatter = self.scatter
-        smear = np.zeros(len(wave))
+        scattering = np.zeros(len(wave))
         for i, w in enumerate(wave):
             if w >= self._sigma_lam[-1]:
-                smear[i] = scatter[-1]
+                scattering[i] = scatter[-1]
             elif w <= self._sigma_lam[0]:
-                smear[i] = scatter[0]
+                scattering[i] = scatter[0]
             else:
-                smear[i] = nbf.sine_interp(w, self._sigma_lam, scatter)
-        return flux * 10**(-0.4 * smear)
+                scattering[i] = nbf.sine_interp(w, self._sigma_lam, scatter)
+        return flux * 10**(-0.4 * scattering)

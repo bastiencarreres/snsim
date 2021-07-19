@@ -29,7 +29,7 @@ class SN:
         ├── ra # Right Ascension
         ├── dec # Declinaison
         ├── vpec # Peculiar velocity
-        ├── mag_smear # Coherent scattering
+        ├── mag_sct # Coherent scattering
         └── adip_dM # Alpha dipole magnitude variation, opt
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
@@ -121,9 +121,9 @@ class SN:
         return self._sn_par['ra'], self._sn_par['dec']
 
     @property
-    def mag_smear(self):
+    def mag_sct(self):
         """Get SN coherent scattering term."""
-        return self._sn_par['mag_smear']
+        return self._sn_par['mag_sct']
 
     @property
     def zpec(self):
@@ -162,8 +162,8 @@ class SN:
                             (1 + self.zpec)**2 * self.como_dist) + 25
 
     @property
-    def smear_mod_seed(self):
-        """Get SN  smear model if exist."""
+    def sct_mod_seed(self):
+        """Get SN  scattering model if exist."""
         if 'G10_RndS' in self._model_par['sncosmo']:
             return self._model_par['sncosmo']['G10_RndS']
         elif 'C11_RndS' in self._model_par['sncosmo']:
@@ -197,13 +197,13 @@ class SN:
         M0 = self._model_par['M0']
         if self.sim_model.source.name in ['salt2', 'salt3']:
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
-            # beta*c : scattering due to color and stretch} + {intrinsic smearing}
+            # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
             alpha = self._model_par['alpha']
             beta = self._model_par['beta']
             x1 = self._model_par['sncosmo']['x1']
             c = self._model_par['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * \
-                x1 + beta * c + self.mag_smear
+                x1 + beta * c + self.mag_sct
 
             x0 = salt_ut.mB_to_x0(mb)
             self.sim_x0 = x0
@@ -315,7 +315,7 @@ class SN:
         self.sim_lc.meta['dec'] = self.coord[1]
         self.sim_lc.meta['sim_mb'] = self.sim_mb
         self.sim_lc.meta['sim_mu'] = self.sim_mu
-        self.sim_lc.meta['m_smear'] = self.mag_smear
+        self.sim_lc.meta['m_sct'] = self.mag_sct
 
         if 'adip_dM' in self._sn_par:
             self.sim_lc.meta['adip_dM'] = self.adip_dM
@@ -341,8 +341,8 @@ class SnGen:
         Intrinsic parameters of the supernovae.
         sn_int_par
         ├── M0 # Standard absolute magnitude
-        ├── mag_smear # Coherent intrinsic scattering
-        └── smear_mod # Wavelenght dependant smearing (Optional)
+        ├── mag_sct # Coherent intrinsic scattering
+        └── sct_model # Wavelenght dependant scattering (Optional)
     model_config : dict
         The parameters of the sn simulation model to use.
         model_config
@@ -514,8 +514,8 @@ class SnGen:
         model = ut.init_sn_model(self.model_config['model_name'],
                                  self.model_config['model_dir'])
 
-        if 'smear_mod' in self.sn_int_par:
-            sct.init_sn_smear_model(model, self.sn_int_par['smear_mod'])
+        if 'sct_model' in self.sn_int_par:
+            sct.init_sn_sct_model(model, self.sn_int_par['sct_model'])
 
         if 'mw_dust' in self.model_config:
             dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
@@ -565,7 +565,7 @@ class SnGen:
         # ---- because of the numpy random generator object
         # ---- The order is : 1. t0 -> SN peak time
         # ----                2. zcos -> SN cosmological redshifts
-        # ----                3. mag_smear -> Coherent magnitude scattering
+        # ----                3. mag_sct -> Coherent magnitude scattering
         # ----                4. opt_seeds -> 3 indep randseeds for coord, vpec and model
 
         if rand_gen is None:
@@ -577,8 +577,8 @@ class SnGen:
         # -- Generate cosmological redshifts
         zcos = self.gen_zcos(n_sn, rand_gen)
 
-        # -- Generate coherent mag smearing
-        mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
+        # -- Generate coherent mag scattering
+        mag_sct = self.gen_coh_scatter(n_sn, rand_gen)
 
         # -- Generate 3 randseeds for optionnal parameters randomization
         opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
@@ -611,7 +611,7 @@ class SnGen:
                        ('ra', ra),
                        ('dec', dec),
                        ('vpec', vpec),
-                       ('mag_smear', mag_smear)]
+                       ('mag_sct', mag_sct)]
 
         if self.alpha_dipole is not None:
             sn_int_args.append(('adip_dM', self._compute_alpha_dipole(ra, dec)))
@@ -776,24 +776,24 @@ class SnGen:
         return vpec
 
     def gen_coh_scatter(self, n, rand_gen):
-        """Generate n coherent mag smear term.
+        """Generate n coherent mag scattering term.
 
         Parameters
         ----------
         n : int
-            Number of mag smear terms to generate.
+            Number of mag scattering terms to generate.
         rand_gen : numpy.random.default_rng
             Numpy random generator.
 
         Returns
         -------
         numpy.ndarray(float)
-            numpy array containing smear terms generated.
+            numpy array containing scattering terms generated.
 
         """
-        mag_smear = rand_gen.normal(
-            loc=0, scale=self.sn_int_par['mag_smear'], size=n)
-        return mag_smear
+        mag_sct = rand_gen.normal(
+            loc=0, scale=self.sn_int_par['mag_sct'], size=n)
+        return mag_sct
 
     def _dust_par(self, ra, dec):
         """Compute dust parameters.
