@@ -266,6 +266,25 @@ def flux_to_Jansky(zp, band):
     return norm
 
 
+def radec_to_cart(ra, dec):
+    """Compute carthesian vector for given RA Dec coordinates.
+
+    Parameters
+    ----------
+    ra : float or numpy.ndarray
+        Right Ascension.
+    dec :  float or numpy.ndarray
+        Declinaison.
+
+    Returns
+    -------
+    numpy.ndarray(float)
+        Carthesian coordinates corresponding to RA Dec coordinates.
+
+    """
+    cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
+    return cart_vec
+
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.
 
@@ -289,7 +308,7 @@ def change_sph_frame(ra, dec, ra_frame, dec_frame):
     if isinstance(ra_frame, float):
         ra_frame = np.array([ra_frame])
         dec_frame = np.array([dec_frame])
-    vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
+    vec = radec_to_cart(ra, dec)
     new_ra, new_dec = nbf.new_coord_on_fields(ra_frame, dec_frame, vec)
     return new_ra, new_dec
 

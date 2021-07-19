@@ -28,14 +28,14 @@ survey_config:
     duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
-    duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (DAYS) #(Optional)
+    duration_for_rate: FAKE DURATION ONLY USED TO GENERATE N SN (DAYS) #(Optional)
     sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
     rate_pw: rate = sn_rate*(1+z)^rate_pw #(Optional, default=0)
     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS #(Optional defaut >= 1 ep)
     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional default random)
     z_range: [ZMIN, ZMAX] # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
-    mag_smear: SN INTRINSIC SMEARING
+    mag_sct: SN INTRINSIC COHERENT SCATTERING
     smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
 cosmology: # Follow astropy formalism
     Om0: MATTER DENSITY  
@@ -54,11 +54,15 @@ model_config:
     mean_c: MEAN C VALUE
     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]
-    mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
+    mw_dust: MODEL_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
  host_file: '/PATH/TO/HOSTFILE' # Optional
+ alpha_dipole: #Experimental alpha fine structure constant dipole, optional
+     coord: [RA, Dec] # Direction of the dipole
+     A: A_parameter # alpha dipole = A + B * cos(theta)
+     B: B_parameter  
 
 ```
 * If you set end_day and duration, duration will be ignored

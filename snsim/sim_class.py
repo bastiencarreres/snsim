@@ -22,14 +22,15 @@ class SN:
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
         snpar
-        ├── zcos
-        ├── como_dist
-        ├── z2cmb
-        ├── sim_t0
-        ├── ra
-        ├── dec
-        ├── vpec
-        └── mag_smear
+        ├── zcos # Cosmological redshift
+        ├── como_dist # Comoving distance
+        ├── z2cmb # CMB dipole contribution to redshift
+        ├── sim_t0 # Peak time in Bessell-B band in mjd
+        ├── ra # Right Ascension
+        ├── dec # Declinaison
+        ├── vpec # Peculiar velocity
+        ├── mag_sct # Coherent scattering
+        └── adip_dM # Alpha dipole magnitude variation, opt
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
@@ -120,9 +121,9 @@ class SN:
         return self._sn_par['ra'], self._sn_par['dec']
 
     @property
-    def mag_smear(self):
+    def mag_sct(self):
         """Get SN coherent scattering term."""
-        return self._sn_par['mag_smear']
+        return self._sn_par['mag_sct']
 
     @property
     def zpec(self):
@@ -161,8 +162,8 @@ class SN:
                             (1 + self.zpec)**2 * self.como_dist) + 25
 
     @property
-    def smear_mod_seed(self):
-        """Get SN  smear model if exist."""
+    def sct_mod_seed(self):
+        """Get SN  scattering model if exist."""
         if 'G10_RndS' in self._model_par['sncosmo']:
             return self._model_par['sncosmo']['G10_RndS']
         elif 'C11_RndS' in self._model_par['sncosmo']:
@@ -196,16 +197,15 @@ class SN:
         M0 = self._model_par['M0']
         if self.sim_model.source.name in ['salt2', 'salt3']:
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
-            # beta*c : scattering due to color and stretch} + {intrinsic smearing}
+            # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
             alpha = self._model_par['alpha']
             beta = self._model_par['beta']
             x1 = self._model_par['sncosmo']['x1']
             c = self._model_par['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * \
-                x1 + beta * c + self.mag_smear
+                x1 + beta * c + self.mag_sct
 
             x0 = salt_ut.mB_to_x0(mb)
-            self.sim_mb = mb
             self.sim_x0 = x0
             self.sim_x1 = x1
             self.sim_c = c
@@ -215,6 +215,13 @@ class SN:
             # TODO
         if 'mw_' in self.sim_model.effect_names:
             self.mw_ebv = self._model_par['sncosmo']['mw_ebv']
+
+        # Alpha dipole
+        if 'adip_dM' in self._sn_par:
+            mb += self._sn_par['adip_dM']
+            self.adip_dM = self._sn_par['adip_dM']
+
+        self.sim_mb = mb
 
     def pass_cut(self, nep_cut):
         """Check if the SN pass the given cuts.
@@ -308,7 +315,10 @@ class SN:
         self.sim_lc.meta['dec'] = self.coord[1]
         self.sim_lc.meta['sim_mb'] = self.sim_mb
         self.sim_lc.meta['sim_mu'] = self.sim_mu
-        self.sim_lc.meta['m_smear'] = self.mag_smear
+        self.sim_lc.meta['m_sct'] = self.mag_sct
+
+        if 'adip_dM' in self._sn_par:
+            self.sim_lc.meta['adip_dM'] = self.adip_dM
 
     def get_lc_hdu(self):
         """Convert the astropy Table to a hdu.
@@ -331,8 +341,8 @@ class SnGen:
         Intrinsic parameters of the supernovae.
         sn_int_par
         ├── M0 # Standard absolute magnitude
-        ├── mag_smear # Coherent intrinsic scattering
-        └── smear_mod # Wavelenght dependant smearing (Optional)
+        ├── mag_sct # Coherent intrinsic scattering
+        └── sct_model # Wavelenght dependant scattering (Optional)
     model_config : dict
         The parameters of the sn simulation model to use.
         model_config
@@ -352,8 +362,14 @@ class SnGen:
         vpec_dist
         ├── mean_vpec
         └── sig_vpec
-    host : class SnHost
+    host : class SnHost, opt
         The host class to introduce sn host.
+    alpha_dipole : dict, opt
+        The alpha dipole parameters.
+        alpha_dipole
+        ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
+        ├── A # A parameter of the A + B * cos(theta) dipole
+        └── B # B parameter of the A + B * cos(theta) dipole
 
     Attributes
     ----------
@@ -407,7 +423,8 @@ class SnGen:
         Compute dust parameters.
     """
 
-    def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist, host=None):
+    def __init__(self, sn_int_par, model_config, cmb, cosmology, vpec_dist,
+                 host=None, alpha_dipole=None):
         """Initialize SnGen class."""
         self._sn_int_par = sn_int_par
         self._model_config = model_config
@@ -417,6 +434,7 @@ class SnGen:
         self._vpec_dist = vpec_dist
         self._cosmology = cosmology
         self._host = host
+        self._alpha_dipole = alpha_dipole
         self._time_range = None
         self._z_cdf = None
 
@@ -439,6 +457,11 @@ class SnGen:
     def sn_int_par(self):
         """Get sncosmo configuration parameters."""
         return self._sn_int_par
+
+    @property
+    def alpha_dipole(self):
+        """Get alpha dipole parameters."""
+        return self._alpha_dipole
 
     @property
     def cosmology(self):
@@ -491,8 +514,8 @@ class SnGen:
         model = ut.init_sn_model(self.model_config['model_name'],
                                  self.model_config['model_dir'])
 
-        if 'smear_mod' in self.sn_int_par:
-            sct.init_sn_smear_model(model, self.sn_int_par['smear_mod'])
+        if 'sct_model' in self.sn_int_par:
+            sct.init_sn_sct_model(model, self.sn_int_par['sct_model'])
 
         if 'mw_dust' in self.model_config:
             dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
@@ -511,6 +534,13 @@ class SnGen:
         if model_name in ('salt2', 'salt3'):
             model_keys = ['alpha', 'beta']
         return model_keys
+
+    @staticmethod
+    def _construct_sn_int(*arg):
+        keys = [a[0] for a in arg]
+        data = [a[1] for a in arg]
+        dic = ({k: val for k, val in zip(keys, values)} for values in zip(*data))
+        return dic
 
     def __call__(self, n_sn, rand_gen=None):
         """Launch the simulation of SN.
@@ -535,7 +565,7 @@ class SnGen:
         # ---- because of the numpy random generator object
         # ---- The order is : 1. t0 -> SN peak time
         # ----                2. zcos -> SN cosmological redshifts
-        # ----                3. mag_smear -> Coherent magnitude scattering
+        # ----                3. mag_sct -> Coherent magnitude scattering
         # ----                4. opt_seeds -> 3 indep randseeds for coord, vpec and model
 
         if rand_gen is None:
@@ -547,8 +577,8 @@ class SnGen:
         # -- Generate cosmological redshifts
         zcos = self.gen_zcos(n_sn, rand_gen)
 
-        # -- Generate coherent mag smearing
-        mag_smear = self.gen_coh_scatter(n_sn, rand_gen)
+        # -- Generate coherent mag scattering
+        mag_sct = self.gen_coh_scatter(n_sn, rand_gen)
 
         # -- Generate 3 randseeds for optionnal parameters randomization
         opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
@@ -574,16 +604,20 @@ class SnGen:
         else:
             dust_par = [{}] * len(ra)
 
+        sn_int_args = [('zcos', zcos),
+                       ('como_dist', self.cosmology.comoving_distance(zcos).value),
+                       ('z2cmb', ut.compute_z2cmb(ra, dec, self.cmb)),
+                       ('sim_t0', t0),
+                       ('ra', ra),
+                       ('dec', dec),
+                       ('vpec', vpec),
+                       ('mag_sct', mag_sct)]
+
+        if self.alpha_dipole is not None:
+            sn_int_args.append(('adip_dM', self._compute_alpha_dipole(ra, dec)))
+
         # -- SN initialisation part :
-        sn_par = ({'zcos': z,
-                   'como_dist': self.cosmology.comoving_distance(z).value,
-                   'z2cmb': ut.compute_z2cmb(r, d, self.cmb),
-                   'sim_t0': t,
-                   'ra': r,
-                   'dec': d,
-                   'vpec': v,
-                   'mag_smear': ms
-                   } for z, t, r, d, v, ms in zip(zcos, t0, ra, dec, vpec, mag_smear))
+        sn_par = self._construct_sn_int(*sn_int_args)
 
         model_default = {'M0': self.sn_int_par['M0']}
         for k in self._model_keys:
@@ -742,24 +776,24 @@ class SnGen:
         return vpec
 
     def gen_coh_scatter(self, n, rand_gen):
-        """Generate n coherent mag smear term.
+        """Generate n coherent mag scattering term.
 
         Parameters
         ----------
         n : int
-            Number of mag smear terms to generate.
+            Number of mag scattering terms to generate.
         rand_gen : numpy.random.default_rng
             Numpy random generator.
 
         Returns
         -------
         numpy.ndarray(float)
-            numpy array containing smear terms generated.
+            numpy array containing scattering terms generated.
 
         """
-        mag_smear = rand_gen.normal(
-            loc=0, scale=self.sn_int_par['mag_smear'], size=n)
-        return mag_smear
+        mag_sct = rand_gen.normal(
+            loc=0, scale=self.sn_int_par['mag_sct'], size=n)
+        return mag_sct
 
     def _dust_par(self, ra, dec):
         """Compute dust parameters.
@@ -785,6 +819,13 @@ class SnGen:
         dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
 
         return dust_par
+
+    def _compute_alpha_dipole(self, ra, dec):
+        cart_vec = ut.radec_to_cart(self.alpha_dipole['coord'][0],
+                                    self.alpha_dipole['coord'][1])
+        sn_vec = ut.radec_to_cart(ra, dec)
+        delta_M = 1 / 0.98 * (self.alpha_dipole['A'] + self.alpha_dipole['B'] * cart_vec @ sn_vec)
+        return delta_M
 
 
 class SurveyObs:
