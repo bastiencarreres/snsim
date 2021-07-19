@@ -207,7 +207,7 @@ class OpenSim:
             s_model.set(**dic_par)
 
             if 'Smod' in self.header:
-                sct.init_sn_smear_model(s_model, self.header['Smod'])
+                sct.init_sn_sct_model(s_model, self.header['Smod'])
                 par_rd_name = self.header['Smod'][:3] + '_RndS'
                 s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
 
@@ -317,7 +317,7 @@ class OpenSim:
             sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
             sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
             sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
-            sim_lc_meta['m_smear'] = [lc.meta['m_smear'] for lc in self.sim_lc]
+            sim_lc_meta['m_sct'] = [lc.meta['m_sct'] for lc in self.sim_lc]
 
         if 'Smod' in self.header:
             sim_lc_meta['SM_seed'] = [lc.meta[self.header['Smod'][:3] + '_RndS']
