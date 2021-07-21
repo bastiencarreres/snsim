@@ -1,4 +1,4 @@
-"""This module contains all the constants used in the package"""
+"""This module contains all the constants used in the package."""
 import re
 from pathlib import Path
 from astropy import constants as cst
