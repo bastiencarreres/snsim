@@ -161,8 +161,8 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
     Parameters
     ----------
     epochs_selec : numpy.ndarray(bool)
-        The boolean array of field selection
-    obs_fieldID : numpy.ndarray(float)
+        The boolean array of field selection.
+    obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
     ra_f_frame : numpy.ndaray(float)
         SN Right Ascension in fields frames.
@@ -219,11 +219,40 @@ def find_idx_nearest_elmt(val, array, treshold):
 
 
 @njit(cache=True)
-def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_f_frame, fieldID, sub_field_metric, sub_field_map):
+def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_f_frame, fieldID,
+                       sub_field_edges, sub_field_map):
+    """Check in which subpart of the field is the SN.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.ndarray(bool)
+        The boolean array of field selection.
+    obs_fieldID : numpy.ndarray(int)
+        Field Id of each observation.
+    obs_subfield : numpy.ndarray(int)
+        Subfield ID.
+    ra_f_frame : numpy.ndaray(float)
+        SN Right Ascension in fields frames.
+    dec_f_frame : numpy.ndaray(float)
+        SN Declinaison in fields frames.
+    fieldID : numpy.ndarray(int)
+        The list of preselected fields ID.
+    sub_field_edges : numpy.ndaray(numpy.ndarray(float), numpy.ndarray(float))
+        Edges of subfields along RA and Dec.
+    sub_field_map : numpy.ndarray(int)
+        Map the position on field to subfield ID.
+
+    Returns
+    -------
+    numpy.ndaray(bool), bool
+        The boolean array of field selection.
+
+    """
     dic_map = {}
     for r, d, fID in zip(ra_f_frame, dec_f_frame, fieldID):
-        ra_idx = np.max(np.where(r >= sub_field_metric[0])[0])
-        dec_idx = np.max(np.where(d >= sub_field_metric[1])[0])
+        ra_idx = np.max(np.where(r >= sub_field_edges[0])[0])
+        dec_idx = np.max(np.where(d >= sub_field_edges[1])[0])
         dic_map[fID] = sub_field_map[len(sub_field_map) - dec_idx - 1, ra_idx]
-    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([dic_map[field] for field in obs_fieldID]))
+    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([dic_map[field] for field in
+                                                                      obs_fieldID]))
     return epochs_selec, epochs_selec.any()

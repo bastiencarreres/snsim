@@ -890,7 +890,7 @@ class SurveyObs:
             self._sub_field_map = np.loadtxt(survey_config['sub_field'][0],
                                              delimiter=':',
                                              dtype=int)
-            self._sub_field_metric = np.array([np.linspace(-self.field_size[0] / 2,
+            self._sub_field_edges = np.array([np.linspace(-self.field_size[0] / 2,
                                                           self.field_size[0] / 2,
                                                           self._sub_field_map.shape[0] + 1),
                                               np.linspace(-self.field_size[1] / 2,
@@ -1137,15 +1137,14 @@ class SurveyObs:
 
         if is_obs and 'sub_field' in self.config:
             selec_field_mask = np.vectorize(dic_map.get)(selec_fields_ID)
-
             epochs_selec, is_obs = nbf.in_which_sub_field(epochs_selec,
-                                                        self._obs_table['fieldID'][epochs_selec].values,
-                                                        self._obs_table[self.config['sub_field'][1]][epochs_selec].values,
-                                                        ra_field_frame[selec_field_mask],
-                                                        dec_field_frame[selec_field_mask],
-                                                        selec_fields_ID[selec_field_mask],
-                                                        self._sub_field_metric,
-                                                        self._sub_field_map)
+                                                          self._obs_table['fieldID'][epochs_selec].values,
+                                                          self._obs_table[self.config['sub_field'][1]][epochs_selec].values,
+                                                          ra_field_frame[selec_field_mask],
+                                                          dec_field_frame[selec_field_mask],
+                                                          selec_fields_ID[selec_field_mask],
+                                                          self._sub_field_edges,
+                                                          self._sub_field_map)
         if is_obs:
             return self._make_obs_table(epochs_selec)
         return None
