@@ -845,7 +845,8 @@ class SurveyObs:
         ├── duration SURVEY DURATION -> float, opt
         ├── zp FIXED ZEROPOINT -> float, opt
         ├── survey_cut, CUT ON DB FILE -> dict, opt
-        └── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+        ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+        └── sub_field, SUBFIELD FILE AND KEY, opt
 
     Attributes
     ----------
