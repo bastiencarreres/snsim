@@ -1221,6 +1221,14 @@ class SurveyObs:
                     obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
+    def show_sub_field(self):
+        if 'sub_field' not in self.config:
+            print('No sub field')
+            return
+        edge = '-----'
+        for i, row in enumerate(self._sub_field_map):
+            
+
 
 class SnHost:
     """Class containing the SN Host parameters.
