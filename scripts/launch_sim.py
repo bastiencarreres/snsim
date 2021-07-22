@@ -65,7 +65,8 @@ keys_dic = {
         'dec_size',
         'start_day',
         'end_day',
-        'duration'],
+        'duration',
+        'sub_field'],
     'sn_gen': [
         'randseed',
         'duration_for_rate',
@@ -130,6 +131,7 @@ parser.add_argument("--start_day", type=date_read,
 parser.add_argument("--end_day", type=date_read,
                     help="Survey ending day MJD NUMBER or 'YYYY-MM-DD'")
 parser.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS")
+parser.add_argument("--sub_field", type=str, nargs=2, help="SUBFIELD STRUCTURE FILE AND KEY")
 
 ###################
 # SN_GEN SECTION #
