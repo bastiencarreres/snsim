@@ -845,7 +845,8 @@ class SurveyObs:
         ├── duration SURVEY DURATION -> float, opt
         ├── zp FIXED ZEROPOINT -> float, opt
         ├── survey_cut, CUT ON DB FILE -> dict, opt
-        └── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+        ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+        └── sub_field, SUBFIELD FILE AND KEY, opt
 
     Attributes
     ----------
@@ -886,6 +887,17 @@ class SurveyObs:
         self._obs_table, self._start_end_days = self._extract_from_db()
         self._field_dic = self._init_field_dic()
 
+        if 'sub_field' in survey_config:
+            self._sub_field_map = np.loadtxt(survey_config['sub_field'][0],
+                                             delimiter=':',
+                                             dtype=int)
+            self._sub_field_edges = np.array([np.linspace(-self.field_size[0] / 2,
+                                                          self.field_size[0] / 2,
+                                                          self._sub_field_map.shape[1] + 1),
+                                              np.linspace(-self.field_size[1] / 2,
+                                                          self.field_size[1] / 2,
+                                                          self._sub_field_map.shape[0] + 1)])
+
     def _init_field_dic(self):
         """Create a dictionnary with fieldID and coord.
 
@@ -901,6 +913,7 @@ class SurveyObs:
             idx = nbf.find_first(f, self.obs_table['fieldID'].values)
             dic[f] = {'ra': self.obs_table['fieldRA'][idx],
                       'dec': self.obs_table['fieldDec'][idx]}
+
         return dic
 
     @property
@@ -1031,6 +1044,9 @@ class SurveyObs:
         if 'sig_psf' not in self.config:
             keys += ['FWHMeff']
 
+        if 'sub_field' in self.config:
+            keys += [self.config['sub_field'][1]]
+
         if 'add_data' in self.config:
             add_k = (k for k in self.config['add_data'] if k not in keys)
             keys += add_k
@@ -1090,29 +1106,46 @@ class SurveyObs:
         """
         ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.z)
         ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.z)
-        ra, dec = SN_obj.coord
+        SN_ra, SN_dec = SN_obj.coord
 
-        # time selection
-        epochs_selec, selec_fields_ID = nbf.time_selec(self.obs_table['expMJD'].values,
-                                                       SN_obj.sim_t0,
-                                                       ModelMaxT_obsfrm,
-                                                       ModelMinT_obsfrm,
-                                                       self.obs_table['fieldID'].values)
+        # Time selection :
+        epochs_selec = ((self.obs_table['expMJD'] - SN_obj.sim_t0 > ModelMinT_obsfrm)
+                        & (self.obs_table['expMJD'] - SN_obj.sim_t0 < ModelMaxT_obsfrm)).values
 
-        ra_fields = np.array(list(map(lambda x: x['ra'],
-                                      map(self._field_dic.get, selec_fields_ID))))
-        dec_fields = np.array(list(map(lambda x: x['dec'],
-                                       map(self._field_dic.get, selec_fields_ID))))
+        if epochs_selec.any():
+            selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
 
-        # Compute the coord of the SN in the rest frame of each field
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
-                                                              ra_fields,
-                                                              dec_fields)
+            # Take RA Dec coordinates of selected fields
+            ra_fields, dec_fields = np.vectorize(
+                                        lambda x: (self._field_dic.get(x)['ra'],
+                                                   self._field_dic.get(x)['dec']))(selec_fields_ID)
 
-        epochs_selec, is_obs = nbf.is_in_field(epochs_selec,
-                                               self._obs_table['fieldID'][epochs_selec].values,
-                                               ra_field_frame, dec_field_frame,
-                                               self.field_size, selec_fields_ID)
+            # Compute the coord of the SN in the rest frame of each field
+            ra_field_frame, dec_field_frame = ut.change_sph_frame(SN_ra, SN_dec,
+                                                                  ra_fields,
+                                                                  dec_fields)
+
+            # ra_field_frame, dec_field_frame are in the same order as selec_fields_ID
+            epochs_selec, is_obs, dic_map = nbf.is_in_field(
+                                                    epochs_selec,
+                                                    self._obs_table['fieldID'][epochs_selec].values,
+                                                    ra_field_frame, dec_field_frame,
+                                                    self.field_size, selec_fields_ID)
+        else:
+            is_obs = False
+
+        if is_obs and 'sub_field' in self.config:
+            selec_field_mask = np.vectorize(dic_map.get)(selec_fields_ID)
+            epochs_selec, is_obs = nbf.in_which_sub_field(
+                epochs_selec,
+                self._obs_table['fieldID'][epochs_selec].values,
+                self._obs_table[self.config['sub_field'][1]][epochs_selec].values,
+                ra_field_frame[selec_field_mask],
+                dec_field_frame[selec_field_mask],
+                selec_fields_ID[selec_field_mask],
+                self._sub_field_edges,
+                self._sub_field_map)
+
         if is_obs:
             return self._make_obs_table(epochs_selec)
         return None
@@ -1179,11 +1212,50 @@ class SurveyObs:
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
 
+        if 'sub_field' in self.config:
+            obs[self.config['sub_field'][1]] = self._obs_table[self.config['sub_field'][1]][epochs_selec]
+
         if 'add_data' in self.config:
             for k in self.config['add_data']:
                 if k not in obs:
                     obs[k] = self.obs_table[k][epochs_selec]
         return obs
+
+    def show_sub_field(self):
+        """Plot an ASCII representation of subfields.
+
+        Returns
+        -------
+        None
+            Just print something.
+
+        """
+        if 'sub_field' not in self.config:
+            print('No sub field')
+            return
+        y_label = np.degrees(self._sub_field_edges[0])
+        x_label = np.degrees(self._sub_field_edges[1])
+        edge = '-------'
+        format = '|  {:02}  '
+        print('\n')
+        print(f'  {y_label[-1]:.2f} --'
+              + edge * self._sub_field_map.shape[1])
+        for i, row in enumerate(self._sub_field_map):
+            str_list = [format.format(self._sub_field_map[i, j]) for j in range(len(row))]
+            str_list += '|\n '
+            if y_label[self._sub_field_map.shape[0] - i - 1] >= 0:
+                str_list += [' ']
+            str_list += [f'{y_label[self._sub_field_map.shape[0] - i - 1]:.2f} --'
+                         + edge * len(row)]
+            print('        '+''.join(str_list))
+
+        print("        '"+''.join(["      '"] * self._sub_field_map.shape[0]))
+        str_list = [f"      {x_label[0]:.2f}"]
+        for i in range(self._sub_field_map.shape[1]):
+            if x_label[i + 1] >= 0:
+                str_list += ' '
+            str_list += [f'  {x_label[i + 1]:.2f}']
+        print(''.join(str_list))
 
 
 class SnHost:

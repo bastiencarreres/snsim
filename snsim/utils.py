@@ -285,6 +285,7 @@ def radec_to_cart(ra, dec):
     cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
     return cart_vec
 
+
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.
 

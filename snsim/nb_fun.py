@@ -149,7 +149,7 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     numpy.ndarray(bool), numpy.ndarray(int)
         The boolean array of field selection and the id of selectionned fields.
     """
-    epochs_selec = (expMJD - t0 > ModelMinT) * \
+    epochs_selec = (expMJD - t0 > ModelMinT) & \
                    (expMJD - t0 < ModelMaxT)
     return epochs_selec, np.unique(fieldID[epochs_selec])
 
@@ -161,8 +161,8 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
     Parameters
     ----------
     epochs_selec : numpy.ndarray(bool)
-        The boolean array of field selection
-    obs_fieldID : numpy.ndarray(float)
+        The boolean array of field selection.
+    obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
     ra_f_frame : numpy.ndaray(float)
         SN Right Ascension in fields frames.
@@ -179,14 +179,14 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
         The boolean array of field selection.
     """
     in_field = np.abs(ra_f_frame) < f_size[0] / 2
-    in_field *= np.abs(dec_f_frame) < f_size[1] / 2
+    in_field &= np.abs(dec_f_frame) < f_size[1] / 2
 
     dic_map = {}
-    for pf, b in zip(fieldID, in_field):
-        dic_map[pf] = b
+    for fID, bool in zip(fieldID, in_field):
+        dic_map[fID] = bool
 
-    epochs_selec[np.copy(epochs_selec)] *= np.array([dic_map[id] for id in obs_fieldID])
-    return epochs_selec, epochs_selec.any()
+    epochs_selec[np.copy(epochs_selec)] &= np.array([dic_map[ID] for ID in obs_fieldID])
+    return epochs_selec, epochs_selec.any(), dic_map
 
 
 @njit(cache=True)
@@ -216,3 +216,43 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
+
+
+@njit(cache=True)
+def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_f_frame, fieldID,
+                       sub_field_edges, sub_field_map):
+    """Check in which subpart of the field is the SN.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.ndarray(bool)
+        The boolean array of field selection.
+    obs_fieldID : numpy.ndarray(int)
+        Field Id of each observation.
+    obs_subfield : numpy.ndarray(int)
+        Subfield ID.
+    ra_f_frame : numpy.ndaray(float)
+        SN Right Ascension in fields frames.
+    dec_f_frame : numpy.ndaray(float)
+        SN Declinaison in fields frames.
+    fieldID : numpy.ndarray(int)
+        The list of preselected fields ID.
+    sub_field_edges : numpy.ndaray(numpy.ndarray(float), numpy.ndarray(float))
+        Edges of subfields along RA and Dec.
+    sub_field_map : numpy.ndarray(int)
+        Map the position on field to subfield ID.
+
+    Returns
+    -------
+    numpy.ndaray(bool), bool
+        The boolean array of field selection.
+
+    """
+    dic_map = {}
+    for r, d, fID in zip(ra_f_frame, dec_f_frame, fieldID):
+        ra_idx = np.max(np.where(r >= sub_field_edges[0])[0])
+        dec_idx = np.max(np.where(d >= sub_field_edges[1])[0])
+        dic_map[fID] = sub_field_map[len(sub_field_map) - dec_idx - 1, ra_idx]
+    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([dic_map[field] for field in
+                                                                      obs_fieldID]))
+    return epochs_selec, epochs_selec.any()
