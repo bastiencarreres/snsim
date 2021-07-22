@@ -26,6 +26,7 @@ survey_config:
     start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     end_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
+    sub_field: ['sub_field_file', 'sub_field_key'] # Used to divided observation in CCD quadrant for example
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
     duration_for_rate: FAKE DURATION ONLY USED TO GENERATE N SN (DAYS) #(Optional)
@@ -36,7 +37,7 @@ sn_gen:
     z_range: [ZMIN, ZMAX] # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
     mag_sct: SN INTRINSIC COHERENT SCATTERING
-    smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+    sct_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
 cosmology: # Follow astropy formalism
     Om0: MATTER DENSITY  
     H0: HUBBLE CONSTANT
@@ -59,7 +60,7 @@ model_config:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
  host_file: '/PATH/TO/HOSTFILE' # Optional
- alpha_dipole: #Experimental alpha fine structure constant dipole, optional
+ alpha_dipole: # Experimental alpha fine structure constant dipole, optional
      coord: [RA, Dec] # Direction of the dipole
      A: A_parameter # alpha dipole = A + B * cos(theta)
      B: B_parameter  
@@ -67,10 +68,11 @@ model_config:
 ```
 * If you set end_day and duration, duration will be ignored
 * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
+* If you use sub_field you have to define a representation of your sub_field in a txt file.
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
-* mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
+* mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation) 
 
 ## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
@@ -81,7 +83,50 @@ The required data keys are resumed in the next table
 | :-----------:  | :-----:  | :-----------------: | :-----------------------------: | :--------------------------: | :---------------------------: | :------: |
 | Obs time in MJD| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field | Zero point of the observation (Optional if given in yaml) | Uncertainty of the zeropoint (Optional if given in yaml) |
 
+If you want to use subfield index for observation properties and not a general you have to give a .dat file that give the representation of the subfield, for example if you split your field into a 4 x 4 grid, you have to put something like that in your .dat file :
+
+```pseudocode
+ID01:ID02:ID03:ID04
+ID05:ID06:ID07:ID08
+ID09:ID10:ID11:ID12
+ID13:ID14:ID15:ID16
+```
+
+You can show the sub filed map by :
+
+```python
+sim.survey.show_sub_fields()
+
+```
+
+The result is something as :
+
+```asciiarmor
+  3.50 ----------------------------------------------------------
+        |  61  |  60  |  57  |  56  |  53  |  52  |  49  |  48  |
+  2.63 ----------------------------------------------------------
+        |  62  |  63  |  58  |  59  |  54  |  55  |  50  |  51  |
+  1.75 ----------------------------------------------------------
+        |  45  |  44  |  41  |  40  |  37  |  36  |  33  |  32  |
+  0.87 ----------------------------------------------------------
+        |  46  |  47  |  42  |  43  |  38  |  39  |  34  |  35  |
+  0.00 ----------------------------------------------------------
+        |  29  |  28  |  25  |  24  |  21  |  20  |  17  |  16  |
+ -0.88 ----------------------------------------------------------
+        |  30  |  31  |  26  |  27  |  22  |  23  |  18  |  19  |
+ -1.75 ----------------------------------------------------------
+        |  13  |  12  |  09  |  08  |  05  |  04  |  01  |  00  |
+ -2.62 ----------------------------------------------------------
+        |  14  |  15  |  10  |  11  |  06  |  07  |  02  |  03  |
+ -3.50 ----------------------------------------------------------
+        '      '      '      '      '      '      '      '      '
+      -3.50  -2.62  -1.75  -0.88   0.00   0.87   1.75   2.63   3.50
+```
+
+Where the graduations in degrees depend on your field size.
+
 ## Host file
+
 The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
 
 | redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
