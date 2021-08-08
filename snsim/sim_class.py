@@ -885,20 +885,9 @@ class SurveyObs:
         """Initialize SurveyObs class."""
         self._config = survey_config
         self._obs_table, self._start_end_days = self._extract_from_db()
-        self._field_dic = self._init_field_dic()
+        self.fields = self._init_fields()
 
-        if 'sub_field' in survey_config:
-            self._sub_field_map = np.loadtxt(survey_config['sub_field'][0],
-                                             delimiter=':',
-                                             dtype=int)
-            self._sub_field_edges = np.array([np.linspace(-self.field_size[0] / 2,
-                                                          self.field_size[0] / 2,
-                                                          self._sub_field_map.shape[1] + 1),
-                                              np.linspace(-self.field_size[1] / 2,
-                                                          self.field_size[1] / 2,
-                                                          self._sub_field_map.shape[0] + 1)])
-
-    def _init_field_dic(self):
+    def _init_fields(self):
         """Create a dictionnary with fieldID and coord.
 
         Returns
@@ -907,6 +896,7 @@ class SurveyObs:
             fieldID : {'ra' : fieldRA, 'dec': fieldDec}.
 
         """
+        # Create fields dic
         field_list = self.obs_table['fieldID'].unique()
         dic = {}
         for f in field_list:
@@ -914,7 +904,16 @@ class SurveyObs:
             dic[f] = {'ra': self.obs_table['fieldRA'][idx],
                       'dec': self.obs_table['fieldDec'][idx]}
 
-        return dic
+        # Check field shape
+        if 'field_map' in self.config:
+            field_map = self.config['field_map']
+        else:
+            field_map = 'rectangle'
+
+        return SurveyFields(dic,
+                            self.config['ra_size'],
+                            self.config['dec_size'],
+                            field_map)
 
     @property
     def config(self):
@@ -930,13 +929,6 @@ class SurveyObs:
     def obs_table(self):
         """Table of the observations."""
         return self._obs_table
-
-    @property
-    def field_size(self):
-        """Get field size (ra,dec) in radians."""
-        ra_size_rad = np.radians(self._config['ra_size'])
-        dec_size_rad = np.radians(self._config['dec_size'])
-        return ra_size_rad, dec_size_rad
 
     @property
     def gain(self):
@@ -1045,7 +1037,7 @@ class SurveyObs:
             keys += ['FWHMeff']
 
         if 'sub_field' in self.config:
-            keys += [self.config['sub_field'][1]]
+            keys += [self.config['sub_field']]
 
         if 'add_data' in self.config:
             add_k = (k for k in self.config['add_data'] if k not in keys)
@@ -1112,39 +1104,26 @@ class SurveyObs:
         epochs_selec = ((self.obs_table['expMJD'] - SN_obj.sim_t0 > ModelMinT_obsfrm)
                         & (self.obs_table['expMJD'] - SN_obj.sim_t0 < ModelMaxT_obsfrm)).values
 
-        if epochs_selec.any():
+        is_obs = epochs_selec.any()
+
+        if is_obs:
             selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
 
-            # Take RA Dec coordinates of selected fields
-            ra_fields, dec_fields = np.vectorize(
-                                        lambda x: (self._field_dic.get(x)['ra'],
-                                                   self._field_dic.get(x)['dec']))(selec_fields_ID)
+            dic_map, coord_in_obs_fields = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
 
-            # # Compute the coord of the SN in the rest frame of each field
-            ra_field_frame, dec_field_frame = ut.change_sph_frame(SN_ra, SN_dec,
-                                                                  ra_fields,
-                                                                  dec_fields)
-
-            # ra_field_frame, dec_field_frame are in the same order as selec_fields_ID
-            epochs_selec, is_obs, dic_map = nbf.is_in_field(
-                                                    epochs_selec,
-                                                    self._obs_table['fieldID'][epochs_selec].values,
-                                                    ra_field_frame, dec_field_frame,
-                                                    self.field_size, selec_fields_ID)
-        else:
-            is_obs = False
+            is_obs, epochs_selec = nbf.map_obs_fields(epochs_selec,
+                                                     self.obs_table['fieldID'][epochs_selec].values,
+                                                     dic_map)
 
         if is_obs and 'sub_field' in self.config:
-            selec_field_mask = np.vectorize(dic_map.get)(selec_fields_ID)
-            epochs_selec, is_obs = nbf.in_which_sub_field(
-                epochs_selec,
-                self._obs_table['fieldID'][epochs_selec].values,
-                self._obs_table[self.config['sub_field'][1]][epochs_selec].values,
-                ra_field_frame[selec_field_mask],
-                dec_field_frame[selec_field_mask],
-                selec_fields_ID[selec_field_mask],
-                self._sub_field_edges,
-                self._sub_field_map)
+            obs_fields_mask = np.vectorize(dic_map.get)(selec_fields_ID)
+            sub_fields_dic = self.fields.in_which_sub_field(selec_fields_ID[obs_fields_mask],
+                                                            coord_in_obs_fields)
+            is_obs, epochs_selec = nbf.vectorize_map2(
+                                    epochs_selec,
+                                    self.obs_table['fieldID'][epochs_selec].values,
+                                    self.obs_table[self.config['sub_field']][epochs_selec].values,
+                                    sub_fields_dic)
 
         if is_obs:
             return self._make_obs_table(epochs_selec)
@@ -1213,7 +1192,8 @@ class SurveyObs:
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
 
         if 'sub_field' in self.config:
-            obs[self.config['sub_field'][1]] = self._obs_table[self.config['sub_field'][1]][epochs_selec]
+            obs[self.config['sub_field'][1]] = self._obs_table[self.config['sub_field']
+                                                               ][epochs_selec]
 
         if 'add_data' in self.config:
             for k in self.config['add_data']:
@@ -1401,30 +1381,41 @@ class SnSimPkl:
 
 class SurveyFields:
 
-    def __init__(self, fields_dic, ra_size, dec_size, ccd_map):
-        self.ra_size = ra_size
-        self.dec_size = dec_size
-        self.ccd_map_path = ccd_map
+    def __init__(self, fields_dic, ra_size, dec_size, field_map):
+        self._size = np.array([ra_size, dec_size])
         self._dic = fields_dic
-        self._sub_field_map = np.loadtxt(self.ccd_map_path,
-                                         delimiter=':',
-                                         dtype=int)
-        self._sub_field_edges = np.array([np.linspace(-self.field_size[0] / 2,
-                                                      self.field_size[0] / 2,
-                                                      self._sub_field_map.shape[1] + 1),
-                                          np.linspace(-self.field_size[1] / 2,
-                                                      self.field_size[1] / 2,
-                                                      self._sub_field_map.shape[0] + 1)])
-        self._no_obs_edges = self._init_no_obs()
+        self._sub_field_map = None
+        self._init_fields_map(field_map)
 
-    def _init_no_obs(self):
-        no_obs_edges = []
-        for i in range(self._sub_field_map.shape[0]):
-            for j in range(self._sub_field_map.shape[1]):
-                if self._sub_field_map[i, j] == -1:
-                    no_obs_edges.append((self._sub_field_edges[0][i, i + 1],
-                                         self._sub_field_edges[1][j, j + 1]))
-        return np.array(no_obs_edges)
+    def _init_fields_map(self, field_map):
+        if field_map == 'rectangle':
+            self._no_obs_edges = np.array([[-1, -1], [-1, -1]])
+        else:
+            self._sub_field_map = np.loadtxt(field_map,
+                                             delimiter=':',
+                                             dtype=int)
+            # array(RA_edges, Dec_edges)
+            self._sub_field_edges = np.array([np.linspace(-self.size[0] / 2,
+                                                          self.size[0] / 2,
+                                                          self._sub_field_map.shape[1] + 1),
+                                              np.linspace(-self.size[1] / 2,
+                                                          self.size[1] / 2,
+                                                          self._sub_field_map.shape[0] + 1)])
+            # Construc bounds of no obs subfields
+            no_obs_edges = []
+            map_len = self._sub_field_map.shape[0]
+            for i in range(self._sub_field_map.shape[1]):
+                for j in range(self._sub_field_map.shape[0]):
+                    if self._sub_field_map[j, i] == -1:
+                        no_obs_edges.append([
+                            self._sub_field_edges[0][i:i + 2],
+                            self._sub_field_edges[1][map_len - j - 1:map_len - j + 1]])
+            self._no_obs_edges = np.array(no_obs_edges)
+
+    @property
+    def size(self):
+        """Get field size (ra,dec) in radians."""
+        return np.radians(self._size)
 
     def is_in_field(self, SN_ra, SN_dec, fields_pre_selec=None):
         if fields_pre_selec is not None:
@@ -1440,9 +1431,54 @@ class SurveyFields:
                                                               ra_fields,
                                                               dec_fields)
 
-        obsfield_map = nbf.is_in_field(ra_field_frame,
-                                       dec_field_frame,
-                                       self.field_size,
-                                       self._dic.keys(),
-                                       fields_pre_selec)
-        return obsfield_map
+        obsfield_map, coord_in_obs_fields = nbf.is_in_field(ra_field_frame,
+                                                            dec_field_frame,
+                                                            self.size,
+                                                            np.array([k for k in self._dic]),
+                                                            fields_pre_selec,
+                                                            self._no_obs_edges)
+
+        return obsfield_map, coord_in_obs_fields
+
+    def in_which_sub_field(self, obs_fieldsID, coord_in_obs_fields):
+        sub_field_dic = nbf.in_which_sub_field(obs_fieldsID,
+                                               coord_in_obs_fields,
+                                               self._sub_field_edges,
+                                               self._sub_field_map)
+        return sub_field_dic
+
+    def show_map(self):
+        """Plot an ASCII representation of subfields.
+
+        Returns
+        -------
+        None
+            Just print something.
+
+        """
+        if self._sub_field_map is None:
+            print('No sub field')
+            return
+        ra_label = np.degrees(self._sub_field_edges[0])
+        dec_label = np.degrees(self._sub_field_edges[1])
+        edge = '-------'
+        format = '|  {:02}  '
+        print('\n')
+        print(f'  {dec_label[-1]:.2f} --'
+              + edge * self._sub_field_map.shape[0])
+        for i, row in enumerate(self._sub_field_map):
+            str_list = [format.format(self._sub_field_map[i, j]) for j in range(len(row))]
+            str_list += '|\n '
+            if dec_label[self._sub_field_map.shape[0] - i - 1] >= 0:
+                str_list += [' ']
+            str_list += [f'{dec_label[self._sub_field_map.shape[0] - i - 1]:.2f} --'
+                         + edge * len(row)]
+            print('        '+''.join(str_list))
+
+        print("        '"+''.join(["      '"] * self._sub_field_map.shape[0]))
+        str_list = [f"      {ra_label[0]:.2f}"]
+        for i in range(self._sub_field_map.shape[1]):
+            if ra_label[i + 1] >= 0:
+                str_list += ' '
+            str_list += [f'  {ra_label[i + 1]:.2f}']
+        print(''.join(str_list))

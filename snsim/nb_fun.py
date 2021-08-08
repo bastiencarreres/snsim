@@ -1,6 +1,8 @@
 """This module contains function with numba decorator to speed up the simulation."""
 from numba import njit
 import numpy as np
+from numba.core import types
+from numba.typed import Dict
 
 
 @njit(cache=True)
@@ -155,7 +157,21 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
 
 
 @njit(cache=True)
-def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldID, no_obs_edges):
+def map_obs_fields(epochs_selec, fieldID, mapdic):
+    epochs_selec[np.copy(epochs_selec)] &= np.array([mapdic[ID] for ID in fieldID])
+    return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def vectorize_map2(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
+                                                                     obs_fieldID]))
+    return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldID, no_obs_edges,
+                type=types.float64[::1]):
     """Chek if a SN is in fields.
 
     Parameters
@@ -181,27 +197,32 @@ def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldI
     in_field = np.abs(ra_field_frame) < field_size[0] / 2
     in_field &= np.abs(dec_field_frame) < field_size[1] / 2
 
-    if len(no_obs_edges) > 0:
-        in_obs_zone = np.ones(len(in_field), dtype=np.bool_)
-        for i in enumerate(in_obs_zone):
-            no_obs_condition = ra_field_frame[i] > no_obs_edges[0][0]
-            no_obs_condition &= ra_field_frame[i] < no_obs_edges[0][1]
-            no_obs_condition &= dec_field_frame[i] > no_obs_edges[1][0]
-            no_obs_condition &= dec_field_frame[i] < no_obs_edges[1][1]
+    for i in range(len(in_field)):
+        for edges in no_obs_edges:
+            no_obs_condition = ra_field_frame[i] > edges[0][0]
+            no_obs_condition &= ra_field_frame[i] < edges[0][1]
+            no_obs_condition &= dec_field_frame[i] > edges[1][0]
+            no_obs_condition &= dec_field_frame[i] < edges[1][1]
             if no_obs_condition:
-                in_obs_zone[i] = False
+                in_field[i] = False
                 break
 
-    dic_map = {}
-    for fID, bool in zip(obs_fieldID, in_field):
+    dic_map = Dict.empty(key_type=types.i8,
+                         value_type=types.b1)
+
+    coord_in_obs = Dict.empty(key_type=types.i8,
+                              value_type=type)
+
+    for i, (fID, bool) in enumerate(zip(obs_fieldID, in_field)):
         dic_map[fID] = bool
+        if bool:
+            coord_in_obs[fID] = np.asarray([ra_field_frame[i], dec_field_frame[i]],
+                                           dtype='f8')
 
     for fID in fieldID:
         if fID not in dic_map:
             dic_map[fID] = False
-
-    # epochs_selec[np.copy(epochs_selec)] &= np.array([dic_map[ID] for ID in obs_fieldID])
-    return dic_map
+    return dic_map, coord_in_obs
 
 
 @njit(cache=True)
@@ -234,24 +255,16 @@ def find_idx_nearest_elmt(val, array, treshold):
 
 
 @njit(cache=True)
-def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_f_frame, fieldID,
+def in_which_sub_field(obs_fieldID, coord_in_obs_fields,
                        sub_field_edges, sub_field_map):
     """Check in which subpart of the field is the SN.
 
     Parameters
     ----------
-    epochs_selec : numpy.ndarray(bool)
-        The boolean array of field selection.
     obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
-    obs_subfield : numpy.ndarray(int)
-        Subfield ID.
-    ra_f_frame : numpy.ndaray(float)
-        SN Right Ascension in fields frames.
-    dec_f_frame : numpy.ndaray(float)
-        SN Declinaison in fields frames.
-    fieldID : numpy.ndarray(int)
-        The list of preselected fields ID.
+    coord_in_obs_subfield : numba.Dict(numba.int8:numba.float64[::1])
+        SN coordinates (RA, Dec) in the field.
     sub_field_edges : numpy.ndaray(numpy.ndarray(float), numpy.ndarray(float))
         Edges of subfields along RA and Dec.
     sub_field_map : numpy.ndarray(int)
@@ -263,11 +276,12 @@ def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_
         The boolean array of field selection.
 
     """
-    dic_map = {}
-    for r, d, fID in zip(ra_f_frame, dec_f_frame, fieldID):
-        ra_idx = np.max(np.where(r >= sub_field_edges[0])[0])
-        dec_idx = np.max(np.where(d >= sub_field_edges[1])[0])
+    dic_map = Dict.empty(key_type=types.i8,
+                         value_type=types.i8)
+
+    for fID in obs_fieldID:
+        ra, dec = coord_in_obs_fields[fID]
+        ra_idx = np.max(np.where(ra >= sub_field_edges[0])[0])
+        dec_idx = np.max(np.where(dec >= sub_field_edges[1])[0])
         dic_map[fID] = sub_field_map[len(sub_field_map) - dec_idx - 1, ra_idx]
-    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([dic_map[field] for field in
-                                                                      obs_fieldID]))
-    return epochs_selec, epochs_selec.any()
+    return dic_map
