@@ -286,7 +286,7 @@ def plot_lc(
     else:
         plt.xlim(np.min(time) - 1 - t0, np.max(time) + 1 - t0)
     if residuals:
-        ax1.set_ylim(-np.max(ax1_y_lim), np.max(ax1_y_lim))
+        ax1.set_ylim(-np.nanmax(ax1_y_lim), np.nanmax(ax1_y_lim))
 
     if snc_fit_model is not None and fit_cov is not None:
         mb_fit = salt_ut.x0_to_mB(snc_fit_model.parameters[2])

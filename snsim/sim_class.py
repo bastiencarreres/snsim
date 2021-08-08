@@ -1120,7 +1120,7 @@ class SurveyObs:
                                         lambda x: (self._field_dic.get(x)['ra'],
                                                    self._field_dic.get(x)['dec']))(selec_fields_ID)
 
-            # Compute the coord of the SN in the rest frame of each field
+            # # Compute the coord of the SN in the rest frame of each field
             ra_field_frame, dec_field_frame = ut.change_sph_frame(SN_ra, SN_dec,
                                                                   ra_fields,
                                                                   dec_fields)
@@ -1397,3 +1397,52 @@ class SnSimPkl:
 
         """
         return np.array([lc.meta[key] for lc in self.sim_lc])
+
+
+class SurveyFields:
+
+    def __init__(self, fields_dic, ra_size, dec_size, ccd_map):
+        self.ra_size = ra_size
+        self.dec_size = dec_size
+        self.ccd_map_path = ccd_map
+        self._dic = fields_dic
+        self._sub_field_map = np.loadtxt(self.ccd_map_path,
+                                         delimiter=':',
+                                         dtype=int)
+        self._sub_field_edges = np.array([np.linspace(-self.field_size[0] / 2,
+                                                      self.field_size[0] / 2,
+                                                      self._sub_field_map.shape[1] + 1),
+                                          np.linspace(-self.field_size[1] / 2,
+                                                      self.field_size[1] / 2,
+                                                      self._sub_field_map.shape[0] + 1)])
+        self._no_obs_edges = self._init_no_obs()
+
+    def _init_no_obs(self):
+        no_obs_edges = []
+        for i in range(self._sub_field_map.shape[0]):
+            for j in range(self._sub_field_map.shape[1]):
+                if self._sub_field_map[i, j] == -1:
+                    no_obs_edges.append((self._sub_field_edges[0][i, i + 1],
+                                         self._sub_field_edges[1][j, j + 1]))
+        return np.array(no_obs_edges)
+
+    def is_in_field(self, SN_ra, SN_dec, fields_pre_selec=None):
+        if fields_pre_selec is not None:
+            ra_fields, dec_fields = np.vectorize(
+                                        lambda x: (self._dic.get(x)['ra'],
+                                                   self._dic.get(x)['dec']))(fields_pre_selec)
+        else:
+            ra_fields = [self._dic[k]['ra'] for k in self._dic]
+            dec_fields = [self._dic[k]['dec'] for k in self._dic]
+
+        # Compute the coord of the SN in the rest frame of each field
+        ra_field_frame, dec_field_frame = ut.change_sph_frame(SN_ra, SN_dec,
+                                                              ra_fields,
+                                                              dec_fields)
+
+        obsfield_map = nbf.is_in_field(ra_field_frame,
+                                       dec_field_frame,
+                                       self.field_size,
+                                       self._dic.keys(),
+                                       fields_pre_selec)
+        return obsfield_map

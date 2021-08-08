@@ -155,7 +155,7 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
 
 
 @njit(cache=True)
-def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fieldID):
+def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldID, no_obs_edges):
     """Chek if a SN is in fields.
 
     Parameters
@@ -178,15 +178,30 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
     numpy.ndaray(bool), bool
         The boolean array of field selection.
     """
-    in_field = np.abs(ra_f_frame) < f_size[0] / 2
-    in_field &= np.abs(dec_f_frame) < f_size[1] / 2
+    in_field = np.abs(ra_field_frame) < field_size[0] / 2
+    in_field &= np.abs(dec_field_frame) < field_size[1] / 2
+
+    if len(no_obs_edges) > 0:
+        in_obs_zone = np.ones(len(in_field), dtype=np.bool_)
+        for i in enumerate(in_obs_zone):
+            no_obs_condition = ra_field_frame[i] > no_obs_edges[0][0]
+            no_obs_condition &= ra_field_frame[i] < no_obs_edges[0][1]
+            no_obs_condition &= dec_field_frame[i] > no_obs_edges[1][0]
+            no_obs_condition &= dec_field_frame[i] < no_obs_edges[1][1]
+            if no_obs_condition:
+                in_obs_zone[i] = False
+                break
 
     dic_map = {}
-    for fID, bool in zip(fieldID, in_field):
+    for fID, bool in zip(obs_fieldID, in_field):
         dic_map[fID] = bool
 
-    epochs_selec[np.copy(epochs_selec)] &= np.array([dic_map[ID] for ID in obs_fieldID])
-    return epochs_selec, epochs_selec.any(), dic_map
+    for fID in fieldID:
+        if fID not in dic_map:
+            dic_map[fID] = False
+
+    # epochs_selec[np.copy(epochs_selec)] &= np.array([dic_map[ID] for ID in obs_fieldID])
+    return dic_map
 
 
 @njit(cache=True)
