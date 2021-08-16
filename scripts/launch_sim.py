@@ -131,7 +131,8 @@ parser.add_argument("--start_day", type=date_read,
 parser.add_argument("--end_day", type=date_read,
                     help="Survey ending day MJD NUMBER or 'YYYY-MM-DD'")
 parser.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS")
-parser.add_argument("--sub_field", type=str, nargs=2, help="SUBFIELD STRUCTURE FILE AND KEY")
+parser.add_argument("--sub_field", type=str, help="SUBFIELD KEY")
+parser.add_argument("--field_map", type=str, help="SUBFIELD MAP")
 
 ###################
 # SN_GEN SECTION #
