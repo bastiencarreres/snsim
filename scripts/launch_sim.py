@@ -245,9 +245,8 @@ for K in param_dic:
         print(indent + f'{k}: {param_dic[K][k]}')
 
 param_dic['yaml_path'] = args.config_path
-
-print(param_dic)
 print()
+
 sim = Simulator(param_dic)
 sim.simulate()
 
