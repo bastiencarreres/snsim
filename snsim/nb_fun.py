@@ -1,4 +1,4 @@
-"""This module contains function with numba decorator to speed up the simulation."""
+"""This module contains functions with numba decorator to speed up the simulation."""
 from numba import njit
 import numpy as np
 from numba.core import types
@@ -158,12 +158,48 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
 
 @njit(cache=True)
 def map_obs_fields(epochs_selec, fieldID, mapdic):
+    """Return the boolean array corresponding to observed fields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.array(bool)
+        Actual observations selection.
+    fieldID : numpy.array(int)
+        ID of fields.
+    mapdic : numba.Dict(int:bool)
+        Numba dic of observed subfield in each observed field.
+
+    Returns
+    -------
+    bool, numpy.ndarray(bool)
+        Is there an observation and the selection of observations.
+
+    """
     epochs_selec[np.copy(epochs_selec)] &= np.array([mapdic[ID] for ID in fieldID])
     return epochs_selec.any(), epochs_selec
 
 
 @njit(cache=True)
-def vectorize_map2(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+    """Return boolean array corresponding to observed subfields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.array(bool)
+        Actual observations selection.
+    obs_fieldID : bool
+        Id of pre selected observed fields.
+    obs_subfield : bool
+        Observed subfields.
+    mapdic : numba.Dict(int:int)
+        Numba dic of observed subfield in each observed field.
+
+    Returns
+    -------
+    bool, numpy.ndarray(bool)
+        Is there an observation and the selection of observations.
+
+    """
     epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
                                                                      obs_fieldID]))
     return epochs_selec.any(), epochs_selec
@@ -191,8 +227,8 @@ def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldI
 
     Returns
     -------
-    numpy.ndaray(bool), bool
-        The boolean array of field selection.
+    numba.Dict(int:bool)
+        The boolean dictionnary of observed fields.
     """
     in_field = np.abs(ra_field_frame) < field_size[0] / 2
     in_field &= np.abs(dec_field_frame) < field_size[1] / 2
@@ -272,8 +308,8 @@ def in_which_sub_field(obs_fieldID, coord_in_obs_fields,
 
     Returns
     -------
-    numpy.ndaray(bool), bool
-        The boolean array of field selection.
+    numba.Dict(int:int)
+        Numba dic of observed subfield in each observed field.
 
     """
     dic_map = Dict.empty(key_type=types.i8,

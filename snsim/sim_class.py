@@ -1111,15 +1111,16 @@ class SurveyObs:
 
             dic_map, coord_in_obs_fields = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
 
-            is_obs, epochs_selec = nbf.map_obs_fields(epochs_selec,
-                                                     self.obs_table['fieldID'][epochs_selec].values,
-                                                     dic_map)
+            is_obs, epochs_selec = nbf.map_obs_fields(
+                                                    epochs_selec,
+                                                    self.obs_table['fieldID'][epochs_selec].values,
+                                                    dic_map)
 
         if is_obs and 'sub_field' in self.config:
             obs_fields_mask = np.vectorize(dic_map.get)(selec_fields_ID)
             sub_fields_dic = self.fields.in_which_sub_field(selec_fields_ID[obs_fields_mask],
                                                             coord_in_obs_fields)
-            is_obs, epochs_selec = nbf.vectorize_map2(
+            is_obs, epochs_selec = nbf.map_obs_subfields(
                                     epochs_selec,
                                     self.obs_table['fieldID'][epochs_selec].values,
                                     self.obs_table[self.config['sub_field']][epochs_selec].values,
