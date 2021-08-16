@@ -72,7 +72,7 @@ model_config:
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
-* mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation) 
+* mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
 ## Observation DataBase file:
 It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
@@ -91,11 +91,12 @@ ID05:ID06:ID07:ID08
 ID09:ID10:ID11:ID12
 ID13:ID14:ID15:ID16
 ```
+If a sub field is not observed you should set the ID value to -1.
 
 You can show the sub filed map by :
 
 ```python
-sim.survey.show_sub_fields()
+sim.survey.fields.show_map()
 
 ```
 

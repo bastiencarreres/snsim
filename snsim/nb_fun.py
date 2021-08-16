@@ -1,6 +1,8 @@
-"""This module contains function with numba decorator to speed up the simulation."""
+"""This module contains functions with numba decorator to speed up the simulation."""
 from numba import njit
 import numpy as np
+from numba.core import types
+from numba.typed import Dict
 
 
 @njit(cache=True)
@@ -155,7 +157,57 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
 
 
 @njit(cache=True)
-def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fieldID):
+def map_obs_fields(epochs_selec, fieldID, mapdic):
+    """Return the boolean array corresponding to observed fields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.array(bool)
+        Actual observations selection.
+    fieldID : numpy.array(int)
+        ID of fields.
+    mapdic : numba.Dict(int:bool)
+        Numba dic of observed subfield in each observed field.
+
+    Returns
+    -------
+    bool, numpy.ndarray(bool)
+        Is there an observation and the selection of observations.
+
+    """
+    epochs_selec[np.copy(epochs_selec)] &= np.array([mapdic[ID] for ID in fieldID])
+    return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+    """Return boolean array corresponding to observed subfields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.array(bool)
+        Actual observations selection.
+    obs_fieldID : bool
+        Id of pre selected observed fields.
+    obs_subfield : bool
+        Observed subfields.
+    mapdic : numba.Dict(int:int)
+        Numba dic of observed subfield in each observed field.
+
+    Returns
+    -------
+    bool, numpy.ndarray(bool)
+        Is there an observation and the selection of observations.
+
+    """
+    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
+                                                                     obs_fieldID]))
+    return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldID, no_obs_edges,
+                type=types.float64[::1]):
     """Chek if a SN is in fields.
 
     Parameters
@@ -175,18 +227,38 @@ def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fiel
 
     Returns
     -------
-    numpy.ndaray(bool), bool
-        The boolean array of field selection.
+    numba.Dict(int:bool)
+        The boolean dictionnary of observed fields.
     """
-    in_field = np.abs(ra_f_frame) < f_size[0] / 2
-    in_field &= np.abs(dec_f_frame) < f_size[1] / 2
+    in_field = np.abs(ra_field_frame) < field_size[0] / 2
+    in_field &= np.abs(dec_field_frame) < field_size[1] / 2
 
-    dic_map = {}
-    for fID, bool in zip(fieldID, in_field):
+    for i in range(len(in_field)):
+        for edges in no_obs_edges:
+            no_obs_condition = ra_field_frame[i] > edges[0][0]
+            no_obs_condition &= ra_field_frame[i] < edges[0][1]
+            no_obs_condition &= dec_field_frame[i] > edges[1][0]
+            no_obs_condition &= dec_field_frame[i] < edges[1][1]
+            if no_obs_condition:
+                in_field[i] = False
+                break
+
+    dic_map = Dict.empty(key_type=types.i8,
+                         value_type=types.b1)
+
+    coord_in_obs = Dict.empty(key_type=types.i8,
+                              value_type=type)
+
+    for i, (fID, bool) in enumerate(zip(obs_fieldID, in_field)):
         dic_map[fID] = bool
+        if bool:
+            coord_in_obs[fID] = np.asarray([ra_field_frame[i], dec_field_frame[i]],
+                                           dtype='f8')
 
-    epochs_selec[np.copy(epochs_selec)] &= np.array([dic_map[ID] for ID in obs_fieldID])
-    return epochs_selec, epochs_selec.any(), dic_map
+    for fID in fieldID:
+        if fID not in dic_map:
+            dic_map[fID] = False
+    return dic_map, coord_in_obs
 
 
 @njit(cache=True)
@@ -219,24 +291,16 @@ def find_idx_nearest_elmt(val, array, treshold):
 
 
 @njit(cache=True)
-def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_f_frame, fieldID,
+def in_which_sub_field(obs_fieldID, coord_in_obs_fields,
                        sub_field_edges, sub_field_map):
     """Check in which subpart of the field is the SN.
 
     Parameters
     ----------
-    epochs_selec : numpy.ndarray(bool)
-        The boolean array of field selection.
     obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
-    obs_subfield : numpy.ndarray(int)
-        Subfield ID.
-    ra_f_frame : numpy.ndaray(float)
-        SN Right Ascension in fields frames.
-    dec_f_frame : numpy.ndaray(float)
-        SN Declinaison in fields frames.
-    fieldID : numpy.ndarray(int)
-        The list of preselected fields ID.
+    coord_in_obs_subfield : numba.Dict(numba.int8:numba.float64[::1])
+        SN coordinates (RA, Dec) in the field.
     sub_field_edges : numpy.ndaray(numpy.ndarray(float), numpy.ndarray(float))
         Edges of subfields along RA and Dec.
     sub_field_map : numpy.ndarray(int)
@@ -244,15 +308,16 @@ def in_which_sub_field(epochs_selec, obs_fieldID, obs_subfield, ra_f_frame, dec_
 
     Returns
     -------
-    numpy.ndaray(bool), bool
-        The boolean array of field selection.
+    numba.Dict(int:int)
+        Numba dic of observed subfield in each observed field.
 
     """
-    dic_map = {}
-    for r, d, fID in zip(ra_f_frame, dec_f_frame, fieldID):
-        ra_idx = np.max(np.where(r >= sub_field_edges[0])[0])
-        dec_idx = np.max(np.where(d >= sub_field_edges[1])[0])
+    dic_map = Dict.empty(key_type=types.i8,
+                         value_type=types.i8)
+
+    for fID in obs_fieldID:
+        ra, dec = coord_in_obs_fields[fID]
+        ra_idx = np.max(np.where(ra >= sub_field_edges[0])[0])
+        dec_idx = np.max(np.where(dec >= sub_field_edges[1])[0])
         dic_map[fID] = sub_field_map[len(sub_field_map) - dec_idx - 1, ra_idx]
-    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([dic_map[field] for field in
-                                                                      obs_fieldID]))
-    return epochs_selec, epochs_selec.any()
+    return dic_map

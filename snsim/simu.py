@@ -822,8 +822,8 @@ class Simulator:
                 field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
 
         if plot_fields:
-            field_dic = self.survey._field_dic
-            field_size = self.survey.field_size
+            field_dic = self.survey.fields._dic
+            field_size = self.survey.fields.size
             field_list = np.unique(field_list)
         else:
             field_dic = None
