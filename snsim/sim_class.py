@@ -846,22 +846,17 @@ class SurveyObs:
         ├── zp FIXED ZEROPOINT -> float, opt
         ├── survey_cut, CUT ON DB FILE -> dict, opt
         ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
-        └── sub_field, SUBFIELD FILE AND KEY, opt
+        ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
+        └── sub_field, SUBFIELD KEY -> str, opt
 
     Attributes
     ----------
-    _survey_prop : dict
-        Copy of the survey_prop input dict.
-    obs_table : astropy.Table
-        Table containing the observation.
-    _db_cut : dict
-        Copy of the db_cut input
-    _db_file : str
-        Copy of the db_file input
-    _band_dic : str
-        Copy of the band_dic input
-    _add_keys : dict
-        Copy of the add_keys input
+    _config : dict
+        Copy of the survey_config input dict.
+    _obs_table : pandas.DataFrame
+        Table containing observations.
+    fields : SurveyFields
+        SurveyFields object contains fields properties.
 
     Methods
     -------
@@ -1202,42 +1197,6 @@ class SurveyObs:
                     obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
-    def show_sub_field(self):
-        """Plot an ASCII representation of subfields.
-
-        Returns
-        -------
-        None
-            Just print something.
-
-        """
-        if 'sub_field' not in self.config:
-            print('No sub field')
-            return
-        y_label = np.degrees(self._sub_field_edges[0])
-        x_label = np.degrees(self._sub_field_edges[1])
-        edge = '-------'
-        format = '|  {:02}  '
-        print('\n')
-        print(f'  {y_label[-1]:.2f} --'
-              + edge * self._sub_field_map.shape[1])
-        for i, row in enumerate(self._sub_field_map):
-            str_list = [format.format(self._sub_field_map[i, j]) for j in range(len(row))]
-            str_list += '|\n '
-            if y_label[self._sub_field_map.shape[0] - i - 1] >= 0:
-                str_list += [' ']
-            str_list += [f'{y_label[self._sub_field_map.shape[0] - i - 1]:.2f} --'
-                         + edge * len(row)]
-            print('        '+''.join(str_list))
-
-        print("        '"+''.join(["      '"] * self._sub_field_map.shape[0]))
-        str_list = [f"      {x_label[0]:.2f}"]
-        for i in range(self._sub_field_map.shape[1]):
-            if x_label[i + 1] >= 0:
-                str_list += ' '
-            str_list += [f'  {x_label[i + 1]:.2f}']
-        print(''.join(str_list))
-
 
 class SnHost:
     """Class containing the SN Host parameters.
@@ -1381,16 +1340,66 @@ class SnSimPkl:
 
 
 class SurveyFields:
+    """Fields properties object.
+
+    Parameters
+    ----------
+    fields_dic : dict
+        ID and coordinates of fields.
+    ra_size : float
+        The RA size of the field in deg.
+    dec_size : float
+        The DEC size of the field in deg.
+    field_map : str
+        The path of the field map or just a str.
+
+    Attributes
+    ----------
+    _size : numpy.array(float, float)
+        RA, DEC size in degrees.
+    _dic : dict
+        A copy of the input fields_dic.
+    _sub_field_map : numpy.array(int) or None
+        The map of the field subparts.
+
+    Methods
+    -------
+    _init_fields_map()
+        Init the subfield map parameters.
+    is_in_field(SN_ra, SN_dec, fields_pre_selec=None)
+        Check if a SN is in a field and return the coordinates in the field frame.
+    in_which_sub_field(obs_fieldsID, coord_in_obs_fields)
+        Find in which subfield is the SN.
+    show_map():
+        Plot an ASCII representation of subfields.
+
+    """
 
     def __init__(self, fields_dic, ra_size, dec_size, field_map):
+        """Init SurveyObs class."""
         self._size = np.array([ra_size, dec_size])
         self._dic = fields_dic
         self._sub_field_map = None
         self._init_fields_map(field_map)
 
     def _init_fields_map(self, field_map):
+        """Init the subfield map parameters..
+
+        Parameters
+        ----------
+        field_map : dict
+            ID: coordinates dict.
+
+        Returns
+        -------
+        None
+            Just set some attributes.
+
+        """
         if field_map == 'rectangle':
-            self._no_obs_edges = np.array([[-1, -1], [-1, -1]])
+            # Condition <=> always obs
+            self._no_obs_edges = np.array([[[self.size[0], -self.size[0]],
+                                            [self.size[1], -self.size[1]]]])
         else:
             self._sub_field_map = np.loadtxt(field_map,
                                              delimiter=':',
@@ -1411,6 +1420,10 @@ class SurveyFields:
                         no_obs_edges.append([
                             self._sub_field_edges[0][i:i + 2],
                             self._sub_field_edges[1][map_len - j - 1:map_len - j + 1]])
+            if no_obs_edges == []:
+                # Condition <=> always obs
+                no_obs_edges = [[[self.size[0], -self.size[0]],
+                                [self.size[1], -self.size[1]]]]
             self._no_obs_edges = np.array(no_obs_edges)
 
     @property
@@ -1419,6 +1432,23 @@ class SurveyFields:
         return np.radians(self._size)
 
     def is_in_field(self, SN_ra, SN_dec, fields_pre_selec=None):
+        """Check if a SN is in a field and return the coordinates in the field frame.
+
+        Parameters
+        ----------
+        SN_ra : float
+            SN RA in radians.
+        SN_dec : float
+            SN DEC in radians.
+        fields_pre_selec : numpy.array(int), opt
+            A list of pre selected fields ID.
+
+        Returns
+        -------
+        numba.Dict(int:bool), numba.Dict(int:numpy.array(float))
+            The dictionnaries of boolena selection of obs fields and coordinates in observed fields.
+
+        """
         if fields_pre_selec is not None:
             ra_fields, dec_fields = np.vectorize(
                                         lambda x: (self._dic.get(x)['ra'],
@@ -1442,6 +1472,21 @@ class SurveyFields:
         return obsfield_map, coord_in_obs_fields
 
     def in_which_sub_field(self, obs_fieldsID, coord_in_obs_fields):
+        """Find in which subfield is the SN.
+
+        Parameters
+        ----------
+        obs_fieldsID : numpy.array(int)
+            List of ID of the observed fields.
+        coord_in_obs_fields : numba.Dict(int:numpy.array(float))
+            Coordinates of SN in the restframe of observed fields.
+
+        Returns
+        -------
+        numba.Dict(int:int)
+            The subfields where the SN is observed for each fields.
+
+        """
         sub_field_dic = nbf.in_which_sub_field(obs_fieldsID,
                                                coord_in_obs_fields,
                                                self._sub_field_edges,
