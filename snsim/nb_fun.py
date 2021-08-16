@@ -216,19 +216,20 @@ def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldI
         The boolean array of field selection.
     obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
-    ra_f_frame : numpy.ndaray(float)
+    ra_field_frame : numpy.ndaray(float)
         SN Right Ascension in fields frames.
-    dec_f_frame : numpy.ndaray(float)
+    dec_field_frame : numpy.ndaray(float)
         SN Declinaison in fields frames.
-    f_size : list(float)
+    field_size : list(float)
         ra and dec size.
     fieldID : numpy.ndarray(int)
         The list of preselected fields ID.
 
     Returns
     -------
-    numba.Dict(int:bool)
-        The boolean dictionnary of observed fields.
+    numba.Dict(int:bool), numba.Dict(int:numpy.array(float))
+        The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
+
     """
     in_field = np.abs(ra_field_frame) < field_size[0] / 2
     in_field &= np.abs(dec_field_frame) < field_size[1] / 2
