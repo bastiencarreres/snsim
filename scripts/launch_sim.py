@@ -247,7 +247,6 @@ for K in param_dic:
 
 param_dic['yaml_path'] = args.config_path
 
-print()
 sim = Simulator(param_dic)
 sim.simulate()
 
