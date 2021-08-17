@@ -66,7 +66,8 @@ keys_dic = {
         'start_day',
         'end_day',
         'duration',
-        'sub_field'],
+        'sub_field',
+        'field_map'],
     'sn_gen': [
         'randseed',
         'duration_for_rate',
@@ -245,7 +246,6 @@ for K in param_dic:
         print(indent + f'{k}: {param_dic[K][k]}')
 
 param_dic['yaml_path'] = args.config_path
-print()
 
 sim = Simulator(param_dic)
 sim.simulate()
