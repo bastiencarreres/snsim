@@ -98,7 +98,11 @@ keys_dic = {
         'mw_dust'],
     'vpec_dist': [
         'mean_vpec',
-        'sig_vpec']}
+        'sig_vpec'],
+    'alpha_dipole': [
+        'coord',
+        'A',
+        'B']}
 
 ################
 # DATA SECTION #
