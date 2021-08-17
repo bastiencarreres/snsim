@@ -66,7 +66,8 @@ keys_dic = {
         'start_day',
         'end_day',
         'duration',
-        'sub_field'],
+        'sub_field',
+        'field_map'],
     'sn_gen': [
         'randseed',
         'duration_for_rate',
