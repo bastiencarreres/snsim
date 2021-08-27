@@ -116,7 +116,7 @@ class OpenSim:
         """Get fit sncosmo model results."""
         return self._fit_resmod
 
-    def fit_lc(self, sn_ID=None, mw_dust=None):
+    def fit_lc(self, sn_ID=None, mw_dust=-2):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -142,24 +142,35 @@ class OpenSim:
         if model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
-        if mw_dust is not None:
-            dst_ut.init_mw_dust(fit_model, mw_dust)
-            if isinstance(mw_dust, (list, np.ndarray)):
-                rv = mw_dust[1]
+        mw_mod = None
+        if mw_dust == -2 and 'mwd_mod' in self.header:
+            mw_mod = [self.header['mwd_mod'], self.header['mw_rv']]
+        elif isinstance(mw_dust, (str, list, np.ndarray)):
+            mw_mod = mw_dust
+        else:
+            print('Do not use mw dust')
+
+        if mw_mod is not None:
+            dst_ut.init_mw_dust(fit_model, mw_mod)
+            if isinstance(mw_mod, (list, np.ndarray)):
+                rv = mw_mod[1]
+                mod_name = mw_mod[0]
             else:
                 rv = 3.1
+                mod_name = mw_mod
+            print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if sn_ID is None:
             for i, lc in enumerate(self.sim_lc):
                 if self._fit_res[i] is None:
                     fit_model.set(z=lc.meta['z'])
                     if mw_dust is not None:
-                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], rv=rv)
+                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
                     self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(lc, fit_model, fit_par)
         else:
             fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], rv=rv)
+                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID],
                                                                           fit_model,
                                                                           fit_par)
@@ -212,8 +223,10 @@ class OpenSim:
                 s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
 
             if 'mwd_mod' in self.header:
-                dst_ut.init_mw_dust(s_model, self.header['mwd_mod'])
-                s_model.set(mw_r_v=lc.meta['mw_r_v'], mw_ebv=lc.meta['mw_ebv'])
+                dst_ut.init_mw_dust(s_model, [self.header['mwd_mod'], self.header['mw_rv']])
+                if self.header['mwd_mod'].lower() not in ['f99']:
+                    s_model.set(mw_r_v=lc.meta['mw_r_v'])
+                s_model.set(mw_ebv=lc.meta['mw_ebv'])
         else:
             s_model = None
 

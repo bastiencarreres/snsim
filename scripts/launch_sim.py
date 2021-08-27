@@ -66,7 +66,8 @@ keys_dic = {
         'start_day',
         'end_day',
         'duration',
-        'sub_field'],
+        'sub_field',
+        'field_map'],
     'sn_gen': [
         'randseed',
         'duration_for_rate',
@@ -97,7 +98,11 @@ keys_dic = {
         'mw_dust'],
     'vpec_dist': [
         'mean_vpec',
-        'sig_vpec']}
+        'sig_vpec'],
+    'alpha_dipole': [
+        'coord',
+        'A',
+        'B']}
 
 ################
 # DATA SECTION #
@@ -131,7 +136,8 @@ parser.add_argument("--start_day", type=date_read,
 parser.add_argument("--end_day", type=date_read,
                     help="Survey ending day MJD NUMBER or 'YYYY-MM-DD'")
 parser.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS")
-parser.add_argument("--sub_field", type=str, nargs=2, help="SUBFIELD STRUCTURE FILE AND KEY")
+parser.add_argument("--sub_field", type=str, help="SUBFIELD KEY")
+parser.add_argument("--field_map", type=str, help="SUBFIELD MAP")
 
 ###################
 # SN_GEN SECTION #
@@ -245,8 +251,6 @@ for K in param_dic:
 
 param_dic['yaml_path'] = args.config_path
 
-print(param_dic)
-print()
 sim = Simulator(param_dic)
 sim.simulate()
 
