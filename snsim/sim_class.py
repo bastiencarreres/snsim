@@ -519,8 +519,6 @@ class SnGen:
 
         if 'mw_dust' in self.model_config:
             dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
-        print(model)
-        print(model.effects[0]._r_v)
         return model
 
     def _init_model_keys(self):
