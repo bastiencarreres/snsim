@@ -116,7 +116,7 @@ class OpenSim:
         """Get fit sncosmo model results."""
         return self._fit_resmod
 
-    def fit_lc(self, sn_ID=None, mw_dust=None):
+    def fit_lc(self, sn_ID=None, mw_dust=-2):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -142,12 +142,23 @@ class OpenSim:
         if model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
-        if mw_dust is not None:
-            dst_ut.init_mw_dust(fit_model, mw_dust)
-            if isinstance(mw_dust, (list, np.ndarray)):
-                rv = mw_dust[1]
+        mw_mod = None
+        if mw_dust == -2 and 'mwd_mod' in self.header:
+            mw_mod = [self.header['mwd_mod'], self.header['mw_rv']]
+        elif isinstance(mw_dust, (str, list, np.ndarray)):
+            mw_mod = mw_dust
+        else:
+            print('Do not use mw dust')
+
+        if mw_mod is not None:
+            dst_ut.init_mw_dust(fit_model, mw_mod)
+            if isinstance(mw_mod, (list, np.ndarray)):
+                rv = mw_mod[1]
+                print_mod = mw_mod[0]
             else:
                 rv = 3.1
+                print_mod = mw_mod
+            print(f'Use MW dust model {print_mod} with RV = {rv}')
 
         if sn_ID is None:
             for i, lc in enumerate(self.sim_lc):
