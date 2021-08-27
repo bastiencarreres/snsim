@@ -24,7 +24,7 @@ class Simulator:
 
     Attributes
     ----------
-    sim_cfg : dict
+    _config : dict
         The simulation parameters dictionnary
     _sn_list : list (init value = None)
         List containing simulated SN object
@@ -147,7 +147,7 @@ class Simulator:
         """Initialise Simulator class."""
         # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
-            self.sim_cfg = param_dic
+            self._config = param_dic
             if 'yaml_path' in param_dic:
                 self._yml_path = param_dic['yaml_path']
             else:
@@ -156,18 +156,18 @@ class Simulator:
         elif isinstance(param_dic, str):
             self._yml_path = param_dic
             with open(self._yml_path, "r") as f:
-                self.sim_cfg = yaml.safe_load(f)
+                self._config = yaml.safe_load(f)
 
         # Check if there is a db_file
-        if 'survey_config' not in self.sim_cfg:
+        if 'survey_config' not in self.config:
             raise KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
         # Check if the sfdmap need to be download
-        if 'mw_dust' in self.sim_cfg['model_config']:
+        if 'mw_dust' in self.config['model_config']:
             dst_ut.check_files_and_dowload()
 
         # cadence sim or n fixed
-        if 'n_sn' in self.sim_cfg['sn_gen']:
+        if 'n_sn' in self.config['sn_gen']:
             self._use_rate = False
         else:
             self._use_rate = True
@@ -178,10 +178,10 @@ class Simulator:
         self._random_seed = None
         self._host = None
 
-        self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
-        self._survey = scls.SurveyObs(self.sim_cfg['survey_config'])
+        self._cosmology = FlatLambdaCDM(**self.config['cosmology'])
+        self._survey = scls.SurveyObs(self.config['survey_config'])
         self._generator = scls.SnGen(self.sn_int_par,
-                                     self.sim_cfg['model_config'],
+                                     self.config['model_config'],
                                      self.cmb,
                                      self.cosmology,
                                      self.vpec_dist,
@@ -189,16 +189,21 @@ class Simulator:
                                      alpha_dipole=self.alpha_dipole)
 
     @property
+    def config(self):
+        """Get the whole configuration dic."""
+        return self._config
+
+    @property
     def sim_name(self):
         """Get sim name."""
-        return self.sim_cfg['data']['sim_name']
+        return self.config['data']['sim_name']
 
     @property
     def vpec_dist(self):
         """Get vpec option."""
-        if 'vpec_dist' in self.sim_cfg:
-            return self.sim_cfg['vpec_dist']
-        elif 'host_file' in self.sim_cfg:
+        if 'vpec_dist' in self.config:
+            return self.config['vpec_dist']
+        elif 'host_file' in self.config:
             return None
         else:
             return {'mean_vpec': 0., 'sig_vpec': 0.}
@@ -206,17 +211,17 @@ class Simulator:
     @property
     def cmb(self):
         """Get cmb parameters."""
-        if 'cmb' in self.sim_cfg:
-            if 'v_cmb' in self.sim_cfg['cmb']:
-                v_cmb = self.sim_cfg['cmb']['v_cmb']
+        if 'cmb' in self.config:
+            if 'v_cmb' in self.config['cmb']:
+                v_cmb = self.config['cmb']['v_cmb']
             else:
                 v_cmb = VCMB
-            if 'l_cmb' in self.sim_cfg['cmb']:
-                l_cmb = self.sim_cfg['cmb']['l_cmb']
+            if 'l_cmb' in self.config['cmb']:
+                l_cmb = self.config['cmb']['l_cmb']
             else:
                 l_cmb = L_CMB
-            if 'b_cmb' in self.sim_cfg['cmb']:
-                b_cmb = self.sim_cfg['cmb']['b_cmb']
+            if 'b_cmb' in self.config['cmb']:
+                b_cmb = self.config['cmb']['b_cmb']
             else:
                 b_cmb = B_CMB
         else:
@@ -236,7 +241,7 @@ class Simulator:
     @property
     def model_name(self):
         """Get the name of sn model used."""
-        return self.sim_cfg['model_config']['model_name']
+        return self.config['model_config']['model_name']
 
     @property
     def sn_list(self):
@@ -256,44 +261,25 @@ class Simulator:
     @property
     def sn_int_par(self):
         """Get the intrinsic parameters of SN Ia."""
-        int_params = {'M0': self.sim_cfg['sn_gen']['M0'],
-                      'mag_sct': self.sim_cfg['sn_gen']['mag_sct']}
-        if 'sct_model' in self.sim_cfg['sn_gen']:
-            int_params['sct_model'] = self.sim_cfg['sn_gen']['sct_model']
+        int_params = {'M0': self.config['sn_gen']['M0'],
+                      'mag_sct': self.config['sn_gen']['mag_sct']}
+        if 'sct_model' in self.config['sn_gen']:
+            int_params['sct_model'] = self.config['sn_gen']['sct_model']
         return int_params
 
     @property
     def cosmology(self):
         """Get astropy cosmological model used in simulation."""
-        if not ut.is_same_cosmo_model(self.sim_cfg['cosmology'], self._cosmology):
-            self._cosmology = FlatLambdaCDM(**self.sim_cfg['cosmology'])
         return self._cosmology
 
     @property
     def survey(self):
         """Get the SurveyObs object of the simulation."""
-        if self._survey._config != self.sim_cfg['survey_config']:
-            self._survey = scls.SurveyObs(self.sim_cfg['survey_config'])
         return self._survey
 
     @property
     def generator(self):
         """Get the SNGen object of the simulation."""
-        not_same = (self._generator.sn_int_par != self.sn_int_par)
-        not_same *= (self.sim_cfg['model_config'] != self._generator.model_config)
-        not_same *= (self.cmb != self._generator.cmb)
-        not_same *= (not ut.is_same_cosmo_model(self.sim_cfg['cosmology'], self._cosmology))
-        not_same *= (self.sim_cfg['vpec_dist'] != self._generator.vpec_dist)
-        if 'alpha_dipole' in self.sim_cfg:
-            not_same *= (self.sim_cfg['alpha_dipole'] != self._generator.alpha_dipole)
-
-        if not_same:
-            self._generator = scls.SnGen(self.sn_int_par,
-                                         self.sim_cfg['model_config'],
-                                         self.cmb,
-                                         self.cosmology,
-                                         self.vpec_dist,
-                                         host=self.host)
         return self._generator
 
     @property
@@ -301,8 +287,8 @@ class Simulator:
         """Get the SnHost object of the simulation."""
         if self._host is not None:
             return self._host
-        elif 'host_file' in self.sim_cfg:
-            self._host = scls.SnHost(self.sim_cfg['host_file'], self.z_range)
+        elif 'host_file' in self.config:
+            self._host = scls.SnHost(self.config['host_file'], self.z_range)
             return self._host
         else:
             return None
@@ -311,8 +297,8 @@ class Simulator:
     def nep_cut(self):
         """Get the list of epochs cuts."""
         snc_mintime, snc_maxtime = self.generator.snc_model_time
-        if 'nep_cut' in self.sim_cfg['sn_gen']:
-            nep_cut = self.sim_cfg['sn_gen']['nep_cut']
+        if 'nep_cut' in self.config['sn_gen']:
+            nep_cut = self.config['sn_gen']['nep_cut']
             if isinstance(nep_cut, (int)):
                 nep_cut = [
                     (nep_cut,
@@ -330,8 +316,8 @@ class Simulator:
     @property
     def rand_seed(self):
         """Get primary random seed of the simulation."""
-        if 'randseed' in self.sim_cfg['sn_gen']:
-            return int(self.sim_cfg['sn_gen']['randseed'])
+        if 'randseed' in self.config['sn_gen']:
+            return int(self.config['sn_gen']['randseed'])
         elif self._random_seed is None:
             self._random_seed = np.random.randint(low=1000, high=100000)
         return self._random_seed
@@ -339,17 +325,17 @@ class Simulator:
     @property
     def z_range(self):
         """Get the simulation cosmological redshift range."""
-        return self.sim_cfg['sn_gen']['z_range']
+        return self.config['sn_gen']['z_range']
 
     @property
     def sn_rate_z0(self):
         """Get the sn rate parameters."""
-        if 'sn_rate' in self.sim_cfg['sn_gen']:
-            sn_rate = float(self.sim_cfg['sn_gen']['sn_rate'])
+        if 'sn_rate' in self.config['sn_gen']:
+            sn_rate = float(self.config['sn_gen']['sn_rate'])
         else:
             sn_rate = 3e-5
-        if 'rate_pw' in self.sim_cfg['sn_gen']:
-            rate_pw = self.sim_cfg['sn_gen']['rate_pw']
+        if 'rate_pw' in self.config['sn_gen']:
+            rate_pw = self.config['sn_gen']['rate_pw']
         else:
             rate_pw = 0
         return sn_rate, rate_pw
@@ -372,8 +358,8 @@ class Simulator:
     @property
     def alpha_dipole(self):
         """Get alpha dipole parameters."""
-        if 'alpha_dipole' in self.sim_cfg:
-            return self.sim_cfg['alpha_dipole']
+        if 'alpha_dipole' in self.config:
+            return self.config['alpha_dipole']
         return None
 
     def sn_rate(self, z):
@@ -433,8 +419,8 @@ class Simulator:
             bin.
 
         """
-        if 'duration_for_rate' in self.sim_cfg['sn_gen']:
-            time_in_days = self.sim_cfg['sn_gen']['duration_for_rate']
+        if 'duration_for_rate' in self.config['sn_gen']:
+            time_in_days = self.config['sn_gen']['duration_for_rate']
         else:
             min_peak_time, max_peak_time = self.peak_time_range
             time_in_days = max_peak_time.mjd - min_peak_time.mjd
@@ -461,11 +447,11 @@ class Simulator:
         print('-----------------------------------------------------------')
         print(f"SIM NAME : {self.sim_name}\n"
               f"CONFIG FILE : {self._yml_path}\n"
-              f"SURVEY FILE : {self.sim_cfg['survey_config']['survey_file']}")
-        if 'host_file' in self.sim_cfg:
-            print(f"HOST FILE : {self.sim_cfg['host_file']}")
-        print(f"SN SIM MODEL : {self.model_name} from {self.sim_cfg['model_config']['model_dir']}\n"
-              f"SIM WRITE DIRECTORY : {self.sim_cfg['data']['write_path']}\n"
+              f"SURVEY FILE : {self.config['survey_config']['survey_file']}")
+        if 'host_file' in self.config:
+            print(f"HOST FILE : {self.config['host_file']}")
+        print(f"SN SIM MODEL : {self.model_name} from {self.config['model_config']['model_dir']}\n"
+              f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
               f"SIMULATION RANDSEED : {self.rand_seed}")
 
         print('-----------------------------------------------------------')
@@ -473,7 +459,7 @@ class Simulator:
         if self._use_rate:
             use_rate_str = ''
         else:
-            print(f"Generate {self.sim_cfg['sn_gen']['n_sn']} SN Ia\n")
+            print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
             use_rate_str = ' (only for redshifts simulation)'
 
         print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
@@ -487,25 +473,25 @@ class Simulator:
               "Last day in survey_file : "
               f"{self.survey.start_end_days[1].mjd:.2f} MJD / {self.survey.start_end_days[1].iso}")
 
-        if 'duration_for_rate' in self.sim_cfg['sn_gen']:
+        if 'duration_for_rate' in self.config['sn_gen']:
             print(
                 "N SN is generate for a duration of "
-                f"{self.sim_cfg['sn_gen']['duration_for_rate']:.2f} days")
+                f"{self.config['sn_gen']['duration_for_rate']:.2f} days")
         else:
             print(f"Survey effective duration is {self.survey.duration:.2f} days")
 
-        if 'sct_model' in self.sim_cfg['sn_gen']:
+        if 'sct_model' in self.config['sn_gen']:
             print("\nUse intrinsic scattering model : "
-                  f"{self.sim_cfg['sn_gen']['sct_model']}")
+                  f"{self.config['sn_gen']['sct_model']}")
 
-        if 'mw_dust' in self.sim_cfg['model_config']:
+        if 'mw_dust' in self.config['model_config']:
             print("\nUse mw dust model : "
-                  f"{np.atleast_1d(self.sim_cfg['model_config']['mw_dust'])[0]}")
+                  f"{np.atleast_1d(self.config['model_config']['mw_dust'])[0]}")
 
         print('-----------------------------------------------------------\n')
 
-        if 'survey_cut' in self.sim_cfg['survey_config']:
-            for k, v in self.sim_cfg['survey_config']['survey_cut'].items():
+        if 'survey_cut' in self.config['survey_config']:
+            for k, v in self.config['survey_config']['survey_cut'].items():
                 conditions_str = ''
                 for cond in v:
                     conditions_str += str(cond) + ' OR '
@@ -558,15 +544,15 @@ class Simulator:
         print('\n-----------------------------------------------------------\n')
 
         print('OUTPUT FILE(S) : ')
-        if isinstance(self.sim_cfg['data']['write_format'], str):
-            print(self.sim_cfg['data']['write_path']
+        if isinstance(self.config['data']['write_format'], str):
+            print(self.config['data']['write_path']
                   + self.sim_name
                   + '.'
-                  + self.sim_cfg['data']['write_format'])
+                  + self.config['data']['write_format'])
         else:
-            for f in self.sim_cfg['data']['write_format']:
+            for f in self.config['data']['write_format']:
                 print('- '
-                      + self.sim_cfg['data']['write_path']
+                      + self.config['data']['write_path']
                       + self.sim_name
                       + '.'
                       + f)
@@ -630,7 +616,7 @@ class Simulator:
         """
         raise_trigger = 0
         SN_ID = 0
-        while len(self._sn_list) < self.sim_cfg['sn_gen']['n_sn']:
+        while len(self._sn_list) < self.config['sn_gen']['n_sn']:
             sn = self.generator(1, rand_gen)[0]
             sn.epochs = self.survey.epochs_selection(sn)
             if sn.pass_cut(self.nep_cut):
@@ -653,13 +639,13 @@ class Simulator:
 
         """
         header = {'n_sn': self.n_sn,
-                  'M0': self.sim_cfg['sn_gen']['M0'],
-                  'sigM': self.sim_cfg['sn_gen']['mag_sct'],
-                  **self.sim_cfg['cosmology']}
+                  'M0': self.config['sn_gen']['M0'],
+                  'sigM': self.config['sn_gen']['mag_sct'],
+                  **self.config['cosmology']}
 
         if self.host is None:
-            header['m_vp'] = self.sim_cfg['vpec_dist']['mean_vpec']
-            header['s_vp'] = self.sim_cfg['vpec_dist']['sig_vpec']
+            header['m_vp'] = self.config['vpec_dist']['mean_vpec']
+            header['s_vp'] = self.config['vpec_dist']['sig_vpec']
 
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             fits_dic = {'model_name': 'Mname',
@@ -668,31 +654,31 @@ class Simulator:
                         'mean_x1': 'm_x1',
                         'mean_c': 'm_c'}
 
-            if isinstance(self.sim_cfg['model_config']['sig_x1'], list):
-                header['s_x1_sup'] = self.sim_cfg['model_config']['sig_x1'][0]
-                header['s_x1_inf'] = self.sim_cfg['model_config']['sig_x1'][1]
+            if isinstance(self.config['model_config']['sig_x1'], list):
+                header['s_x1_sup'] = self.config['model_config']['sig_x1'][0]
+                header['s_x1_inf'] = self.config['model_config']['sig_x1'][1]
             else:
                 fits_dic['sig_x1'] = 's_x1'
 
-            if isinstance(self.sim_cfg['model_config']['sig_c'], list):
-                header['s_c_sup'] = self.sim_cfg['model_config']['sig_c'][0]
-                header['s_c_inf'] = self.sim_cfg['model_config']['sig_c'][1]
+            if isinstance(self.config['model_config']['sig_c'], list):
+                header['s_c_sup'] = self.config['model_config']['sig_c'][0]
+                header['s_c_inf'] = self.config['model_config']['sig_c'][1]
             else:
                 fits_dic['sig_c'] = 's_c'
 
-        if 'mw_dust' in self.sim_cfg['model_config']:
-            if isinstance(self.sim_cfg['model_config']['mw_dust'], (list, np.ndarray)):
-                header['mwd_mod'] = self.sim_cfg['model_config']['mw_dust'][0]
-                header['mw_rv'] = self.sim_cfg['model_config']['mw_dust'][1]
+        if 'mw_dust' in self.config['model_config']:
+            if isinstance(self.config['model_config']['mw_dust'], (list, np.ndarray)):
+                header['mwd_mod'] = self.config['model_config']['mw_dust'][0]
+                header['mw_rv'] = self.config['model_config']['mw_dust'][1]
             else:
-                header['mwd_mod'] = self.sim_cfg['model_config']['mw_dust']
+                header['mwd_mod'] = self.config['model_config']['mw_dust']
                 header['mw_rv'] = 3.1
 
         for k, v in fits_dic.items():
-            header[v] = self.sim_cfg['model_config'][k]
+            header[v] = self.config['model_config'][k]
 
-        if 'sct_model' in self.sim_cfg['sn_gen']:
-            header['Smod'] = self.sim_cfg['sn_gen']['sct_model']
+        if 'sct_model' in self.config['sn_gen']:
+            header['Smod'] = self.config['sn_gen']['sct_model']
         return header
 
     def _write_sim(self):
@@ -704,9 +690,9 @@ class Simulator:
             Just write sim into a file
 
         """
-        write_path = self.sim_cfg['data']['write_path']
+        write_path = self.config['data']['write_path']
         sim_header = self._get_primary_header()
-        if 'fits' in self.sim_cfg['data']['write_format']:
+        if 'fits' in self.config['data']['write_format']:
             lc_hdu_list = (sn.get_lc_hdu() for sn in self._sn_list)
             hdu_list = fits.HDUList(
                 [fits.PrimaryHDU(header=fits.Header(sim_header))] + list(lc_hdu_list))
@@ -715,7 +701,7 @@ class Simulator:
                              overwrite=True)
 
         # Export lcs as pickle
-        if 'pkl' in self.sim_cfg['data']['write_format']:
+        if 'pkl' in self.config['data']['write_format']:
             sim_lc = [sn.sim_lc for sn in self._sn_list]
             sn_pkl = scls.SnSimPkl(sim_lc, sim_header)
             with open(write_path + self.sim_name + '.pkl', 'wb') as file:
@@ -760,9 +746,9 @@ class Simulator:
         if plot_fit:
             if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
-                if 'mw_dust' in self.sim_cfg['model_config']:
+                if 'mw_dust' in self.config['model_config']:
                     print('Use sim input mw dust')
-                    mw_dust = self.sim_cfg['model_config']['mw_dust']
+                    mw_dust = self.config['model_config']['mw_dust']
                 else:
                     mw_dust = None
                 self.fit_lc(sn_ID, mw_dust=mw_dust)
@@ -838,7 +824,7 @@ class Simulator:
                             field_size,
                             **kwarg)
 
-    def fit_lc(self, sn_ID=None, mw_dust=None):
+    def fit_lc(self, sn_ID=None, mw_dust=-2):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -864,14 +850,25 @@ class Simulator:
             self._fit_res = [None] * len(self.sn_list)
             self._fit_resmod = [None] * len(self.sn_list)
 
-        fit_model = ut.init_sn_model(self.model_name, self.sim_cfg['model_config']['model_dir'])
+        fit_model = ut.init_sn_model(self.model_name, self.config['model_config']['model_dir'])
 
-        if mw_dust is not None:
-            dst_ut.init_mw_dust(fit_model, mw_dust)
-            if isinstance(mw_dust, (list, np.ndarray)):
-                rv = mw_dust[1]
+        mw_mod = None
+        if mw_dust == -2 and 'mw_dust' in self.config['model_config']:
+            mw_mod = self.config['model_config']['mw_dust']
+        elif isinstance(mw_dust, (str, list, np.ndarray)):
+            mw_mod = mw_dust
+        else:
+            print('Do not use mw dust')
+
+        if mw_mod is not None:
+            dst_ut.init_mw_dust(fit_model, mw_mod)
+            if isinstance(mw_mod, (list, np.ndarray)):
+                rv = mw_mod[1]
+                mod_name = mw_mod[0]
             else:
                 rv = 3.1
+                mod_name = mw_mod
+            print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if self.model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
@@ -881,14 +878,14 @@ class Simulator:
                 if self._fit_res[i] is None:
                     fit_model.set(z=sn.z)
                     if mw_dust is not None:
-                        dst_ut.add_mw_to_fit(fit_model, sn.mw_ebv, rv=rv)
+                        dst_ut.add_mw_to_fit(fit_model, sn.mw_ebv, mod_name, rv=rv)
                     self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(sn.sim_lc,
                                                                           fit_model,
                                                                           fit_par)
         else:
             fit_model.set(z=self.sn_list[sn_ID].z)
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, rv=rv)
+                dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(
                 self.sn_list[sn_ID].sim_lc,
                 fit_model,
@@ -931,11 +928,11 @@ class Simulator:
             sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
             sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
 
-        if 'sct_model' in self.sim_cfg['sn_gen']:
+        if 'sct_model' in self.config['sn_gen']:
             sim_lc_meta['SM_seed'] = [sn.sct_mod_seed for sn in self.sn_list]
 
-        if 'mw_dust' in self.sim_cfg['model_config']:
+        if 'mw_dust' in self.config['model_config']:
             sim_lc_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]
 
-        write_file = self.sim_cfg['data']['write_path'] + self.sim_name + '_fit.fits'
+        write_file = self.config['data']['write_path'] + self.sim_name + '_fit.fits'
         ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self._get_primary_header())

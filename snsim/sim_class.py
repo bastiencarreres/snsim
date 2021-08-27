@@ -519,7 +519,8 @@ class SnGen:
 
         if 'mw_dust' in self.model_config:
             dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
-
+        print(model)
+        print(model.effects[0]._r_v)
         return model
 
     def _init_model_keys(self):
@@ -813,11 +814,18 @@ class SnGen:
         """
         ebv = dst_ut.compute_ebv(ra, dec)
         if isinstance(self.model_config['mw_dust'], str):
-            r_v = np.ones(len(ra)) * 3.1
+            mod_name = self.model_config['mw_dust']
+            r_v = 3.1
         elif isinstance(self.model_config['mw_dust'], (list, np.ndarray)):
-            r_v = np.ones(len(ra)) * self.model_config['mw_dust'][1]
-        dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
-
+            mod_name = self.model_config['mw_dust'][0]
+            r_v = self.model_config['mw_dust'][1]
+        if mod_name.lower() in ['ccm89', 'od94']:
+            r_v = np.ones(len(ra)) * r_v
+            dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
+        elif mod_name.lower() in ['f99']:
+            dust_par = [{'mw_ebv': e} for e in ebv]
+        else:
+            raise ValueError(f'{mod_name} is not implemented')
         return dust_par
 
     def _compute_alpha_dipole(self, ra, dec):
