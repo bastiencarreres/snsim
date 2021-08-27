@@ -519,8 +519,6 @@ class SnGen:
 
         if 'mw_dust' in self.model_config:
             dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
-        print(model)
-        print(model.effects[0]._r_v)
         return model
 
     def _init_model_keys(self):
@@ -1104,8 +1102,9 @@ class SurveyObs:
         SN_ra, SN_dec = SN_obj.coord
 
         # Time selection :
-        epochs_selec = ((self.obs_table['expMJD'] - SN_obj.sim_t0 > ModelMinT_obsfrm)
-                        & (self.obs_table['expMJD'] - SN_obj.sim_t0 < ModelMaxT_obsfrm)).values
+        expr = ("(self.obs_table.expMJD - SN_obj.sim_t0 > ModelMinT_obsfrm) "
+                "& (self.obs_table.expMJD - SN_obj.sim_t0 < ModelMaxT_obsfrm)")
+        epochs_selec = pd.eval(expr).values
 
         is_obs = epochs_selec.any()
 
