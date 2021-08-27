@@ -154,23 +154,23 @@ class OpenSim:
             dst_ut.init_mw_dust(fit_model, mw_mod)
             if isinstance(mw_mod, (list, np.ndarray)):
                 rv = mw_mod[1]
-                print_mod = mw_mod[0]
+                mod_name = mw_mod[0]
             else:
                 rv = 3.1
-                print_mod = mw_mod
-            print(f'Use MW dust model {print_mod} with RV = {rv}')
+                mod_name = mw_mod
+            print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if sn_ID is None:
             for i, lc in enumerate(self.sim_lc):
                 if self._fit_res[i] is None:
                     fit_model.set(z=lc.meta['z'])
                     if mw_dust is not None:
-                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], rv=rv)
+                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
                     self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(lc, fit_model, fit_par)
         else:
             fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], rv=rv)
+                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID],
                                                                           fit_model,
                                                                           fit_par)
@@ -223,8 +223,10 @@ class OpenSim:
                 s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
 
             if 'mwd_mod' in self.header:
-                dst_ut.init_mw_dust(s_model, self.header['mwd_mod'])
-                s_model.set(mw_r_v=lc.meta['mw_r_v'], mw_ebv=lc.meta['mw_ebv'])
+                dst_ut.init_mw_dust(s_model, [self.header['mwd_mod'], self.header['mw_rv']])
+                if self.header['mwd_mod'].lower() not in ['f99']:
+                    s_model.set(mw_r_v=lc.meta['mw_r_v'])
+                s_model.set(mw_ebv=lc.meta['mw_ebv'])
         else:
             s_model = None
 

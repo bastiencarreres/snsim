@@ -64,7 +64,6 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
         str_list[0] += 'SIMULATED PARAMETERS :@'
     if fit_par is not None:
         str_list[0] += 'FITTED PARAMETERS :@'
-
     for i, p in enumerate(par):
         if sim_par is not None:
             str_list[i + 1] += f"{p[0]} = {sim_par[i]:{p[1]}}@"
@@ -278,8 +277,13 @@ def plot_lc(
                    flux_table.meta['sim_x1'],
                    flux_table.meta['sim_c']]
         if 'mw_' in snc_sim_model.effect_names:
-            sim_mwd_par = [flux_table.meta['mw_r_v'],
-                           flux_table.meta['mw_ebv']]
+            sim_mwd_par = []
+            if 'mw_r_v' in flux_table.meta:
+                sim_mwd_par.append(flux_table.meta['mw_r_v'])
+            else:
+                mod_index = np.where(np.array(snc_sim_model.effect_names) == 'mw_')[0][0]
+                sim_mwd_par.append(snc_sim_model.effects[mod_index]._r_v)
+            sim_mwd_par.append(flux_table.meta['mw_ebv'])
 
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
@@ -298,12 +302,16 @@ def plot_lc(
                    (snc_fit_model.parameters[4], np.sqrt(fit_cov[3, 3]))]
 
         if 'mw_' in snc_fit_model.effect_names:
-            par_idx = np.where(np.asarray(
-                snc_fit_model.param_names) == 'mw_r_v')[0]
-            par_idx = np.concatenate((par_idx,
-                                      np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0]
-                                      ))
-            fit_mwd_par = snc_fit_model.parameters[par_idx]
+            fit_mwd_par = []
+            if 'mw_r_v' not in snc_fit_model.param_names:
+                mod_index = np.where(np.array(snc_fit_model.effect_names) == 'mw_')[0][0]
+                fit_mwd_par.append(snc_fit_model.effects[mod_index]._r_v)
+            else:
+                par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0][0]
+                fit_mwd_par.append(snc_fit_model.parameters[par_idx])
+
+            par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0][0]
+            fit_mwd_par.append(snc_fit_model.parameters[par_idx])
 
     if fit_par is not None or sim_par is not None:
         param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)

@@ -864,11 +864,11 @@ class Simulator:
             dst_ut.init_mw_dust(fit_model, mw_mod)
             if isinstance(mw_mod, (list, np.ndarray)):
                 rv = mw_mod[1]
-                print_mod = mw_mod[0]
+                mod_name = mw_mod[0]
             else:
                 rv = 3.1
-                print_mod = mw_mod
-            print(f'Use MW dust model {print_mod} with RV = {rv}')
+                mod_name = mw_mod
+            print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if self.model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
@@ -878,14 +878,14 @@ class Simulator:
                 if self._fit_res[i] is None:
                     fit_model.set(z=sn.z)
                     if mw_dust is not None:
-                        dst_ut.add_mw_to_fit(fit_model, sn.mw_ebv, rv=rv)
+                        dst_ut.add_mw_to_fit(fit_model, sn.mw_ebv, mod_name, rv=rv)
                     self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(sn.sim_lc,
                                                                           fit_model,
                                                                           fit_par)
         else:
             fit_model.set(z=self.sn_list[sn_ID].z)
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, rv=rv)
+                dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(
                 self.sn_list[sn_ID].sim_lc,
                 fit_model,
