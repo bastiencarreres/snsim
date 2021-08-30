@@ -592,10 +592,10 @@ class SnGen:
         if self.host is not None:
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
             host = self.host.host_near_z(zcos, treshold)
-            ra = host['ra']
-            dec = host['dec']
-            zcos = host['redshift']
-            vpec = host['vp_sight']
+            ra = host['ra'].values
+            dec = host['dec'].values
+            zcos = host['redshift'].values
+            vpec = host['vp_sight'].values
         else:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
