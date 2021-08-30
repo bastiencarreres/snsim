@@ -586,7 +586,11 @@ class SnGen:
         opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
 
         # - Generate random parameters dependants on sn model used
-        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]))
+        if self.model_config['dist_x1'] in ['N21']:
+            z_for_dist = zcos
+        else:
+            z_for_dist = None
+        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]), z=z_for_dist)
 
         # -- If there is host use them
         if self.host is not None:
@@ -690,7 +694,7 @@ class SnGen:
         zcos = np.interp(uni_var, self.z_cdf[1], self.z_cdf[0])
         return zcos
 
-    def gen_model_par(self, n, rand_gen):
+    def gen_model_par(self, n, rand_gen, z=None):
         """Generate model dependant parameters.
 
         Parameters
@@ -709,7 +713,7 @@ class SnGen:
         model_name = self.model_config['model_name']
 
         if model_name in ('salt2', 'salt3'):
-            sim_x1, sim_c = self.gen_salt_par(n, rand_gen)
+            sim_x1, sim_c = self.gen_salt_par(n, rand_gen, z)
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
@@ -724,7 +728,7 @@ class SnGen:
 
         return model_par_sncosmo
 
-    def gen_salt_par(self, n, rand_gen):
+    def gen_salt_par(self, n, rand_gen, z=None):
         """Generate n SALT parameters.
 
         Parameters
@@ -740,18 +744,17 @@ class SnGen:
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        sig_x1_low, sig_x1_high = ut.is_asym(self.model_config['sig_x1'])
-        sig_c_low, sig_c_high = ut.is_asym(self.model_config['sig_c'])
+        if isinstance(self.model_config['dist_x1'], str):
+            if self.model_config['dist_x1'] == 'N21':
+                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=rand_gen)
+        else:
+            sim_x1 = ut.asym_gauss(*self.model_config['dist_x1'],
+                                   rand_gen=rand_gen,
+                                   size=n)
 
-        sim_x1 = [ut.asym_gauss(self.model_config['mean_x1'],
-                                sig_x1_low,
-                                sig_x1_high,
-                                rand_gen) for i in range(n)]
-
-        sim_c = [ut.asym_gauss(self.model_config['mean_c'],
-                               sig_c_low,
-                               sig_c_high,
-                               rand_gen) for i in range(n)]
+        sim_c = ut.asym_gauss(*self.model_config['dist_c'],
+                              rand_gen=rand_gen,
+                              size=n)
 
         return sim_x1, sim_c
 

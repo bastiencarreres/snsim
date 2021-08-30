@@ -39,6 +39,28 @@ def mB_to_x0(mB):
     return 10**(-0.4 * (mB - SNC_MAG_OFFSET_AB))
 
 
+def n21_x1_model(z, rand_gen=None):
+    """From  Nicolas et al. 2021."""
+
+    z = np.atleast_1d(z)
+
+    # Constants defines in the paper
+    a = 0.51
+    mu1 = 0.37
+    mu2 = -1.22
+    sig1 = 0.61
+    sig2 = 0.56
+
+    rand1, rand2, rand3 = rand_gen.normal(loc=[mu1, mu1, mu2],
+                                          scale=[sig1, sig1, sig2],
+                                          size=(len(z), 3)).T
+
+    delta_z = 1 / (1 / 0.87 * 1 / (1 + z)**2.8 + 1)
+    X1 = delta_z * rand1
+    X1 += (1 - delta_z) * (a * rand2 + (1 - a) * rand3)
+    return X1
+
+
 def cov_x0_to_mb(x0, cov):
     """Convert x0,x1,c covariance into mB,x1,c covariance.
 
