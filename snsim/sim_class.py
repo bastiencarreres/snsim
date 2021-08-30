@@ -511,8 +511,11 @@ class SnGen:
             SN simulation model.
 
         """
+        model_dir = None
+        if 'model_dir' in self.model_config:
+            model_dir = self.model_config['model_dir']
         model = ut.init_sn_model(self.model_config['model_name'],
-                                 self.model_config['model_dir'])
+                                 model_dir)
 
         if 'sct_model' in self.sn_int_par:
             sct.init_sn_sct_model(model, self.sn_int_par['sct_model'])
