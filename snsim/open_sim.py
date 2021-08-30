@@ -54,7 +54,7 @@ class OpenSim:
 
     """
 
-    def __init__(self, sim_file, model_dir):
+    def __init__(self, sim_file, model_dir=None):
         """Copy some function of snsim to allow to use sim file."""
         self._file_path, self._file_ext = os.path.splitext(sim_file)
         self._sn = None
