@@ -245,6 +245,9 @@ elif yml_config is not None and 'host_file' in yml_config:
 print('PARAMETERS USED IN SIMULATION\n')
 indent = '    '
 for K in param_dic:
+    if K == 'host_file':
+        print(K + ": " + f"{param_dic['host_file']}")
+        continue
     print(K + ':')
     for k in param_dic[K]:
         print(indent + f'{k}: {param_dic[K][k]}')
