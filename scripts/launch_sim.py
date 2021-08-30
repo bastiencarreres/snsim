@@ -229,11 +229,14 @@ with open(args.config_path, "r") as f:
 
 param_dic = {}
 for K in keys_dic:
-    param_dic[K] = {}
     for k in keys_dic[K]:
         if args.__dict__[k] is not None:
+            if K not in param_dic:
+                param_dic[K] = {}
             param_dic[K][k] = args.__dict__[k]
         elif yml_config is not None and K in yml_config and k in yml_config[K]:
+            if K not in param_dic:
+                param_dic[K] = {}
             param_dic[K][k] = yml_config[K][k]
 
 if args.host_file is not None:
