@@ -450,7 +450,11 @@ class Simulator:
               f"SURVEY FILE : {self.config['survey_config']['survey_file']}")
         if 'host_file' in self.config:
             print(f"HOST FILE : {self.config['host_file']}")
-        print(f"SN SIM MODEL : {self.model_name} from {self.config['model_config']['model_dir']}\n"
+        if 'model_dir' in self.config['model_config']:
+            model_dir_str = f"from {self.config['model_config']['model_dir']}"
+        else:
+            model_dir_str = "from sncosmo"
+        print(f"SN SIM MODEL : {self.model_name} " + model_dir_str + "\n"
               f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
               f"SIMULATION RANDSEED : {self.rand_seed}")
 
