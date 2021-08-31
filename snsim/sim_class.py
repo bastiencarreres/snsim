@@ -586,11 +586,7 @@ class SnGen:
         opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
 
         # - Generate random parameters dependants on sn model used
-        if self.model_config['dist_x1'] in ['N21']:
-            z_for_dist = zcos
-        else:
-            z_for_dist = None
-        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]), z=z_for_dist)
+        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]), z=zcos)
 
         # -- If there is host use them
         if self.host is not None:
@@ -713,7 +709,13 @@ class SnGen:
         model_name = self.model_config['model_name']
 
         if model_name in ('salt2', 'salt3'):
-            sim_x1, sim_c = self.gen_salt_par(n, rand_gen, z)
+
+            if self.model_config['dist_x1'] in ['N21']:
+                z_for_dist = z
+            else:
+                z_for_dist = None
+
+            sim_x1, sim_c = self.gen_salt_par(n, rand_gen, z=z_for_dist)
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:

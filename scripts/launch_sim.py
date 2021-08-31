@@ -91,10 +91,8 @@ keys_dic = {
         'model_name',
         'alpha',
         'beta',
-        'mean_x1',
-        'mean_c',
-        'sig_x1',
-        'sig_c',
+        'dist_x1',
+        'dist_c',
         'mw_dust'],
     'vpec_dist': [
         'mean_vpec',
@@ -182,12 +180,8 @@ parser.add_argument("--mw_dust", type=str, nargs='+',
 # SALT PARAM
 parser.add_argument("--alpha", type=float, help="STRETCH CORRECTION")
 parser.add_argument("--beta", type=float, help="COLOR CORRECTION")
-parser.add_argument("--mean_x1", type=float, help="MEAN X1 VALUE")
-parser.add_argument("--sig_x1", type=float, nargs='+',
-                    help="--sig_x1 sigma or --sigma_x1 sigma- sigma+")
-parser.add_argument("--mean_c", type=float, help="MEAN C VALUE")
-parser.add_argument("--sig_c", type=float, nargs='+',
-                    help="--sig_c sigma or --sigma_c sigma- sigma+")
+parser.add_argument("--dist_x1", nargs='+', help="MEAN SIGMA; MEAN SIGMA- SIGMA+ or 'N21'")
+parser.add_argument("--dist_c", type=float, nargs='+', help="MEAN SIGMA or MEAN SIGMA- SIGMA+")
 
 #####################
 # VPEC_DIST SECTION #
@@ -218,11 +212,11 @@ if args.nep_cut is not None:
 if args.mw_dust is not None:
     args.mw_dust = mw_dust_read(args.mw_dust)
 
-if args.sig_x1 is not None:
-    args.sig_x1 = assym_read(args.sig_x1)
-
-if args.sig_c is not None:
-    args.sig_c = assym_read(args.sig_c)
+if args.dist_x1 is not None:
+    if args.dist_x1 not in ['N21']:
+        args.dist_x1 = list(args.dist_x1)
+        for i in range(len(args.dist_x1)):
+            args.dist_x1[i] = float(args.dist_x1[i])
 
 with open(args.config_path, "r") as f:
     yml_config = yaml.safe_load(f)
