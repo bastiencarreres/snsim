@@ -152,7 +152,7 @@ parser.add_argument("--nep_cut", action='append', nargs='+',
                     (restframe, relative to peak), optionaly in a selected filter")
 parser.add_argument("--z_range", type=float, nargs=2,
                     help="--zrange zmin zmax, Cosmological redshift range")
-parser.add_argument("--M0", type=float, help="SN ABSOLUT MAGNITUDE")
+parser.add_argument("--M0", help="SN ABSOLUT MAGNITUDE")
 parser.add_argument("--mag_sct", type=float, help="SN INTRINSIC COHERENT SCATTERING")
 parser.add_argument("--sct_mod", type=str,
                     help="'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING")

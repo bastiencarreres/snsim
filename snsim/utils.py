@@ -12,6 +12,32 @@ from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
 
 
+def scale_M0_jla(H0):
+    """Compute a value of M0 corresponding to JLA results.
+
+    Parameters
+    ----------
+    H0 : float
+        The H0 constant to scale M0.
+
+    Returns
+    -------
+    float
+        Scaled SN absolute magnitude.
+
+    """
+    # mb = 5 * log10(c/H0_jla * Dl(z)) + 25 + MB_jla
+    # mb = 5 * log10(c/HO_True * Dl(z)) + 25 + MB_jla - 5 * log10(1 + dH0)
+    # with dH0 = (H0_jla - H0_True)/ H0_True
+    # MB_True = MB_jla - 5 * log10(1 + dH0)
+
+    # Scale the H0 value of JLA to the H0 value of sim
+    H0_jla = 70  # km/s/Mpc
+    M0_jla = -19.05
+    dH0 = (H0_jla - H0) / H0
+
+    return M0_jla - 5 * np.log10(1 + dH0)
+
 def init_astropy_time(date):
     """Take a date and give a astropy.time.Time object.
 
