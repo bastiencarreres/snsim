@@ -54,27 +54,7 @@ def compute_z_cdf(z_shell, shell_time_rate):
     return [z_shell, dist / norm]
 
 
-def is_asym(sigma):
-    """Check if sigma represents an asymetric distribution.
-
-    Parameters
-    ----------
-    sigma : flaot or list
-        The sigma parameter(s) of the Gaussian.
-
-    Returns
-    -------
-    tuple
-        sigma low and sigma high of an asymetric Gaussian.
-
-    """
-    sigma = np.atleast_1d(sigma)
-    if sigma.size == 2:
-        return sigma
-    return sigma[0], sigma[0]
-
-
-def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
+def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None, size=1):
     """Generate random parameters using an asymetric Gaussian distribution.
 
     Parameters
@@ -87,25 +67,25 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
         The high sigma.
     rand_gen : numpy.random.default_rng, optional
         Numpy random generator.
+    size: int
+        Number of numbers to generate
 
     Returns
     -------
-    float
-        Random variable.
+    numpy.ndarray(float)
+        Random(s) variable(s).
 
     """
     if sig_high is None:
         sig_high = sig_low
     if rand_gen is None:
-        low_or_high = np.random.random()
-        nbr = abs(np.random.normal())
+        low_or_high = np.random.random(size=size)
+        nbr = abs(np.random.normal(size=size))
     else:
-        low_or_high = rand_gen.random()
-        nbr = abs(rand_gen.normal())
-    if low_or_high < sig_low / (sig_high + sig_low):
-        nbr *= -sig_low
-    else:
-        nbr *= sig_high
+        low_or_high = rand_gen.random(size)
+        nbr = abs(rand_gen.normal(size=size))
+    cond = low_or_high < sig_low / (sig_high + sig_low)
+    nbr *= -sig_low * cond + sig_high * ~cond
     return mean + nbr
 
 

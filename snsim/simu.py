@@ -126,10 +126,8 @@ class Simulator:
     |     model_dir: '/PATH/TO/SALT/MODEL'                                               |
     |     alpha: STRETCH CORRECTION = alpha*x1                                           |
     |     beta: COLOR CORRECTION = -beta*c                                               |
-    |     mean_x1: MEAN X1 VALUE                                                         |
-    |     mean_c: MEAN C VALUE                                                           |
-    |     sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]                              |
-    |     sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]                                  |
+    |     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'  |
+    |     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]                       |
     |     mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)                   |
     | vpec_dist:                                                                         |
     |     mean_vpec: MEAN SN PECULIAR VELOCITY                                           |
@@ -654,21 +652,21 @@ class Simulator:
         if self.model_name == 'salt2' or self.model_name == 'salt3':
             fits_dic = {'model_name': 'Mname',
                         'alpha': 'alpha',
-                        'beta': 'beta',
-                        'mean_x1': 'm_x1',
-                        'mean_c': 'm_c'}
+                        'beta': 'beta'}
 
-            if isinstance(self.config['model_config']['sig_x1'], list):
-                header['s_x1_sup'] = self.config['model_config']['sig_x1'][0]
-                header['s_x1_inf'] = self.config['model_config']['sig_x1'][1]
+            header['mean_x1'] = self.config['model_config']['dist_x1'][0]
+            if len(self.config['model_config']['dist_x1']) == 3:
+                header['s_x1_low'] = self.config['model_config']['dist_x1'][1]
+                header['s_x1_hi'] = self.config['model_config']['dist_x1'][2]
             else:
-                fits_dic['sig_x1'] = 's_x1'
+                header['sig_x1'] = self.config['model_config']['dist_x1'][1]
 
-            if isinstance(self.config['model_config']['sig_c'], list):
-                header['s_c_sup'] = self.config['model_config']['sig_c'][0]
-                header['s_c_inf'] = self.config['model_config']['sig_c'][1]
+            header['mean_c'] = self.config['model_config']['dist_c'][0]
+            if len(self.config['model_config']['dist_c']) == 3:
+                header['s_c_low'] = self.config['model_config']['dist_c'][1]
+                header['s_c_hi'] = self.config['model_config']['dist_c'][2]
             else:
-                fits_dic['sig_c'] = 's_c'
+                header['sig_c'] = self.config['model_config']['dist_c'][1]
 
         if 'mw_dust' in self.config['model_config']:
             if isinstance(self.config['model_config']['mw_dust'], (list, np.ndarray)):
