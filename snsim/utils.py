@@ -38,6 +38,7 @@ def scale_M0_jla(H0):
 
     return M0_jla - 5 * np.log10(1 + dH0)
 
+
 def init_astropy_time(date):
     """Take a date and give a astropy.time.Time object.
 
