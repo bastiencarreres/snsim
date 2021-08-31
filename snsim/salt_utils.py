@@ -40,24 +40,56 @@ def mB_to_x0(mB):
 
 
 def n21_x1_model(z, rand_gen=None):
-    """From  Nicolas et al. 2021."""
+    """X1 distribution redshift dependant model from  Nicolas et al. 2021.
 
+    Parameters
+    ----------
+    z : numpy.array(float)
+        Redshift(s) of the SN.
+    rand_gen: numpy.random._generator.Generator, opt
+        Random generator numpy object.
+
+    Returns
+    -------
+    X1 : numpy.array(float)
+        Stretch parameters of supernovae.
+    """
+
+    # Just to avoid errors
     z = np.atleast_1d(z)
 
     # Constants defines in the paper
     a = 0.51
+    K = 0.87
     mu1 = 0.37
     mu2 = -1.22
     sig1 = 0.61
     sig2 = 0.56
 
-    rand1, rand2, rand3 = rand_gen.normal(loc=[mu1, mu1, mu2],
-                                          scale=[sig1, sig1, sig2],
-                                          size=(len(z), 3)).T
+    # Define Gaussian function
+    def gauss(mu, sig, x):
+        return np.exp(-0.5 * ((x - mu)/sig)**2)/np.sqrt(2 * np.pi * sig**2)
 
-    delta_z = 1 / (1 / 0.87 * 1 / (1 + z)**2.8 + 1)
-    X1 = delta_z * rand1
-    X1 += (1 - delta_z) * (a * rand2 + (1 - a) * rand3)
+    # Compute the pdf for old galaxy F_old(z)
+    x = np.linspace(mu2 - 10 * sig2, mu1 + 10 * sig1, 100000)
+    f_old = a * gauss(mu1, sig1, x)
+    f_old += (1 - a) * gauss(mu2, sig2, x)
+    F_old = np.cumsum(f_old) * (x[1] - x[0])
+
+    if rand_gen is None:
+        young_or_old = np.random.random(size=len(z))
+        rand_normal = np.random.normal(loc=mu1, scale=sig1, size=len(z))
+        rand_old = np.random.random(size=len(z))
+    else:
+        young_or_old = rand_gen.random(size=len(z))
+        rand_normal = rand_gen.normal(loc=mu1, scale=sig1, size=len(z))
+        rand_old = rand_gen.random(size=len(z))
+
+    # Apply the pdf eq 2 from Nicolas et al. 2021
+    delta_z = 1 / (1 / (K * (1 + z)**2.8) + 1)  # Probability to be young
+    is_young = young_or_old < delta_z
+    X1 = rand_normal * is_young
+    X1 += np.interp(rand_old, F_old, x) * ~is_young
     return X1
 
 
