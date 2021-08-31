@@ -645,7 +645,7 @@ class Simulator:
                   'sigM': self.config['sn_gen']['mag_sct'],
                   **self.config['cosmology']}
 
-        if header['M0'].lower() == 'jla':
+        if isinstance(header['M0'], str) and header['M0'].lower() == 'jla':
             header['M0_eff'] = ut.scale_M0_jla(self.cosmology.H0.value)
 
         if self.host is None:
