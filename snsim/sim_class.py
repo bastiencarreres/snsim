@@ -621,7 +621,12 @@ class SnGen:
         # -- SN initialisation part :
         sn_par = self._construct_sn_int(*sn_int_args)
 
-        model_default = {'M0': self.sn_int_par['M0']}
+        if isinstance(self.sn_int_par['M0'], float):
+            model_default = {'M0': self.sn_int_par['M0']}
+
+        elif self.sn_int_par['M0'].lower() == 'jla':
+            model_default = {'M0': ut.scale_M0_jla(self.cosmology.H0.value)}
+
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 

@@ -645,6 +645,9 @@ class Simulator:
                   'sigM': self.config['sn_gen']['mag_sct'],
                   **self.config['cosmology']}
 
+        if header['M0'].lower() == 'jla':
+            header['M0_eff'] = ut.scale_M0_jla(self.cosmology.H0.value)
+
         if self.host is None:
             header['m_vp'] = self.config['vpec_dist']['mean_vpec']
             header['s_vp'] = self.config['vpec_dist']['sig_vpec']
