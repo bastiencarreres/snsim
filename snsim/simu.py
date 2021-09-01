@@ -106,7 +106,7 @@ class Simulator:
     | sn_gen:                                                                            |
     |     n_sn: NUMBER OF SN TO GENERATE (Otional)                                       |
     |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)          |
-    |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5)                        |
+    |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5) or 'ptf19'             |
     |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)                    |
     |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS   |
     |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)                         |
