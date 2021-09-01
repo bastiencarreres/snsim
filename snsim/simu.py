@@ -855,7 +855,10 @@ class Simulator:
             self._fit_res = [None] * len(self.sn_list)
             self._fit_resmod = [None] * len(self.sn_list)
 
-        fit_model = ut.init_sn_model(self.model_name, self.config['model_config']['model_dir'])
+        model_dir = None
+        if 'model_dir' in self.config['model_config']:
+            model_dir = self.config['model_config']['model_dir']
+        fit_model = ut.init_sn_model(self.model_name, model_dir)
 
         mw_mod = None
         if mw_dust == -2 and 'mw_dust' in self.config['model_config']:
