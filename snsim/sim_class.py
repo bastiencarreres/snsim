@@ -314,6 +314,7 @@ class SN:
         self.sim_lc.meta['dec'] = self.coord[1]
         self.sim_lc.meta['sim_mb'] = self.sim_mb
         self.sim_lc.meta['sim_mu'] = self.sim_mu
+        self.sim_lc.meta['com_dist'] = self.como_dist
         self.sim_lc.meta['m_sct'] = self.mag_sct
 
         if 'adip_dM' in self._sn_par:
@@ -620,7 +621,7 @@ class SnGen:
         # -- SN initialisation part :
         sn_par = self._construct_sn_int(*sn_int_args)
 
-        if isinstance(self.sn_int_par['M0'], float):
+        if isinstance(self.sn_int_par['M0'], (float, int)):
             model_default = {'M0': self.sn_int_par['M0']}
 
         elif self.sn_int_par['M0'].lower() == 'jla':

@@ -323,18 +323,25 @@ class OpenSim:
                        'zcos': [lc.meta['zcos'] for lc in self.sim_lc],
                        'zCMB': [lc.meta['zCMB'] for lc in self.sim_lc],
                        'zobs': [lc.meta['z'] for lc in self.sim_lc],
-                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc]}
+                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc],
+                       'com_dist': [lc.meta['com_dist'] for lc in self.sim_lc],
+                       'sim_t0': [lc.meta['sim_t0'] for lc in self.sim_lc],
+                       'm_sct': [lc.meta['m_sct'] for lc in self.sim_lc]}
 
         model_name = self.header['Mname']
+
         if model_name in ('salt2', 'salt3'):
+            sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
             sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
             sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
             sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
-            sim_lc_meta['m_sct'] = [lc.meta['m_sct'] for lc in self.sim_lc]
 
         if 'Smod' in self.header:
             sim_lc_meta['SM_seed'] = [lc.meta[self.header['Smod'][:3] + '_RndS']
                                       for lc in self.sim_lc]
+
+        if 'mw_dust' in self.header:
+            sim_lc_meta['MW_EBV'] = [lc.meta['mw_ebv'] for lc in self.sim_lc]
 
         write_file = self._file_path + '_fit.fits'
         ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self.header)
