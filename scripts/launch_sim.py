@@ -144,7 +144,7 @@ parser.add_argument("--randseed", type=int, help="RANDSEED TO REPRODUCE SIMULATI
 parser.add_argument("--duration_for_rate", type=float,
                     help="FAKE DURATION ONLY USED TO GENERATE N SN (DAYS)")
 parser.add_argument("--n_sn", type=int, help="NUMBER OF SN TO GENERATE")
-parser.add_argument("--sn_rate", type=float, help="rate of SN/Mpc^3/year")
+parser.add_argument("--sn_rate", help="rate of SN/Mpc^3/year or 'ptf19'")
 parser.add_argument("--rate_pw", type=float, help="rate = sn_rate*(1+z)^rate_pw")
 parser.add_argument("--nep_cut", action='append', nargs='+',
                     help="--nep_cut nep_min1 Tmin Tmax --nep_cut nep_min2 Tmin2 Tmax2 'filter1',\
