@@ -329,9 +329,14 @@ class Simulator:
     def sn_rate_z0(self):
         """Get the sn rate parameters."""
         if 'sn_rate' in self.config['sn_gen']:
-            sn_rate = float(self.config['sn_gen']['sn_rate'])
+            if isinstance(self.config['sn_gen']['sn_rate'], str):
+                if self.config['sn_gen']['sn_rate'].lower() == 'ptf19':
+                    sn_rate = 2.43 * (70 / self.cosmology.H0.value)**3
+            else:
+                sn_rate = float(self.config['sn_gen']['sn_rate'])
         else:
             sn_rate = 3e-5
+
         if 'rate_pw' in self.config['sn_gen']:
             rate_pw = self.config['sn_gen']['rate_pw']
         else:
@@ -643,6 +648,8 @@ class Simulator:
         header = {'n_sn': self.n_sn,
                   'M0': self.config['sn_gen']['M0'],
                   'sigM': self.config['sn_gen']['mag_sct'],
+                  'sn_rate': self.sn_rate_z0[0],
+                  'rate_pw': self.sn_rate_z0[1],
                   **self.config['cosmology']}
 
         if isinstance(header['M0'], str) and header['M0'].lower() == 'jla':
@@ -922,13 +929,9 @@ class Simulator:
                        'zCMB': [sn.zCMB for sn in self.sn_list],
                        'zobs': [sn.z for sn in self.sn_list],
                        'sim_mu': [sn.sim_mu for sn in self.sn_list],
-                       'sim_t0': [sn.sim_t0 for sn in self.sn_list]}
-
-        if self.model_name == 'salt2' or self.model_name == 'salt3':
-            sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
-            sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
-            sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
-            sim_lc_meta['m_sct'] = [sn.mag_sct for sn in self.sn_list]
+                       'com_dist': [sn.como_dist for sn in self.sn_list],
+                       'sim_t0': [sn.sim_t0 for sn in self.sn_list],
+                       'm_sct': [sn.mag_sct for sn in self.sn_list]}
 
         if self.model_name in ('salt2', 'salt3'):
             sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
