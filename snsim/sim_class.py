@@ -1215,8 +1215,11 @@ class SurveyObs:
 
         if 'add_data' in self.config:
             for k in self.config['add_data']:
-                if k not in obs:
-                    obs[k] = self.obs_table[k][epochs_selec]
+                if k not in obs.keys():
+                    if self.obs_table[k].dtype == 'object':
+                        obs[k] = self.obs_table[k][epochs_selec].astype('U27').to_numpy(dtype='str')
+                    else:
+                        obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
 
