@@ -937,7 +937,9 @@ class SurveyObs:
     @property
     def band_dic(self):
         """Get the dic band_survey : band_sncosmo."""
-        return self.config['band_dic']
+        if 'band_dic' in self.config:
+            return self.config['band_dic']
+        return None
 
     @property
     def obs_table(self):
