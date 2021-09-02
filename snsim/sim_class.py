@@ -1162,7 +1162,7 @@ class SurveyObs:
 
         """
         # Capture noise and filter
-        band = self.obs_table['filter'][epochs_selec].astype('U27')
+        band = self.obs_table['filter'][epochs_selec].astype('U27').to_numpy(dtype='str')
 
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
