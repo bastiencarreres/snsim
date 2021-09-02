@@ -469,7 +469,7 @@ class Simulator:
             print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
             use_rate_str = ' (only for redshifts simulation)'
 
-        print(f"SN rate of r_v = {self.sn_rate_z0[0]}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
+        print(f"SN rate of r_v = {self.sn_rate_z0[0]:.2e}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
               + use_rate_str + "\n"
               "SN peak mintime : "
               f"{self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
