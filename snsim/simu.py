@@ -332,8 +332,10 @@ class Simulator:
             if isinstance(self.config['sn_gen']['sn_rate'], str):
                 if self.config['sn_gen']['sn_rate'].lower() == 'ptf19':
                     sn_rate = 2.43e-5 * (70 / self.cosmology.H0.value)**3
+                else:
+                    sn_rate = float(self.config['sn_gen']['sn_rate'])
             else:
-                sn_rate = float(self.config['sn_gen']['sn_rate'])
+                sn_rate = self.config['sn_gen']['sn_rate']
         else:
             sn_rate = 3e-5
 
