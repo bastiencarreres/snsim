@@ -54,7 +54,6 @@ def n21_x1_model(z, rand_gen=None):
     X1 : numpy.array(float)
         Stretch parameters of supernovae.
     """
-
     # Just to avoid errors
     z = np.atleast_1d(z)
 
@@ -68,7 +67,7 @@ def n21_x1_model(z, rand_gen=None):
 
     # Define Gaussian function
     def gauss(mu, sig, x):
-        return np.exp(-0.5 * ((x - mu)/sig)**2)/np.sqrt(2 * np.pi * sig**2)
+        return np.exp(-0.5 * ((x - mu) / sig)**2) / np.sqrt(2 * np.pi * sig**2)
 
     # Compute the pdf for old galaxy F_old(z)
     x = np.linspace(mu2 - 10 * sig2, mu1 + 10 * sig1, 100000)
