@@ -81,6 +81,7 @@ keys_dic = {
         'mag_sct',
         'sct_mod'],
     'cosmology': [
+        'name',
         'Om0',
         'H0'],
     'cmb': [
@@ -161,6 +162,7 @@ parser.add_argument("--sct_mod", type=str,
 #####################
 # COSMOLOGY SECTION #
 #####################
+parser.add_argument("--name", type=str, help="ASTROPY COSMOLOGICAL MODEL TO LOAD")
 parser.add_argument("--Om0", type=float, help="MATTER DENSITY")
 parser.add_argument("--H0", type=float, help="HUBBLE CONSTANT")
 
