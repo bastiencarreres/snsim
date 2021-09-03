@@ -137,6 +137,7 @@ class OpenSim:
         if self._fit_res is None:
             self._fit_res = [None] * len(self.sim_lc)
             self._fit_resmod = [None] * len(self.sim_lc)
+            self._fit_dic = [None] * len(self.sim_lc)
         fit_model = self._fit_model.__copy__()
         model_name = self.header['Mname']
         if model_name in ('salt2', 'salt3'):
@@ -166,14 +167,14 @@ class OpenSim:
                     fit_model.set(z=lc.meta['z'])
                     if mw_dust is not None:
                         dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
-                    self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(lc, fit_model, fit_par)
+                    self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(lc, fit_model, fit_par)
         else:
             fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
             if mw_dust is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID],
-                                                                          fit_model,
-                                                                          fit_par)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID],
+                                                                                                fit_model,
+                                                                                                fit_par)
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
         """Plot the given SN lightcurve.
@@ -344,4 +345,4 @@ class OpenSim:
             sim_lc_meta['MW_EBV'] = [lc.meta['mw_ebv'] for lc in self.sim_lc]
 
         write_file = self._file_path + '_fit.fits'
-        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self.header)
+        ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_file, sim_meta=self.header)

@@ -257,8 +257,12 @@ def snc_fitter(lc, fit_model, fit_par):
     """
     try:
         res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)
+        res[0]['param_names'] = np.append(res[0]['param_names'], 'mb')
+        res[0]['parameters'] = np.append(res[0]['parameters'], res[1].source_peakmag('bessellb', 'ab'))
+        res_dic = {k:v in zip(res[0]['param_names'], res[0]['parameters'])}
+        res = np.append(res, res_dic)
     except BaseException:
-        res = ['NaN', 'NaN']
+        res = [np.nan, np.nan, np.nan]
     return res
 
 
@@ -361,7 +365,7 @@ def change_sph_frame(ra, dec, ra_frame, dec_frame):
     return new_ra, new_dec
 
 
-def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
+def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):
     """Write fit into a fits file.
 
     Parameters
@@ -396,21 +400,21 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
         data[k] = []
 
     for res in fit_res:
-        if res != 'NaN':
+        if ~np.isnan(res):
             par = res['parameters']
-            data['t0'].append(par[1])
+            data['t0'].append(fit_dic['t0'])
             data['e_t0'].append(np.sqrt(res['covariance'][0, 0]))
 
             if MName in ('salt2', 'salt3'):
                 par_cov = res['covariance'][1:, 1:]
                 mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
-                data['x0'].append(par[2])
+                data['x0'].append(fit_dic['x0'])
                 data['e_x0'].append(np.sqrt(par_cov[0, 0]))
-                data['mb'].append(salt_ut.x0_to_mB(par[2]))
+                data['mb'].append(fit_dic['x0'])
                 data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
-                data['x1'].append(par[3])
+                data['x1'].append(fit_dic['x1'])
                 data['e_x1'].append(np.sqrt(par_cov[1, 1]))
-                data['c'].append(par[4])
+                data['c'].append(fit_dic['c'])
                 data['e_c'].append(np.sqrt(par_cov[2, 2]))
                 data['cov_x0_x1'].append(par_cov[0, 1])
                 data['cov_x0_c'].append(par_cov[0, 2])

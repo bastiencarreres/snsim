@@ -202,13 +202,14 @@ class SN:
             beta = self._model_par['beta']
             x1 = self._model_par['sncosmo']['x1']
             c = self._model_par['sncosmo']['c']
-            mb = self.sim_mu + M0 - alpha * x1 + beta * c + self.mag_sct
+            mb = self.sim_mu + M0 - alpha * x1 + beta * c
 
-            x0 = salt_ut.mB_to_x0(mb)
-            self.sim_x0 = x0
+            self.sim_model.set(x1=x1, c=c)
+            self.sim_model.set_source_peakmag(mb, 'bessellb', 'ab')
+
+            self.sim_x0 = self.sim_model.get('x0')
             self.sim_x1 = x1
             self.sim_c = c
-            self._model_par['sncosmo']['x0'] = x0
 
         # elif self.sim_model.source.name == 'snoopy':
             # TODO

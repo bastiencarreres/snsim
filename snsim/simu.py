@@ -863,6 +863,7 @@ class Simulator:
         if self._fit_res is None:
             self._fit_res = [None] * len(self.sn_list)
             self._fit_resmod = [None] * len(self.sn_list)
+            self._fitdic = [None] * len(self.sn_list)
 
         model_dir = None
         if 'model_dir' in self.config['model_config']:
@@ -896,17 +897,17 @@ class Simulator:
                     fit_model.set(z=sn.z)
                     if mw_dust is not None:
                         dst_ut.add_mw_to_fit(fit_model, sn.mw_ebv, mod_name, rv=rv)
-                    self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(sn.sim_lc,
-                                                                          fit_model,
-                                                                          fit_par)
+                    self._fit_res[i], self._fit_resmod[i], self._fitdic[i] = ut.snc_fitter(sn.sim_lc,
+                                                                                           fit_model,
+                                                                                           fit_par)
         else:
             fit_model.set(z=self.sn_list[sn_ID].z)
             if mw_dust is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sn_list[sn_ID].mw_ebv, mod_name, rv=rv)
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(
-                self.sn_list[sn_ID].sim_lc,
-                fit_model,
-                fit_par)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fitdic[sn_ID] = ut.snc_fitter(
+                                                                                               self.sn_list[sn_ID].sim_lc,
+                                                                                               fit_model,
+                                                                                               fit_par)
 
     def write_fit(self):
         """Write fits results in fits format.
@@ -948,4 +949,4 @@ class Simulator:
             sim_lc_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]
 
         write_file = self.config['data']['write_path'] + self.sim_name + '_fit.fits'
-        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self._get_primary_header())
+        ut.write_fit(sim_lc_meta, self.fit_res, self._fitdic, write_file, sim_meta=self._get_primary_header())
