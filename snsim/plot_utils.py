@@ -293,7 +293,7 @@ def plot_lc(
         ax1.set_ylim(-np.nanmax(ax1_y_lim), np.nanmax(ax1_y_lim))
 
     if snc_fit_model is not None and fit_cov is not None:
-        mb_fit = salt_ut.x0_to_mB(snc_fit_model.parameters[2])
+        mb_fit = snc_fit_model.source_peakmag('bessellb', 'ab')
         mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0])
         fit_par = [(snc_fit_model.parameters[1], np.sqrt(fit_cov[0, 0])),
                    (snc_fit_model.parameters[2], np.sqrt(fit_cov[1, 1])),
