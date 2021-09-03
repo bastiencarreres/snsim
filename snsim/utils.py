@@ -6,10 +6,47 @@ from astropy.table import Table
 import astropy.time as atime
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
+from astropy import cosmology as acosmo
 import astropy.units as u
 from . import nb_fun as nbf
 from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
+
+
+def set_cosmo(cosmo_dic):
+    """Load an astropy cosmological model.
+
+    Parameters
+    ----------
+    cosmo_dic : dict
+        A dict containing cosmology parameters.
+
+    Returns
+    -------
+    astropy.cosmology.object
+        An astropy cosmological model.
+
+    """
+    astropy_mod = list(map(lambda x: x.lower(), acosmo.parameters.available))
+    if 'name' in cosmo_dic.keys():
+        name = cosmo_dic['name'].lower()
+        if name in astropy_mod:
+            if name == 'planck18':
+                return acosmo.Planck18
+            elif name == 'planck15':
+                return acosmo.Planck15
+            elif name == 'planck13':
+                return acosmo.Planck13
+            elif name == 'wmap9':
+                return acosmo.WMAP9
+            elif name == 'wmap7':
+                return acosmo.WMAP7
+            elif name == 'wmap5':
+                return acosmo.WMAP5
+        else:
+            raise ValueError(f'Available model are {astropy_mod}')
+    else:
+        return acosmo.FlatLambdaCDM(**cosmo_dic)
 
 
 def scale_M0_jla(H0):

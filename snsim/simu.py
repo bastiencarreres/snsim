@@ -176,7 +176,7 @@ class Simulator:
         self._random_seed = None
         self._host = None
 
-        self._cosmology = FlatLambdaCDM(**self.config['cosmology'])
+        self._cosmology = ut.set_cosmo(self.config['cosmology'])
         self._survey = scls.SurveyObs(self.config['survey_config'])
         self._generator = scls.SnGen(self.sn_int_par,
                                      self.config['model_config'],
