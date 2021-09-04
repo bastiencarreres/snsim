@@ -411,7 +411,7 @@ def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):
                 mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
                 data['x0'].append(fd['x0'])
                 data['e_x0'].append(np.sqrt(par_cov[0, 0]))
-                data['mb'].append(fd['x0'])
+                data['mb'].append(fd['mb'])
                 data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
                 data['x1'].append(fd['x1'])
                 data['e_x1'].append(np.sqrt(par_cov[1, 1]))
