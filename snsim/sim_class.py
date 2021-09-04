@@ -1125,14 +1125,18 @@ class SurveyObs:
         is_obs = epochs_selec.any()
 
         if is_obs:
+            # Select the observed fields
             selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
 
+            # Check if the SN is in the observed fields and return a boolean dictionnary of obs
+            # fields and a dictionnary cointaining the coord of the SN in the observed fiellds
             dic_map, coord_in_obs_fields = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
 
+            # Update the epochs_selec mask and check if there is some observations
             is_obs, epochs_selec = nbf.map_obs_fields(
-                                                    epochs_selec,
-                                                    self.obs_table['fieldID'][epochs_selec].values,
-                                                    dic_map)
+                                                      epochs_selec,
+                                                      self.obs_table['fieldID'][epochs_selec].values,
+                                                      dic_map)
 
         if is_obs and 'sub_field' in self.config:
             obs_fields_mask = np.vectorize(dic_map.get)(selec_fields_ID)
@@ -1503,7 +1507,7 @@ class SurveyFields:
         Parameters
         ----------
         obs_fieldsID : numpy.array(int)
-            List of ID of the observed fields.
+            ID list of the observed fields.
         coord_in_obs_fields : numba.Dict(int:numpy.array(float))
             Coordinates of SN in the restframe of observed fields.
 
