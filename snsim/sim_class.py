@@ -1441,9 +1441,9 @@ class SurveyFields:
             # Condition <=> always obs
             # Not good implemented
             self._sub_fields_corners = {0: np.array([[-self.size[0] / 2, self.size[1] / 2],
-                                                   [self.size[0] / 2, self.size[1] / 2],
-                                                   [self.size[0] / 2, -self.size[1] / 2],
-                                                   [-self.size[0] / 2, -self.size[1] / 2]])}
+                                                    [self.size[0] / 2, self.size[1] / 2],
+                                                    [self.size[0] / 2, -self.size[1] / 2],
+                                                    [-self.size[0] / 2, -self.size[1] / 2]])}
         else:
             self._sub_fields_corners = self.read_sub_field_map(field_map)
 
