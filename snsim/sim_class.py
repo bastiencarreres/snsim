@@ -1489,7 +1489,7 @@ class SurveyFields:
         return obsfield_map
 
     def show_map(self):
-        """Plot an ASCII representation of subfields.
+        """Plot a representation of subfields.
 
         Returns
         -------
