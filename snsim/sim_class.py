@@ -1130,14 +1130,16 @@ class SurveyObs:
         is_obs = epochs_selec.any()
 
         if is_obs:
+            # Select the observed fields
             selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
-
+      
             dic_map = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
 
+            # Update the epochs_selec mask and check if there is some observations
             is_obs, epochs_selec = nbf.map_obs_fields(
-                                                    epochs_selec,
-                                                    self.obs_table['fieldID'][epochs_selec].values,
-                                                    dic_map)
+                                                      epochs_selec,
+                                                      self.obs_table['fieldID'][epochs_selec].values,
+                                                      dic_map)
 
         if is_obs and 'sub_field' in self.config:
             is_obs, epochs_selec = nbf.map_obs_subfields(
@@ -1485,6 +1487,7 @@ class SurveyFields:
                                        np.array(list(self._sub_fields_corners)),
                                        np.array(list(self._sub_fields_corners.values())))
         return obsfield_map
+
 
     def show_map(self):
         """Plot an ASCII representation of subfields.
