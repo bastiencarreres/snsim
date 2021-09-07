@@ -1488,7 +1488,6 @@ class SurveyFields:
                                        np.array(list(self._sub_fields_corners.values())))
         return obsfield_map
 
-
     def show_map(self):
         """Plot an ASCII representation of subfields.
 
