@@ -5,12 +5,12 @@ import time
 import yaml
 import numpy as np
 from astropy.io import fits
-from astropy.cosmology import FlatLambdaCDM
 from . import utils as ut
 from . import sim_class as scls
 from . import plot_utils as plot_ut
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
+from .open_sim import SnSimPkl
 
 
 class Simulator:
@@ -717,7 +717,7 @@ class Simulator:
         # Export lcs as pickle
         if 'pkl' in self.config['data']['write_format']:
             sim_lc = [sn.sim_lc for sn in self._sn_list]
-            sn_pkl = scls.SnSimPkl(sim_lc, sim_header)
+            sn_pkl = SnSimPkl(sim_lc, sim_header)
             with open(write_path + self.sim_name + '.pkl', 'wb') as file:
                 pickle.dump(sn_pkl, file)
 

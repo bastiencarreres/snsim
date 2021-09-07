@@ -157,7 +157,7 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
 
 
 @njit(cache=True)
-def map_obs_fields(epochs_selec, fieldID, mapdic):
+def map_obs_fields(epochs_selec, fieldID, obsfield):
     """Return the boolean array corresponding to observed fields.
 
     Parameters
@@ -175,7 +175,8 @@ def map_obs_fields(epochs_selec, fieldID, mapdic):
         Is there an observation and the selection of observations.
 
     """
-    epochs_selec[np.copy(epochs_selec)] &= np.array([mapdic[ID] for ID in fieldID])
+    epochs_selec[np.copy(epochs_selec)] &= np.array([True if fID in obsfield
+                                                    else False for fID in fieldID])
     return epochs_selec.any(), epochs_selec
 
 
@@ -206,8 +207,29 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
 
 
 @njit(cache=True)
-def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldID, no_obs_edges,
-                type=types.float64[::1]):
+def radec_to_cart(ra, dec):
+    """Compute carthesian vector for given RA Dec coordinates.
+
+    Parameters
+    ----------
+    ra : float or numpy.ndarray
+        Right Ascension.
+    dec :  float or numpy.ndarray
+        Declinaison.
+
+    Returns
+    -------
+    numpy.ndarray(float)
+        Carthesian coordinates corresponding to RA Dec coordinates.
+
+    """
+    cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
+    return cart_vec
+
+
+@njit(cache=True)
+def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, field_size, fieldID, obs_fieldID,
+                subfields_id, subfields_corners, type=types.float64[::1]):
     """Chek if a SN is in fields.
 
     Parameters
@@ -231,35 +253,41 @@ def is_in_field(ra_field_frame, dec_field_frame, field_size, fieldID, obs_fieldI
         The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
 
     """
-    in_field = np.abs(ra_field_frame) < field_size[0] / 2
-    in_field &= np.abs(dec_field_frame) < field_size[1] / 2
+    ra_fields_array = np.atleast_1d(ra_fields)
+    dec_fields_array = np.atleast_1d(dec_fields)
+    vec = radec_to_cart(SN_ra, SN_dec)
 
+    SN_ra_field_frame, SN_dec_field_frame = new_coord_on_fields(ra_fields_array,
+                                                                dec_fields_array,
+                                                                vec)
+    # Check if the SN is in the field
+    # in_field = np.abs(SN_ra_field_frame) < field_size[0] / 2
+    # in_field &= np.abs(SN_dec_field_frame) < field_size[1] / 2
+
+    in_field = np.empty(len(SN_ra_field_frame), dtype='bool')
+    subfields = np.zeros(len(in_field), dtype='int')
     for i in range(len(in_field)):
-        for edges in no_obs_edges:
-            no_obs_condition = ra_field_frame[i] > edges[0][0]
-            no_obs_condition &= ra_field_frame[i] < edges[0][1]
-            no_obs_condition &= dec_field_frame[i] > edges[1][0]
-            no_obs_condition &= dec_field_frame[i] < edges[1][1]
-            if no_obs_condition:
-                in_field[i] = False
+        for subf, subf_id in zip(subfields_corners, subfields_id):
+            obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
+            obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
+            obs_condition &= SN_dec_field_frame[i] > np.min(subf.T[1])
+            obs_condition &= SN_dec_field_frame[i] < np.max(subf.T[1])
+            if obs_condition:
+                in_field[i] = True
+                subfields[i] = subf_id
                 break
+        if not obs_condition:
+            in_field[i] = False
+            subfields[i] = -99
 
     dic_map = Dict.empty(key_type=types.i8,
-                         value_type=types.b1)
+                         value_type=types.i8)
 
-    coord_in_obs = Dict.empty(key_type=types.i8,
-                              value_type=type)
-
-    for i, (fID, bool) in enumerate(zip(obs_fieldID, in_field)):
-        dic_map[fID] = bool
+    for fID, bool, subf in zip(obs_fieldID, in_field, subfields):
         if bool:
-            coord_in_obs[fID] = np.asarray([ra_field_frame[i], dec_field_frame[i]],
-                                           dtype='f8')
+            dic_map[fID] = subf
 
-    for fID in fieldID:
-        if fID not in dic_map:
-            dic_map[fID] = False
-    return dic_map, coord_in_obs
+    return dic_map
 
 
 @njit(cache=True)
@@ -289,36 +317,3 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
-
-
-@njit(cache=True)
-def in_which_sub_field(obs_fieldID, coord_in_obs_fields,
-                       sub_field_edges, sub_field_map):
-    """Check in which subpart of the field is the SN.
-
-    Parameters
-    ----------
-    obs_fieldID : numpy.ndarray(int)
-        Field Id of each observation.
-    coord_in_obs_subfield : numba.Dict(numba.int8:numba.float64[::1])
-        SN coordinates (RA, Dec) in the field.
-    sub_field_edges : numpy.ndaray(numpy.ndarray(float), numpy.ndarray(float))
-        Edges of subfields along RA and Dec.
-    sub_field_map : numpy.ndarray(int)
-        Map the position on field to subfield ID.
-
-    Returns
-    -------
-    numba.Dict(int:int)
-        Numba dic of observed subfield in each observed field.
-
-    """
-    dic_map = Dict.empty(key_type=types.i8,
-                         value_type=types.i8)
-
-    for fID in obs_fieldID:
-        ra, dec = coord_in_obs_fields[fID]
-        ra_idx = np.max(np.where(ra >= sub_field_edges[0])[0])
-        dec_idx = np.max(np.where(dec >= sub_field_edges[1])[0])
-        dic_map[fID] = sub_field_map[len(sub_field_map) - dec_idx - 1, ra_idx]
-    return dic_map

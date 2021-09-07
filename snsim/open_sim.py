@@ -350,3 +350,54 @@ class OpenSim:
 
         write_file = self._file_path + '_fit.fits'
         ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_file, sim_meta=self.header)
+
+
+class SnSimPkl:
+    """Class to store simulation as pickle.
+
+    Parameters
+    ----------
+    sim_lc : list(astropy.Table)
+        The simulated lightcurves.
+    header : dict
+        The metadata of the simulation.
+
+    Attributes
+    ----------
+    _header : dict
+        A copy of input header.
+    _sim_lc : list(astropy.Table)
+        A copy of input sim_lc.
+
+    """
+
+    def __init__(self, sim_lc, header):
+        """Initialize SnSimPkl class."""
+        self._header = header
+        self._sim_lc = sim_lc
+
+    @property
+    def header(self):
+        """Get header."""
+        return self._header
+
+    @property
+    def sim_lc(self):
+        """Get sim_lc."""
+        return self._sim_lc
+
+    def get(self, key):
+        """Get an array of sim_lc metadata.
+
+        Parameters
+        ----------
+        key : str
+            The metadata to access.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the key metadata for all SN.
+
+        """
+        return np.array([lc.meta[key] for lc in self.sim_lc])
