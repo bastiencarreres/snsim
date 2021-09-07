@@ -1,8 +1,11 @@
 """This module contains the class which are used in the simulation."""
 
 import sqlite3
+import io
 import numpy as np
 import sncosmo as snc
+import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
@@ -1129,7 +1132,7 @@ class SurveyObs:
         if is_obs:
             selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
 
-            dic_map, coord_in_obs_fields = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
+            dic_map = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
 
             is_obs, epochs_selec = nbf.map_obs_fields(
                                                     epochs_selec,
@@ -1137,15 +1140,11 @@ class SurveyObs:
                                                     dic_map)
 
         if is_obs and 'sub_field' in self.config:
-            obs_fields_mask = np.vectorize(dic_map.get)(selec_fields_ID)
-            sub_fields_dic = self.fields.in_which_sub_field(selec_fields_ID[obs_fields_mask],
-                                                            coord_in_obs_fields)
             is_obs, epochs_selec = nbf.map_obs_subfields(
                                     epochs_selec,
                                     self.obs_table['fieldID'][epochs_selec].values,
                                     self.obs_table[self.config['sub_field']][epochs_selec].values,
-                                    sub_fields_dic)
-
+                                    dic_map)
         if is_obs:
             return self._make_obs_table(epochs_selec)
         return None
@@ -1213,8 +1212,7 @@ class SurveyObs:
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
 
         if 'sub_field' in self.config:
-            obs[self.config['sub_field'][1]] = self._obs_table[self.config['sub_field']
-                                                               ][epochs_selec]
+            obs[self.config['sub_field']] = self._obs_table[self.config['sub_field']][epochs_selec]
 
         if 'add_data' in self.config:
             for k in self.config['add_data']:
@@ -1316,57 +1314,6 @@ class SnHost:
         return self.table.iloc[idx]
 
 
-class SnSimPkl:
-    """Class to store simulation as pickle.
-
-    Parameters
-    ----------
-    sim_lc : list(astropy.Table)
-        The simulated lightcurves.
-    header : dict
-        The metadata of the simulation.
-
-    Attributes
-    ----------
-    _header : dict
-        A copy of input header.
-    _sim_lc : list(astropy.Table)
-        A copy of input sim_lc.
-
-    """
-
-    def __init__(self, sim_lc, header):
-        """Initialize SnSimPkl class."""
-        self._header = header
-        self._sim_lc = sim_lc
-
-    @property
-    def header(self):
-        """Get header."""
-        return self._header
-
-    @property
-    def sim_lc(self):
-        """Get sim_lc."""
-        return self._sim_lc
-
-    def get(self, key):
-        """Get an array of sim_lc metadata.
-
-        Parameters
-        ----------
-        key : str
-            The metadata to access.
-
-        Returns
-        -------
-        numpy.ndarray
-            The array of the key metadata for all SN.
-
-        """
-        return np.array([lc.meta[key] for lc in self.sim_lc])
-
-
 class SurveyFields:
     """Fields properties object.
 
@@ -1410,6 +1357,72 @@ class SurveyFields:
         self._sub_field_map = None
         self._init_fields_map(field_map)
 
+    @property
+    def size(self):
+        """Get field size (ra,dec) in radians."""
+        return np.radians(self._size)
+
+    def read_sub_field_map(self, field_map):
+        file = open(field_map)
+        # Header symbol
+        dic_symbol = {}
+        nbr_id = -2
+        lines = file.readlines()
+        for i, l in enumerate(lines):
+            if l[0] == '%':
+                key_val = l[1:].strip().split(':')
+                dic_symbol[key_val[0]] = {'nbr': nbr_id}
+                dic_symbol[key_val[0]]['size'] = np.radians(float(key_val[2]))
+                dic_symbol[key_val[0]]['type'] = key_val[1].lower()
+                if key_val[1].lower() not in ['ra', 'dec']:
+                    raise ValueError('Espacement type is ra or dec')
+                nbr_id -= 1
+            else:
+                break
+
+        # Compute void region
+        # For the moment only work with regular grid
+        subfield_map = [string.strip().split(':') for string in lines[i:] if string != '\n']
+        used_ra = len(subfield_map[0])
+        used_dec = len(subfield_map)
+        ra_space = 0
+        for k in dic_symbol.keys():
+            if dic_symbol[k]['type'] == 'ra':
+                ra_space += subfield_map[0].count(k) * dic_symbol[k]['size']
+                used_ra -= subfield_map[0].count(k)
+        dec_space = 0
+        for lines in subfield_map:
+            if lines[0] in dic_symbol.keys() and dic_symbol[lines[0]]['type'] == 'dec':
+                dec_space += dic_symbol[lines[0]]['size']
+                used_dec -= 1
+
+        subfield_ra_size = (self.size[0] - ra_space) / used_ra
+        subfield_dec_size = (self.size[1] - dec_space) / used_dec
+
+        # Compute all ccd corner
+        corner_dic = {}
+        dec_metric = self.size[1] / 2
+        for i, l in enumerate(subfield_map):
+            if l[0] in dic_symbol and dic_symbol[l[0]]['type'] == 'dec':
+                dec_metric -= dic_symbol[l[0]]['size']
+            else:
+                ra_metric = - self.size[0] / 2
+                for j, elmt in enumerate(l):
+                    if elmt in dic_symbol.keys() and dic_symbol[elmt]['type'] == 'ra':
+                        ra_metric += dic_symbol[elmt]['size']
+                    elif int(elmt) == -1:
+                        ra_metric += subfield_ra_size
+                    else:
+                        corner_dic[int(elmt)] = np.array([
+                                    [ra_metric, dec_metric],
+                                    [ra_metric + subfield_ra_size, dec_metric],
+                                    [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
+                                    [ra_metric, dec_metric - subfield_dec_size]])
+                        ra_metric += subfield_ra_size
+                dec_metric -= subfield_dec_size
+        self.dic_sfld_file = dic_symbol
+        return corner_dic
+
     def _init_fields_map(self, field_map):
         """Init the subfield map parameters..
 
@@ -1426,38 +1439,13 @@ class SurveyFields:
         """
         if field_map == 'rectangle':
             # Condition <=> always obs
-            self._no_obs_edges = np.array([[[self.size[0], -self.size[0]],
-                                            [self.size[1], -self.size[1]]]])
+            # Not good implemented
+            self._sub_fields_corners = {0: np.array([[-self.size[0] / 2, self.size[1] / 2],
+                                                   [self.size[0] / 2, self.size[1] / 2],
+                                                   [self.size[0] / 2, -self.size[1] / 2],
+                                                   [-self.size[0] / 2, -self.size[1] / 2]])}
         else:
-            self._sub_field_map = np.loadtxt(field_map,
-                                             delimiter=':',
-                                             dtype=int)
-            # array(RA_edges, Dec_edges)
-            self._sub_field_edges = np.array([np.linspace(-self.size[0] / 2,
-                                                          self.size[0] / 2,
-                                                          self._sub_field_map.shape[1] + 1),
-                                              np.linspace(-self.size[1] / 2,
-                                                          self.size[1] / 2,
-                                                          self._sub_field_map.shape[0] + 1)])
-            # Construc bounds of no obs subfields
-            no_obs_edges = []
-            map_len = self._sub_field_map.shape[0]
-            for i in range(self._sub_field_map.shape[1]):
-                for j in range(self._sub_field_map.shape[0]):
-                    if self._sub_field_map[j, i] == -1:
-                        no_obs_edges.append([
-                            self._sub_field_edges[0][i:i + 2],
-                            self._sub_field_edges[1][map_len - j - 1:map_len - j + 1]])
-            if no_obs_edges == []:
-                # Condition <=> always obs
-                no_obs_edges = [[[self.size[0], -self.size[0]],
-                                [self.size[1], -self.size[1]]]]
-            self._no_obs_edges = np.array(no_obs_edges)
-
-    @property
-    def size(self):
-        """Get field size (ra,dec) in radians."""
-        return np.radians(self._size)
+            self._sub_fields_corners = self.read_sub_field_map(field_map)
 
     def is_in_field(self, SN_ra, SN_dec, fields_pre_selec=None):
         """Check if a SN is in a field and return the coordinates in the field frame.
@@ -1486,40 +1474,17 @@ class SurveyFields:
             dec_fields = [self._dic[k]['dec'] for k in self._dic]
 
         # Compute the coord of the SN in the rest frame of each field
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(SN_ra, SN_dec,
-                                                              ra_fields,
-                                                              dec_fields)
 
-        obsfield_map, coord_in_obs_fields = nbf.is_in_field(ra_field_frame,
-                                                            dec_field_frame,
-                                                            self.size,
-                                                            np.array([k for k in self._dic]),
-                                                            fields_pre_selec,
-                                                            self._no_obs_edges)
-
-        return obsfield_map, coord_in_obs_fields
-
-    def in_which_sub_field(self, obs_fieldsID, coord_in_obs_fields):
-        """Find in which subfield is the SN.
-
-        Parameters
-        ----------
-        obs_fieldsID : numpy.array(int)
-            List of ID of the observed fields.
-        coord_in_obs_fields : numba.Dict(int:numpy.array(float))
-            Coordinates of SN in the restframe of observed fields.
-
-        Returns
-        -------
-        numba.Dict(int:int)
-            The subfields where the SN is observed for each fields.
-
-        """
-        sub_field_dic = nbf.in_which_sub_field(obs_fieldsID,
-                                               coord_in_obs_fields,
-                                               self._sub_field_edges,
-                                               self._sub_field_map)
-        return sub_field_dic
+        obsfield_map = nbf.is_in_field(SN_ra,
+                                       SN_dec,
+                                       ra_fields,
+                                       dec_fields,
+                                       self.size,
+                                       np.array([k for k in self._dic]),
+                                       fields_pre_selec,
+                                       np.array(list(self._sub_fields_corners)),
+                                       np.array(list(self._sub_fields_corners.values())))
+        return obsfield_map
 
     def show_map(self):
         """Plot an ASCII representation of subfields.
@@ -1530,29 +1495,15 @@ class SurveyFields:
             Just print something.
 
         """
-        if self._sub_field_map is None:
-            print('No sub field')
-            return
-        ra_label = np.degrees(self._sub_field_edges[0])
-        dec_label = np.degrees(self._sub_field_edges[1])
-        edge = '-------'
-        format = '|  {:02}  '
-        print('\n')
-        print(f'  {dec_label[-1]:.2f} --'
-              + edge * self._sub_field_map.shape[0])
-        for i, row in enumerate(self._sub_field_map):
-            str_list = [format.format(self._sub_field_map[i, j]) for j in range(len(row))]
-            str_list += '|\n '
-            if dec_label[self._sub_field_map.shape[0] - i - 1] >= 0:
-                str_list += [' ']
-            str_list += [f'{dec_label[self._sub_field_map.shape[0] - i - 1]:.2f} --'
-                         + edge * len(row)]
-            print('        '+''.join(str_list))
+        fig, ax = plt.subplots()
+        for k, corners in self._sub_fields_corners.items():
+            corners_deg = np.degrees(corners)
+            p = Polygon(corners_deg, color='r', fill=False)
+            ax.add_patch(p)
+            x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
+            y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
+            ax.text(x_text, y_text, k, ha='center', va='center')
+        ax.set_xlim(-self._size[0] / 2 - 0.5, self._size[0] / 2 + 0.5)
+        ax.set_ylim(- self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
 
-        print("        '"+''.join(["      '"] * self._sub_field_map.shape[0]))
-        str_list = [f"      {ra_label[0]:.2f}"]
-        for i in range(self._sub_field_map.shape[1]):
-            if ra_label[i + 1] >= 0:
-                str_list += ' '
-            str_list += [f'  {ra_label[i + 1]:.2f}']
-        print(''.join(str_list))
+        plt.show()
