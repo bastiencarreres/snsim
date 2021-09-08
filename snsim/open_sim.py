@@ -336,7 +336,7 @@ class OpenSim:
         model_name = self.header['Mname']
 
         if model_name in ('salt2', 'salt3'):
-            sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
+            sim_lc_meta['sim_x0'] = [lc.meta['sim_x0'] for lc in self.sim_lc]
             sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
             sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
             sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
