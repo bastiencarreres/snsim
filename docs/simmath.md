@@ -31,9 +31,14 @@ $$
 with :
 
 - **$z_{cos}$** the cosmological redshift
+
 - **$z_{vp}$** the redshift due to the peculiar velocity of the SN / CMB
+
 - **$z_{2cmb}$** the redshift due to our peculiar motion / CMB
+
 - **$r(z)$** the comoving distance
+
+  
 
 ## Noise formula
 
