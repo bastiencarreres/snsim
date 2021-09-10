@@ -74,36 +74,10 @@ model_config:
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
 * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
-## Usage and output
-```python
-from snsim import Simulator
 
-sim = Simulator('yaml_cfg_file.yml')
-sim.simulate()
-```
+## Documentation
 
-The result is stored in sim.sn_list list which each entry is a SN object. Simulated lc and metadata are given by :
-```python
-sim.sn_list[i].sim_lc
-sim.sn_list[i].sim_lc.meta
-
-#  For more information :
-help(snsim.SN)
-```
-The basic list of ligth curves metadata is given in the following table :
-
-| z |  sim_t0   | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id   | sim_mu | m_sct |
-| :------------:  | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
-|  Observed redshift | Peaktime | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | Contribution from our peculiar motion to redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | Simulated distance modulli | Coherent scattering term |
-
-If you use SALT2/3 model you add some arguments to metadata:
-
-
-|         sim_x0          |      sim_x1       |      sim_c      |               sim_mb                |
-| :---------------------: | :---------------: | :-------------: | :---------------------------------: |
-| Normalization parameter | Stretch parameter | color parameter | SN magnitude in restframe Bessell B |
-
-Moreover, if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
+ The documentation is [here](./docs/build/html/index.html )
 
 ## Script launch
 

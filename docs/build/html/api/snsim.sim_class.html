@@ -1,0 +1,255 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>snsim.sim_class &mdash; snsim 0.3.5 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="snsim.sim_class.SN" href="snsim.sim_class.SN.html" />
+    <link rel="prev" title="snsim.OpenSim" href="snsim.OpenSim.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> snsim
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basicusage.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configfile.html">Configuration input yaml file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../obsfile.html">Observation database file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hostfile.html">Host file</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">Reference / API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="snsim.Simulator.html">snsim.Simulator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.OpenSim.html">snsim.OpenSim</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">snsim.sim_class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SN.html">snsim.sim_class.SN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SnGen.html">snsim.sim_class.SnGen</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SurveyObs.html">snsim.sim_class.SurveyObs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SurveyFields.html">snsim.sim_class.SurveyFields</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">snsim</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../reference.html">Reference / API</a> &raquo;</li>
+        
+      <li>snsim.sim_class</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/api/snsim.sim_class.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-snsim.sim_class">
+<span id="snsim-sim-class"></span><h1>snsim.sim_class<a class="headerlink" href="#module-snsim.sim_class" title="Permalink to this headline">¶</a></h1>
+<p>This module contains the class which are used in the simulation.</p>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="snsim.sim_class.SN.html#snsim.sim_class.SN" title="snsim.sim_class.SN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SN</span></code></a>(sn_par, sim_model, model_par)</p></td>
+<td><p>This class represent SN object.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="snsim.sim_class.SnGen.html#snsim.sim_class.SnGen" title="snsim.sim_class.SnGen"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SnGen</span></code></a>(sn_int_par, model_config, cmb, …[, …])</p></td>
+<td><p>This class set up the random part of the SN simulation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SnHost</span></code>(host_file[, z_range])</p></td>
+<td><p>Class containing the SN Host parameters.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="snsim.sim_class.SurveyFields.html#snsim.sim_class.SurveyFields" title="snsim.sim_class.SurveyFields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SurveyFields</span></code></a>(fields_dic, ra_size, dec_size, …)</p></td>
+<td><p>Fields properties object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="snsim.sim_class.SurveyObs.html#snsim.sim_class.SurveyObs" title="snsim.sim_class.SurveyObs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SurveyObs</span></code></a>(survey_config)</p></td>
+<td><p>This class deals with the observations of the survey.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="snsim.sim_class.SN.html" class="btn btn-neutral float-right" title="snsim.sim_class.SN" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="snsim.OpenSim.html" class="btn btn-neutral float-left" title="snsim.OpenSim" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Carreres.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

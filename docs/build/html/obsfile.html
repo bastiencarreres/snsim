@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Observation database file &mdash; snsim 0.3.5 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Host file" href="hostfile.html" />
+    <link rel="prev" title="Configuration input yaml file" href="configfile.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> snsim
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basicusage.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configfile.html">Configuration input yaml file</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Observation database file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hostfile.html">Host file</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">Reference / API</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">snsim</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Observation database file</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/obsfile.md.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="tex2jax_ignore mathjax_ignore section" id="observation-database-file">
+<h1>Observation database file<a class="headerlink" href="#observation-database-file" title="Permalink to this headline">¶</a></h1>
+<p>It’s a sql database file which contain cadence information. It’s used to find obs epoch and their noise.</p>
+<p>The required data keys are resumed in the next table</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="text-align:center head"><p>expMJD</p></th>
+<th class="text-align:center head"><p>filter</p></th>
+<th class="text-align:center head"><p>fieldID</p></th>
+<th class="text-align:center head"><p>fieldRA (rad)</p></th>
+<th class="text-align:center head"><p>fieldDec (rad)</p></th>
+<th class="text-align:center head"><p>noise_key</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-align:center"><p>Obs time in MJD</p></td>
+<td class="text-align:center"><p>Obs band</p></td>
+<td class="text-align:center"><p>The ID of the field</p></td>
+<td class="text-align:center"><p>Right ascension of the obs field</p></td>
+<td class="text-align:center"><p>Declinaison of the obs field</p></td>
+<td class="text-align:center"><p>The column you want to use as noise in the simulation</p></td>
+</tr>
+</tbody>
+</table>
+<p>You can set a different zero point and its error for each observation by setting the two additional columns:</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="text-align:center head"><p>zp</p></th>
+<th class="text-align:center head"><p>sig_zp</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-align:center"><p>Zero point of the observation (Optional if given in yaml)</p></td>
+<td class="text-align:center"><p>Uncertainty of the zeropoint (Optional if given in yaml)</p></td>
+</tr>
+</tbody>
+</table>
+<p>If you want to use subfield index for observation properties or just set the geometry of the field, you have to give a .dat file that give the representation of the subfield, for example if you split your field into a 4 x 4 grid, you have to put something like that in your .dat file :</p>
+<div class="highlight-pseudocode notranslate"><div class="highlight"><pre><span></span>ID01:ID02:ID03:ID04
+ID05:ID06:ID07:ID08
+ID09:ID10:ID11:ID12
+ID13:ID14:ID15:ID16
+</pre></div>
+</div>
+<p>If a sub field is not observed you should set the ID value to -1.</p>
+<p>In addition, you can add space between subfield by adding a header (begin line with %) that defines some “space-symbols”:</p>
+<div class="highlight-pseudocode notranslate"><div class="highlight"><pre><span></span>% #:ra:0.13 
+% @:dec:0.13
+
+ID01:ID02:ID03:ID04
+ID05:ID06:ID07:ID08
+ID09:ID10:ID11:ID12
+ID13:ID14:ID15:ID16
+</pre></div>
+</div>
+<p>In the previous example the symbol # is used has a ra space of 0.13 degrees and the &#64; is used has a dec space of 0.13 degrees.</p>
+<p>You can show the sub filed map by :</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span><span class="o">.</span><span class="n">survey</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">show_map</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="hostfile.html" class="btn btn-neutral float-right" title="Host file" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="configfile.html" class="btn btn-neutral float-left" title="Configuration input yaml file" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Carreres.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

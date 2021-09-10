@@ -1,0 +1,509 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>snsim.Simulator &mdash; snsim 0.3.5 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="snsim.OpenSim" href="snsim.OpenSim.html" />
+    <link rel="prev" title="Reference / API" href="../reference.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> snsim
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basicusage.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configfile.html">Configuration input yaml file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../obsfile.html">Observation database file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hostfile.html">Host file</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">Reference / API</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">snsim.Simulator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.OpenSim.html">snsim.OpenSim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.html">snsim.sim_class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SN.html">snsim.sim_class.SN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SnGen.html">snsim.sim_class.SnGen</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SurveyObs.html">snsim.sim_class.SurveyObs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SurveyFields.html">snsim.sim_class.SurveyFields</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">snsim</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../reference.html">Reference / API</a> &raquo;</li>
+        
+      <li>snsim.Simulator</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/api/snsim.Simulator.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="snsim-simulator">
+<h1>snsim.Simulator<a class="headerlink" href="#snsim-simulator" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="snsim.Simulator">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">snsim.</span></span><span class="sig-name descname"><span class="pre">Simulator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_dic</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snsim.Simulator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulation class using a config file config.yml.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>param_dic</strong><span class="classifier">dict / str</span></dt><dd><p>The configuration yaml file / The dictionnary containing all simulation parameters.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>If the name of bands in the survey file doesn’t match sncosmo bands</p></li>
+</ul>
+<p>you can use the key band_dic to translate filters names
+- If you don’t set the filter name item in nep_cut, the cut apply to all the bands
+- For wavelength dependent model, nomanclature follow arXiv:1209.2482</p>
+<blockquote>
+<div><p>Possibilities are :
+-&gt; ‘G10’ for Guy et al. 2010 model,
+-&gt; ‘C11’ or ‘C11_0’ for Chotard et al. model with correlation between
+U’ and U = 0, ‘C11_1’ for Cor(U’,U) = 1 and ‘C11_2’ for Cor(U’,U) = -1</p>
+</div></blockquote>
+<p>yaml file format :</p>
+<div class="line-block">
+<div class="line">data :</div>
+<div class="line-block">
+<div class="line">write_path: ‘/PATH/TO/OUTPUT’</div>
+<div class="line">sim_name: ‘NAME OF SIMULATION’</div>
+<div class="line">write_format: ‘format’ or [‘format1’,’format2’]</div>
+</div>
+<div class="line">survey_config:</div>
+<div class="line-block">
+<div class="line-block">
+<div class="line">survey_file: ‘/PATH/TO/FILE’</div>
+<div class="line">band_dic: {‘r’:’ztfr’,’g’:’ztfg’,’i’:’ztfi’} #(Optional -&gt; if bandname in</div>
+</div>
+<div class="line">survey_file doesn’t match sncosmo name)</div>
+<div class="line-block">
+<div class="line">add_data: [‘keys1’, ‘keys2’, …] add db file keys to metadata</div>
+<div class="line">survey_cut: {‘key1’: [‘conditon1’,’conditon2’,…], ‘key2’: [‘conditon1’]}</div>
+<div class="line">start_day: MJD NUMBER or ‘YYYY-MM-DD’(Optional, default given by survey file)</div>
+<div class="line">duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)</div>
+<div class="line">zp: INSTRUMENTAL ZEROPOINT (Optional, default given by survey file)</div>
+<div class="line">sig_zp: ZEROPOINT ERROR (Optional, default given by survey file)</div>
+<div class="line">sig_psf: GAUSSIAN PSF SIGMA (Otional, default given by survey file as FWHMeff)</div>
+<div class="line">noise_key: [key, type] type can be ‘mlim5’ or ‘skysigADU’</div>
+<div class="line">ra_size: RA FIELD SIZE</div>
+<div class="line">dec_size: DEC FIELD SIZE</div>
+<div class="line">gain: CCD GAIN e-/ADU</div>
+<div class="line">sub_field: [‘sub_field_file’, ‘sub_field_key’]</div>
+</div>
+</div>
+<div class="line">sn_gen:</div>
+<div class="line-block">
+<div class="line">n_sn: NUMBER OF SN TO GENERATE (Otional)</div>
+<div class="line">duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)</div>
+<div class="line">sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5) or ‘ptf19’</div>
+<div class="line">rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)</div>
+<div class="line">nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,’filter1’],…] EP CUTS</div>
+<div class="line">randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)</div>
+<div class="line">z_range: [ZMIN, ZMAX]</div>
+<div class="line">M0: SN ABSOLUT MAGNITUDE</div>
+<div class="line">mag_sct: SN INTRINSIC COHERENT SCATTERING</div>
+<div class="line">sct_model: ‘G10’,’C11_i’ USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING</div>
+</div>
+<div class="line">cosmology:</div>
+<div class="line-block">
+<div class="line">Om0: MATTER DENSITY</div>
+<div class="line">H0: HUBBLE CONSTANT</div>
+</div>
+<div class="line">cmb:</div>
+<div class="line-block">
+<div class="line">v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 620 km/s)</div>
+<div class="line">l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)</div>
+<div class="line">b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)</div>
+</div>
+<div class="line">model_config:</div>
+<div class="line-block">
+<div class="line">model_name: ‘THE MODEL NAME’  Example : ‘salt2’</div>
+<div class="line">model_dir: ‘/PATH/TO/SALT/MODEL’</div>
+<div class="line">alpha: STRETCH CORRECTION = alpha*x1</div>
+<div class="line">beta: COLOR CORRECTION = -beta*c</div>
+<div class="line">dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or ‘N21’</div>
+<div class="line">dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]</div>
+<div class="line">mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)</div>
+</div>
+<div class="line">vpec_dist:</div>
+<div class="line-block">
+<div class="line">mean_vpec: MEAN SN PECULIAR VELOCITY</div>
+<div class="line">sig_vpec: SIGMA VPEC</div>
+</div>
+<div class="line">host_file: ‘PATH/TO/HOSTFILE’ (Optional)</div>
+<div class="line">alpha_dipole: #Experimental alpha fine structure constant dipole, optional</div>
+<div class="line-block">
+<div class="line">coord: [RA, Dec] # Direction of the dipole</div>
+<div class="line">A: A_parameter # alpha dipole = A + B * cos(theta)</div>
+<div class="line">B: B_parameter</div>
+</div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>_config</strong><span class="classifier">dict</span></dt><dd><p>The simulation parameters dictionnary</p>
+</dd>
+<dt><strong>_sn_list</strong><span class="classifier">list (init value = None)</span></dt><dd><p>List containing simulated SN object</p>
+</dd>
+<dt><strong>_fit_res</strong><span class="classifier">list (init value = None)</span></dt><dd><p>List containing sncosmo fit results</p>
+</dd>
+<dt><strong>_random_seed</strong><span class="classifier">int (init value = None)</span></dt><dd><p>The primary random seed of the simulation</p>
+</dd>
+<dt><strong>_host</strong><span class="classifier">SnHost (default = None)</span></dt><dd><p>Host object of the simulation</p>
+</dd>
+<dt><strong>_obs</strong><span class="classifier">ObsTable</span></dt><dd><p>ObsTable object of the simulation.</p>
+</dd>
+<dt><strong>_generator</strong><span class="classifier">SNGen</span></dt><dd><p>SNGen object of the simulation</p>
+</dd>
+<dt><strong>_use_rate</strong><span class="classifier">boolean</span></dt><dd><p>Is the number of SN to simulate fixed?</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 45%" />
+<col style="width: 55%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><strong>sn_rate(z)</strong></p></td>
+<td><p>Give the rate SNs/Mpc^3/year at redshift z.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>simulate()</strong></p></td>
+<td><p>Launch the simulation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)</strong></p></td>
+<td><p>Plot the given SN lightcurve.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>plot_ra_dec(self, plot_vpec=False, **kwarg):</strong></p></td>
+<td><p>Plot a mollweide map of ra, dec.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>fit_lc(sn_ID = None)</strong></p></td>
+<td><p>Fit all or just one SN lightcurve(s).</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>write_fit()</strong></p></td>
+<td><p>Write fits results in fits format.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>_time_rate_bins()</strong></p></td>
+<td><p>Give the time rate SN/years in redshift bins.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>_gen_n_sn(rand_seed)</strong></p></td>
+<td><p>Generate the number of SN with Poisson law.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>_cadence_sim()</strong></p></td>
+<td><p>Simulaton where the number of SN observed is determined by survey properties and poisson law.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>_fix_nsn_sim()</strong></p></td>
+<td><p>Simulation where the number of SN is fixed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>_get_primary_header()</strong></p></td>
+<td><p>Generate the primary header of sim fits file.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>_write_sim()</strong></p></td>
+<td><p>Write sim lightcurves in fits or/and pkl format(s).</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="snsim.Simulator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_dic</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snsim.Simulator.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialise Simulator class.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#snsim.Simulator.__init__" title="snsim.Simulator.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(param_dic)</p></td>
+<td><p>Initialise Simulator class.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_lc</span></code>([sn_ID, mw_dust])</p></td>
+<td><p>Fit all or just one SN lightcurve(s).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sn_par</span></code>(key)</p></td>
+<td><p>Get an array of a sim_lc meta data.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_lc</span></code>(sn_ID[, mag, zp, plot_sim, plot_fit, Jy])</p></td>
+<td><p>Plot the given SN lightcurve.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_ra_dec</span></code>([plot_vpec, plot_fields])</p></td>
+<td><p>Plot a mollweide map of ra, dec.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">simulate</span></code>()</p></td>
+<td><p>Launch the simulation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sn_rate</span></code>(z)</p></td>
+<td><p>Give the rate SNs/Mpc^3/year at redshift z.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_fit</span></code>()</p></td>
+<td><p>Write fits results in fits format.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">alpha_dipole</span></code></p></td>
+<td><p>Get alpha dipole parameters.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cmb</span></code></p></td>
+<td><p>Get cmb parameters.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></p></td>
+<td><p>Get the whole configuration dic.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cosmology</span></code></p></td>
+<td><p>Get astropy cosmological model used in simulation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_res</span></code></p></td>
+<td><p>Get the sn fit results.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_resmod</span></code></p></td>
+<td><p>Get the sn fit results sncosmo models.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">generator</span></code></p></td>
+<td><p>Get the SNGen object of the simulation.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">host</span></code></p></td>
+<td><p>Get the SnHost object of the simulation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_name</span></code></p></td>
+<td><p>Get the name of sn model used.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_sn</span></code></p></td>
+<td><p>Get number of sn simulated.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">nep_cut</span></code></p></td>
+<td><p>Get the list of epochs cuts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">peak_time_range</span></code></p></td>
+<td><p>Get the time range for simulate SN peak.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">rand_seed</span></code></p></td>
+<td><p>Get primary random seed of the simulation.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sim_name</span></code></p></td>
+<td><p>Get sim name.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sn_int_par</span></code></p></td>
+<td><p>Get the intrinsic parameters of SN Ia.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sn_list</span></code></p></td>
+<td><p>Get the list of simulated sn.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sn_rate_z0</span></code></p></td>
+<td><p>Get the sn rate parameters.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">survey</span></code></p></td>
+<td><p>Get the SurveyObs object of the simulation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vpec_dist</span></code></p></td>
+<td><p>Get vpec option.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">z_range</span></code></p></td>
+<td><p>Get the simulation cosmological redshift range.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="snsim.OpenSim.html" class="btn btn-neutral float-right" title="snsim.OpenSim" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../reference.html" class="btn btn-neutral float-left" title="Reference / API" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Carreres.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
