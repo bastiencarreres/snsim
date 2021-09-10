@@ -1,0 +1,339 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>snsim.sim_class.SurveyObs &mdash; snsim 0.3.5 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="snsim.sim_class.SurveyFields" href="snsim.sim_class.SurveyFields.html" />
+    <link rel="prev" title="snsim.sim_class.SnGen" href="snsim.sim_class.SnGen.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> snsim
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basicusage.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configfile.html">Configuration input yaml file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../obsfile.html">Observation database file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hostfile.html">Host file</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">Reference / API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="snsim.Simulator.html">snsim.Simulator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.OpenSim.html">snsim.OpenSim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.html">snsim.sim_class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SN.html">snsim.sim_class.SN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SnGen.html">snsim.sim_class.SnGen</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">snsim.sim_class.SurveyObs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snsim.sim_class.SurveyFields.html">snsim.sim_class.SurveyFields</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">snsim</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../reference.html">Reference / API</a> &raquo;</li>
+        
+      <li>snsim.sim_class.SurveyObs</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/api/snsim.sim_class.SurveyObs.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="snsim-sim-class-surveyobs">
+<h1>snsim.sim_class.SurveyObs<a class="headerlink" href="#snsim-sim-class-surveyobs" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="snsim.sim_class.SurveyObs">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">snsim.sim_class.</span></span><span class="sig-name descname"><span class="pre">SurveyObs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">survey_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snsim.sim_class.SurveyObs" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class deals with the observations of the survey.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>survey_config</strong><span class="classifier">dic</span></dt><dd><p>It contains all the survey configuration.
+survey_config
+├── survey_file PATH TO SURVEY FILE
+├── ra_size RA FIELD SIZE IN DEG -&gt; float
+├── dec_size DEC FIELD SIZE IN DEG -&gt; float
+├── gain CCD GAIN e-/ADU -&gt; float
+├── start_day STARTING DAY -&gt; float or str, opt
+├── end_day ENDING DAY -&gt; float or str, opt
+├── duration SURVEY DURATION -&gt; float, opt
+├── zp FIXED ZEROPOINT -&gt; float, opt
+├── survey_cut, CUT ON DB FILE -&gt; dict, opt
+├── add_data, LIST OF KEY TO ADD METADATA -&gt; list(str), opt
+├── field_map, PATH TO SUBFIELD MAP FILE -&gt; str, opt
+└── sub_field, SUBFIELD KEY -&gt; str, opt</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>_config</strong><span class="classifier">dict</span></dt><dd><p>Copy of the survey_config input dict.</p>
+</dd>
+<dt><strong>_obs_table</strong><span class="classifier">pandas.DataFrame</span></dt><dd><p>Table containing observations.</p>
+</dd>
+<dt><strong>fields</strong><span class="classifier">SurveyFields</span></dt><dd><p>SurveyFields object contains fields properties.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 18%" />
+<col style="width: 82%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><strong>_init_field_dic(self):</strong></p></td>
+<td><p>Create a dictionnary with fieldID and coord.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>_extract_from_db(self)</strong></p></td>
+<td><p>Extract the observation from SQL data base.  _read_start_end_days(self): Initialise the start and ending day from survey configuration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>epochs_selection(self, SN)</strong></p></td>
+<td><p>Give the epochs of observation of a given SN.  _make_obs_table(self, epochs_selec): Create the astropy table from selection bool array.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="snsim.sim_class.SurveyObs.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">survey_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snsim.sim_class.SurveyObs.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize SurveyObs class.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#snsim.sim_class.SurveyObs.__init__" title="snsim.sim_class.SurveyObs.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(survey_config)</p></td>
+<td><p>Initialize SurveyObs class.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">epochs_selection</span></code>(SN_obj)</p></td>
+<td><p>Give the epochs of observations of a given SN.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">band_dic</span></code></p></td>
+<td><p>Get the dic band_survey : band_sncosmo.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></p></td>
+<td><p>Survey configuration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">duration</span></code></p></td>
+<td><p>Get the survey duration in days.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">gain</span></code></p></td>
+<td><p>Get CCD gain in e-/ADU.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_table</span></code></p></td>
+<td><p>Table of the observations.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sig_psf</span></code></p></td>
+<td><p>Get PSF width.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">start_end_days</span></code></p></td>
+<td><p>Get the survey start and ending days.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">zp</span></code></p></td>
+<td><p>Get zero point and it’s uncertainty.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="snsim.sim_class.SurveyFields.html" class="btn btn-neutral float-right" title="snsim.sim_class.SurveyFields" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="snsim.sim_class.SnGen.html" class="btn btn-neutral float-left" title="snsim.sim_class.SnGen" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Carreres.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -24,25 +24,27 @@ class SN:
     ----------
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
-        snpar
-        ├── zcos # Cosmological redshift
-        ├── como_dist # Comoving distance
-        ├── z2cmb # CMB dipole contribution to redshift
-        ├── sim_t0 # Peak time in Bessell-B band in mjd
-        ├── ra # Right Ascension
-        ├── dec # Declinaison
-        ├── vpec # Peculiar velocity
-        ├── mag_sct # Coherent scattering
-        └── adip_dM # Alpha dipole magnitude variation, opt
+
+      | snpar
+      | ├── zcos # Cosmological redshift
+      | ├── como_dist # Comoving distance
+      | ├── z2cmb # CMB dipole contribution to redshift
+      | ├── sim_t0 # Peak time in Bessell-B band in mjd
+      | ├── ra # Right Ascension
+      | ├── dec # Declinaison
+      | ├── vpec # Peculiar velocity
+      | ├── mag_sct # Coherent scattering
+      | └── adip_dM # Alpha dipole magnitude variation, opt
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
         Contains general model parameters and sncsomo parameters.
-        model_par
-        ├── M0
-        ├── SN model general parameters
-        └── sncosmo
-            └── SN model parameters needed by sncosmo
+
+      | model_par
+      | ├── M0
+      | ├── SN model general parameters
+      | └── sncosmo
+      |     └── SN model parameters needed by sncosmo
 
     Attributes
     ----------
