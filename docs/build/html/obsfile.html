@@ -90,9 +90,13 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basicusage.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configfile.html">Configuration input yaml file</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Observation database file</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hostfile.html">Host file</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">Reference / API</a></li>
 </ul>
 
             
@@ -197,7 +201,7 @@
 </tr>
 </tbody>
 </table>
-<p>If you want to use subfield index for observation properties or just set the geomtry of the field, you have to give a .dat file that give the representation of the subfield, for example if you split your field into a 4 x 4 grid, you have to put something like that in your .dat file :</p>
+<p>If you want to use subfield index for observation properties or just set the geometry of the field, you have to give a .dat file that give the representation of the subfield, for example if you split your field into a 4 x 4 grid, you have to put something like that in your .dat file :</p>
 <div class="highlight-pseudocode notranslate"><div class="highlight"><pre><span></span>ID01:ID02:ID03:ID04
 ID05:ID06:ID07:ID08
 ID09:ID10:ID11:ID12
@@ -215,7 +219,7 @@ ID09:ID10:ID11:ID12
 ID13:ID14:ID15:ID16
 </pre></div>
 </div>
-<p>In the previous example the symbol # is used as a ra space of 0.13 degrees and the &#64; is used as a dec space of 0.13 degrees.</p>
+<p>In the previous example the symbol # is used has a ra space of 0.13 degrees and the &#64; is used has a dec space of 0.13 degrees.</p>
 <p>You can show the sub filed map by :</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span><span class="o">.</span><span class="n">survey</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">show_map</span><span class="p">()</span>
 </pre></div>

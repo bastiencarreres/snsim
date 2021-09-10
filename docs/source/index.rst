@@ -16,6 +16,11 @@ Welcome to snsim's documentation!
    obsfile.md
    hostfile.md
 
+.. toctree::
+   :hidden:
+   :titlesonly:
+
+   reference.rst
 
 Indices and tables
 ==================
