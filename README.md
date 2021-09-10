@@ -26,6 +26,7 @@ survey_config:
     start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     end_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
+    sub_field: ['sub_field_file', 'sub_field_key'] # Used to divided observation in CCD quadrant for example
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
     duration_for_rate: FAKE DURATION ONLY USED TO GENERATE N SN (DAYS) #(Optional)
@@ -36,7 +37,7 @@ sn_gen:
     z_range: [ZMIN, ZMAX] # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
     mag_sct: SN INTRINSIC COHERENT SCATTERING
-    smear_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+    sct_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
 cosmology: # Follow astropy formalism
     Om0: MATTER DENSITY  
     H0: HUBBLE CONSTANT
@@ -59,7 +60,7 @@ model_config:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
  host_file: '/PATH/TO/HOSTFILE' # Optional
- alpha_dipole: #Experimental alpha fine structure constant dipole, optional
+ alpha_dipole: # Experimental alpha fine structure constant dipole, optional
      coord: [RA, Dec] # Direction of the dipole
      A: A_parameter # alpha dipole = A + B * cos(theta)
      B: B_parameter  
@@ -67,57 +68,16 @@ model_config:
 ```
 * If you set end_day and duration, duration will be ignored
 * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
+* If you use sub_field you have to define a representation of your sub_field in a txt file.
 * If you don't set the filter name item in nep_cut, the cut apply to all the band
 * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
 * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
-## Observation DataBase file:
-It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
 
-The required data keys are resumed in the next table
+## Documentation
 
-|     expMJD     | filter   | fieldID             | fieldRA (rad)                   |  fieldDec (rad)              | zp                            | sig_zp |
-| :-----------:  | :-----:  | :-----------------: | :-----------------------------: | :--------------------------: | :---------------------------: | :------: |
-| Obs time in MJD| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field | Zero point of the observation (Optional if given in yaml) | Uncertainty of the zeropoint (Optional if given in yaml) |
-
-## Host file
-The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
-
-| redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
-| :-----------: | :-----: | :----------: | :----------: |
-| Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
-
-## Usage and output
-```python
-from snsim import Simulator
-
-sim = Simulator('yaml_cfg_file.yml')
-sim.simulate()
-```
-
-The result is stored in sim.sn_list list which each entry is a SN object. Simulated lc and metadata are given by :
-```python
-sim.sn_list[i].sim_lc
-sim.sn_list[i].sim_lc.meta
-
-#  For more information :
-help(snsim.SN)
-```
-The basic list of ligth curves metadata is given in the following table :
-
-| z |  sim_t0   | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id   | sim_mu | m_smear |
-| :------------:  | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
-|  Observed redshift | Peaktime | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | Contribution from our peculiar motion to redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | Simulated distance modulli | Coherent smear term |
-
-If you use SALT2/3 model you add some arguments to metadata:
-
-
-|         sim_x0          |      sim_x1       |      sim_c      |               sim_mb                |
-| :---------------------: | :---------------: | :-------------: | :---------------------------------: |
-| Normalization parameter | Stretch parameter | color parameter | SN magnitude in restframe Bessell B |
-
-Moreover, if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
+ The documentation is [here](./docs/build/html/index.html )
 
 ## Script launch
 

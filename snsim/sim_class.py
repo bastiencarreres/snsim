@@ -1,8 +1,11 @@
 """This module contains the class which are used in the simulation."""
 
 import sqlite3
+import io
 import numpy as np
 import sncosmo as snc
+import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
@@ -21,25 +24,27 @@ class SN:
     ----------
     sn_par : dict
         Contains intrinsic SN parameters generate by SNGen.
-        snpar
-        ├── zcos # Cosmological redshift
-        ├── como_dist # Comoving distance
-        ├── z2cmb # CMB dipole contribution to redshift
-        ├── sim_t0 # Peak time in Bessell-B band in mjd
-        ├── ra # Right Ascension
-        ├── dec # Declinaison
-        ├── vpec # Peculiar velocity
-        ├── mag_sct # Coherent scattering
-        └── adip_dM # Alpha dipole magnitude variation, opt
+
+      | snpar
+      | ├── zcos # Cosmological redshift
+      | ├── como_dist # Comoving distance
+      | ├── z2cmb # CMB dipole contribution to redshift
+      | ├── sim_t0 # Peak time in Bessell-B band in mjd
+      | ├── ra # Right Ascension
+      | ├── dec # Declinaison
+      | ├── vpec # Peculiar velocity
+      | ├── mag_sct # Coherent scattering
+      | └── adip_dM # Alpha dipole magnitude variation, opt
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
         Contains general model parameters and sncsomo parameters.
-        model_par
-        ├── M0
-        ├── SN model general parameters
-        └── sncosmo
-            └── SN model parameters needed by sncosmo
+
+      | model_par
+      | ├── M0
+      | ├── SN model general parameters
+      | └── sncosmo
+      |     └── SN model parameters needed by sncosmo
 
     Attributes
     ----------
@@ -202,14 +207,16 @@ class SN:
             beta = self._model_par['beta']
             x1 = self._model_par['sncosmo']['x1']
             c = self._model_par['sncosmo']['c']
-            mb = self.sim_mu + M0 - alpha * \
-                x1 + beta * c + self.mag_sct
+            mb = self.sim_mu + M0 - alpha * x1 + beta * c
 
-            x0 = salt_ut.mB_to_x0(mb)
-            self.sim_x0 = x0
+            # Compute the x0 parameter
+            self.sim_model.set(x1=x1, c=c)
+            self.sim_model.set_source_peakmag(mb, 'bessellb', 'ab')
+            self.sim_x0 = self.sim_model.get('x0')
+            self._model_par['sncosmo']['x0'] = self.sim_x0
+
             self.sim_x1 = x1
             self.sim_c = c
-            self._model_par['sncosmo']['x0'] = x0
 
         # elif self.sim_model.source.name == 'snoopy':
             # TODO
@@ -278,6 +285,10 @@ class SN:
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
 
+        self._sim_lc['mag'] = -2.5 * np.log10(self._sim_lc['flux']) + self._sim_lc['zp']
+
+        self._sim_lc['magerr'] = 2.5 / np.log(10) * 1 / self._sim_lc['flux'] * self._sim_lc['fluxerr']
+
         return self._reformat_sim_table()
 
     def _reformat_sim_table(self):
@@ -315,6 +326,7 @@ class SN:
         self.sim_lc.meta['dec'] = self.coord[1]
         self.sim_lc.meta['sim_mb'] = self.sim_mb
         self.sim_lc.meta['sim_mu'] = self.sim_mu
+        self.sim_lc.meta['com_dist'] = self.como_dist
         self.sim_lc.meta['m_sct'] = self.mag_sct
 
         if 'adip_dM' in self._sn_par:
@@ -339,37 +351,42 @@ class SnGen:
     ----------
     sn_int_par : dict
         Intrinsic parameters of the supernovae.
-        sn_int_par
-        ├── M0 # Standard absolute magnitude
-        ├── mag_sct # Coherent intrinsic scattering
-        └── sct_model # Wavelenght dependant scattering (Optional)
+        
+      | sn_int_par
+      | ├── M0 # Standard absolute magnitude
+      | ├── mag_sct # Coherent intrinsic scattering
+      | └── sct_model # Wavelenght dependant scattering (Optional)
     model_config : dict
         The parameters of the sn simulation model to use.
-        model_config
-        ├── model_dir # The directory of the model file
-        ├── model_name # The name of the model
-        └── model parameters # All model needed parameters
+
+      | model_config
+      | ├── model_dir # The directory of the model file
+      | ├── model_name # The name of the model
+      | └── model parameters # All model needed parameters
     cmb : dict
-        The cmb parameters
-        cmb
-        ├── vcmb
-        ├── l_cmb
-        └── b_cmb
+        The cmb parameters.
+
+      | cmb
+      | ├── vcmb
+      | ├── l_cmb
+      | └── b_cmb
     cosmology : astropy.cosmology
         The astropy cosmological model to use.
     vpec_dist : dict
         The parameters of the peculiar velocity distribution.
-        vpec_dist
-        ├── mean_vpec
-        └── sig_vpec
+
+      | vpec_dist
+      | ├── mean_vpec
+      | └── sig_vpec
     host : class SnHost, opt
         The host class to introduce sn host.
     alpha_dipole : dict, opt
         The alpha dipole parameters.
-        alpha_dipole
-        ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
-        ├── A # A parameter of the A + B * cos(theta) dipole
-        └── B # B parameter of the A + B * cos(theta) dipole
+
+      | alpha_dipole
+      | ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
+      | ├── A # A parameter of the A + B * cos(theta) dipole
+      | └── B # B parameter of the A + B * cos(theta) dipole
 
     Attributes
     ----------
@@ -511,15 +528,17 @@ class SnGen:
             SN simulation model.
 
         """
+        model_dir = None
+        if 'model_dir' in self.model_config:
+            model_dir = self.model_config['model_dir']
         model = ut.init_sn_model(self.model_config['model_name'],
-                                 self.model_config['model_dir'])
+                                 model_dir)
 
         if 'sct_model' in self.sn_int_par:
             sct.init_sn_sct_model(model, self.sn_int_par['sct_model'])
 
         if 'mw_dust' in self.model_config:
             dst_ut.init_mw_dust(model, self.model_config['mw_dust'])
-
         return model
 
     def _init_model_keys(self):
@@ -584,16 +603,16 @@ class SnGen:
         opt_seeds = rand_gen.integers(low=1000, high=100000, size=3)
 
         # - Generate random parameters dependants on sn model used
-        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]))
+        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]), z=zcos)
 
         # -- If there is host use them
         if self.host is not None:
             treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
             host = self.host.host_near_z(zcos, treshold)
-            ra = host['ra']
-            dec = host['dec']
-            zcos = host['redshift']
-            vpec = host['vp_sight']
+            ra = host['ra'].values
+            dec = host['dec'].values
+            zcos = host['redshift'].values
+            vpec = host['vp_sight'].values
         else:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
@@ -619,7 +638,12 @@ class SnGen:
         # -- SN initialisation part :
         sn_par = self._construct_sn_int(*sn_int_args)
 
-        model_default = {'M0': self.sn_int_par['M0']}
+        if isinstance(self.sn_int_par['M0'], (float, int)):
+            model_default = {'M0': self.sn_int_par['M0']}
+
+        elif self.sn_int_par['M0'].lower() == 'jla':
+            model_default = {'M0': ut.scale_M0_jla(self.cosmology.H0.value)}
+
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
 
@@ -688,7 +712,7 @@ class SnGen:
         zcos = np.interp(uni_var, self.z_cdf[1], self.z_cdf[0])
         return zcos
 
-    def gen_model_par(self, n, rand_gen):
+    def gen_model_par(self, n, rand_gen, z=None):
         """Generate model dependant parameters.
 
         Parameters
@@ -707,7 +731,13 @@ class SnGen:
         model_name = self.model_config['model_name']
 
         if model_name in ('salt2', 'salt3'):
-            sim_x1, sim_c = self.gen_salt_par(n, rand_gen)
+
+            if self.model_config['dist_x1'] in ['N21']:
+                z_for_dist = z
+            else:
+                z_for_dist = None
+
+            sim_x1, sim_c = self.gen_salt_par(n, rand_gen, z=z_for_dist)
             model_par_sncosmo = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
@@ -722,7 +752,7 @@ class SnGen:
 
         return model_par_sncosmo
 
-    def gen_salt_par(self, n, rand_gen):
+    def gen_salt_par(self, n, rand_gen, z=None):
         """Generate n SALT parameters.
 
         Parameters
@@ -738,18 +768,17 @@ class SnGen:
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        sig_x1_low, sig_x1_high = ut.is_asym(self.model_config['sig_x1'])
-        sig_c_low, sig_c_high = ut.is_asym(self.model_config['sig_c'])
+        if isinstance(self.model_config['dist_x1'], str):
+            if self.model_config['dist_x1'] == 'N21':
+                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=rand_gen)
+        else:
+            sim_x1 = ut.asym_gauss(*self.model_config['dist_x1'],
+                                   rand_gen=rand_gen,
+                                   size=n)
 
-        sim_x1 = [ut.asym_gauss(self.model_config['mean_x1'],
-                                sig_x1_low,
-                                sig_x1_high,
-                                rand_gen) for i in range(n)]
-
-        sim_c = [ut.asym_gauss(self.model_config['mean_c'],
-                               sig_c_low,
-                               sig_c_high,
-                               rand_gen) for i in range(n)]
+        sim_c = ut.asym_gauss(*self.model_config['dist_c'],
+                              rand_gen=rand_gen,
+                              size=n)
 
         return sim_x1, sim_c
 
@@ -813,11 +842,18 @@ class SnGen:
         """
         ebv = dst_ut.compute_ebv(ra, dec)
         if isinstance(self.model_config['mw_dust'], str):
-            r_v = np.ones(len(ra)) * 3.1
+            mod_name = self.model_config['mw_dust']
+            r_v = 3.1
         elif isinstance(self.model_config['mw_dust'], (list, np.ndarray)):
-            r_v = np.ones(len(ra)) * self.model_config['mw_dust'][1]
-        dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
-
+            mod_name = self.model_config['mw_dust'][0]
+            r_v = self.model_config['mw_dust'][1]
+        if mod_name.lower() in ['ccm89', 'od94']:
+            r_v = np.ones(len(ra)) * r_v
+            dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
+        elif mod_name.lower() in ['f99']:
+            dust_par = [{'mw_ebv': e} for e in ebv]
+        else:
+            raise ValueError(f'{mod_name} is not implemented')
         return dust_par
 
     def _compute_alpha_dipole(self, ra, dec):
@@ -835,32 +871,29 @@ class SurveyObs:
     ----------
     survey_config : dic
         It contains all the survey configuration.
-        survey_config
-        ├── survey_file PATH TO SURVEY FILE
-        ├── ra_size RA FIELD SIZE IN DEG -> float
-        ├── dec_size DEC FIELD SIZE IN DEG -> float
-        ├── gain CCD GAIN e-/ADU -> float
-        ├── start_day STARTING DAY -> float or str, opt
-        ├── end_day ENDING DAY -> float or str, opt
-        ├── duration SURVEY DURATION -> float, opt
-        ├── zp FIXED ZEROPOINT -> float, opt
-        ├── survey_cut, CUT ON DB FILE -> dict, opt
-        └── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+
+      | survey_config
+      | ├── survey_file PATH TO SURVEY FILE
+      | ├── ra_size RA FIELD SIZE IN DEG -> float
+      | ├── dec_size DEC FIELD SIZE IN DEG -> float
+      | ├── gain CCD GAIN e-/ADU -> float
+      | ├── start_day STARTING DAY -> float or str, opt
+      | ├── end_day ENDING DAY -> float or str, opt
+      | ├── duration SURVEY DURATION -> float, opt
+      | ├── zp FIXED ZEROPOINT -> float, opt
+      | ├── survey_cut, CUT ON DB FILE -> dict, opt
+      | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+      | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
+      | └── sub_field, SUBFIELD KEY -> str, opt
 
     Attributes
     ----------
-    _survey_prop : dict
-        Copy of the survey_prop input dict.
-    obs_table : astropy.Table
-        Table containing the observation.
-    _db_cut : dict
-        Copy of the db_cut input
-    _db_file : str
-        Copy of the db_file input
-    _band_dic : str
-        Copy of the band_dic input
-    _add_keys : dict
-        Copy of the add_keys input
+    _config : dict
+        Copy of the survey_config input dict.
+    _obs_table : pandas.DataFrame
+        Table containing observations.
+    fields : SurveyFields
+        SurveyFields object contains fields properties.
 
     Methods
     -------
@@ -884,9 +917,9 @@ class SurveyObs:
         """Initialize SurveyObs class."""
         self._config = survey_config
         self._obs_table, self._start_end_days = self._extract_from_db()
-        self._field_dic = self._init_field_dic()
+        self.fields = self._init_fields()
 
-    def _init_field_dic(self):
+    def _init_fields(self):
         """Create a dictionnary with fieldID and coord.
 
         Returns
@@ -895,13 +928,24 @@ class SurveyObs:
             fieldID : {'ra' : fieldRA, 'dec': fieldDec}.
 
         """
+        # Create fields dic
         field_list = self.obs_table['fieldID'].unique()
         dic = {}
         for f in field_list:
             idx = nbf.find_first(f, self.obs_table['fieldID'].values)
             dic[f] = {'ra': self.obs_table['fieldRA'][idx],
                       'dec': self.obs_table['fieldDec'][idx]}
-        return dic
+
+        # Check field shape
+        if 'field_map' in self.config:
+            field_map = self.config['field_map']
+        else:
+            field_map = 'rectangle'
+
+        return SurveyFields(dic,
+                            self.config['ra_size'],
+                            self.config['dec_size'],
+                            field_map)
 
     @property
     def config(self):
@@ -911,19 +955,14 @@ class SurveyObs:
     @property
     def band_dic(self):
         """Get the dic band_survey : band_sncosmo."""
-        return self.config['band_dic']
+        if 'band_dic' in self.config:
+            return self.config['band_dic']
+        return None
 
     @property
     def obs_table(self):
         """Table of the observations."""
         return self._obs_table
-
-    @property
-    def field_size(self):
-        """Get field size (ra,dec) in radians."""
-        ra_size_rad = np.radians(self._config['ra_size'])
-        dec_size_rad = np.radians(self._config['dec_size'])
-        return ra_size_rad, dec_size_rad
 
     @property
     def gain(self):
@@ -1031,6 +1070,9 @@ class SurveyObs:
         if 'sig_psf' not in self.config:
             keys += ['FWHMeff']
 
+        if 'sub_field' in self.config:
+            keys += [self.config['sub_field']]
+
         if 'add_data' in self.config:
             add_k = (k for k in self.config['add_data'] if k not in keys)
             keys += add_k
@@ -1090,29 +1132,33 @@ class SurveyObs:
         """
         ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.z)
         ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.z)
-        ra, dec = SN_obj.coord
+        SN_ra, SN_dec = SN_obj.coord
 
-        # time selection
-        epochs_selec, selec_fields_ID = nbf.time_selec(self.obs_table['expMJD'].values,
-                                                       SN_obj.sim_t0,
-                                                       ModelMaxT_obsfrm,
-                                                       ModelMinT_obsfrm,
-                                                       self.obs_table['fieldID'].values)
+        # Time selection :
+        expr = ("(self.obs_table.expMJD - SN_obj.sim_t0 > ModelMinT_obsfrm) "
+                "& (self.obs_table.expMJD - SN_obj.sim_t0 < ModelMaxT_obsfrm)")
+        epochs_selec = pd.eval(expr).values
 
-        ra_fields = np.array(list(map(lambda x: x['ra'],
-                                      map(self._field_dic.get, selec_fields_ID))))
-        dec_fields = np.array(list(map(lambda x: x['dec'],
-                                       map(self._field_dic.get, selec_fields_ID))))
+        is_obs = epochs_selec.any()
 
-        # Compute the coord of the SN in the rest frame of each field
-        ra_field_frame, dec_field_frame = ut.change_sph_frame(ra, dec,
-                                                              ra_fields,
-                                                              dec_fields)
+        if is_obs:
+            # Select the observed fields
+            selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
 
-        epochs_selec, is_obs = nbf.is_in_field(epochs_selec,
-                                               self._obs_table['fieldID'][epochs_selec].values,
-                                               ra_field_frame, dec_field_frame,
-                                               self.field_size, selec_fields_ID)
+            dic_map = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
+
+            # Update the epochs_selec mask and check if there is some observations
+            is_obs, epochs_selec = nbf.map_obs_fields(
+                                                      epochs_selec,
+                                                      self.obs_table['fieldID'][epochs_selec].values,
+                                                      dic_map)
+
+        if is_obs and 'sub_field' in self.config:
+            is_obs, epochs_selec = nbf.map_obs_subfields(
+                                    epochs_selec,
+                                    self.obs_table['fieldID'][epochs_selec].values,
+                                    self.obs_table[self.config['sub_field']][epochs_selec].values,
+                                    dic_map)
         if is_obs:
             return self._make_obs_table(epochs_selec)
         return None
@@ -1132,7 +1178,7 @@ class SurveyObs:
 
         """
         # Capture noise and filter
-        band = self.obs_table['filter'][epochs_selec].astype('U27')
+        band = self.obs_table['filter'][epochs_selec].astype('U27').to_numpy(dtype='str')
 
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
@@ -1179,10 +1225,16 @@ class SurveyObs:
                      'zpsys': ['ab'] * np.sum(epochs_selec),
                      'fieldID': self._obs_table['fieldID'][epochs_selec]})
 
+        if 'sub_field' in self.config:
+            obs[self.config['sub_field']] = self._obs_table[self.config['sub_field']][epochs_selec]
+
         if 'add_data' in self.config:
             for k in self.config['add_data']:
-                if k not in obs:
-                    obs[k] = self.obs_table[k][epochs_selec]
+                if k not in obs.keys():
+                    if self.obs_table[k].dtype == 'object':
+                        obs[k] = self.obs_table[k][epochs_selec].astype('U27').to_numpy(dtype='str')
+                    else:
+                        obs[k] = self.obs_table[k][epochs_selec]
         return obs
 
 
@@ -1276,52 +1328,196 @@ class SnHost:
         return self.table.iloc[idx]
 
 
-class SnSimPkl:
-    """Class to store simulation as pickle.
+class SurveyFields:
+    """Fields properties object.
 
     Parameters
     ----------
-    sim_lc : list(astropy.Table)
-        The simulated lightcurves.
-    header : dict
-        The metadata of the simulation.
+    fields_dic : dict
+        ID and coordinates of fields.
+    ra_size : float
+        The RA size of the field in deg.
+    dec_size : float
+        The DEC size of the field in deg.
+    field_map : str
+        The path of the field map or just a str.
 
     Attributes
     ----------
-    _header : dict
-        A copy of input header.
-    _sim_lc : list(astropy.Table)
-        A copy of input sim_lc.
+    _size : numpy.array(float, float)
+        RA, DEC size in degrees.
+    _dic : dict
+        A copy of the input fields_dic.
+    _sub_field_map : numpy.array(int) or None
+        The map of the field subparts.
+
+    Methods
+    -------
+    _init_fields_map()
+        Init the subfield map parameters.
+    is_in_field(SN_ra, SN_dec, fields_pre_selec=None)
+        Check if a SN is in a field and return the coordinates in the field frame.
+    in_which_sub_field(obs_fieldsID, coord_in_obs_fields)
+        Find in which subfield is the SN.
+    show_map():
+        Plot an ASCII representation of subfields.
 
     """
 
-    def __init__(self, sim_lc, header):
-        """Initialize SnSimPkl class."""
-        self._header = header
-        self._sim_lc = sim_lc
+    def __init__(self, fields_dic, ra_size, dec_size, field_map):
+        """Init SurveyObs class."""
+        self._size = np.array([ra_size, dec_size])
+        self._dic = fields_dic
+        self._sub_field_map = None
+        self._init_fields_map(field_map)
 
     @property
-    def header(self):
-        """Get header."""
-        return self._header
+    def size(self):
+        """Get field size (ra,dec) in radians."""
+        return np.radians(self._size)
 
-    @property
-    def sim_lc(self):
-        """Get sim_lc."""
-        return self._sim_lc
+    def read_sub_field_map(self, field_map):
+        file = open(field_map)
+        # Header symbol
+        dic_symbol = {}
+        nbr_id = -2
+        lines = file.readlines()
+        for i, l in enumerate(lines):
+            if l[0] == '%':
+                key_val = l[1:].strip().split(':')
+                dic_symbol[key_val[0]] = {'nbr': nbr_id}
+                dic_symbol[key_val[0]]['size'] = np.radians(float(key_val[2]))
+                dic_symbol[key_val[0]]['type'] = key_val[1].lower()
+                if key_val[1].lower() not in ['ra', 'dec']:
+                    raise ValueError('Espacement type is ra or dec')
+                nbr_id -= 1
+            else:
+                break
 
-    def get(self, key):
-        """Get an array of sim_lc metadata.
+        # Compute void region
+        # For the moment only work with regular grid
+        subfield_map = [string.strip().split(':') for string in lines[i:] if string != '\n']
+        used_ra = len(subfield_map[0])
+        used_dec = len(subfield_map)
+        ra_space = 0
+        for k in dic_symbol.keys():
+            if dic_symbol[k]['type'] == 'ra':
+                ra_space += subfield_map[0].count(k) * dic_symbol[k]['size']
+                used_ra -= subfield_map[0].count(k)
+        dec_space = 0
+        for lines in subfield_map:
+            if lines[0] in dic_symbol.keys() and dic_symbol[lines[0]]['type'] == 'dec':
+                dec_space += dic_symbol[lines[0]]['size']
+                used_dec -= 1
+
+        subfield_ra_size = (self.size[0] - ra_space) / used_ra
+        subfield_dec_size = (self.size[1] - dec_space) / used_dec
+
+        # Compute all ccd corner
+        corner_dic = {}
+        dec_metric = self.size[1] / 2
+        for i, l in enumerate(subfield_map):
+            if l[0] in dic_symbol and dic_symbol[l[0]]['type'] == 'dec':
+                dec_metric -= dic_symbol[l[0]]['size']
+            else:
+                ra_metric = - self.size[0] / 2
+                for j, elmt in enumerate(l):
+                    if elmt in dic_symbol.keys() and dic_symbol[elmt]['type'] == 'ra':
+                        ra_metric += dic_symbol[elmt]['size']
+                    elif int(elmt) == -1:
+                        ra_metric += subfield_ra_size
+                    else:
+                        corner_dic[int(elmt)] = np.array([
+                                    [ra_metric, dec_metric],
+                                    [ra_metric + subfield_ra_size, dec_metric],
+                                    [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
+                                    [ra_metric, dec_metric - subfield_dec_size]])
+                        ra_metric += subfield_ra_size
+                dec_metric -= subfield_dec_size
+        self.dic_sfld_file = dic_symbol
+        return corner_dic
+
+    def _init_fields_map(self, field_map):
+        """Init the subfield map parameters..
 
         Parameters
         ----------
-        key : str
-            The metadata to access.
+        field_map : dict
+            ID: coordinates dict.
 
         Returns
         -------
-        numpy.ndarray
-            The array of the key metadata for all SN.
+        None
+            Just set some attributes.
 
         """
-        return np.array([lc.meta[key] for lc in self.sim_lc])
+        if field_map == 'rectangle':
+            # Condition <=> always obs
+            # Not good implemented
+            self._sub_fields_corners = {0: np.array([[-self.size[0] / 2, self.size[1] / 2],
+                                                     [self.size[0] / 2, self.size[1] / 2],
+                                                     [self.size[0] / 2, -self.size[1] / 2],
+                                                     [-self.size[0] / 2, -self.size[1] / 2]])}
+        else:
+            self._sub_fields_corners = self.read_sub_field_map(field_map)
+
+    def is_in_field(self, SN_ra, SN_dec, fields_pre_selec=None):
+        """Check if a SN is in a field and return the coordinates in the field frame.
+
+        Parameters
+        ----------
+        SN_ra : float
+            SN RA in radians.
+        SN_dec : float
+            SN DEC in radians.
+        fields_pre_selec : numpy.array(int), opt
+            A list of pre selected fields ID.
+
+        Returns
+        -------
+        numba.Dict(int:bool), numba.Dict(int:numpy.array(float))
+            The dictionnaries of boolena selection of obs fields and coordinates in observed fields.
+
+        """
+        if fields_pre_selec is not None:
+            ra_fields, dec_fields = np.vectorize(
+                                        lambda x: (self._dic.get(x)['ra'],
+                                                   self._dic.get(x)['dec']))(fields_pre_selec)
+        else:
+            ra_fields = [self._dic[k]['ra'] for k in self._dic]
+            dec_fields = [self._dic[k]['dec'] for k in self._dic]
+
+        # Compute the coord of the SN in the rest frame of each field
+
+        obsfield_map = nbf.is_in_field(SN_ra,
+                                       SN_dec,
+                                       ra_fields,
+                                       dec_fields,
+                                       self.size,
+                                       np.array([k for k in self._dic]),
+                                       fields_pre_selec,
+                                       np.array(list(self._sub_fields_corners)),
+                                       np.array(list(self._sub_fields_corners.values())))
+        return obsfield_map
+
+    def show_map(self):
+        """Plot a representation of subfields.
+
+        Returns
+        -------
+        None
+            Just print something.
+
+        """
+        fig, ax = plt.subplots()
+        for k, corners in self._sub_fields_corners.items():
+            corners_deg = np.degrees(corners)
+            p = Polygon(corners_deg, color='r', fill=False)
+            ax.add_patch(p)
+            x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
+            y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
+            ax.text(x_text, y_text, k, ha='center', va='center')
+        ax.set_xlim(-self._size[0] / 2 - 0.5, self._size[0] / 2 + 0.5)
+        ax.set_ylim(- self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
+
+        plt.show()

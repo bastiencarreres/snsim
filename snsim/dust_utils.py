@@ -58,21 +58,23 @@ def init_mw_dust(model, mw_dust_mod):
         Directly modify the sncosmo model.
 
     """
+    f99_r_v = 3.1
     if isinstance(mw_dust_mod, (list, np.ndarray)):
+        f99_r_v = mw_dust_mod[1]
         mw_dust_mod = mw_dust_mod[0]
     if mw_dust_mod.lower() == 'ccm89':
         dust = snc.CCM89Dust()
     elif mw_dust_mod.lower() == 'od94':
         dust = snc.OD94Dust()
     elif mw_dust_mod.lower() == 'f99':
-        dust = snc.F99Dust()
+        dust = snc.F99Dust(r_v=f99_r_v)
     else:
         raise ValueError(f'{mw_dust_mod} model does not exist in sncosmo')
 
     model.add_effect(dust, frame='obs', name='mw_')
 
 
-def add_mw_to_fit(fit_model, mwebv, rv=3.1):
+def add_mw_to_fit(fit_model, mwebv, mod_name, rv=3.1):
     """Set mw model parameters of a sncsomo model.
 
     Parameters
@@ -92,6 +94,7 @@ def add_mw_to_fit(fit_model, mwebv, rv=3.1):
     """
     if 'mw_' in fit_model.effect_names:
         fit_model.set(mw_ebv=mwebv)
+    if mod_name .lower() not in ['f99']:
         fit_model.set(mw_r_v=rv)
 
 

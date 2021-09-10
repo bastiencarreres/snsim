@@ -2,41 +2,59 @@
 
 import sncosmo as snc
 import numpy as np
-from .constants import SNC_MAG_OFFSET_AB
 
 
-def x0_to_mB(x0):
-    """Convert SALT x0 to bessellB restframe magnitude.
-
-    Parameters
-    ----------
-    x0 : float
-        SALT normalisation factor.
-
-    Returns
-    -------
-    float or numpy.ndarray(float)
-        Array or value of corresponding bessell B magnitude.
-
-    """
-    return -2.5 * np.log10(x0) + SNC_MAG_OFFSET_AB
-
-
-def mB_to_x0(mB):
-    """Convert restframe bessellB magnitude into SALT x0.
+def n21_x1_model(z, rand_gen=None):
+    """X1 distribution redshift dependant model from  Nicolas et al. 2021.
 
     Parameters
     ----------
-    mB : float
-        Restframe bessellB magnitude.
+    z : numpy.array(float)
+        Redshift(s) of the SN.
+    rand_gen: numpy.random._generator.Generator, opt
+        Random generator numpy object.
 
     Returns
     -------
-    float
-        SALT x0 parameter.
-
+    X1 : numpy.array(float)
+        Stretch parameters of supernovae.
     """
-    return 10**(-0.4 * (mB - SNC_MAG_OFFSET_AB))
+    # Just to avoid errors
+    z = np.atleast_1d(z)
+
+    # Constants defines in the paper
+    a = 0.51
+    K = 0.87
+    mu1 = 0.37
+    mu2 = -1.22
+    sig1 = 0.61
+    sig2 = 0.56
+
+    # Define Gaussian function
+    def gauss(mu, sig, x):
+        return np.exp(-0.5 * ((x - mu) / sig)**2) / np.sqrt(2 * np.pi * sig**2)
+
+    # Compute the pdf for old galaxy F_old(z)
+    x = np.linspace(mu2 - 10 * sig2, mu1 + 10 * sig1, 100000)
+    f_old = a * gauss(mu1, sig1, x)
+    f_old += (1 - a) * gauss(mu2, sig2, x)
+    F_old = np.cumsum(f_old) * (x[1] - x[0])
+
+    if rand_gen is None:
+        young_or_old = np.random.random(size=len(z))
+        rand_normal = np.random.normal(loc=mu1, scale=sig1, size=len(z))
+        rand_old = np.random.random(size=len(z))
+    else:
+        young_or_old = rand_gen.random(size=len(z))
+        rand_normal = rand_gen.normal(loc=mu1, scale=sig1, size=len(z))
+        rand_old = rand_gen.random(size=len(z))
+
+    # Apply the pdf eq 2 from Nicolas et al. 2021
+    delta_z = 1 / (1 / (K * (1 + z)**2.8) + 1)  # Probability to be young
+    is_young = young_or_old < delta_z
+    X1 = rand_normal * is_young
+    X1 += np.interp(rand_old, F_old, x) * ~is_young
+    return X1
 
 
 def cov_x0_to_mb(x0, cov):

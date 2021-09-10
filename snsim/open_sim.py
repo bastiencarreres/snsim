@@ -54,7 +54,7 @@ class OpenSim:
 
     """
 
-    def __init__(self, sim_file, model_dir):
+    def __init__(self, sim_file, model_dir=None):
         """Copy some function of snsim to allow to use sim file."""
         self._file_path, self._file_ext = os.path.splitext(sim_file)
         self._sn = None
@@ -116,7 +116,7 @@ class OpenSim:
         """Get fit sncosmo model results."""
         return self._fit_resmod
 
-    def fit_lc(self, sn_ID=None, mw_dust=None):
+    def fit_lc(self, sn_ID=None, mw_dust=-2):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -137,32 +137,48 @@ class OpenSim:
         if self._fit_res is None:
             self._fit_res = [None] * len(self.sim_lc)
             self._fit_resmod = [None] * len(self.sim_lc)
+            self._fit_dic = [None] * len(self.sim_lc)
         fit_model = self._fit_model.__copy__()
         model_name = self.header['Mname']
         if model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
-        if mw_dust is not None:
-            dst_ut.init_mw_dust(fit_model, mw_dust)
-            if isinstance(mw_dust, (list, np.ndarray)):
-                rv = mw_dust[1]
+        mw_mod = None
+        if mw_dust == -2 and 'mwd_mod' in self.header:
+            mw_mod = [self.header['mwd_mod'], self.header['mw_rv']]
+        elif isinstance(mw_dust, (str, list, np.ndarray)):
+            mw_mod = mw_dust
+        else:
+            print('Do not use mw dust')
+
+        if mw_mod is not None:
+            dst_ut.init_mw_dust(fit_model, mw_mod)
+            if isinstance(mw_mod, (list, np.ndarray)):
+                rv = mw_mod[1]
+                mod_name = mw_mod[0]
             else:
                 rv = 3.1
+                mod_name = mw_mod
+            print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if sn_ID is None:
             for i, lc in enumerate(self.sim_lc):
                 if self._fit_res[i] is None:
                     fit_model.set(z=lc.meta['z'])
                     if mw_dust is not None:
-                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], rv=rv)
-                    self._fit_res[i], self._fit_resmod[i] = ut.snc_fitter(lc, fit_model, fit_par)
+                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
+                    self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(
+                                                                                        lc,
+                                                                                        fit_model,
+                                                                                        fit_par)
         else:
             fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], rv=rv)
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID] = ut.snc_fitter(self.sim_lc[sn_ID],
-                                                                          fit_model,
-                                                                          fit_par)
+                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
+            self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
+                                                                                self.sim_lc[sn_ID],
+                                                                                fit_model,
+                                                                                fit_par)
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
         """Plot the given SN lightcurve.
@@ -212,8 +228,10 @@ class OpenSim:
                 s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
 
             if 'mwd_mod' in self.header:
-                dst_ut.init_mw_dust(s_model, self.header['mwd_mod'])
-                s_model.set(mw_r_v=lc.meta['mw_r_v'], mw_ebv=lc.meta['mw_ebv'])
+                dst_ut.init_mw_dust(s_model, [self.header['mwd_mod'], self.header['mw_rv']])
+                if self.header['mwd_mod'].lower() not in ['f99']:
+                    s_model.set(mw_r_v=lc.meta['mw_r_v'])
+                s_model.set(mw_ebv=lc.meta['mw_ebv'])
         else:
             s_model = None
 
@@ -310,18 +328,76 @@ class OpenSim:
                        'zcos': [lc.meta['zcos'] for lc in self.sim_lc],
                        'zCMB': [lc.meta['zCMB'] for lc in self.sim_lc],
                        'zobs': [lc.meta['z'] for lc in self.sim_lc],
-                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc]}
+                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc],
+                       'com_dist': [lc.meta['com_dist'] for lc in self.sim_lc],
+                       'sim_t0': [lc.meta['sim_t0'] for lc in self.sim_lc],
+                       'm_sct': [lc.meta['m_sct'] for lc in self.sim_lc]}
 
         model_name = self.header['Mname']
+
         if model_name in ('salt2', 'salt3'):
+            sim_lc_meta['sim_x0'] = [lc.meta['sim_x0'] for lc in self.sim_lc]
             sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
             sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
             sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
-            sim_lc_meta['m_sct'] = [lc.meta['m_sct'] for lc in self.sim_lc]
 
         if 'Smod' in self.header:
             sim_lc_meta['SM_seed'] = [lc.meta[self.header['Smod'][:3] + '_RndS']
                                       for lc in self.sim_lc]
 
+        if 'mw_dust' in self.header:
+            sim_lc_meta['MW_EBV'] = [lc.meta['mw_ebv'] for lc in self.sim_lc]
+
         write_file = self._file_path + '_fit.fits'
-        ut.write_fit(sim_lc_meta, self.fit_res, write_file, sim_meta=self.header)
+        ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_file, sim_meta=self.header)
+
+
+class SnSimPkl:
+    """Class to store simulation as pickle.
+
+    Parameters
+    ----------
+    sim_lc : list(astropy.Table)
+        The simulated lightcurves.
+    header : dict
+        The metadata of the simulation.
+
+    Attributes
+    ----------
+    _header : dict
+        A copy of input header.
+    _sim_lc : list(astropy.Table)
+        A copy of input sim_lc.
+
+    """
+
+    def __init__(self, sim_lc, header):
+        """Initialize SnSimPkl class."""
+        self._header = header
+        self._sim_lc = sim_lc
+
+    @property
+    def header(self):
+        """Get header."""
+        return self._header
+
+    @property
+    def sim_lc(self):
+        """Get sim_lc."""
+        return self._sim_lc
+
+    def get(self, key):
+        """Get an array of sim_lc metadata.
+
+        Parameters
+        ----------
+        key : str
+            The metadata to access.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the key metadata for all SN.
+
+        """
+        return np.array([lc.meta[key] for lc in self.sim_lc])

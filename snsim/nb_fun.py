@@ -1,6 +1,8 @@
-"""This module contains function with numba decorator to speed up the simulation."""
+"""This module contains functions with numba decorator to speed up the simulation."""
 from numba import njit
 import numpy as np
+from numba.core import types
+from numba.typed import Dict
 
 
 @njit(cache=True)
@@ -149,44 +151,143 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     numpy.ndarray(bool), numpy.ndarray(int)
         The boolean array of field selection and the id of selectionned fields.
     """
-    epochs_selec = (expMJD - t0 > ModelMinT) * \
+    epochs_selec = (expMJD - t0 > ModelMinT) & \
                    (expMJD - t0 < ModelMaxT)
     return epochs_selec, np.unique(fieldID[epochs_selec])
 
 
 @njit(cache=True)
-def is_in_field(epochs_selec, obs_fieldID, ra_f_frame, dec_f_frame, f_size, fieldID):
+def map_obs_fields(epochs_selec, fieldID, obsfield):
+    """Return the boolean array corresponding to observed fields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.array(bool)
+        Actual observations selection.
+    fieldID : numpy.array(int)
+        ID of fields.
+    mapdic : numba.Dict(int:bool)
+        Numba dic of observed subfield in each observed field.
+
+    Returns
+    -------
+    bool, numpy.ndarray(bool)
+        Is there an observation and the selection of observations.
+
+    """
+    epochs_selec[np.copy(epochs_selec)] &= np.array([True if fID in obsfield
+                                                    else False for fID in fieldID])
+    return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+    """Return boolean array corresponding to observed subfields.
+
+    Parameters
+    ----------
+    epochs_selec : numpy.array(bool)
+        Actual observations selection.
+    obs_fieldID : bool
+        Id of pre selected observed fields.
+    obs_subfield : bool
+        Observed subfields.
+    mapdic : numba.Dict(int:int)
+        Numba dic of observed subfield in each observed field.
+
+    Returns
+    -------
+    bool, numpy.ndarray(bool)
+        Is there an observation and the selection of observations.
+
+    """
+    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
+                                                                     obs_fieldID]))
+    return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def radec_to_cart(ra, dec):
+    """Compute carthesian vector for given RA Dec coordinates.
+
+    Parameters
+    ----------
+    ra : float or numpy.ndarray
+        Right Ascension.
+    dec :  float or numpy.ndarray
+        Declinaison.
+
+    Returns
+    -------
+    numpy.ndarray(float)
+        Carthesian coordinates corresponding to RA Dec coordinates.
+
+    """
+    cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
+    return cart_vec
+
+
+@njit(cache=True)
+def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, field_size, fieldID, obs_fieldID,
+                subfields_id, subfields_corners, type=types.float64[::1]):
     """Chek if a SN is in fields.
 
     Parameters
     ----------
     epochs_selec : numpy.ndarray(bool)
-        The boolean array of field selection
-    obs_fieldID : numpy.ndarray(float)
+        The boolean array of field selection.
+    obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
-    ra_f_frame : numpy.ndaray(float)
+    ra_field_frame : numpy.ndaray(float)
         SN Right Ascension in fields frames.
-    dec_f_frame : numpy.ndaray(float)
+    dec_field_frame : numpy.ndaray(float)
         SN Declinaison in fields frames.
-    f_size : list(float)
+    field_size : list(float)
         ra and dec size.
     fieldID : numpy.ndarray(int)
         The list of preselected fields ID.
 
     Returns
     -------
-    numpy.ndaray(bool), bool
-        The boolean array of field selection.
+    numba.Dict(int:bool), numba.Dict(int:numpy.array(float))
+        The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
+
     """
-    in_field = np.abs(ra_f_frame) < f_size[0] / 2
-    in_field *= np.abs(dec_f_frame) < f_size[1] / 2
+    ra_fields_array = np.atleast_1d(ra_fields)
+    dec_fields_array = np.atleast_1d(dec_fields)
+    vec = radec_to_cart(SN_ra, SN_dec)
 
-    dic_map = {}
-    for pf, b in zip(fieldID, in_field):
-        dic_map[pf] = b
+    SN_ra_field_frame, SN_dec_field_frame = new_coord_on_fields(ra_fields_array,
+                                                                dec_fields_array,
+                                                                vec)
+    # Check if the SN is in the field
+    # in_field = np.abs(SN_ra_field_frame) < field_size[0] / 2
+    # in_field &= np.abs(SN_dec_field_frame) < field_size[1] / 2
 
-    epochs_selec[np.copy(epochs_selec)] *= np.array([dic_map[id] for id in obs_fieldID])
-    return epochs_selec, epochs_selec.any()
+    in_field = np.empty(len(SN_ra_field_frame), dtype='bool')
+    subfields = np.zeros(len(in_field), dtype='int')
+    for i in range(len(in_field)):
+        for subf, subf_id in zip(subfields_corners, subfields_id):
+            obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
+            obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
+            obs_condition &= SN_dec_field_frame[i] > np.min(subf.T[1])
+            obs_condition &= SN_dec_field_frame[i] < np.max(subf.T[1])
+            if obs_condition:
+                in_field[i] = True
+                subfields[i] = subf_id
+                break
+        if not obs_condition:
+            in_field[i] = False
+            subfields[i] = -99
+
+    dic_map = Dict.empty(key_type=types.i8,
+                         value_type=types.i8)
+
+    for fID, bool, subf in zip(obs_fieldID, in_field, subfields):
+        if bool:
+            dic_map[fID] = subf
+
+    return dic_map
 
 
 @njit(cache=True)

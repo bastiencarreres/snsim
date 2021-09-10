@@ -65,7 +65,10 @@ keys_dic = {
         'dec_size',
         'start_day',
         'end_day',
-        'duration'],
+        'duration',
+        'sub_field',
+        'field_map',
+        'add_data'],
     'sn_gen': [
         'randseed',
         'duration_for_rate',
@@ -78,6 +81,7 @@ keys_dic = {
         'mag_sct',
         'sct_mod'],
     'cosmology': [
+        'name',
         'Om0',
         'H0'],
     'cmb': [
@@ -89,14 +93,16 @@ keys_dic = {
         'model_name',
         'alpha',
         'beta',
-        'mean_x1',
-        'mean_c',
-        'sig_x1',
-        'sig_c',
+        'dist_x1',
+        'dist_c',
         'mw_dust'],
     'vpec_dist': [
         'mean_vpec',
-        'sig_vpec']}
+        'sig_vpec'],
+    'alpha_dipole': [
+        'coord',
+        'A',
+        'B']}
 
 ################
 # DATA SECTION #
@@ -130,6 +136,8 @@ parser.add_argument("--start_day", type=date_read,
 parser.add_argument("--end_day", type=date_read,
                     help="Survey ending day MJD NUMBER or 'YYYY-MM-DD'")
 parser.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS")
+parser.add_argument("--sub_field", type=str, help="SUBFIELD KEY")
+parser.add_argument("--field_map", type=str, help="SUBFIELD MAP")
 
 ###################
 # SN_GEN SECTION #
@@ -138,7 +146,7 @@ parser.add_argument("--randseed", type=int, help="RANDSEED TO REPRODUCE SIMULATI
 parser.add_argument("--duration_for_rate", type=float,
                     help="FAKE DURATION ONLY USED TO GENERATE N SN (DAYS)")
 parser.add_argument("--n_sn", type=int, help="NUMBER OF SN TO GENERATE")
-parser.add_argument("--sn_rate", type=float, help="rate of SN/Mpc^3/year")
+parser.add_argument("--sn_rate", help="rate of SN/Mpc^3/year or 'ptf19'")
 parser.add_argument("--rate_pw", type=float, help="rate = sn_rate*(1+z)^rate_pw")
 parser.add_argument("--nep_cut", action='append', nargs='+',
                     help="--nep_cut nep_min1 Tmin Tmax --nep_cut nep_min2 Tmin2 Tmax2 'filter1',\
@@ -146,7 +154,7 @@ parser.add_argument("--nep_cut", action='append', nargs='+',
                     (restframe, relative to peak), optionaly in a selected filter")
 parser.add_argument("--z_range", type=float, nargs=2,
                     help="--zrange zmin zmax, Cosmological redshift range")
-parser.add_argument("--M0", type=float, help="SN ABSOLUT MAGNITUDE")
+parser.add_argument("--M0", help="SN ABSOLUT MAGNITUDE")
 parser.add_argument("--mag_sct", type=float, help="SN INTRINSIC COHERENT SCATTERING")
 parser.add_argument("--sct_mod", type=str,
                     help="'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING")
@@ -154,6 +162,7 @@ parser.add_argument("--sct_mod", type=str,
 #####################
 # COSMOLOGY SECTION #
 #####################
+parser.add_argument("--name", type=str, help="ASTROPY COSMOLOGICAL MODEL TO LOAD")
 parser.add_argument("--Om0", type=float, help="MATTER DENSITY")
 parser.add_argument("--H0", type=float, help="HUBBLE CONSTANT")
 
@@ -174,12 +183,8 @@ parser.add_argument("--mw_dust", type=str, nargs='+',
 # SALT PARAM
 parser.add_argument("--alpha", type=float, help="STRETCH CORRECTION")
 parser.add_argument("--beta", type=float, help="COLOR CORRECTION")
-parser.add_argument("--mean_x1", type=float, help="MEAN X1 VALUE")
-parser.add_argument("--sig_x1", type=float, nargs='+',
-                    help="--sig_x1 sigma or --sigma_x1 sigma- sigma+")
-parser.add_argument("--mean_c", type=float, help="MEAN C VALUE")
-parser.add_argument("--sig_c", type=float, nargs='+',
-                    help="--sig_c sigma or --sigma_c sigma- sigma+")
+parser.add_argument("--dist_x1", nargs='+', help="MEAN SIGMA; MEAN SIGMA- SIGMA+ or 'N21'")
+parser.add_argument("--dist_c", type=float, nargs='+', help="MEAN SIGMA or MEAN SIGMA- SIGMA+")
 
 #####################
 # VPEC_DIST SECTION #
@@ -210,22 +215,25 @@ if args.nep_cut is not None:
 if args.mw_dust is not None:
     args.mw_dust = mw_dust_read(args.mw_dust)
 
-if args.sig_x1 is not None:
-    args.sig_x1 = assym_read(args.sig_x1)
-
-if args.sig_c is not None:
-    args.sig_c = assym_read(args.sig_c)
+if args.dist_x1 is not None:
+    if args.dist_x1 not in ['N21']:
+        args.dist_x1 = list(args.dist_x1)
+        for i in range(len(args.dist_x1)):
+            args.dist_x1[i] = float(args.dist_x1[i])
 
 with open(args.config_path, "r") as f:
     yml_config = yaml.safe_load(f)
 
 param_dic = {}
 for K in keys_dic:
-    param_dic[K] = {}
     for k in keys_dic[K]:
         if args.__dict__[k] is not None:
+            if K not in param_dic:
+                param_dic[K] = {}
             param_dic[K][k] = args.__dict__[k]
         elif yml_config is not None and K in yml_config and k in yml_config[K]:
+            if K not in param_dic:
+                param_dic[K] = {}
             param_dic[K][k] = yml_config[K][k]
 
 if args.host_file is not None:
@@ -237,14 +245,15 @@ elif yml_config is not None and 'host_file' in yml_config:
 print('PARAMETERS USED IN SIMULATION\n')
 indent = '    '
 for K in param_dic:
+    if K == 'host_file':
+        print(K + ": " + f"{param_dic['host_file']}")
+        continue
     print(K + ':')
     for k in param_dic[K]:
         print(indent + f'{k}: {param_dic[K][k]}')
 
 param_dic['yaml_path'] = args.config_path
 
-print(param_dic)
-print()
 sim = Simulator(param_dic)
 sim.simulate()
 

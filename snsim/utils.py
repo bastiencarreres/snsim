@@ -6,10 +6,74 @@ from astropy.table import Table
 import astropy.time as atime
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
+from astropy import cosmology as acosmo
 import astropy.units as u
 from . import nb_fun as nbf
 from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
+
+
+def set_cosmo(cosmo_dic):
+    """Load an astropy cosmological model.
+
+    Parameters
+    ----------
+    cosmo_dic : dict
+        A dict containing cosmology parameters.
+
+    Returns
+    -------
+    astropy.cosmology.object
+        An astropy cosmological model.
+
+    """
+    astropy_mod = list(map(lambda x: x.lower(), acosmo.parameters.available))
+    if 'name' in cosmo_dic.keys():
+        name = cosmo_dic['name'].lower()
+        if name in astropy_mod:
+            if name == 'planck18':
+                return acosmo.Planck18
+            elif name == 'planck15':
+                return acosmo.Planck15
+            elif name == 'planck13':
+                return acosmo.Planck13
+            elif name == 'wmap9':
+                return acosmo.WMAP9
+            elif name == 'wmap7':
+                return acosmo.WMAP7
+            elif name == 'wmap5':
+                return acosmo.WMAP5
+        else:
+            raise ValueError(f'Available model are {astropy_mod}')
+    else:
+        return acosmo.FlatLambdaCDM(**cosmo_dic)
+
+
+def scale_M0_jla(H0):
+    """Compute a value of M0 corresponding to JLA results.
+
+    Parameters
+    ----------
+    H0 : float
+        The H0 constant to scale M0.
+
+    Returns
+    -------
+    float
+        Scaled SN absolute magnitude.
+
+    """
+    # mb = 5 * log10(c/H0_jla * Dl(z)) + 25 + MB_jla
+    # mb = 5 * log10(c/HO_True * Dl(z)) + 25 + MB_jla - 5 * log10(1 + dH0)
+    # with dH0 = (H0_jla - H0_True)/ H0_True
+    # MB_True = MB_jla - 5 * log10(1 + dH0)
+
+    # Scale the H0 value of JLA to the H0 value of sim
+    H0_jla = 70  # km/s/Mpc
+    M0_jla = -19.05
+    dH0 = (H0_jla - H0) / H0
+
+    return M0_jla - 5 * np.log10(1 + dH0)
 
 
 def init_astropy_time(date):
@@ -54,27 +118,7 @@ def compute_z_cdf(z_shell, shell_time_rate):
     return [z_shell, dist / norm]
 
 
-def is_asym(sigma):
-    """Check if sigma represents an asymetric distribution.
-
-    Parameters
-    ----------
-    sigma : flaot or list
-        The sigma parameter(s) of the Gaussian.
-
-    Returns
-    -------
-    tuple
-        sigma low and sigma high of an asymetric Gaussian.
-
-    """
-    sigma = np.atleast_1d(sigma)
-    if sigma.size == 2:
-        return sigma
-    return sigma[0], sigma[0]
-
-
-def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
+def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None, size=1):
     """Generate random parameters using an asymetric Gaussian distribution.
 
     Parameters
@@ -87,25 +131,25 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None):
         The high sigma.
     rand_gen : numpy.random.default_rng, optional
         Numpy random generator.
+    size: int
+        Number of numbers to generate
 
     Returns
     -------
-    float
-        Random variable.
+    numpy.ndarray(float)
+        Random(s) variable(s).
 
     """
     if sig_high is None:
         sig_high = sig_low
     if rand_gen is None:
-        low_or_high = np.random.random()
-        nbr = abs(np.random.normal())
+        low_or_high = np.random.random(size=size)
+        nbr = abs(np.random.normal(size=size))
     else:
-        low_or_high = rand_gen.random()
-        nbr = abs(rand_gen.normal())
-    if low_or_high < sig_low / (sig_high + sig_low):
-        nbr *= -sig_low
-    else:
-        nbr *= sig_high
+        low_or_high = rand_gen.random(size)
+        nbr = abs(rand_gen.normal(size=size))
+    cond = low_or_high < sig_low / (sig_high + sig_low)
+    nbr *= -sig_low * cond + sig_high * ~cond
     return mean + nbr
 
 
@@ -168,7 +212,7 @@ def compute_z2cmb(ra, dec, cmb):
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
 
 
-def init_sn_model(name, model_dir):
+def init_sn_model(name, model_dir=None):
     """Initialise a sncosmo model.
 
     Parameters
@@ -183,10 +227,13 @@ def init_sn_model(name, model_dir):
     sncosmo.Model
         sncosmo Model corresponding to input configuration.
     """
-    if name == 'salt2':
-        return snc.Model(source=snc.SALT2Source(model_dir, name='salt2'))
-    elif name == 'salt3':
-        return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
+    if model_dir is None:
+        return snc.Model(source=name)
+    else:
+        if name == 'salt2':
+            return snc.Model(source=snc.SALT2Source(model_dir, name='salt2'))
+        elif name == 'salt3':
+            return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
     return None
 
 
@@ -210,8 +257,13 @@ def snc_fitter(lc, fit_model, fit_par):
     """
     try:
         res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)
+        res[0]['param_names'] = np.append(res[0]['param_names'], 'mb')
+        res[0]['parameters'] = np.append(res[0]['parameters'],
+                                         res[1].source_peakmag('bessellb', 'ab'))
+        res_dic = {k: v for k, v in zip(res[0]['param_names'], res[0]['parameters'])}
+        res = np.append(res, res_dic)
     except BaseException:
-        res = ['NaN', 'NaN']
+        res = ['NaN', 'NaN', 'NaN']
     return res
 
 
@@ -285,6 +337,7 @@ def radec_to_cart(ra, dec):
     cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
     return cart_vec
 
+
 def change_sph_frame(ra, dec, ra_frame, dec_frame):
     """Compute object coord in a new frame.
 
@@ -313,7 +366,7 @@ def change_sph_frame(ra, dec, ra_frame, dec_frame):
     return new_ra, new_dec
 
 
-def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
+def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):
     """Write fit into a fits file.
 
     Parameters
@@ -347,22 +400,22 @@ def write_fit(sim_lc_meta, fit_res, directory, sim_meta={}):
     for k in fit_keys:
         data[k] = []
 
-    for res in fit_res:
+    for res, fd in zip(fit_res, fit_dic):
         if res != 'NaN':
             par = res['parameters']
-            data['t0'].append(par[1])
+            data['t0'].append(fd['t0'])
             data['e_t0'].append(np.sqrt(res['covariance'][0, 0]))
 
             if MName in ('salt2', 'salt3'):
                 par_cov = res['covariance'][1:, 1:]
                 mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
-                data['x0'].append(par[2])
+                data['x0'].append(fd['x0'])
                 data['e_x0'].append(np.sqrt(par_cov[0, 0]))
-                data['mb'].append(salt_ut.x0_to_mB(par[2]))
+                data['mb'].append(fd['mb'])
                 data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
-                data['x1'].append(par[3])
+                data['x1'].append(fd['x1'])
                 data['e_x1'].append(np.sqrt(par_cov[1, 1]))
-                data['c'].append(par[4])
+                data['c'].append(fd['c'])
                 data['e_c'].append(np.sqrt(par_cov[2, 2]))
                 data['cov_x0_x1'].append(par_cov[0, 1])
                 data['cov_x0_c'].append(par_cov[0, 2])
