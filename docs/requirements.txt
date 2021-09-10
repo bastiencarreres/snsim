@@ -6,3 +6,4 @@ pyyaml
 numba
 sfdmap
 matplotlib
+pandas
