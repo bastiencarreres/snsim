@@ -1,1 +1,6 @@
 numpydoc
+sncosmo 
+numpy
+astropy
+pyyaml
+
