@@ -74,15 +74,6 @@ model_config:
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
 * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
-
-## Host file
-
-The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
-
-| redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
-| :-----------: | :-----: | :----------: | :----------: |
-| Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
-
 ## Usage and output
 ```python
 from snsim import Simulator
