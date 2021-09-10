@@ -283,6 +283,10 @@ class SN:
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
 
+        self._sim_lc['mag'] = -2.5 * np.log10(self._sim_lc['flux']) + self._sim_lc['zp']
+
+        self._sim_lc['magerr'] = 2.5 / np.log(10) * 1 / self._sim_lc['flux'] * self._sim_lc['fluxerr']
+
         return self._reformat_sim_table()
 
     def _reformat_sim_table(self):
