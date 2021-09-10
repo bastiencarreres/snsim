@@ -3,4 +3,5 @@ sncosmo
 numpy
 astropy
 pyyaml
+numba
 
