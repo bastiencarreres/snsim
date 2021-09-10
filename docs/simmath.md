@@ -31,14 +31,13 @@ $$
 with :
 
 - **$z_{cos}$** the cosmological redshift
-
 - **$z_{vp}$** the redshift due to the peculiar velocity of the SN / CMB
-
 - **$z_{2cmb}$** the redshift due to our peculiar motion / CMB
-
 - **$r(z)$** the comoving distance
 
-  
+
+
+
 
 ## Noise formula
 
@@ -56,7 +55,7 @@ The second term is the noise from sky flux. If there is a PSF given this term ta
 $$
 \sigma_{skynoise}^2  *= 4\pi\sigma_{PSF}^2
 $$
-If you use limiting magnitude at 5σ, skynoise is computed as :
+If you use limiting magnitude at 5σ, sky-noise is computed as :
 
 
 $$
