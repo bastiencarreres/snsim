@@ -77,7 +77,7 @@ model_config:
 
 ## Documentation
 
- The documentation is [here](./docs/build/html/index.html )
+ The documentation is [here](https://snsim.readthedocs.io/en/main/)
 
 ## Script launch
 
