@@ -74,6 +74,7 @@ model_config:
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
 * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
+
 ## Documentation
 
  The documentation is [here](./docs/build/html/index.html )
