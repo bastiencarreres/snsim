@@ -30,24 +30,21 @@ $$
 $$
 with :
 
-- **$z_{cos}$** the cosmological redshift
-- **$z_{vp}$** the redshift due to the peculiar velocity of the SN / CMB
-- **$z_{2cmb}$** the redshift due to our peculiar motion / CMB
-- **$r(z)$** the comoving distance
-
-
-
+* **$z_{cos}$** the cosmological redshift
+* **$z_{vp}$** the redshift due to the peculiar velocity of the SN / CMB
+* **$z_{2cmb}$** the redshift due to our peculiar motion / CMB
+* **$r(z)$** the comoving distance
 
 
 ## Noise formula
 
 The flux error is computed as :
+
+
 $$
 \sigma^2_F = \frac{F}{G} + \sigma_{skynoise}^2 + \left(\frac{\ln(10)}{2.5}\sigma_{zp}\right)^2
 $$
 The first term is the Poisson noise with **G** the gain in $ e^- $ / ADU.
-
-
 
 The second term is the noise from sky flux. If there is a PSF given this term take into account the PSF by applying :
 
