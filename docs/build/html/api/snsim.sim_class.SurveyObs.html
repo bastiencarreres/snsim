@@ -181,23 +181,27 @@
 <dt class="sig sig-object py" id="snsim.sim_class.SurveyObs">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">snsim.sim_class.</span></span><span class="sig-name descname"><span class="pre">SurveyObs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">survey_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snsim.sim_class.SurveyObs" title="Permalink to this definition">¶</a></dt>
 <dd><p>This class deals with the observations of the survey.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>survey_config</strong><span class="classifier">dic</span></dt><dd><p>It contains all the survey configuration.
-survey_config
-├── survey_file PATH TO SURVEY FILE
-├── ra_size RA FIELD SIZE IN DEG -&gt; float
-├── dec_size DEC FIELD SIZE IN DEG -&gt; float
-├── gain CCD GAIN e-/ADU -&gt; float
-├── start_day STARTING DAY -&gt; float or str, opt
-├── end_day ENDING DAY -&gt; float or str, opt
-├── duration SURVEY DURATION -&gt; float, opt
-├── zp FIXED ZEROPOINT -&gt; float, opt
-├── survey_cut, CUT ON DB FILE -&gt; dict, opt
-├── add_data, LIST OF KEY TO ADD METADATA -&gt; list(str), opt
-├── field_map, PATH TO SUBFIELD MAP FILE -&gt; str, opt
-└── sub_field, SUBFIELD KEY -&gt; str, opt</p>
+<dd class="field-odd"><dl>
+<dt><strong>survey_config</strong><span class="classifier">dic</span></dt><dd><blockquote>
+<div><p>It contains all the survey configuration.</p>
+</div></blockquote>
+<div class="line-block">
+<div class="line">survey_config</div>
+<div class="line">├── survey_file PATH TO SURVEY FILE</div>
+<div class="line">├── ra_size RA FIELD SIZE IN DEG -&gt; float</div>
+<div class="line">├── dec_size DEC FIELD SIZE IN DEG -&gt; float</div>
+<div class="line">├── gain CCD GAIN e-/ADU -&gt; float</div>
+<div class="line">├── start_day STARTING DAY -&gt; float or str, opt</div>
+<div class="line">├── end_day ENDING DAY -&gt; float or str, opt</div>
+<div class="line">├── duration SURVEY DURATION -&gt; float, opt</div>
+<div class="line">├── zp FIXED ZEROPOINT -&gt; float, opt</div>
+<div class="line">├── survey_cut, CUT ON DB FILE -&gt; dict, opt</div>
+<div class="line">├── add_data, LIST OF KEY TO ADD METADATA -&gt; list(str), opt</div>
+<div class="line">├── field_map, PATH TO SUBFIELD MAP FILE -&gt; str, opt</div>
+<div class="line">└── sub_field, SUBFIELD KEY -&gt; str, opt</div>
+</div>
 </dd>
 </dl>
 </dd>

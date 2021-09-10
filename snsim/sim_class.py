@@ -351,37 +351,42 @@ class SnGen:
     ----------
     sn_int_par : dict
         Intrinsic parameters of the supernovae.
-        sn_int_par
-        ├── M0 # Standard absolute magnitude
-        ├── mag_sct # Coherent intrinsic scattering
-        └── sct_model # Wavelenght dependant scattering (Optional)
+        
+      | sn_int_par
+      | ├── M0 # Standard absolute magnitude
+      | ├── mag_sct # Coherent intrinsic scattering
+      | └── sct_model # Wavelenght dependant scattering (Optional)
     model_config : dict
         The parameters of the sn simulation model to use.
-        model_config
-        ├── model_dir # The directory of the model file
-        ├── model_name # The name of the model
-        └── model parameters # All model needed parameters
+
+      | model_config
+      | ├── model_dir # The directory of the model file
+      | ├── model_name # The name of the model
+      | └── model parameters # All model needed parameters
     cmb : dict
-        The cmb parameters
-        cmb
-        ├── vcmb
-        ├── l_cmb
-        └── b_cmb
+        The cmb parameters.
+
+      | cmb
+      | ├── vcmb
+      | ├── l_cmb
+      | └── b_cmb
     cosmology : astropy.cosmology
         The astropy cosmological model to use.
     vpec_dist : dict
         The parameters of the peculiar velocity distribution.
-        vpec_dist
-        ├── mean_vpec
-        └── sig_vpec
+
+      | vpec_dist
+      | ├── mean_vpec
+      | └── sig_vpec
     host : class SnHost, opt
         The host class to introduce sn host.
     alpha_dipole : dict, opt
         The alpha dipole parameters.
-        alpha_dipole
-        ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
-        ├── A # A parameter of the A + B * cos(theta) dipole
-        └── B # B parameter of the A + B * cos(theta) dipole
+
+      | alpha_dipole
+      | ├── coord # list(ra, dec) dipole vector coordinates in ra, dec
+      | ├── A # A parameter of the A + B * cos(theta) dipole
+      | └── B # B parameter of the A + B * cos(theta) dipole
 
     Attributes
     ----------
@@ -866,19 +871,20 @@ class SurveyObs:
     ----------
     survey_config : dic
         It contains all the survey configuration.
-        survey_config
-        ├── survey_file PATH TO SURVEY FILE
-        ├── ra_size RA FIELD SIZE IN DEG -> float
-        ├── dec_size DEC FIELD SIZE IN DEG -> float
-        ├── gain CCD GAIN e-/ADU -> float
-        ├── start_day STARTING DAY -> float or str, opt
-        ├── end_day ENDING DAY -> float or str, opt
-        ├── duration SURVEY DURATION -> float, opt
-        ├── zp FIXED ZEROPOINT -> float, opt
-        ├── survey_cut, CUT ON DB FILE -> dict, opt
-        ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
-        ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
-        └── sub_field, SUBFIELD KEY -> str, opt
+
+      | survey_config
+      | ├── survey_file PATH TO SURVEY FILE
+      | ├── ra_size RA FIELD SIZE IN DEG -> float
+      | ├── dec_size DEC FIELD SIZE IN DEG -> float
+      | ├── gain CCD GAIN e-/ADU -> float
+      | ├── start_day STARTING DAY -> float or str, opt
+      | ├── end_day ENDING DAY -> float or str, opt
+      | ├── duration SURVEY DURATION -> float, opt
+      | ├── zp FIXED ZEROPOINT -> float, opt
+      | ├── survey_cut, CUT ON DB FILE -> dict, opt
+      | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+      | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
+      | └── sub_field, SUBFIELD KEY -> str, opt
 
     Attributes
     ----------

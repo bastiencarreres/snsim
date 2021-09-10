@@ -74,96 +74,9 @@ model_config:
 * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
 * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
 
-## Observation DataBase file:
-It's a sql database file which contain cadence information. It's used to find obs epoch and their noise.
+## Documentation
 
-The required data keys are resumed in the next table
-
-|     expMJD     | filter   | fieldID             | fieldRA (rad)                   |  fieldDec (rad)              | zp                            | sig_zp |
-| :-----------:  | :-----:  | :-----------------: | :-----------------------------: | :--------------------------: | :---------------------------: | :------: |
-| Obs time in MJD| Obs band | The ID of the field | Right ascension of the obs field| Declinaison of the obs field | Zero point of the observation (Optional if given in yaml) | Uncertainty of the zeropoint (Optional if given in yaml) |
-
-If you want to use subfield index for observation properties and not a general you have to give a .dat file that give the representation of the subfield, for example if you split your field into a 4 x 4 grid, you have to put something like that in your .dat file :
-
-```pseudocode
-ID01:ID02:ID03:ID04
-ID05:ID06:ID07:ID08
-ID09:ID10:ID11:ID12
-ID13:ID14:ID15:ID16
-```
-If a sub field is not observed you should set the ID value to -1.
-
-You can show the sub filed map by :
-
-```python
-sim.survey.fields.show_map()
-
-```
-
-The result is something as :
-
-```asciiarmor
-  3.50 ----------------------------------------------------------
-        |  61  |  60  |  57  |  56  |  53  |  52  |  49  |  48  |
-  2.63 ----------------------------------------------------------
-        |  62  |  63  |  58  |  59  |  54  |  55  |  50  |  51  |
-  1.75 ----------------------------------------------------------
-        |  45  |  44  |  41  |  40  |  37  |  36  |  33  |  32  |
-  0.87 ----------------------------------------------------------
-        |  46  |  47  |  42  |  43  |  38  |  39  |  34  |  35  |
-  0.00 ----------------------------------------------------------
-        |  29  |  28  |  25  |  24  |  21  |  20  |  17  |  16  |
- -0.88 ----------------------------------------------------------
-        |  30  |  31  |  26  |  27  |  22  |  23  |  18  |  19  |
- -1.75 ----------------------------------------------------------
-        |  13  |  12  |  09  |  08  |  05  |  04  |  01  |  00  |
- -2.62 ----------------------------------------------------------
-        |  14  |  15  |  10  |  11  |  06  |  07  |  02  |  03  |
- -3.50 ----------------------------------------------------------
-        '      '      '      '      '      '      '      '      '
-      -3.50  -2.62  -1.75  -0.88   0.00   0.87   1.75   2.63   3.50
-```
-
-Where the graduations in degrees depend on your field size.
-
-## Host file
-
-The host file contain coordinates and peculiar velocities to simulate SN, the needed keys are given in the next table
-
-| redshift | ra (rad) | dec (rad) | vp_sight (km/s) |
-| :-----------: | :-----: | :----------: | :----------: |
-| Redshift of the host | Right ascension of the host | Declinaison of the host | Velocity along the line of sight |
-
-## Usage and output
-```python
-from snsim import Simulator
-
-sim = Simulator('yaml_cfg_file.yml')
-sim.simulate()
-```
-
-The result is stored in sim.sn_list list which each entry is a SN object. Simulated lc and metadata are given by :
-```python
-sim.sn_list[i].sim_lc
-sim.sn_list[i].sim_lc.meta
-
-#  For more information :
-help(snsim.SN)
-```
-The basic list of ligth curves metadata is given in the following table :
-
-| z |  sim_t0   | vpec (km/s) | zcos | zpec | z2cmb | zCMB | ra (rad) | dec (rad) |  sn id   | sim_mu | m_sct |
-| :------------:  | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: | :------------: |
-|  Observed redshift | Peaktime | Peculiar velocity  | Cosmological redshift  | Peculiar velocity redshift | Contribution from our peculiar motion to redshift | CMB frame redshift | SN right ascension   |  SN declinaison |  SN identification number | Simulated distance modulli | Coherent scattering term |
-
-If you use SALT2/3 model you add some arguments to metadata:
-
-
-|         sim_x0          |      sim_x1       |      sim_c      |               sim_mb                |
-| :---------------------: | :---------------: | :-------------: | :---------------------------------: |
-| Normalization parameter | Stretch parameter | color parameter | SN magnitude in restframe Bessell B |
-
-Moreover, if you use a scattering model like G10 or C11 the random seed used is stock in the meta too.
+ The documentation is [here](./docs/build/html/index.html )
 
 ## Script launch
 

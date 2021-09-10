@@ -181,41 +181,61 @@
 <dt class="sig sig-object py" id="snsim.sim_class.SnGen">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">snsim.sim_class.</span></span><span class="sig-name descname"><span class="pre">SnGen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sn_int_par</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmb</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vpec_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha_dipole</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snsim.sim_class.SnGen" title="Permalink to this definition">¶</a></dt>
 <dd><p>This class set up the random part of the SN simulation.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>sn_int_par</strong><span class="classifier">dict</span></dt><dd><p>Intrinsic parameters of the supernovae.
-sn_int_par
-├── M0 # Standard absolute magnitude
-├── mag_sct # Coherent intrinsic scattering
-└── sct_model # Wavelenght dependant scattering (Optional)</p>
+<dd class="field-odd"><dl>
+<dt><strong>sn_int_par</strong><span class="classifier">dict</span></dt><dd><blockquote>
+<div><p>Intrinsic parameters of the supernovae.</p>
+</div></blockquote>
+<div class="line-block">
+<div class="line">sn_int_par</div>
+<div class="line">├── M0 # Standard absolute magnitude</div>
+<div class="line">├── mag_sct # Coherent intrinsic scattering</div>
+<div class="line">└── sct_model # Wavelenght dependant scattering (Optional)</div>
+</div>
 </dd>
-<dt><strong>model_config</strong><span class="classifier">dict</span></dt><dd><p>The parameters of the sn simulation model to use.
-model_config
-├── model_dir # The directory of the model file
-├── model_name # The name of the model
-└── model parameters # All model needed parameters</p>
+<dt><strong>model_config</strong><span class="classifier">dict</span></dt><dd><blockquote>
+<div><p>The parameters of the sn simulation model to use.</p>
+</div></blockquote>
+<div class="line-block">
+<div class="line">model_config</div>
+<div class="line">├── model_dir # The directory of the model file</div>
+<div class="line">├── model_name # The name of the model</div>
+<div class="line">└── model parameters # All model needed parameters</div>
+</div>
 </dd>
-<dt><strong>cmb</strong><span class="classifier">dict</span></dt><dd><p>The cmb parameters
-cmb
-├── vcmb
-├── l_cmb
-└── b_cmb</p>
+<dt><strong>cmb</strong><span class="classifier">dict</span></dt><dd><blockquote>
+<div><p>The cmb parameters.</p>
+</div></blockquote>
+<div class="line-block">
+<div class="line">cmb</div>
+<div class="line">├── vcmb</div>
+<div class="line">├── l_cmb</div>
+<div class="line">└── b_cmb</div>
+</div>
 </dd>
 <dt><strong>cosmology</strong><span class="classifier">astropy.cosmology</span></dt><dd><p>The astropy cosmological model to use.</p>
 </dd>
-<dt><strong>vpec_dist</strong><span class="classifier">dict</span></dt><dd><p>The parameters of the peculiar velocity distribution.
-vpec_dist
-├── mean_vpec
-└── sig_vpec</p>
+<dt><strong>vpec_dist</strong><span class="classifier">dict</span></dt><dd><blockquote>
+<div><p>The parameters of the peculiar velocity distribution.</p>
+</div></blockquote>
+<div class="line-block">
+<div class="line">vpec_dist</div>
+<div class="line">├── mean_vpec</div>
+<div class="line">└── sig_vpec</div>
+</div>
 </dd>
 <dt><strong>host</strong><span class="classifier">class SnHost, opt</span></dt><dd><p>The host class to introduce sn host.</p>
 </dd>
-<dt><strong>alpha_dipole</strong><span class="classifier">dict, opt</span></dt><dd><p>The alpha dipole parameters.
-alpha_dipole
-├── coord # list(ra, dec) dipole vector coordinates in ra, dec
-├── A # A parameter of the A + B * cos(theta) dipole
-└── B # B parameter of the A + B * cos(theta) dipole</p>
+<dt><strong>alpha_dipole</strong><span class="classifier">dict, opt</span></dt><dd><blockquote>
+<div><p>The alpha dipole parameters.</p>
+</div></blockquote>
+<div class="line-block">
+<div class="line">alpha_dipole</div>
+<div class="line">├── coord # list(ra, dec) dipole vector coordinates in ra, dec</div>
+<div class="line">├── A # A parameter of the A + B * cos(theta) dipole</div>
+<div class="line">└── B # B parameter of the A + B * cos(theta) dipole</div>
+</div>
 </dd>
 </dl>
 </dd>
