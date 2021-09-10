@@ -48,5 +48,7 @@ You can show the sub filed map by :
 sim.survey.fields.show_map()
 ```
 
-![show_map](readme_figures/show_map.png)
+![show_map](_static/show_map.png)
+
+
 

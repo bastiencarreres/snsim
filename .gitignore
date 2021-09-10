@@ -1,7 +1,8 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-
+docs/buil/*
+sim/*
 # Config file
 *.fits
 *.yml
