@@ -7,3 +7,4 @@ numba
 sfdmap
 matplotlib
 pandas
+myst-parser
