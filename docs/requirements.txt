@@ -8,3 +8,4 @@ sfdmap
 matplotlib
 pandas
 myst-parser>=0.15
+sphinx-markdown-tables
