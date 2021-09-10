@@ -1,7 +1,7 @@
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
    configuration: docs/conf.py
-
+   version: "3.5.4"
 # Optionally set the version of Python and requirements required to build your docs
 python:
    version: "3.7"

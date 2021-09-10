@@ -15,6 +15,7 @@ Welcome to snsim's documentation!
    configfile.md
    obsfile.md
    hostfile.md
+   simmath.md
 
 .. toctree::
    :hidden:
