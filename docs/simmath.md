@@ -56,6 +56,7 @@ The second term is the noise from sky flux. If there is a PSF given this term ta
 $$
 \sigma_{skynoise}^2  *= 4\pi\sigma_{PSF}^2
 $$
+
 If you use limiting magnitude at 5σ, sky-noise is computed as :
 
 
