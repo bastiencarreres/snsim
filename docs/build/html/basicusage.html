@@ -167,7 +167,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="tex2jax_ignore mathjax_ignore section" id="getting-started">
+  <div class="section" id="getting-started">
 <h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="basic-usage">
 <h2>Basic usage<a class="headerlink" href="#basic-usage" title="Permalink to this headline">¶</a></h2>
@@ -190,55 +190,13 @@
 </pre></div>
 </div>
 <p>The basic list of ligth curve metadata is given in the following table :</p>
-<table class="colwidths-auto docutils align-default">
-<thead>
-<tr class="row-odd"><th class="text-align:center head"><p>z</p></th>
-<th class="text-align:center head"><p>sim_t0</p></th>
-<th class="text-align:center head"><p>vpec (km/s)</p></th>
-<th class="text-align:center head"><p>zcos</p></th>
-<th class="text-align:center head"><p>zpec</p></th>
-<th class="text-align:center head"><p>z2cmb</p></th>
-<th class="text-align:center head"><p>zCMB</p></th>
-<th class="text-align:center head"><p>ra (rad)</p></th>
-<th class="text-align:center head"><p>dec (rad)</p></th>
-<th class="text-align:center head"><p>sn id</p></th>
-<th class="text-align:center head"><p>sim_mu</p></th>
-<th class="text-align:center head"><p>m_sct</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td class="text-align:center"><p>Observed redshift</p></td>
-<td class="text-align:center"><p>Peaktime</p></td>
-<td class="text-align:center"><p>Peculiar velocity</p></td>
-<td class="text-align:center"><p>Cosmological redshift</p></td>
-<td class="text-align:center"><p>Peculiar velocity redshift</p></td>
-<td class="text-align:center"><p>Contribution from our peculiar motion to redshift</p></td>
-<td class="text-align:center"><p>CMB frame redshift</p></td>
-<td class="text-align:center"><p>SN right ascension</p></td>
-<td class="text-align:center"><p>SN declinaison</p></td>
-<td class="text-align:center"><p>SN identification number</p></td>
-<td class="text-align:center"><p>Simulated distance modulli</p></td>
-<td class="text-align:center"><p>Coherent scattering term</p></td>
-</tr>
-</tbody>
-</table>
+<p>|         z         |  sim_t0  |    vpec (km/s)    |         zcos          |            zpec            |                       z2cmb                       |        zCMB        |      ra (rad)      |   dec (rad)    |          sn id           |           sim_mu           |          m_sct           |
+| :—————: | :——: | :—————: | :——————-: | :————————: | :———————————————–: | :—————-: | :—————-: | :————: | :———————-: | :————————: | :———————-: |
+| Observed redshift | Peaktime | Peculiar velocity | Cosmological redshift | Peculiar velocity redshift | Contribution from our peculiar motion to redshift | CMB frame redshift | SN right ascension | SN declinaison | SN identification number | Simulated distance modulli | Coherent scattering term |</p>
 <p>If you use SALT2/3 model you add some arguments to metadata:</p>
-<table class="colwidths-auto docutils align-default">
-<thead>
-<tr class="row-odd"><th class="text-align:center head"><p>sim_x0</p></th>
-<th class="text-align:center head"><p>sim_x1</p></th>
-<th class="text-align:center head"><p>sim_c</p></th>
-<th class="text-align:center head"><p>sim_mb</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td class="text-align:center"><p>Normalization parameter</p></td>
-<td class="text-align:center"><p>Stretch parameter</p></td>
-<td class="text-align:center"><p>color parameter</p></td>
-<td class="text-align:center"><p>SN magnitude in restframe Bessell B</p></td>
-</tr>
-</tbody>
-</table>
+<p>|         sim_x0          |      sim_x1       |      sim_c      |               sim_mb                |
+| :———————: | :—————: | :————-: | :———————————: |
+| Normalization parameter | Stretch parameter | color parameter | SN magnitude in restframe Bessell B |</p>
 <p>Moreover, if you use a scattering model like G10 or C11 the random seed used is kept in the meta too.</p>
 </div>
 </div>
