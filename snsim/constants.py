@@ -18,8 +18,9 @@ SN_SIM_PRINT += f'================================= Version : {VERSION} ====== '
 # Light velocity in km/s
 C_LIGHT_KMS = cst.c.to('km/s').value
 
-VCMB = 620
-L_CMB = 271.0
-B_CMB = 29.6
+# CMB DIPOLE from Planck18 https://arxiv.org/pdf/1807.06205.pdf
+VCMB = 369.82  # km/s
+L_CMB = 264.021  # deg
+B_CMB = 48.253  # deg
 
 SEP = '###############################################'

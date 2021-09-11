@@ -205,24 +205,15 @@ class Simulator:
     @property
     def cmb(self):
         """Get cmb parameters."""
+        cmb_dic = {'v_cmb': VCMB, 'l_cmb': L_CMB, 'b_cmb': B_CMB}
         if 'cmb' in self.config:
             if 'v_cmb' in self.config['cmb']:
-                v_cmb = self.config['cmb']['v_cmb']
-            else:
-                v_cmb = VCMB
+                cmb_dic['v_cmb'] = self.config['cmb']['v_cmb']
             if 'l_cmb' in self.config['cmb']:
-                l_cmb = self.config['cmb']['l_cmb']
-            else:
-                l_cmb = L_CMB
+                cmb_dic['l_cmb'] = self.config['cmb']['l_cmb']
             if 'b_cmb' in self.config['cmb']:
-                b_cmb = self.config['cmb']['b_cmb']
-            else:
-                b_cmb = B_CMB
-        else:
-            v_cmb = VCMB
-            l_cmb = L_CMB
-            b_cmb = B_CMB
-        return {'v_cmb': v_cmb, 'l_cmb': l_cmb, 'b_cmb': b_cmb}
+                cmb_dic['b_cmb'] = self.config['cmb']['b_cmb']
+        return cmb_dic
 
     @property
     def n_sn(self):
