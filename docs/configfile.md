@@ -40,18 +40,16 @@ cosmology: # Follow astropy formalism
     H0: HUBBLE CONSTANT
 cmb:
     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
-    l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)            
-    b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)     
+    l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 264.021)            
+    b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 48.253)     
 model_config:
     model_name: 'THE MODEL NAME' # Example : 'salt2'
     model_dir: '/PATH/TO/SALT/MODEL'  
     # Model parameters (here example for salt2)
     alpha: STRETCH CORRECTION = alpha*x1
     beta: COLOR CORRECTION = -beta*c   
-    mean_x1: MEAN X1 VALUE
-    mean_c: MEAN C VALUE
-    sig_x1: SIGMA X1 or [SIGMA_X1_LOW, SIGMA_X1_HIGH]  
-    sig_c: SIGMA C or [SIGMA_C_LOW, SIGMA_C_HIGH]
+    dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
+    dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
     mw_dust: MODEL_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
@@ -64,12 +62,16 @@ model_config:
 ```
 
   * If you set end_day and duration, duration will be ignored
+
   * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
-  * If you use sub_field you have to define a representation of your sub_field in a txt file.
+
   * If you don't set the filter name item in nep_cut, the cut apply to all the band
+
   * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
-  * Note that the FWHMeff in survey file follow LSST OpSim format and is equal to 2 * sqrt(2 * ln(2)) * sig_psf
+
   * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
+
+    
 
 ## data
 
@@ -98,4 +100,147 @@ This section contains informations about the survey configuration :
 * **start_day** is the starting day in **MJD** or in formated str **'YYYY-MM-DD'**. *type* : float or str. *Optional* : default is the first day of the SQL database.
 * **end_day** same as **start_day** but for the end of the survey. *type* : float or str. *Optional* : default is the last day of the SQL database.
 * **duration** : instead of setting an **end_day** you can specify a duration in **days**. *type* : float. *Optional* : the **duration** is ignored if an **end_day** is configured.
-* **field_map** is a file that describe the field geometry, more information[]
+* **field_map** is a file that describe the field geometry, more information [here](obsfile.md). *type* : str. *Optional* : default is a rectangle ra_size $\times$ dec_size field.
+* **sub_field** correspond to the sub_field key of the database, it's allow to have a database with observations indexed by subfield and not by field. *type* : str. *Optional* : If you don't use a database with subfields, however the code will run but all subfields observations will be take into account. 
+*  **band_dic** is a dictionnary that map bands names in the database to bands names in *sncosmo* . *type* dic. *Optional* 
+* **db_cut** is used to put cuts on the SQL query of the observations, it's a dictionary :  {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} where keys are any database keys and condition are str SQL queries. *type* : dic. *Optional* 
+* **add_data** is a list of database key that you want to retrieve in lightcurves tables. *type* : list(str). *Optional*  
+
+
+
+## sn_gen
+
+This section concern the supernovae properties.
+
+* **z_range** cosmological redshift range in which generate SN Ia. *type* : list(float). 
+
+* **M0** is the absolute magnitude of Supernovae in rest-frame Bessell B band. *type* : float or str.
+
+  Possibilities are : 
+
+  *  Directly give a float value
+  * Give 'jla' : use the [JLA](https://arxiv.org/abs/1401.4064) best fit value $M_0 = -19.05$ for $H_0 = 70$ km/s/Mpc. $M_0$ is rescale in function of the $H_0$ set in cosmology.
+
+* **mag_sct** the SN Ia coherent intrinsic scattering. For each SN $M_0 \rightarrow M_0 + \sigma_M$. *type* : float.
+
+* **randseed** the randseed used to produce the simulation. *type* : int. *Optional* : default is random.
+
+* **n_sn** force the number of SN to generate. *type* int. *Optional*
+
+* **sn_rate** is the rate of SN in units of SN/Mpc$^3$/year. *type* : float or str. *Optional* : default value is 3e-5.
+
+  Possibilities are:
+
+  * Directly give a float number
+  * Give 'ptf19' : use the [PTF19](https://arxiv.org/abs/1903.08580) SN Ia rate $r_v = 2.43 SN/Mpc^{-3}/year$ for $H_0 = 70$ km/s/Mpc. $r_v$  is rescale in function of the $H_0$ set in cosmology.
+
+  Note that the rate is used to generate the redshift distribution.
+
+* **rate_pw** give an evolution of the rate with redshift as $r_v(z) = (1+z)^{rate_pw} r_v(0)$. *type* float. *Optional* : default is 0. 
+
+* **duration_for_rate** allow to use a different duration for the survey and the number of SN, it must be in **days**. *type* : float. *Optional* 
+
+* **nep_cut** is a filter function to only generate SN with a minimum number of epochs. It can be just a number or you can specify different requirements for each band. *type* int or list. *Optional* 
+
+* **sct_mod** a model of wavelength dependant scattering. Follow nomanclature of [Kessler et al. 2012](https://arxiv.org/abs/1209.2482). *type* : str. *Optional*
+
+  Possibilities are:
+
+  *  **'G10'** for [Guy et al. 2010](https://arxiv.org/abs/1010.4743) model.
+  *  **'C11'** or **'C11_0'** for [Chotard et al. 2011](https://arxiv.org/abs/1103.5300) model with correlation between U' and U = 0, **'C11_1'** for Cor(U',U) = 1 and **'C11_2'** for Cor(U',U) = -1.
+
+
+
+##  model_config
+
+This section is about the model used to simulated SN Ia light curves.
+
+* **model_name ** give the name of your model.
+
+  Possibilities are :
+
+  * salt2
+  * salt3
+
+* **model_dir** give the path  to the model files. *type* : str. *Optional* : if not given, use **model_name** as *sncosmo* built-in source.
+
+* **mw_dust** is the model of Milky Way dust to apply, the second term is optional and correspond to the $R_V$ value, by default $R_V = 3.1$. *type* : list(str, float). *Optional* : if not set, no dust.
+
+  Possibilities are :
+
+  * **CCM89**
+  * **OD94** 
+  * **F99 ** 
+
+  For more information go to the *sncosmo* documentation.
+
+Other parameters depends on the model.
+
+### Salt 2 / 3 
+
+* **alpha** correspond to the stretch correction in Tripp relation : $\alpha x_1$. *type* float.
+
+* **beta** correspond to the color correction in Tripp relation : $\beta c$. *type* : float.
+
+* **dist_x1** represents the parameters of the stretch's distribution. *type* : list(float) or str.
+
+  Possibilities are:
+
+  * [MEAN, SIGMA] for gaussian  distribution.
+  * [MEAN, SIGMA-, SIGMA+]  for asymmetric gaussian distribution.
+  * 'N21' to use the distribution of [Nicolas et al. 2021](https://arxiv.org/abs/2005.09441)
+
+* **dist_c** represents the parameters of the color's distribution. *type* : list(float) .
+
+  Possibilities are:
+
+  * [MEAN, SIGMA] for gaussian  distribution.
+
+  * [MEAN, SIGMA-, SIGMA+]  for asymmetric gaussian distribution.
+
+    
+
+## cosmology
+
+This section is about the cosmological model used in the simulation.
+
+The first way of use is to just write the parameters following the [astropy.cosmology.FlatLambdaCDM](https://docs.astropy.org/en/stable/api/astropy.cosmology.FlatLambdaCDM.html#astropy.cosmology.FlatLambdaCDM) parameters names.
+
+The second way is to use the key **name** and load one of built-in astropy cosmological model:
+
+​	Possibilities are:
+
+* **'planck18'**
+* **'planck15'**
+* **'planck13'**
+* **'wmap9'** 
+* **'wmap7'** 
+* **'wmap5'** 
+
+
+
+## cmb *optional* 
+
+This section set the CMB reference frame. Defaults values come from [Planck18](https://arxiv.org/pdf/1807.06205.pdf)
+
+* **v_cmb** is our peculiar velocity in the CMB frame in km/s. *type* : float. *Optional* : default is 620 km/s
+* **l_cmb** is the galactic longitude of the CMB dipole. *type* : float. *Optional* : default is  264.021 deg
+* **b_cmb** is the galactic longitude of the CMB dipole. *type* : float. *Optional* : default is 48.253 deg
+
+
+
+## vpec_dist *optional* 
+
+This section describe the distribution of peculiar velocities. Peculiar velocities are taken from a gaussian distribution. 
+
+Default is all vpec = 0.
+
+* **mean_vpec**  is the mean of the gaussian distribution. *type* float
+* **sig_vpec**  is the scale of the gaussian distribution. *type* float
+
+
+
+##  host_file *optional*
+
+Give the path to the host_file, used to generate SN in hosts, see [here](hostfile.md).
+
