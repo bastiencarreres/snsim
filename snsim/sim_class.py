@@ -1,7 +1,7 @@
 """This module contains the class which are used in the simulation."""
 
 import sqlite3
-import io
+import warnings
 import numpy as np
 import sncosmo as snc
 import matplotlib.pyplot as plt
@@ -1023,10 +1023,12 @@ class SurveyObs:
 
         Note that end_day key has priority on duration
         """
+        min_mjd = obs_dic['expMJD'].min()
+        max_mjd = obs_dic['expMJD'].max()
         if 'start_day' in self.config:
             start_day = self.config['start_day']
         else:
-            start_day = obs_dic['expMJD'].min()
+            start_day = min_mjd
 
         start_day = ut.init_astropy_time(start_day)
 
@@ -1035,9 +1037,16 @@ class SurveyObs:
         elif 'duration' in self.config:
             end_day = start_day.mjd + self.config['duration']
         else:
-            end_day = obs_dic['expMJD'].max()
+            end_day = max_mjd
 
         end_day = ut.init_astropy_time(end_day)
+        if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
+            warnings.warn(f'Starting day {start_day:.3f} MJD or \
+                          Ending day {end_day:.3f} MJD is outer of \
+                          the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
+                          UserWarning)
+        if end_day.mjd < start_day.mjd:
+            raise ValueError("The ending day is before the starting day !")
 
         return start_day, end_day
 
