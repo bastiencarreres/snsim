@@ -228,7 +228,7 @@ def radec_to_cart(ra, dec):
 
 
 @njit(cache=True)
-def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, field_size, fieldID, obs_fieldID,
+def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
                 subfields_id, subfields_corners, type=types.float64[::1]):
     """Chek if a SN is in fields.
 
@@ -264,29 +264,18 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, field_size, fieldID, obs_f
     # in_field = np.abs(SN_ra_field_frame) < field_size[0] / 2
     # in_field &= np.abs(SN_dec_field_frame) < field_size[1] / 2
 
-    in_field = np.empty(len(SN_ra_field_frame), dtype='bool')
-    subfields = np.zeros(len(in_field), dtype='int')
-    for i in range(len(in_field)):
+    dic_map = Dict.empty(key_type=types.i8,
+                         value_type=types.i8)
+
+    for i, fID in enumerate(obs_fieldID):
         for subf, subf_id in zip(subfields_corners, subfields_id):
             obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
             obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
             obs_condition &= SN_dec_field_frame[i] > np.min(subf.T[1])
             obs_condition &= SN_dec_field_frame[i] < np.max(subf.T[1])
             if obs_condition:
-                in_field[i] = True
-                subfields[i] = subf_id
+                dic_map[fID] = subf_id
                 break
-        if not obs_condition:
-            in_field[i] = False
-            subfields[i] = -99
-
-    dic_map = Dict.empty(key_type=types.i8,
-                         value_type=types.i8)
-
-    for fID, bool, subf in zip(obs_fieldID, in_field, subfields):
-        if bool:
-            dic_map[fID] = subf
-
     return dic_map
 
 

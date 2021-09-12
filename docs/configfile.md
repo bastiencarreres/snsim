@@ -96,7 +96,7 @@ This section contains informations about the survey configuration :
 * **gain** is the gain of the CCD in $e^-$ / ADU. *type* : float.
 * **zp** is a constant zero point to use in simulation. *type* : float. *Optional* : If not set, zero point is taken in the SQL database.
 * **sig_zp** is the error on zero point. *type* : float. *Optional* : If not set, this parameter is taken in the SQL database.
-* **sig_psf** is the PSF scale. *type* : float. *Optional* : If not set, the PSF is taken in the SQL database, to following LSST OpSim structure the PSF in the database is take has the **FWHM** $= 2 \sqrt\left(2 \ln(2)\right) \sigma_{PSF}$. 
+* **sig_psf** is the PSF scale. *type* : float. *Optional* : If not set, the PSF is taken in the SQL database, to following LSST OpSim structure the PSF in the database is take has the **FWHM** ($FWHM = 2 \sqrt\left(2 \ln(2)\right) \sigma_{PSF}$). 
 * **start_day** is the starting day in **MJD** or in formated str **'YYYY-MM-DD'**. *type* : float or str. *Optional* : default is the first day of the SQL database.
 * **end_day** same as **start_day** but for the end of the survey. *type* : float or str. *Optional* : default is the last day of the SQL database.
 * **duration** : instead of setting an **end_day** you can specify a duration in **days**. *type* : float. *Optional* : the **duration** is ignored if an **end_day** is configured.
@@ -155,7 +155,7 @@ This section concern the supernovae properties.
 
 This section is about the model used to simulated SN Ia light curves.
 
-* **model_name ** give the name of your model.
+* **model_name** give the name of your model.
 
   Possibilities are :
 
@@ -170,7 +170,7 @@ This section is about the model used to simulated SN Ia light curves.
 
   * **CCM89**
   * **OD94** 
-  * **F99 ** 
+  * **F99** 
 
   For more information go to the *sncosmo* documentation.
 

@@ -9,13 +9,14 @@ Welcome to snsim's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-   
+
    installation.md
    basicusage.md
    configfile.md
    obsfile.md
    hostfile.md
    simmath.md
+   openfit.md
 
 .. toctree::
    :hidden:

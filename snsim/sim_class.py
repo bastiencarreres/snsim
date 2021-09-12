@@ -285,9 +285,19 @@ class SN:
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
 
-        self._sim_lc['mag'] = -2.5 * np.log10(self._sim_lc['flux']) + self._sim_lc['zp']
+        self._sim_lc['mag'] = np.zeros(len(self._sim_lc))
+        self._sim_lc['magerr'] = np.zeros(len(self._sim_lc))
 
-        self._sim_lc['magerr'] = 2.5 / np.log(10) * 1 / self._sim_lc['flux'] * self._sim_lc['fluxerr']
+        positive_flux = self._sim_lc['flux'] > 0
+
+        self._sim_lc['mag'][positive_flux] = -2.5 * np.log10(self._sim_lc['flux'][positive_flux]) \
+            + self._sim_lc['zp'][positive_flux]
+
+        self._sim_lc['magerr'][positive_flux] = 2.5 / np.log(10) \
+            * 1 / self._sim_lc['flux'][positive_flux] * self._sim_lc['fluxerr'][positive_flux]
+
+        self._sim_lc['mag'][~positive_flux] = np.nan
+        self._sim_lc['magerr'][~positive_flux] = np.nan
 
         return self._reformat_sim_table()
 
@@ -1146,7 +1156,7 @@ class SurveyObs:
         # Time selection :
         expr = ("(self.obs_table.expMJD - SN_obj.sim_t0 > ModelMinT_obsfrm) "
                 "& (self.obs_table.expMJD - SN_obj.sim_t0 < ModelMaxT_obsfrm)")
-        epochs_selec = pd.eval(expr).values
+        epochs_selec = pd.eval(expr).to_numpy()
 
         is_obs = epochs_selec.any()
 
@@ -1159,16 +1169,16 @@ class SurveyObs:
 
             # Update the epochs_selec mask and check if there is some observations
             is_obs, epochs_selec = nbf.map_obs_fields(
-                                                     epochs_selec,
-                                                     self.obs_table['fieldID'][epochs_selec].values,
-                                                     dic_map)
+                                                epochs_selec,
+                                                self.obs_table['fieldID'][epochs_selec].to_numpy(),
+                                                dic_map)
 
         if is_obs and 'sub_field' in self.config:
             is_obs, epochs_selec = nbf.map_obs_subfields(
-                                    epochs_selec,
-                                    self.obs_table['fieldID'][epochs_selec].values,
-                                    self.obs_table[self.config['sub_field']][epochs_selec].values,
-                                    dic_map)
+                                epochs_selec,
+                                self.obs_table['fieldID'][epochs_selec].to_numpy(),
+                                self.obs_table[self.config['sub_field']][epochs_selec].to_numpy(),
+                                dic_map)
         if is_obs:
             return self._make_obs_table(epochs_selec)
         return None
@@ -1187,12 +1197,12 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
-        # Capture noise and filter
-        band = self.obs_table['filter'][epochs_selec].astype('U27').to_numpy(dtype='str')
 
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
-            band = np.array(list(map(self.band_dic.get, band)))
+            band = self.obs_table['filter'][epochs_selec].map(self.band_dic).to_numpy(dtype='str')
+        else:
+            band = self.obs_table['filter'][epochs_selec].astype('U27').to_numpy(dtype='str')
 
         # Zero point selection
         if self.zp[0] != 'zp_in_obs':
@@ -1496,15 +1506,13 @@ class SurveyFields:
         else:
             ra_fields = [self._dic[k]['ra'] for k in self._dic]
             dec_fields = [self._dic[k]['dec'] for k in self._dic]
+            fields_pre_selec = [k for k in self._dic]
 
         # Compute the coord of the SN in the rest frame of each field
-
         obsfield_map = nbf.is_in_field(SN_ra,
                                        SN_dec,
                                        ra_fields,
                                        dec_fields,
-                                       self.size,
-                                       np.array([k for k in self._dic]),
                                        fields_pre_selec,
                                        np.array(list(self._sub_fields_corners)),
                                        np.array(list(self._sub_fields_corners.values())))
