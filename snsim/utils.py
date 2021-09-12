@@ -46,7 +46,9 @@ def set_cosmo(cosmo_dic):
         else:
             raise ValueError(f'Available model are {astropy_mod}')
     else:
-        return acosmo.FlatLambdaCDM(**cosmo_dic)
+        if 'Ode0' not in cosmo_dic.keys():
+            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0']
+        return acosmo.w0waCDM(**cosmo_dic)
 
 
 def scale_M0_jla(H0):
