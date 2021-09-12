@@ -8,7 +8,6 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as u
-from . import nb_fun as nbf
 from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
 
@@ -46,7 +45,9 @@ def set_cosmo(cosmo_dic):
         else:
             raise ValueError(f'Available model are {astropy_mod}')
     else:
-        return acosmo.FlatLambdaCDM(**cosmo_dic)
+        if 'Ode0' not in cosmo_dic.keys():
+            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0']
+        return acosmo.w0waCDM(**cosmo_dic)
 
 
 def scale_M0_jla(H0):

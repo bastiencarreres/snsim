@@ -1197,7 +1197,6 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
-
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
             band = self.obs_table['filter'][epochs_selec].map(self.band_dic).to_numpy(dtype='str')

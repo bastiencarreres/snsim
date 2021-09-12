@@ -60,22 +60,3 @@ Adding the fields :
 
 ![](readme_figures/ra_dec_fields.png)
 
-## Fit and OpenSim class
-
-You can direct fit after running the simulation
-```python
-# Fit 1 lc by id
-sim.fit_lc(id)
-
-# Fit all the lcs
-sim.fit_lc()
-
-# Write the fit
-sim.write_fit()
-```
-Or you can open register open sim file .fits or .pkl with the open_sim class
-```python
-from snsim import OpenSim
-
-sim = OpenSim('sim_file.pkl/.fits',SALT2_dir)
-```

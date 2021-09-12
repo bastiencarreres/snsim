@@ -6,7 +6,7 @@ from . import nb_fun as nbf
 
 
 def init_sn_sct_model(model, sct_mod):
-    """Add scattering effect on sncomso model.
+    """Add scattering effect on sncosmo model.
 
     Parameters
     ----------

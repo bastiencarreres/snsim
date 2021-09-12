@@ -17,12 +17,13 @@ Welcome to snsim's documentation!
    hostfile.md
    simmath.md
    openfit.md
+   plots.md
 
 .. toctree::
    :hidden:
    :titlesonly:
 
-   reference.rst
+   apidoc/snsim.rst
 
 Indices and tables
 ==================

@@ -204,7 +204,11 @@ Other parameters depends on the model.
 
 This section is about the cosmological model used in the simulation.
 
-The first way of use is to just write the parameters following the [astropy.cosmology.FlatLambdaCDM](https://docs.astropy.org/en/stable/api/astropy.cosmology.FlatLambdaCDM.html#astropy.cosmology.FlatLambdaCDM) parameters names.
+
+
+The first way of use is to just write the parameters following the [astropy.cosmology.w0waCDM](https://docs.astropy.org/en/stable/api/astropy.cosmology.w0waCDM.html#astropy.cosmology.FlatLambdaCDM) parameters names. At least you need to give the Hubble constant : **H0** and the matter density at z=0 :  **Om0**. If you don't give any other parameters the Universe is assumed flat with a cosmological constant. 
+
+
 
 The second way is to use the key **name** and load one of built-in astropy cosmological model:
 
