@@ -70,15 +70,6 @@ class Simulator:
 
     Notes
     -----
-    - If the name of bands in the survey file doesn't match sncosmo bands
-    you can use the key band_dic to translate filters names
-    - If you don't set the filter name item in nep_cut, the cut apply to all the bands
-    - For wavelength dependent model, nomanclature follow arXiv:1209.2482
-        Possibilities are :
-        -> 'G10' for Guy et al. 2010 model,
-        -> 'C11' or 'C11_0' for Chotard et al. model with correlation between
-        U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
-
     yaml file format :
 
     | data :

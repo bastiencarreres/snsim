@@ -23,7 +23,7 @@ Welcome to snsim's documentation!
    :hidden:
    :titlesonly:
 
-   reference.rst
+   apidoc/snsim.rst
 
 Indices and tables
 ==================

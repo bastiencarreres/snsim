@@ -65,12 +65,12 @@ def cov_x0_to_mb(x0, cov):
     x0 : float
         SALT x0 parameter.
     cov : numpy.array(float, size = (3,3))
-        SALT x0,x1,c covariance matrix
+        SALT x0, x1, c covariance matrix
 
     Returns
     -------
     numpy.array(float, size = (3,3))
-        SALT mb,x1,c covariance matrix.
+        SALT mb, x1, c covariance matrix.
 
     """
     J = np.array([[-2.5 / np.log(10) * 1 / x0, 0, 0], [0, 1, 0], [0, 0, 1]])
@@ -103,21 +103,31 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
 
     Notes
     -----
-    Compute theorical fluxerr from fit err = sqrt(COV)
-    where COV = J**T * COV(x0,x1,c) * J with J = (dF/dx0, dF/dx1, dF/dc) the jacobian.
-    According to Fnorm = x0/(1+z)
-                        * int_\lambda (M0(\lambda_s, p) + x1 * M1(\lambda_s, p))
-                        * 10**(-0.4 * c * CL(\lambda_s))
-                        * T_b(\lambda) * \lambda/hc d\lambda * norm_factor
-    where norm_factor = 10**(0.4 * ZP_norm)/ZP_magsys. We found :
-    dF/dx0 = F/x0
+    Compute theorical fluxerr from fit :math:`err = \sqrt{COV}`
+    where :math:`COV = J^T  COV(x0,x1,c)  J` with :math:`J = (dF/dx0, dF/dx1, dF/dc)`
+    the jacobian.
 
-    dF/dx1 = x0/(1+z) * int_\lambda M1(\lambda_s,p)) * 10**(-0.4 * c * CL(\lambda_s))
-                                 * T_b(\lambda) * \lambda/hc dlambda * norm_factor
+    .. math::
 
-    dF/dc  =  -0.4*ln(10)*x0/(1+z) * int_\lambda (M0(\lambda_s, p) + x1 * M1(\lambda_s, p))
-                                   * CL(\lambda_s) * 10**(-0.4 * c *CL(\lambda_s))
-                                   * T_b(\lambda) * \lambda/hc dl\ambda * norm_factor
+        F_{norm} = \frac{x_0}{1+z} \int_\lambda \left(M_0(\lambda_s, p) + x_1 M_1(\lambda_s, p)\right)\
+        10^{-0.4cCL(\lambda_s)}T_b(\lambda) \frac{\lambda}{hc} d\lambda \times \text{NF}
+
+    where the Norm Factor is :math:`\text{NF} = 10^{0.4(ZP_{norm} -ZP_{magsys})}`.
+
+    We found :
+
+    .. math::
+
+        \frac{dF}{dx_0} = \frac{F}{x_0}
+
+    .. math::
+        \frac{dF}{dx_1} = \frac{x_0}{1+z} \int_\lambda M_1(\lambda_s, p) * 10^{-0.4cCL(\lambda_s)}\
+                                 T_b(\lambda)\frac{\lambda}{hc} d\lambda \times \text{NF}
+
+    .. math::
+
+        \frac{dF}{dc}  =  -\frac{\ln(10)}{2.5}\frac{x_0}{1+z} \int_\lambda \left(M_0(\lambda_s, p) + x_1 M_1(\lambda_s, p)\right)\
+                        CL(\lambda_s)10^{-0.4 c CL(\lambda_s)}T_b(\lambda) \frac{\lambda}{hc} d\lambda \times \text{NF}
 
     """
     a = 1. / (1 + fit_model.parameters[0])
