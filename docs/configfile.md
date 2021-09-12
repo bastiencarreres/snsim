@@ -96,7 +96,7 @@ This section contains informations about the survey configuration :
 * **gain** is the gain of the CCD in $e^-$ / ADU. *type* : float.
 * **zp** is a constant zero point to use in simulation. *type* : float. *Optional* : If not set, zero point is taken in the SQL database.
 * **sig_zp** is the error on zero point. *type* : float. *Optional* : If not set, this parameter is taken in the SQL database.
-* **sig_psf** is the PSF scale. *type* : float. *Optional* : If not set, the PSF is taken in the SQL database, to following LSST OpSim structure the PSF in the database is take has the **FWHM** ($FWHM = 2 \sqrt\left(2 \ln(2)\right) \sigma_{PSF}$). 
+* **sig_psf** is the PSF scale. *type* : float. *Optional* : If not set, the PSF is taken in the SQL database, to following LSST OpSim structure the PSF in the database is take has the **FWHM** ($FWHM = 2 \sqrt{2 \ln(2)} \sigma_{PSF}$). 
 * **start_day** is the starting day in **MJD** or in formated str **'YYYY-MM-DD'**. *type* : float or str. *Optional* : default is the first day of the SQL database.
 * **end_day** same as **start_day** but for the end of the survey. *type* : float or str. *Optional* : default is the last day of the SQL database.
 * **duration** : instead of setting an **end_day** you can specify a duration in **days**. *type* : float. *Optional* : the **duration** is ignored if an **end_day** is configured.
@@ -127,12 +127,12 @@ This section concern the supernovae properties.
 
 * **n_sn** force the number of SN to generate. *type* int. *Optional*
 
-* **sn_rate** is the rate of SN in units of SN/Mpc$^3$/year. *type* : float or str. *Optional* : default value is 3e-5.
+* **sn_rate** is the rate of SN in units of SN/Mpc$^3$/year. *type* : float or str. *Optional* : default value is $3 \times 10^{-5}\ SN.Mpc^{-3}.year^{-1}$ .
 
   Possibilities are:
 
   * Directly give a float number
-  * Give 'ptf19' : use the [PTF19](https://arxiv.org/abs/1903.08580) SN Ia rate $r_v = 2.43 SN/Mpc^{-3}/year$ for $H_0 = 70$ km/s/Mpc. $r_v$  is rescale in function of the $H_0$ set in cosmology.
+  * Give 'ptf19' : use the [PTF19](https://arxiv.org/abs/1903.08580) SN Ia rate $r_v = 2.43 \times10^{-5} \ SN.Mpc^{-3}.year^{-1}$ for $H_0 = 70$ km/s/Mpc. $r_v$  is rescale in function of the $H_0$ set in cosmology.
 
   Note that the rate is used to generate the redshift distribution.
 

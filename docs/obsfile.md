@@ -20,7 +20,7 @@ You can set a different zero point and its error for each observation by setting
 | :----------: | :----------: |
 | Zero point of the observation (Optional if given in yaml) | Uncertainty of the zeropoint (Optional if given in yaml) |
 
-In addition you can take into account the variation of the PSF as the **F**ull **W**idth at **H**alf **M**aximum $FWHM = 2 * \sqrt{2 \log(2)} \sigma_{skynoise}$
+In addition you can take into account the variation of the PSF as the **F**ull **W**idth at **H**alf **M**aximum $FWHM = 2 \sqrt{2 \log(2)} \sigma_{skynoise}$
 
 |                   FWHM                    |
 | :---------------------------------------: |
