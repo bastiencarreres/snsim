@@ -153,28 +153,6 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None, size=1):
     return mean + nbr
 
 
-def is_same_cosmo_model(dic, astropy_model):
-    """Check if cosmo parameters in a dic are the same used in astropy_model.
-
-    Parameters
-    ----------
-    dic : dict
-        Contain som cosmological parameters.
-    astropy_model : astropy.cosmology
-        An astropy cosmological model.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
-    """
-    for k, v in dic.items():
-        if v != astropy_model.__dict__['_' + k]:
-            return False
-    return True
-
-
 def compute_z2cmb(ra, dec, cmb):
     """Compute the redshifts of a list of objects relative to the CMB.
 
@@ -316,54 +294,6 @@ def flux_to_Jansky(zp, band):
     trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
     norm = 10**(-0.4 * zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
-
-
-def radec_to_cart(ra, dec):
-    """Compute carthesian vector for given RA Dec coordinates.
-
-    Parameters
-    ----------
-    ra : float or numpy.ndarray
-        Right Ascension.
-    dec :  float or numpy.ndarray
-        Declinaison.
-
-    Returns
-    -------
-    numpy.ndarray(float)
-        Carthesian coordinates corresponding to RA Dec coordinates.
-
-    """
-    cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
-    return cart_vec
-
-
-def change_sph_frame(ra, dec, ra_frame, dec_frame):
-    """Compute object coord in a new frame.
-
-    Parameters
-    ----------
-    ra : float
-        Right Ascension of the object.
-    dec : float
-        Declinaison of the oject.
-    ra_frame : float/numpy.ndarray(float)
-        Right Ascension of frame in which compute the new coords.
-    dec_frame : float/numpy.ndarray(float)
-        Declinaison of frame in which compute the new coords.
-
-    Returns
-    -------
-    numpy.ndaray(float), numpy.ndaray(float)
-        Object coordinates in each of the frames.
-
-    """
-    if isinstance(ra_frame, float):
-        ra_frame = np.array([ra_frame])
-        dec_frame = np.array([dec_frame])
-    vec = radec_to_cart(ra, dec)
-    new_ra, new_dec = nbf.new_coord_on_fields(ra_frame, dec_frame, vec)
-    return new_ra, new_dec
 
 
 def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):

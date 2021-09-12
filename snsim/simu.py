@@ -612,19 +612,22 @@ class Simulator:
         """
         raise_trigger = 0
         SN_ID = 0
+        n_to_sim = self.config['sn_gen']['n_sn']
         while len(self._sn_list) < self.config['sn_gen']['n_sn']:
-            sn = self.generator(1, rand_gen)[0]
-            sn.epochs = self.survey.epochs_selection(sn)
-            if sn.pass_cut(self.nep_cut):
-                sn.gen_flux(rand_gen)
-                sn.ID = SN_ID
-                SN_ID += 1
-                self._sn_list.append(sn)
-            elif raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
-                print(len(self.survey.obs_table['expMJD']))
-                raise RuntimeError('Cuts are too stricts')
-            else:
-                raise_trigger += 1
+            sn_list_tmp = self.generator(n_to_sim, rand_gen)
+            for sn in sn_list_tmp:
+                sn.epochs = self.survey.epochs_selection(sn)
+                if sn.pass_cut(self.nep_cut):
+                    sn.gen_flux(rand_gen)
+                    sn.ID = SN_ID
+                    SN_ID += 1
+                    self._sn_list.append(sn)
+
+                elif raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
+                    raise RuntimeError('Cuts are too stricts')
+                else:
+                    raise_trigger += 1
+            n_to_sim = self.config['sn_gen']['n_sn'] - len(self._sn_list)
 
     def _get_primary_header(self):
         """Generate the primary header of sim fits file..
