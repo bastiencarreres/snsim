@@ -8,7 +8,6 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as u
-from . import nb_fun as nbf
 from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
 

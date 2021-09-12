@@ -17,6 +17,7 @@ Welcome to snsim's documentation!
    hostfile.md
    simmath.md
    openfit.md
+   plots.md
 
 .. toctree::
    :hidden:
