@@ -697,8 +697,8 @@ class Simulator:
 
         # Export lcs as pickle
         if 'pkl' in self.config['data']['write_format']:
-            sim_lc = [sn.sim_lc for sn in self._sn_list]
-            sn_pkl = SnSimPkl(sim_lc, sim_header)
+            sim_lcs = [sn.sim_lc for sn in self._sn_list]
+            sn_pkl = SnSimPkl(sim_lcs, sim_header)
             with open(write_path + self.sim_name + '.pkl', 'wb') as file:
                 pickle.dump(sn_pkl, file)
 
@@ -904,32 +904,32 @@ class Simulator:
         Use write_fit from utils.
 
         """
-        sim_lc_meta = {'sn_id': [sn.ID for sn in self.sn_list],
-                       'ra': [sn.coord[0] for sn in self.sn_list],
-                       'dec': [sn.coord[1] for sn in self.sn_list],
-                       'vpec': [sn.vpec for sn in self.sn_list],
-                       'zpec': [sn.zpec for sn in self.sn_list],
-                       'z2cmb': [sn.z2cmb for sn in self.sn_list],
-                       'zcos': [sn.zcos for sn in self.sn_list],
-                       'zCMB': [sn.zCMB for sn in self.sn_list],
-                       'zobs': [sn.z for sn in self.sn_list],
-                       'sim_mu': [sn.sim_mu for sn in self.sn_list],
-                       'com_dist': [sn.como_dist for sn in self.sn_list],
-                       'sim_t0': [sn.sim_t0 for sn in self.sn_list],
-                       'm_sct': [sn.mag_sct for sn in self.sn_list]}
+        sim_lcs_meta = {'sn_id': [sn.ID for sn in self.sn_list],
+                        'ra': [sn.coord[0] for sn in self.sn_list],
+                        'dec': [sn.coord[1] for sn in self.sn_list],
+                        'vpec': [sn.vpec for sn in self.sn_list],
+                        'zpec': [sn.zpec for sn in self.sn_list],
+                        'z2cmb': [sn.z2cmb for sn in self.sn_list],
+                        'zcos': [sn.zcos for sn in self.sn_list],
+                        'zCMB': [sn.zCMB for sn in self.sn_list],
+                        'zobs': [sn.z for sn in self.sn_list],
+                        'sim_mu': [sn.sim_mu for sn in self.sn_list],
+                        'com_dist': [sn.como_dist for sn in self.sn_list],
+                        'sim_t0': [sn.sim_t0 for sn in self.sn_list],
+                        'm_sct': [sn.mag_sct for sn in self.sn_list]}
 
         if self.model_name in ('salt2', 'salt3'):
-            sim_lc_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
-            sim_lc_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
-            sim_lc_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
-            sim_lc_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
+            sim_lcs_meta['sim_x0'] = [sn.sim_x0 for sn in self.sn_list]
+            sim_lcs_meta['sim_mb'] = [sn.sim_mb for sn in self.sn_list]
+            sim_lcs_meta['sim_x1'] = [sn.sim_x1 for sn in self.sn_list]
+            sim_lcs_meta['sim_c'] = [sn.sim_c for sn in self.sn_list]
 
         if 'sct_model' in self.config['sn_gen']:
-            sim_lc_meta['SM_seed'] = [sn.sct_mod_seed for sn in self.sn_list]
+            sim_lcs_meta['SM_seed'] = [sn.sct_mod_seed for sn in self.sn_list]
 
         if 'mw_dust' in self.config['model_config']:
-            sim_lc_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]
+            sim_lcs_meta['MW_EBV'] = [sn.mw_ebv for sn in self.sn_list]
 
         write_file = self.config['data']['write_path'] + self.sim_name + '_fit.fits'
-        ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_file,
+        ut.write_fit(sim_lcs_meta, self.fit_res, self._fit_dic, write_file,
                      sim_meta=self._get_primary_header())
