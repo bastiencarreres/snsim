@@ -60,7 +60,7 @@ class OpenSim:
         self._sn = None
         self._init_sim_lcs()
         self._model_dir = model_dir
-        #self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
+        self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
         self._fit_resmod = None
 
@@ -74,7 +74,6 @@ class OpenSim:
                     tab = Table(data)
                     tab.meta = hdu.header
                     sim_lcs.append(tab)
-                print(header)
                 self._sn = SnSimPkl(sim_lcs, header)
         elif self._file_ext == '.pkl':
             with open(self._file_path + self._file_ext, 'rb') as f:
