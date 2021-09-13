@@ -297,12 +297,12 @@ def flux_to_Jansky(zp, band):
     return norm
 
 
-def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):
+def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
     """Write fit into a fits file.
 
     Parameters
     ----------
-    sim_lc_meta : dict{list}
+    sim_lcs_meta : dict{list}
         Meta data of all lightcurves.
     fit_res : list(sncosmo.utils.Result)
         List of sncosmo fit results for each lightcurve.
@@ -317,7 +317,7 @@ def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):
         Just write a file.
 
     """
-    data = sim_lc_meta.copy()
+    data = sim_lcs_meta.copy()
 
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
@@ -360,7 +360,7 @@ def write_fit(sim_lc_meta, fit_res, fit_dic, directory, sim_meta={}):
             for k in fit_keys:
                 data[k].append(np.nan)
 
-    for k, v in sim_lc_meta.items():
+    for k, v in sim_lcs_meta.items():
         data[k] = v
 
     table = Table(data)
