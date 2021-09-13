@@ -27,6 +27,12 @@ sim.fit_lc()
 
 # Write the fit
 sim.write_fit()
+
+# You can acces the lcs :
+sim.sim_lcs()
+
+# Or access to parameters list:
+sim.sn.get('key')  # Where 'key' is a sn parameters such as 'sim_mb', 'ra', etc... 
 ```
 
 
