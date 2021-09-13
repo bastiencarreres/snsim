@@ -1051,10 +1051,11 @@ class SurveyObs:
 
         end_day = ut.init_astropy_time(end_day)
         if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
-            warnings.warn(f'Starting day {start_day:.3f} MJD or \
-                          Ending day {end_day:.3f} MJD is outer of \
-                          the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
+            warnings.warn((f'Starting day {start_day.mjd:.3f} MJD or',
+                           'Ending day {end_day.mjd:.3f} MJD is outer of'
+                           'the survey range : {min_mjd:.3f} - {max_mjd:.3f}'),
                           UserWarning)
+
         if end_day.mjd < start_day.mjd:
             raise ValueError("The ending day is before the starting day !")
 
