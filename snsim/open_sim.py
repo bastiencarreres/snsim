@@ -27,7 +27,7 @@ class OpenSim:
         The path of the simulation file.
     _file_ext : str
         sim file extension.
-    _sim_lc : list(astropy.Table)
+    _sim_lcs : list(astropy.Table)
         List containing the simulated lightcurves.
     _header : dict
         A dict containing simulation meta.
@@ -40,7 +40,7 @@ class OpenSim:
 
     Methods
     -------
-    _init_sim_lc()
+    _init_sim_lcs()
         Extract data from file.
     plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)
         Plot the given SN lightcurve.
@@ -58,27 +58,23 @@ class OpenSim:
         """Copy some function of snsim to allow to use sim file."""
         self._file_path, self._file_ext = os.path.splitext(sim_file)
         self._sn = None
-        self._sim_lc = None
-        self._header = None
-        self._init_sim_lc()
+        self._init_sim_lcs()
         self._model_dir = model_dir
         self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
         self._fit_resmod = None
 
-    def _init_sim_lc(self):
+    def _init_sim_lcs(self):
         if self._file_ext == '.fits':
-            sim_lc = []
+            sim_lcs = []
             with fits.open(self._file_path + self._file_ext) as sf:
                 header = sf[0].header
                 for hdu in sf[1:]:
                     data = hdu.data
                     tab = Table(data)
                     tab.meta = hdu.header
-                    sim_lc.append(tab)
-            self._sim_lc = sim_lc
-            self._header = header
-
+                    sim_lcs.append(tab)
+                self._sn = SnSimPkl(sim_lcs, header)
         elif self._file_ext == '.pkl':
             with open(self._file_path + self._file_ext, 'rb') as f:
                 self._sn = pickle.load(f)
@@ -86,25 +82,17 @@ class OpenSim:
     @property
     def sn(self):
         """Get SnSimPkl object."""
-        if self._sn is None:
-            print('You open a fits file => No SnSimPkl object')
-            return None
-        else:
-            return self._sn
+        return self._sn
 
     @property
-    def sim_lc(self):
-        """Get sim_lc list."""
-        if self._sim_lc is None:
-            return self.sn.sim_lc
-        return self._sim_lc
+    def sim_lcs(self):
+        """Get sim_lcs list."""
+        return self.sn.sim_lcs
 
     @property
     def header(self):
         """Get header dict."""
-        if self._header is None:
-            return self.sn.header
-        return self._header
+        return self.sn.header
 
     @property
     def fit_res(self):
@@ -135,9 +123,9 @@ class OpenSim:
 
         """
         if self._fit_res is None:
-            self._fit_res = [None] * len(self.sim_lc)
-            self._fit_resmod = [None] * len(self.sim_lc)
-            self._fit_dic = [None] * len(self.sim_lc)
+            self._fit_res = [None] * len(self.sim_lcs)
+            self._fit_resmod = [None] * len(self.sim_lcs)
+            self._fit_dic = [None] * len(self.sim_lcs)
         fit_model = self._fit_model.__copy__()
         model_name = self.header['Mname']
         if model_name in ('salt2', 'salt3'):
@@ -162,7 +150,7 @@ class OpenSim:
             print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if sn_ID is None:
-            for i, lc in enumerate(self.sim_lc):
+            for i, lc in enumerate(self.sim_lcs):
                 if self._fit_res[i] is None:
                     fit_model.set(z=lc.meta['z'])
                     if mw_dust is not None:
@@ -172,11 +160,11 @@ class OpenSim:
                                                                                         fit_model,
                                                                                         fit_par)
         else:
-            fit_model.set(z=self.sim_lc[sn_ID].meta['z'])
+            fit_model.set(z=self.sim_lcs[sn_ID].meta['z'])
             if mw_dust is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sim_lc[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
+                dst_ut.add_mw_to_fit(fit_model, self.sim_lcs[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
-                                                                                self.sim_lc[sn_ID],
+                                                                                self.sim_lcs[sn_ID],
                                                                                 fit_model,
                                                                                 fit_par)
 
@@ -206,7 +194,7 @@ class OpenSim:
         Use plot_lc from utils.
 
         """
-        lc = self.sim_lc[sn_ID]
+        lc = self.sim_lcs[sn_ID]
 
         if plot_sim:
             model_name = self.header['Mname']
@@ -244,10 +232,9 @@ class OpenSim:
                         mw_dust = [self.header['mwd_mod'], self.header['mw_rv']]
                     else:
                         mw_dust = [self.header['mwd_mod'], 3.1]
+                else:
+                    mw_dust = None
                 self.fit_lc(sn_ID, mw_dust=mw_dust)
-            elif self.fit_res[sn_ID] is None:
-                print('This SN was not fitted, launch fit')
-                self.fit_lc(sn_ID)
 
             if self.fit_res[sn_ID] == 'NaN':
                 print('This sn has no fit results')
@@ -261,7 +248,7 @@ class OpenSim:
             cov_t0_x0_x1_c = None
             residuals = False
 
-        plot_ut.plot_lc(self.sim_lc[sn_ID],
+        plot_ut.plot_lc(self.sim_lcs[sn_ID],
                         mag=mag,
                         snc_sim_model=s_model,
                         snc_fit_model=f_model,
@@ -289,7 +276,7 @@ class OpenSim:
         vpec = None
         if plot_vpec:
             vpec = []
-        for lc in self.sim_lc:
+        for lc in self.sim_lcs:
             ra.append(lc.meta['ra'])
             dec.append(lc.meta['dec'])
             if plot_vpec:
@@ -317,36 +304,36 @@ class OpenSim:
             self.fit_lc()
         for i, res in enumerate(self.fit_res):
             if res is None:
-                self.fit_lc(self.sim_lc[i].meta['sn_id'])
+                self.fit_lc(self.sim_lcs[i].meta['sn_id'])
 
-        sim_lc_meta = {'sn_id': [lc.meta['sn_id'] for lc in self.sim_lc],
-                       'ra': [lc.meta['ra'] for lc in self.sim_lc],
-                       'dec': [lc.meta['dec'] for lc in self.sim_lc],
-                       'vpec': [lc.meta['vpec'] for lc in self.sim_lc],
-                       'zpec': [lc.meta['zpec'] for lc in self.sim_lc],
-                       'z2cmb': [lc.meta['z2cmb'] for lc in self.sim_lc],
-                       'zcos': [lc.meta['zcos'] for lc in self.sim_lc],
-                       'zCMB': [lc.meta['zCMB'] for lc in self.sim_lc],
-                       'zobs': [lc.meta['z'] for lc in self.sim_lc],
-                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lc],
-                       'com_dist': [lc.meta['com_dist'] for lc in self.sim_lc],
-                       'sim_t0': [lc.meta['sim_t0'] for lc in self.sim_lc],
-                       'm_sct': [lc.meta['m_sct'] for lc in self.sim_lc]}
+        sim_lc_meta = {'sn_id': [lc.meta['sn_id'] for lc in self.sim_lcs],
+                       'ra': [lc.meta['ra'] for lc in self.sim_lcs],
+                       'dec': [lc.meta['dec'] for lc in self.sim_lcs],
+                       'vpec': [lc.meta['vpec'] for lc in self.sim_lcs],
+                       'zpec': [lc.meta['zpec'] for lc in self.sim_lcs],
+                       'z2cmb': [lc.meta['z2cmb'] for lc in self.sim_lcs],
+                       'zcos': [lc.meta['zcos'] for lc in self.sim_lcs],
+                       'zCMB': [lc.meta['zCMB'] for lc in self.sim_lcs],
+                       'zobs': [lc.meta['z'] for lc in self.sim_lcs],
+                       'sim_mu': [lc.meta['sim_mu'] for lc in self.sim_lcs],
+                       'com_dist': [lc.meta['com_dist'] for lc in self.sim_lcs],
+                       'sim_t0': [lc.meta['sim_t0'] for lc in self.sim_lcs],
+                       'm_sct': [lc.meta['m_sct'] for lc in self.sim_lcs]}
 
         model_name = self.header['Mname']
 
         if model_name in ('salt2', 'salt3'):
-            sim_lc_meta['sim_x0'] = [lc.meta['sim_x0'] for lc in self.sim_lc]
-            sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lc]
-            sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lc]
-            sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lc]
+            sim_lc_meta['sim_x0'] = [lc.meta['sim_x0'] for lc in self.sim_lcs]
+            sim_lc_meta['sim_mb'] = [lc.meta['sim_mb'] for lc in self.sim_lcs]
+            sim_lc_meta['sim_x1'] = [lc.meta['sim_x1'] for lc in self.sim_lcs]
+            sim_lc_meta['sim_c'] = [lc.meta['sim_c'] for lc in self.sim_lcs]
 
         if 'Smod' in self.header:
             sim_lc_meta['SM_seed'] = [lc.meta[self.header['Smod'][:3] + '_RndS']
-                                      for lc in self.sim_lc]
+                                      for lc in self.sim_lcs]
 
         if 'mw_dust' in self.header:
-            sim_lc_meta['MW_EBV'] = [lc.meta['mw_ebv'] for lc in self.sim_lc]
+            sim_lc_meta['MW_EBV'] = [lc.meta['mw_ebv'] for lc in self.sim_lcs]
 
         write_file = self._file_path + '_fit.fits'
         ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_file, sim_meta=self.header)
@@ -371,10 +358,10 @@ class SnSimPkl:
 
     """
 
-    def __init__(self, sim_lc, header):
+    def __init__(self, sim_lcs, header):
         """Initialize SnSimPkl class."""
         self._header = header
-        self._sim_lc = sim_lc
+        self._sim_lcs = sim_lcs
 
     @property
     def header(self):
@@ -382,9 +369,9 @@ class SnSimPkl:
         return self._header
 
     @property
-    def sim_lc(self):
+    def sim_lcs(self):
         """Get sim_lc."""
-        return self._sim_lc
+        return self._sim_lcs
 
     def get(self, key):
         """Get an array of sim_lc metadata.
@@ -400,4 +387,4 @@ class SnSimPkl:
             The array of the key metadata for all SN.
 
         """
-        return np.array([lc.meta[key] for lc in self.sim_lc])
+        return np.array([lc.meta[key] for lc in self.sim_lcs])
