@@ -55,7 +55,7 @@ keys_dic = {
     'survey_config': [
         'survey_file',
         'band_dic',
-        'db_cut',
+        'survey_cut',
         'zp',
         'sig_zp',
         'sig_psf',
