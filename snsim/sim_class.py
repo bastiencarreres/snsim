@@ -622,7 +622,7 @@ class SnGen:
             ra = host['ra'].values
             dec = host['dec'].values
             zcos = host['redshift'].values
-            vpec = host['vp_sight'].values
+            vpec = host['v_radial'].values
         else:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
