@@ -11,7 +11,7 @@ survey_config:
     survey_file: '/PATH/TO/FILE'
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in the database doesn't correpond to those in sncosmo registery)
     add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata)
-    db_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
+    survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
     zp: INSTRUMENTAL ZEROPOINT  #(Optional, default given by survey file)
     sig_zp: UNCERTAINTY ON ZEROPOINT #(Optional, default given by survey file)
     sig_psf: GAUSSIAN PSF SIGMA #(Optional, default given by survey file as FWHMeff)
@@ -103,7 +103,7 @@ This section contains informations about the survey configuration :
 * **field_map** is a file that describe the field geometry, more information [here](obsfile.md). *type* : str. *Optional* : default is a rectangle ra_size $\times$ dec_size field.
 * **sub_field** correspond to the sub_field key of the database, it's allow to have a database with observations indexed by subfield and not by field. *type* : str. *Optional* : If you don't use a database with subfields, however the code will run but all subfields observations will be take into account. 
 *  **band_dic** is a dictionnary that map bands names in the database to bands names in *sncosmo* . *type* dic. *Optional* 
-* **db_cut** is used to put cuts on the SQL query of the observations, it's a dictionary :  {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} where keys are any database keys and condition are str SQL queries. *type* : dic. *Optional* 
+* **survey_cut** is used to put cuts on the SQL query of the observations, it's a dictionary :  {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} where keys are any database keys and condition are str SQL queries. *type* : dic. *Optional* 
 * **add_data** is a list of database key that you want to retrieve in lightcurves tables. *type* : list(str). *Optional*  
 
 

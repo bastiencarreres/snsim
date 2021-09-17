@@ -55,7 +55,7 @@ keys_dic = {
     'survey_config': [
         'survey_file',
         'band_dic',
-        'db_cut',
+        'survey_cut',
         'zp',
         'sig_zp',
         'sig_psf',
@@ -120,7 +120,7 @@ parser.add_argument("--band_dic", type=yaml.load,
                            put dictionnary between double quotationmark")
 parser.add_argument("--add_data", type=str, nargs='+',
                     help="--add_data 'key1' 'key2' ... # Add metadata from survey file to output")
-parser.add_argument("--db_cut", type=yaml.load,
+parser.add_argument("--survey_cut", type=yaml.load,
                     help="{'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...},\
                           put dictionnary between double quotation mark")
 parser.add_argument("--zp", type=float, help="INSTRUMENTAL ZEROPOINT")
