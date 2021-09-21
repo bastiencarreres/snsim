@@ -13,8 +13,9 @@ Welcome to snsim's documentation!
    installation.md
    basicusage.md
    configfile.md
-   snsample.md
+   obsfile.md
    hostfile.md
+   snsample.md
    simmath.md
    plots.md
 
