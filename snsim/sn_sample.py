@@ -3,6 +3,7 @@
 import os
 import pickle
 import numpy as np
+import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import Table
 from . import utils as ut
@@ -378,6 +379,32 @@ class SNSimSample:
             sim_lc_meta['MW_EBV'] = self.get('mw_ebv')
 
         ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
+
+    def plot_hist(self, key, ax=None, **kwargs):
+        """Plot the histogram of the key metadata.
+
+        Parameters
+        ----------
+        key : str
+            A key of lightcurves metadata.
+        ax : matplotlib.axis, opt
+            ax on which plot the histogram.
+        **kwargs : type
+            matplotlib plot options.
+
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
+        show = False
+        if ax is None:
+            fig, ax = plt.subplots()
+            show = True
+        ax.hist(self.get(key), **kwargs)
+        if show:
+            plt.show()
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
                 selected=False):
