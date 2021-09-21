@@ -369,3 +369,36 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
     hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header(sim_meta)), hdu])
     hdu_list.writeto(directory, overwrite=True)
     print(f'Fit result output file : {directory}')
+
+
+def SNR_pdet(SNR, SNR_mean, SNRp, p):
+    r"""Approximation of the SNR detection probability.
+
+    Parameters
+    ----------
+    SNR : float or np.array(float)
+        The Signal to Noise Ratio.
+    SNR_mean : float
+        The SNR for which p = 0.5.
+    SNRp : float
+        The SNR for which we have a probability p of detection.
+    p : float
+        The probability of detection at SNRp.
+
+    Returns
+    -------
+    float or np.array(float)
+        Probability of detection.
+
+    Notes
+    -----
+    The detection probability function :
+
+    .. math::
+        P_{det}(SNR) = \frac{1}{1+\left(\frac{SNR_{mean}}{SNR}\right)^n}
+
+    where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_{mean}) - \ln(SNR_p)}`
+
+    """
+    n = np.log((1-p)/p)/(np.log(SNR_mean) - np.log(SNRp))
+    return 1/(1 + (SNR_mean/SNR)**n)

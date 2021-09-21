@@ -146,7 +146,7 @@ class SN:
         return self._sn_par['z2cmb']
 
     @property
-    def z(self):
+    def zobs(self):
         """Get SN observed redshift."""
         return (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
 
@@ -248,7 +248,7 @@ class SN:
             return False
         else:
             for cut in nep_cut:
-                cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.z), cut[2] * (1 + self.z)
+                cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.zobs), cut[2] * (1 + self.zobs)
                 test = (self.epochs['time'] - self.sim_t0 > cutMin_obsfrm)
                 test *= (self.epochs['time'] - self.sim_t0 < cutMax_obsfrm)
                 if len(cut) == 4:
@@ -273,7 +273,7 @@ class SN:
         -----
         Set the sim_lc attribute as an astropy Table
         """
-        params = {**{'z': self.z, 't0': self.sim_t0},
+        params = {**{'z': self.zobs, 't0': self.sim_t0},
                   **self._model_par['sncosmo']}
         self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [
                                        params], scatter=False)[0]
@@ -285,6 +285,7 @@ class SN:
         self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
                                                scale=self.sim_lc['fluxerr'])
 
+        # Set magnitude
         self._sim_lc['mag'] = np.zeros(len(self._sim_lc))
         self._sim_lc['magerr'] = np.zeros(len(self._sim_lc))
 
@@ -324,6 +325,8 @@ class SN:
             if k not in dont_touch and k[:3] not in not_to_change:
                 self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
 
+        self.sim_lc.meta['zobs'] = self.sim_lc.meta.pop('z')
+
         if self.ID is not None:
             self.sim_lc.meta['sn_id'] = self.ID
 
@@ -341,17 +344,6 @@ class SN:
 
         if 'adip_dM' in self._sn_par:
             self.sim_lc.meta['adip_dM'] = self.adip_dM
-
-    def get_lc_hdu(self):
-        """Convert the astropy Table to a hdu.
-
-        Returns
-        -------
-        fits hdu
-            A hdu object containing the sim_lc Table.
-
-        """
-        return fits.table_to_hdu(self.sim_lc)
 
 
 class SnGen:
@@ -1150,8 +1142,8 @@ class SurveyObs:
             astropy table containing the SN observations.
 
         """
-        ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.z)
-        ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.z)
+        ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.zobs)
+        ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.zobs)
         SN_ra, SN_dec = SN_obj.coord
 
         # Time selection :

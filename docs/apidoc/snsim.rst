@@ -1,5 +1,5 @@
 **API/References**
-=================
+==================
 
 .. toctree::
    :maxdepth: 4
@@ -7,7 +7,7 @@
 
    snsim.simu.rst
    snsim.sim_class.rst
-   snsim.open_sim.rst
+   snsim.sn_sample.rst
    snsim.plot_utils.rst
    snsim.utils.rst
    snsim.salt_utils.rst

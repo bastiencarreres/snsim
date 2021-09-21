@@ -117,7 +117,6 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
     We found :
 
     .. math::
-
         \frac{dF}{dx_0} = \frac{F}{x_0}
 
     .. math::
@@ -125,7 +124,6 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
                                  T_b(\lambda)\frac{\lambda}{hc} d\lambda \times \text{NF}
 
     .. math::
-
         \frac{dF}{dc}  =  -\frac{\ln(10)}{2.5}\frac{x_0}{1+z} \int_\lambda \left(M_0(\lambda_s, p) + x_1 M_1(\lambda_s, p)\right)\
                         CL(\lambda_s)10^{-0.4 c CL(\lambda_s)}T_b(\lambda) \frac{\lambda}{hc} d\lambda \times \text{NF}
 

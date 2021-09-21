@@ -137,7 +137,7 @@ def plot_lc(
     time = flux_table['time']
 
     t0 = flux_table.meta['sim_t0']
-    z = flux_table.meta['z']
+    z = flux_table.meta['zobs']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
     fig = plt.figure(figsize=(35 / 2.54, 20 / 2.54), dpi=120)
