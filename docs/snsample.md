@@ -2,7 +2,9 @@
 
 The SNSimSample class store simulated lightcurves.
 
-## Fit lightcurves
+
+
+## Fiting lightcurves
 
 *snsim* allow to fit lightcurves :
 
@@ -61,7 +63,7 @@ where $SNR_\text{mean}$ is the SNR for which $P_\text{det} = 0.5$ and n is given
 $$
 n = \frac{\ln\left(\frac{1 - p}{p}\right)}{\ln(SNR_\text{mean}) - \ln(SNR_p)}
 $$
- 
+
 
 The function can be used as :
 
