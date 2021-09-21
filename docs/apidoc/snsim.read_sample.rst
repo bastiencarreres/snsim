@@ -1,7 +1,7 @@
-**open\_sim**
+**read\_sample**
 =============
 
-.. automodule:: snsim.open_sim
+.. automodule:: snsim.read_sample
    :members:
    :undoc-members:
    :show-inheritance:
