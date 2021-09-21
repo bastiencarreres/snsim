@@ -1,4 +1,4 @@
-"""OpenSim class used to open simulations file."""
+"""SNSimSample class used to store simulations."""
 
 import os
 import pickle
@@ -16,21 +16,25 @@ class SNSimSample:
 
     Parameters
     ----------
-    sim_lc : list(astropy.Table)
-        The simulated lightcurves.
-    header : dict
-        The metadata of the simulation.
+    sample_name : str
+        Name of the sample.
+    sim_lcs : list(astropy.Table)
+        Lightcurves of the SNs.
+    header : OrderedDic()
+        The simulation configuration.
+    model_dir : str, opt
+        The directory of the configuration files of the sim model.
+    file_path : str, opt
+        The path to the simualation directory.
 
-    Attributes
-    ----------
-    _header : dict
-        A copy of input header.
-    _sim_lc : list(astropy.Table)
-        A copy of input sim_lc.
-
+    Returns
+    -------
+    type
+        Description of returned object.
     """
 
     def __init__(self, sample_name, sim_lcs, header, model_dir=None, file_path=None):
+
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
@@ -50,6 +54,23 @@ class SNSimSample:
 
     @classmethod
     def fromFile(cls, sim_file, model_dir=None):
+        """Initialize the class from a fits or pickle file.
+
+        Parameters
+        ----------
+        cls : SNSimSample class
+            The SNSimSample class.
+        sim_file : str
+            The file to load.
+        model_dir : str, opt
+            The directory of the configuration files of the sim model.
+
+        Returns
+        -------
+        SNSimSample class object
+            A SNSimSample class with the simulated lcs.
+
+        """
         file_path, file_ext = os.path.splitext(sim_file)
         sample_name = os.path.basename(file_path)
         if file_ext == '.fits':
@@ -107,7 +128,7 @@ class SNSimSample:
                    SNR_mean=5,
                    SNR_limit=[15, 0.99],
                    randseed=np.random.randint(1000, 100000)):
-        """Run a SNR efficiency detection on all lcs.
+        r"""Run a SNR efficiency detection on all lcs.
 
         Parameters
         ----------
@@ -127,16 +148,14 @@ class SNSimSample:
 
         Notes
         -----
-
-        The 'approx' function is :
+        The detection probability function :
 
         .. math::
-
             P_{det}(SNR) = \frac{1}{1+\left(\frac{SNR_{mean}}{SNR}\right)^n}
 
-        where :maths:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_{mean}) - \ln(SNR_p)}`
-        """
+        where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_{mean}) - \ln(SNR_p)}`
 
+        """
         rand_gen = np.random.default_rng(randseed)
         self._select_lcs = []
         SNR_proba = {}
