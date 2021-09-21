@@ -24,7 +24,7 @@ help(snsim.SN)
 ```
 The basic list of ligthcurves metadata is given in the following table :
 
-|         z         |  sim_t0  |    vpec (km/s)    |         zcos          |            zpec            |                       z2cmb                       |        zCMB        |      ra (rad)      |   dec (rad)    |          sn id           |           sim_mu           |          m_sct           |
+|       zobs        |  sim_t0  |    vpec (km/s)    |         zcos          |            zpec            |                       z2cmb                       |        zCMB        |      ra (rad)      |   dec (rad)    |          sn id           |           sim_mu           |          m_sct           |
 | :---------------: | :------: | :---------------: | :-------------------: | :------------------------: | :-----------------------------------------------: | :----------------: | :----------------: | :------------: | :----------------------: | :------------------------: | :----------------------: |
 | Observed redshift | Peaktime | Peculiar velocity | Cosmological redshift | Peculiar velocity redshift | Contribution from our peculiar motion to redshift | CMB frame redshift | SN right ascension | SN declinaison | SN identification number | Simulated distance modulli | Coherent scattering term |
 
@@ -55,7 +55,7 @@ If the config key is a dict you have to pass it like a yaml string :
 ```shell
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --dic_key "{'key1': value1, 'key2': value2, ...}"
 ```
-If the config keys is a list you have to pass it by separate item by space :
+If the config key is a list you have to pass it by separate item by space :
 ```shell
 >python3 launch_sim.py '/PATH/TO/YAMLFILE' --list_key item1 item2 item3
 ```
