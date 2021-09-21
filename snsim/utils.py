@@ -372,7 +372,7 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
 
 
 def SNR_pdet(SNR, SNR_mean, SNRp, p):
-    """Approximation of the SNR detection probability.
+    r"""Approximation of the SNR detection probability.
 
     Parameters
     ----------

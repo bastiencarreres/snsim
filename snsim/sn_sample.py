@@ -149,7 +149,6 @@ class SNSimSample:
         Notes
         -----
         The detection probability function :
-
         .. math::
             P_{det}(SNR) = \frac{1}{1+\left(\frac{SNR_{mean}}{SNR}\right)^n}
 
@@ -420,31 +419,55 @@ class SNSimSample:
                         residuals=residuals,
                         Jy=Jy)
 
-    def plot_ra_dec(self, plot_vpec=False, **kwarg):
+    def plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
         """Plot a mollweide map of ra, dec.
 
         Parameters
         ----------
         plot_vpec : boolean
             If True plot a vpec colormap.
-
+        field_dic :  dict(int : dict(str : float))
+            Dict of fields coordinates -> Field_ID : {'RA', 'Dec'}
+        field_size : list(float, float)
+            The size of the field [RA, Dec]
+            
         Returns
         -------
         None
             Just plot the map.
 
         """
+        if field_dic is not None and field_size is not None:
+            plot_fields = True
+
         ra = []
         dec = []
         vpec = None
         if plot_vpec:
             vpec = []
+
+        if plot_fields:
+            field_list = []
+
         for lc in self.sim_lcs:
             ra.append(lc.meta['ra'])
             dec.append(lc.meta['dec'])
             if plot_vpec:
                 vpec.append(lc.meta['vpec'])
+            if plot_fields:
+                field_list = np.concatenate((field_list, np.unique(lc['fieldID'])))
+
+        if plot_fields:
+            field_list = np.unique(field_list)
+        else:
+            field_dic = None
+            field_size = None
+            field_list = None
+
         plot_ut.plot_ra_dec(np.asarray(ra),
                             np.asarray(dec),
                             vpec,
+                            field_list,
+                            field_dic,
+                            field_size,
                             **kwarg)

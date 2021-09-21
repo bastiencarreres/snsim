@@ -1,4 +1,4 @@
-# Fit and OpenSim class
+# Fit and SNSimSample class
 
 *snsim* allow to fit lightcurves :
 

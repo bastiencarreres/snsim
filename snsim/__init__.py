@@ -15,4 +15,4 @@ __version__ = "0.3.7_dev"
 
 
 from .simu import Simulator
-from .read_sample import SNSimSample
+from .sn_sample import SNSimSample

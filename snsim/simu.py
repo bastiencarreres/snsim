@@ -9,7 +9,7 @@ from . import sim_class as scls
 from . import plot_utils as plot_ut
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
-from .read_sample import SNSimSample
+from .sn_sample import SNSimSample
 
 
 class Simulator:
@@ -697,36 +697,14 @@ class Simulator:
             Just plot the map.
 
         """
-        ra = []
-        dec = []
-        vpec = None
-        if plot_vpec:
-            vpec = []
-        if plot_fields:
-            field_list = []
-
-        for sn in self.sn_list:
-            r, d = sn.coord
-            ra.append(r)
-            dec.append(d)
-            if plot_vpec:
-                vpec.append(sn.vpec)
-            if plot_fields:
-                field_list = np.concatenate((field_list, np.unique(sn.sim_lc['fieldID'])))
-
         if plot_fields:
             field_dic = self.survey.fields._dic
             field_size = self.survey.fields.size
-            field_list = np.unique(field_list)
         else:
             field_dic = None
             field_size = None
-            field_list = None
 
-        plot_ut.plot_ra_dec(np.asarray(ra),
-                            np.asarray(dec),
-                            vpec,
-                            field_list,
-                            field_dic,
-                            field_size,
-                            **kwarg)
+        self.sn_sample.plot_ra_dec(plot_vpec=plot_vpec,
+                                   field_dic=field_dic,
+                                   field_size=field_size,
+                                   **kwarg)
