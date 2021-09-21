@@ -496,6 +496,7 @@ class SNSimSample:
             Just plot the map.
 
         """
+        plot_fields = False
         if field_dic is not None and field_size is not None:
             plot_fields = True
 
