@@ -16,7 +16,6 @@ Welcome to snsim's documentation!
    snsample.md
    hostfile.md
    simmath.md
-   openfit.md
    plots.md
 
 .. toctree::

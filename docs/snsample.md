@@ -48,10 +48,16 @@ The output file of write_fit is in the same directory as the simulation and has 
 The simulation ignored effect of selection efficiency. To introduce this effect the SNSimSample class has a SNR_select.
 
 At this time the SNR_select function use an approximation to model SNR detection probability:
+
+
 $$
 P_\text{det}(SNR) = \frac{1}{1+\left(\frac{SNR_\text{mean}}{SNR}\right)^n}
 $$
-where $SNR_\text{mean}$ is the SNR for which $P__\text{det} = 0.5$ and n is given by a probability of detection **p** for a given **$SNR_p$** : 
+
+
+where $SNR_\text{mean}$ is the SNR for which $P_\text{det} = 0.5$ and n is given by a probability of detection **p** for a given **$SNR_p$** : 
+
+
 $$
 n = \frac{\ln\left(\frac{1 - p}{p}\right)}{\ln(SNR_\text{mean}) - \ln(SNR_p)}
 $$
