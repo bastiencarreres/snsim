@@ -39,14 +39,16 @@ class SNSimSample:
         self._name = sample_name
         self._header = header
         self._sim_lcs = sim_lcs
-        self._file_path = file_path
-        self._select_lcs = None
-        self._bands = []
         self._model_dir = model_dir
+        self._file_path = file_path
+
         self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
         self._fit_resmod = None
 
+        self._select_lcs = None
+
+        self._bands = []
         for lc in sim_lcs:
             for b in lc['band']:
                 if b not in self._bands:
@@ -197,20 +199,66 @@ class SNSimSample:
         """
         return np.array([lc.meta[key] for lc in self.sim_lcs])
 
-    def _write_sim(self, write_path, formats=['pkl', 'fits']):
+    def _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
+        """Write simulation into a file.
+
+        Parameters
+        ----------
+        write_path : str
+            The output directory.
+        formats : lsit(str) or str, opt
+            The output formats, 'pkl' or 'fits'.
+        lcs_list : np.ndarray(astropy.Table), opt
+            A table containing the lcs to write.
+        sufname : str, opt
+            A suffix to put behind the file name.
+
+        Returns
+        -------
+        None
+            Write an object.
+
+        """
+        if lcs_list is None:
+            lcs_list = self.sim_lcs
+
         formats = np.atleast_1d(formats)
         if 'fits' in formats:
-            lc_hdu_list = (fits.table_to_hdu(lc) for lc in self.sim_lcs)
+            lc_hdu_list = (fits.table_to_hdu(lc) for lc in lcs_list)
             hdu_list = fits.HDUList(
                 [fits.PrimaryHDU(header=fits.Header(self.header))] + list(lc_hdu_list))
 
-            hdu_list.writeto(write_path + self.name + '.fits',
+            hdu_list.writeto(write_path + self.name + sufname + '.fits',
                              overwrite=True)
 
         # Export lcs as pickle
         if 'pkl' in formats:
-            with open(write_path + self.name + '.pkl', 'wb') as file:
-                pickle.dump(self, file)
+            with open(write_path + self.name + sufname + '.pkl', 'wb') as file:
+                pickle.dump(SNSimSample(self._name + sufname,
+                                        lcs_list,
+                                        self._header,
+                                        self._model_dir,
+                                        self._file_path),
+                            file)
+
+    def write_select(self, formats=['pkl', 'fits']):
+        """Write a file containing only the selected SN epochs.
+
+        Parameters
+        ----------
+        formats : list(str) or str, opt
+            The output formats, 'pkl' or 'fits'.
+
+        Returns
+        -------
+        None
+            Just write a file.
+
+        """
+        self._write_sim(self._file_path,
+                        formats=formats,
+                        lcs_list=self.select_lcs,
+                        sufname='_selected')
 
     def fit_lc(self, sn_ID=None, mw_dust=-2):
         """Fit all or just one SN lightcurve(s).
@@ -330,7 +378,8 @@ class SNSimSample:
 
         ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
 
-    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False):
+    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
+                selected=False):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -345,6 +394,10 @@ class SNSimSample:
             If True plot the theorical simulated lightcurve.
         plot_fit : boolean, default = False
             If True plot the fitted lightcurve.
+        Jy : boolean, default = False
+            If True plot in Jansky.
+        selected : boolean, default = False
+            If True use the self.select_lcs rather than self.sim_lcs
 
         Returns
         -------
@@ -356,7 +409,10 @@ class SNSimSample:
         Use plot_lc from utils.
 
         """
-        lc = self.sim_lcs[sn_ID]
+        if selected:
+            lc = self.select_lcs[sn_ID]
+        else:
+            lc = self.sim_lcs[sn_ID]
 
         if plot_sim:
             model_name = self.header['Mname']
@@ -430,7 +486,7 @@ class SNSimSample:
             Dict of fields coordinates -> Field_ID : {'RA', 'Dec'}
         field_size : list(float, float)
             The size of the field [RA, Dec]
-            
+
         Returns
         -------
         None
