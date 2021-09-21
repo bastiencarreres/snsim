@@ -5,22 +5,22 @@
 You can direct fit after running the simulation
 ```python
 # Fit 1 lc by id
-sim.fit_lc(id)
+sim.sn_sample.fit_lc(id)
 
 # Fit all the lcs
-sim.fit_lc()
+sim.sn_sample.fit_lc()
 
 # Write the fit
-sim.write_fit()
+sim.sn_sample.write_fit()
 ```
 
 
 Or you can open register open sim file .fits or .pkl with the open_sim class
 
 ```python
-from snsim import OpenSim
+from snsim import SNSimSample
 
-sim = OpenSim('sim_file.pkl/.fits',SALT2_dir)
+sim = SNSimSample.fromFile('sim_file.pkl/.fits', SALT2_dir)
 
 # Fit all the lcs
 sim.fit_lc()
