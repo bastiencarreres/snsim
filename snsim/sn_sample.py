@@ -221,12 +221,13 @@ class SNSimSample:
         """
         if lcs_list is None:
             lcs_list = self.sim_lcs
-
+        header = self.header.copy()
+        header['n_sn'] = len(lcs_list)
         formats = np.atleast_1d(formats)
         if 'fits' in formats:
             lc_hdu_list = (fits.table_to_hdu(lc) for lc in lcs_list)
             hdu_list = fits.HDUList(
-                [fits.PrimaryHDU(header=fits.Header(self.header))] + list(lc_hdu_list))
+                [fits.PrimaryHDU(header=fits.Header(header))] + list(lc_hdu_list))
 
             hdu_list.writeto(write_path + self.name + sufname + '.fits',
                              overwrite=True)
@@ -234,9 +235,9 @@ class SNSimSample:
         # Export lcs as pickle
         if 'pkl' in formats:
             with open(write_path + self.name + sufname + '.pkl', 'wb') as file:
-                pickle.dump(SNSimSample(self._name + sufname,
+                pickle.dump(SNSimSample(self.name + sufname,
                                         lcs_list,
-                                        self._header,
+                                        header,
                                         self._model_dir,
                                         self._file_path),
                             file)
@@ -441,7 +442,7 @@ class SNSimSample:
         else:
             s_model = None
 
-        if plot_fit:
+        if plot_fit and not selected:
             if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 if 'mwd_mod' in self.header:
@@ -461,6 +462,8 @@ class SNSimSample:
             f_model = self.fit_resmod[sn_ID]
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
+        elif plot_fit and selected:
+            print("You can't fit selected sn, write the in a file and load them as SNSimSample class")
         else:
             f_model = None
             cov_t0_x0_x1_c = None
