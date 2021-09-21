@@ -13,7 +13,7 @@ Welcome to snsim's documentation!
    installation.md
    basicusage.md
    configfile.md
-   obsfile.md
+   snsample.md
    hostfile.md
    simmath.md
    openfit.md

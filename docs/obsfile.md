@@ -24,7 +24,7 @@ You can set a different zero point and its error for each observation by setting
 
 In addition you can take into account the variation of the PSF as the **F**ull **W**idth at **H**alf **M**aximum $FWHM = 2 \sqrt{2 \log(2)} \sigma_{skynoise}$
 
-|                   FWHM                    |
+|                  FWHMeff                  |
 | :---------------------------------------: |
 | The Full Width at Half Maximum of the PSF |
 
