@@ -4,7 +4,7 @@ The SNSimSample class store simulated lightcurves.
 
 
 
-## Fiting lightcurves
+## Fitting lightcurves
 
 *snsim* allow to fit lightcurves :
 
