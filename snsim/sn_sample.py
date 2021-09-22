@@ -13,25 +13,68 @@ from . import dust_utils as dst_ut
 
 
 class SNSimSample:
-    """Class to store simulation as pickle.
+    """Class to store simulated SN sample.
 
     Parameters
     ----------
     sample_name : str
         Name of the sample.
     sim_lcs : list(astropy.Table)
-        Lightcurves of the SNs.
-    header : OrderedDic()
-        The simulation configuration.
+        The simulated lightcurves.
+    header : dict
+        Simulation header.
     model_dir : str, opt
-        The directory of the configuration files of the sim model.
+        The path to the simulation model files.
     file_path : str, opt
-        The path to the simualation directory.
+        Path of the sample.
 
-    Returns
+    Attributes
+    ----------
+    _name : str
+        Copy of input sample name.
+    _header : dict
+        Copy of input header.
+    _sim_lcs : np.ndarray(astropy.Table)
+        Copy of input sim_lcs.
+    _model_dir : str or None
+        Copy of input model_dir.
+    _file_path : str or None
+        Copy of input file_path.
+    _fit_model : sncosmo.Model
+        The model used to fit SN.
+    _fit_res : list
+        Fit results.
+    _fit_resmod : list(sncosmo.Model)
+        Models after fit.
+    _select_lcs : list(astropy.Table)
+        List of new lcs after SNR detection.
+    _bands : list(str)
+        All used in sim lcs.
+
+    Methods
     -------
-    type
-        Description of returned object.
+    fromFile(cls, sim_file, model_dir=None)
+        Initialize the class from a fits or pickle file.
+    SNR_select(self, selec_function, SNR_mean=5, SNR_limit=[15, 0.99], \
+               randseed=np.random.randint(1000, 100000))
+        Run a SNR efficiency detection on all lcs.
+    get(self, key):
+        Get an array of sim_lc metadata.
+    _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
+        write simulation into a file.
+    write_select(self, formats=['pkl', 'fits']):
+        Write a file containing only the selected SN epochs.
+    fit_lc(self, sn_ID=None, mw_dust=-2):
+       Fit all or just one SN lightcurve(s).
+    write_fit(self, write_path=None):
+        Write fits results in fits format.
+    plot_hist(self, key, ax=None, **kwargs):
+        Plot the histogram of the key metadata.
+    plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False, \
+            selected=False):
+        Plot the given SN lightcurve.
+    plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
+        Plot a mollweide map of ra, dec.
     """
 
     def __init__(self, sample_name, sim_lcs, header, model_dir=None, file_path=None):
@@ -147,15 +190,17 @@ class SNSimSample:
         Returns
         -------
         None
-            Just fill the self._select_lcs attribute.
+            Just fill the _select_lcs attribute.
 
         Notes
         -----
         The detection probability function :
-        .. math::
-            P_{det}(SNR) = \frac{1}{1+\left(\frac{SNR_{mean}}{SNR}\right)^n}
 
-        where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_{mean}) - \ln(SNR_p)}`
+        .. math::
+
+            P_\text{det}(SNR) = \frac{1}{1+\left(\frac{SNR_\text{mean}}{SNR}\right)^n}
+
+        where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_\text{mean}) - \ln(SNR_p)}`
 
         """
         rand_gen = np.random.default_rng(randseed)
