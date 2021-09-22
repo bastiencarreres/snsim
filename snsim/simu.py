@@ -45,12 +45,8 @@ class Simulator:
         Give the rate SNs/Mpc^3/year at redshift z.
     simulate()
         Launch the simulation.
-    plot_lc(sn_ID, mag = False, zp = 25., plot_sim = True, plot_fit = False)
-        Plot the given SN lightcurve.
     plot_ra_dec(self, plot_vpec=False, **kwarg):
         Plot a mollweide map of ra, dec.
-    fit_lc(sn_ID = None)
-        Fit all or just one SN lightcurve(s).
     write_fit()
         Write fits results in fits format.
     _time_rate_bins()
@@ -64,8 +60,6 @@ class Simulator:
         Simulation where the number of SN is fixed.
     _get_primary_header()
         Generate the primary header of sim fits file.
-    _write_sim()
-        Write sim lightcurves in fits or/and pkl format(s).
 
     Notes
     -----
