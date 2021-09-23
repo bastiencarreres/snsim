@@ -94,10 +94,10 @@ This section contains informations about the survey configuration :
 * **duration** : instead of setting an **end_day** you can specify a duration in **days**. *type* : float. *Optional* : the **duration** is ignored if an **end_day** is configured.
 * **field_map** is a file that describe the field geometry, more information [here](obsfile.md). *type* : str. *Optional* : default is a rectangle ra_size $\times$ dec_size field.
 * **sub_field** correspond to the sub_field key of the database, it's allow to have a database with observations indexed by subfield and not by field. *type* : str. *Optional* : If you don't use a database with subfields, however the code will run but all subfields observations will be take into account. 
-*  **band_dic** is a dictionnary that map bands names in the database to bands names in *sncosmo* . *type* dic. *Optional* 
+* **band_dic** is a dictionnary that map bands names in the database to bands names in *sncosmo* . *type* dic. *Optional* 
 * **survey_cut** is used to put cuts on the SQL query of the observations, it's a dictionary :  {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} where keys are any database keys and condition are str SQL queries. *type* : dic. *Optional* 
 * **add_data** is a list of database key that you want to retrieve in lightcurves tables. *type* : list(str). *Optional*  
-* **fake_skynoise** allow to add or replace the skynoise term. The fake skynoise is multiply by the **PSF** if there is one given. This is a list : [VALUE, 'add' or 'replace'] the VALUE is the skynoise value in ADU, if you use 'add' the fake_skynoise is added to skynoise from the SQL database, else, if you use 'replace' the skynoise from SQL database is just ignored. Note that if you set **fake_skynoise** with 'replace' option and **sig_psf** = 0, the skynoise is exactly the **fake_skynoise** value.
+* **fake_skynoise** allow to add or replace the skynoise term. The fake skynoise is multiply by the **PSF** if there is one given. This is a list : [VALUE, 'add' or 'replace'] the VALUE is the skynoise value in ADU, if you use 'add' the fake_skynoise is added to skynoise from the SQL database, else, if you use 'replace' the skynoise from SQL database is just ignored. Note that if you set **fake_skynoise** with 'replace' option and **sig_psf** = 0, the skynoise is exactly the **fake_skynoise** value. *type* :  list(float, str). *Optional* default is no **fake_skynoise**
 
 
 
