@@ -78,11 +78,10 @@ class SNSimSample:
     """
 
     def __init__(self, sample_name, sim_lcs, header, model_dir=None, file_path=None):
-
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
-        self._sim_lcs = sim_lcs
+        self._sim_lcs = np.asarray(sim_lcs)
         self._model_dir = model_dir
         self._file_path = file_path
 
@@ -229,7 +228,7 @@ class SNSimSample:
             if np.sum(selec_mask) > 0:
                 self._select_lcs.append(self.sim_lcs[i][selec_mask])
 
-    def get(self, key):
+    def get(self, key, select=False):
         """Get an array of sim_lc metadata.
 
         Parameters
@@ -243,7 +242,11 @@ class SNSimSample:
             The array of the key metadata for all SN.
 
         """
-        return np.array([lc.meta[key] for lc in self.sim_lcs])
+        if select:
+            lcs_list = self.select_lcs
+        else:
+            lcs_list = self.sim_lcs
+        return np.array([lc.meta[key] for lc in lcs_list])
 
     def _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
         """Write simulation into a file.
