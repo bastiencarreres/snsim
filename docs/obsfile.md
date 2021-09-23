@@ -30,9 +30,9 @@ In addition you can take into account the variation of the PSF as the **F**ull *
 
 And you can set a different gain for each observation by giving the **gain** column :
 
-|         **gain**          |
-| :-----------------------: |
-| The CCD gain in e$^-$/ADU |
+|             **gain**              |
+| :-------------------------------: |
+| The CCD gain in e<sup>-</sup>/ADU |
 
 
 
