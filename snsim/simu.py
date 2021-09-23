@@ -83,7 +83,7 @@ class Simulator:
     |     noise_key: [key, type] type can be 'mlim5' or 'skysigADU'
     |     ra_size: RA FIELD SIZE
     |     dec_size: DEC FIELD SIZE
-    |     gain: CCD GAIN e-/ADU
+    |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
     |     sub_field: ['sub_field_file', 'sub_field_key']
     | sn_gen:
     |     n_sn: NUMBER OF SN TO GENERATE (Otional)

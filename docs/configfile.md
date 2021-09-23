@@ -18,7 +18,7 @@ survey_config:
     noise_key: [key, type] type can be 'mlim5' or 'skysigADU'                      
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
-    gain: CCD GAIN e-/ADU
+    gain: CCD GAIN e-/ADU #(Optional, default given by survey file)
     start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     end_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
@@ -59,19 +59,10 @@ model_config:
      coord: [RA, Dec] # Direction of the dipole
      A: A_parameter # alpha dipole = A + B * cos(theta)
      B: B_parameter  
+ 
 ```
 
-  * If you set end_day and duration, duration will be ignored
 
-  * If the name of bands in the db file doesn't match sncosmo bands you can use the key band_dic to translate filters names
-
-  * If you don't set the filter name item in nep_cut, the cut apply to all the band
-
-  * For wavelength dependent model, nomanclature follow arXiv:1209.2482 -> 'G10' for Guy et al. 2010 model, 'C11' or 'C11_0' for Chotard et al. model with correlation between U' and U = 0, 'C11_1' for Cor(U',U) = 1 and 'C11_2' for Cor(U',U) = -1
-
-  * mw_dust available models are CCM89, OD94 and F99 (cf sncosmo documentation)
-
-    
 
 ## data
 
@@ -93,7 +84,7 @@ This section contains informations about the survey configuration :
 * **ra_size** is the Right Ascension size of the field in DEG.
 * **dec_size** is the Declinaison size of the field in DEG.
 * **noise_key** is a list that contains the **key** used in the SQL database for the noise, and the type of noise : **skysigADU** if it's directly the sky noise in **ADU** units, **mlim5** if it's the limiting magnitude at 5 $\sigma$. *type* : list(str). 
-* **gain** is the gain of the CCD in $e^-$ / ADU. *type* : float.
+* **gain** is the gain of the CCD in $e^-$ / ADU. *type* : float. *Optional* : If not set, gain is taken in the SQL database.
 * **zp** is a constant zero point to use in simulation. *type* : float. *Optional* : If not set, zero point is taken in the SQL database.
 * **sig_zp** is the error on zero point. *type* : float. *Optional* : If not set, this parameter is taken in the SQL database.
 * **sig_psf** is the PSF scale. *type* : float. *Optional* : If not set, the PSF is taken in the SQL database, to following LSST OpSim structure the PSF in the database is take has the **FWHM** ($FWHM = 2 \sqrt{2 \ln(2)} \sigma_{PSF}$). 

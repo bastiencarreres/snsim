@@ -151,7 +151,7 @@ class SNSimSample:
 
     @property
     def sim_lcs(self):
-        """Get sim_lc."""
+        """Get sim_lcs."""
         return self._sim_lcs
 
     @property

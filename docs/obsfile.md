@@ -28,6 +28,12 @@ In addition you can take into account the variation of the PSF as the **F**ull *
 | :---------------------------------------: |
 | The Full Width at Half Maximum of the PSF |
 
+And you can set a different gain for each observation by giving the **gain** column :
+
+|             **gain**              |
+| :-------------------------------: |
+| The CCD gain in e<sup>-</sup>/ADU |
+
 
 
 ## Subfields

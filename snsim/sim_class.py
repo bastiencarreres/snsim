@@ -969,7 +969,11 @@ class SurveyObs:
     @property
     def gain(self):
         """Get CCD gain in e-/ADU."""
-        return self._config['gain']
+        if 'gain' in self._config:
+            gain = self._config['gain']
+        else:
+            gain = 'gain_in_obs'
+        return gain
 
     @property
     def zp(self):
@@ -1081,6 +1085,9 @@ class SurveyObs:
 
         if 'sig_psf' not in self.config:
             keys += ['FWHMeff']
+
+        if 'gain' not in self.config:
+            keys += ['gain']
 
         if 'sub_field' in self.config:
             keys += [self.config['sub_field']]
@@ -1214,6 +1221,12 @@ class SurveyObs:
         else:
             sig_psf = self.obs_table['FWHMeff'][epochs_selec] / (2 * np.sqrt(2 * np.log(2)))
 
+        # Gain
+        if self.gain != 'gain_in_obs':
+            gain = np.ones(np.sum(epochs_selec)) * self.gain
+        else:
+            gain = self.obs_table['gain'][epochs_selec]
+
         # Skynoise selection
         if self.config['noise_key'][1] == 'mlim5':
             # Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
@@ -1230,7 +1243,7 @@ class SurveyObs:
         # Create obs table
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
                      'band': band,
-                     'gain': [self.gain] * np.sum(epochs_selec),
+                     'gain': gain,
                      'skynoise': skynoise,
                      'zp': zp,
                      'sig_zp': sig_zp,
