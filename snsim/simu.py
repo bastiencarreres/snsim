@@ -85,6 +85,7 @@ class Simulator:
     |     dec_size: DEC FIELD SIZE
     |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
     |     sub_field: ['sub_field_file', 'sub_field_key']
+    |     fake_skynoise: [SIGMA_VALUE, 'add' or 'replace'] (Optional, default is 0)
     | sn_gen:
     |     n_sn: NUMBER OF SN TO GENERATE (Otional)
     |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)

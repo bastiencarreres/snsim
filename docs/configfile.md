@@ -23,6 +23,7 @@ survey_config:
     end_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
     duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
     field_map: FIELD MAP FILE #(Optional, default is rectangle field)
+    fake_skynoise: [VALUE, 'add' or 'replace'] #(Optional, default is no fake_skynoise)
     sub_field: 'sub_field_key' # Used to divided observation in CCD quadrant for example
 sn_gen:
     n_sn: NUMBER OF SN TO GENERATE #(Optional)
@@ -96,6 +97,7 @@ This section contains informations about the survey configuration :
 *  **band_dic** is a dictionnary that map bands names in the database to bands names in *sncosmo* . *type* dic. *Optional* 
 * **survey_cut** is used to put cuts on the SQL query of the observations, it's a dictionary :  {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} where keys are any database keys and condition are str SQL queries. *type* : dic. *Optional* 
 * **add_data** is a list of database key that you want to retrieve in lightcurves tables. *type* : list(str). *Optional*  
+* **fake_skynoise** allow to add or replace the skynoise term. The fake skynoise is multiply by the **PSF** if there is one given. This is a list : [VALUE, 'add' or 'replace'] the VALUE is the skynoise value in ADU, if you use 'add' the fake_skynoise is added to skynoise from the SQL database, else, if you use 'replace' the skynoise from SQL database is just ignored. Note that if you set **fake_skynoise** with 'replace' option and **sig_psf** = 0, the skynoise is exactly the **fake_skynoise** value.
 
 
 
