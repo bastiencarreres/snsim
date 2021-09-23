@@ -11,6 +11,8 @@ from . import scatter as sct
 from . import plot_utils as plot_ut
 from . import dust_utils as dst_ut
 
+np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
+
 
 class SNSimSample:
     """Class to store simulated SN sample.
@@ -81,7 +83,7 @@ class SNSimSample:
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
-        self._sim_lcs = np.asarray(sim_lcs)
+        self._sim_lcs = np.array(sim_lcs)
         self._model_dir = model_dir
         self._file_path = file_path
 

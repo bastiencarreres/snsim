@@ -1075,7 +1075,8 @@ class SurveyObs:
                 'fieldRA',
                 'fieldDec']
 
-        keys += [self.config['noise_key'][0]]
+        if 'fake_skynoise' not in self.config or self.config['fake_skynoise'][1].lower() == 'add':
+            keys += [self.config['noise_key'][0]]
 
         if 'zp' not in self.config:
             keys += ['zp']
@@ -1228,14 +1229,21 @@ class SurveyObs:
             gain = self.obs_table['gain'][epochs_selec]
 
         # Skynoise selection
-        if self.config['noise_key'][1] == 'mlim5':
-            # Convert maglim to flux noise (ADU) -> skynoise_tot = skynoise * sqrt(4 pi sig_psf**2)
-            mlim5 = self.obs_table[self.config['noise_key'][0]][epochs_selec]
-            skynoise = 10.**(0.4 * (zp - mlim5)) / 5
-        elif self.config['noise_key'][1] == 'skysigADU':
-            skynoise = self.obs_table[self.config['noise_key'][0]][epochs_selec]
+        if 'fake_skynoise' not in self.config or self.config['fake_skynoise'][1].lower() == 'add':
+            if self.config['noise_key'][1] == 'mlim5':
+                # Convert maglim to flux noise (ADU)
+                mlim5 = self.obs_table[self.config['noise_key'][0]][epochs_selec]
+                skynoise = 10.**(0.4 * (zp - mlim5)) / 5
+            elif self.config['noise_key'][1] == 'skysigADU':
+                skynoise = self.obs_table[self.config['noise_key'][0]][epochs_selec]
+            else:
+                raise ValueError('Noise type should be mlim5 or skysigADU')
+            if 'fake_skynoise' in self.config:
+                skynoise = np.sqrt(skynoise**2 + self.config['fake_skynoise'][0])
+        elif self.config['fake_skynoise'][1].lower() == 'replace':
+            skynoise = np.ones(np.sum(epochs_selec)) * self.config['fake_skynoise'][0]
         else:
-            raise ValueError('Noise type should be mlim5 or skysigADU')
+            raise ValueError("fake_skynoise type should be 'add' or 'replace'")
 
         # Apply PSF
         skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
