@@ -68,7 +68,8 @@ keys_dic = {
         'duration',
         'sub_field',
         'field_map',
-        'add_data'],
+        'add_data',
+        'fake_skynoise'],
     'sn_gen': [
         'randseed',
         'duration_for_rate',
@@ -138,6 +139,7 @@ parser.add_argument("--end_day", type=date_read,
 parser.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS")
 parser.add_argument("--sub_field", type=str, help="SUBFIELD KEY")
 parser.add_argument("--field_map", type=str, help="SUBFIELD MAP")
+parser.add_argument("--fake_skynoise", nargs=2, help="[VALUE, 'add' or 'replace']")
 
 ###################
 # SN_GEN SECTION #
