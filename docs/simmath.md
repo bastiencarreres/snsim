@@ -45,7 +45,7 @@ The flux error is computed as :
 
 
 $$
-\sigma^2_F = \frac{F}{G} + \sigma_{skynoise}^2 + \left(\frac{\ln(10)}{2.5}\sigma_{zp}\right)^2
+\sigma^2_F = \frac{F}{G} + \sigma_{skynoise}^2 + \left(\frac{\ln(10)}{2.5}F\sigma_{zp}\right)^2
 $$
 
 The first term is the Poisson noise with **G** the gain in $ e^- $ / ADU.
