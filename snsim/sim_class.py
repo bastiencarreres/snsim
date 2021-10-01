@@ -596,8 +596,13 @@ class SnGen:
         t0 = self.gen_peak_time(n_sn, rand_gen)
 
         # -- Generate cosmological redshifts
-        zcos = self.gen_zcos(n_sn, rand_gen)
-
+        if self.host is None or self.host.config['distrib'].lower() == 'as_sn':
+            zcos = self.gen_zcos(n_sn, rand_gen)
+            if self.host is not None:
+                treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
+                host = self.host.host_near_z(zcos, treshold)
+        else:
+            host = self.host.random_choice(n_sn, rand_gen)
         # -- Generate coherent mag scattering
         mag_sct = self.gen_coh_scatter(n_sn, rand_gen)
 
@@ -607,10 +612,8 @@ class SnGen:
         # - Generate random parameters dependants on sn model used
         rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]), z=zcos)
 
-        # -- If there is host use them
+        # -- If there is hosts use them
         if self.host is not None:
-            treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
-            host = self.host.host_near_z(zcos, treshold)
             ra = host['ra'].values
             dec = host['dec'].values
             zcos = host['redshift'].values
@@ -771,7 +774,7 @@ class SnGen:
 
         """
         if isinstance(self.model_config['dist_x1'], str):
-            if self.model_config['dist_x1'] == 'N21':
+            if self.model_config['dist_x1'].lower() == 'n21':
                 sim_x1 = salt_ut.n21_x1_model(z, rand_gen=rand_gen)
         else:
             sim_x1 = ut.asym_gauss(*self.model_config['dist_x1'],
@@ -1271,96 +1274,6 @@ class SurveyObs:
         return obs
 
 
-class SnHost:
-    """Class containing the SN Host parameters.
-
-    Parameters
-    ----------
-    host_file : str
-        fits host file path.
-    z_range : list(float)
-        The redshift range.
-
-    Attributes
-    ----------
-    _table : pandas.DataFrame
-        Pandas dataframe that contains host data.
-    _max_dz : float
-        The maximum redshift gap between 2 host.
-    _z_range : list(float)
-        A copy of input z_range.
-    _file
-        A copy of input host_file.
-
-    Methods
-    -------
-    _read_host_file()
-        Extract host from host file.
-    random_host(n, z_range, rand_seed)
-        Random choice of host in a redshift range.
-
-    """
-
-    def __init__(self, host_file, z_range=None):
-        """Initialize SnHost class."""
-        self._z_range = z_range
-        self._file = host_file
-        self._table = self._read_host_file()
-        self._max_dz = None
-
-    @property
-    def max_dz(self):
-        """Get the maximum redshift gap."""
-        if self._max_dz is None:
-            redshift_copy = np.sort(np.copy(self.table['redshift']))
-            diff = redshift_copy[1:] - redshift_copy[:-1]
-            self._max_dz = np.max(diff)
-        return self._max_dz
-
-    @property
-    def table(self):
-        """Get astropy Table of host."""
-        return self._table
-
-    def _read_host_file(self):
-        """Extract host from host file.
-
-        Returns
-        -------
-        astropy.Table
-            astropy Table containing host.
-
-        """
-        with fits.open(self._file) as hostf:
-            host_list = pd.DataFrame.from_records(hostf[1].data[:])
-        host_list = host_list.astype('float64')
-        ra_mask = host_list['ra'] < 0
-        host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
-        if self._z_range is not None:
-            z_min, z_max = self._z_range
-            return host_list.query(f'redshift >= {z_min} & redshift <= {z_max}')
-        return host_list
-
-    def host_near_z(self, z_list, treshold=1e-4):
-        """Take the nearest host from a redshift list.
-
-        Parameters
-        ----------
-        z_list : numpy.ndarray(float)
-            The redshifts.
-        treshold : float, optional
-            The maximum difference tolerance.
-
-        Returns
-        -------
-        astropy.Table
-            astropy Table containing the selected host.
-
-        """
-        idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
-        return self.table.iloc[idx]
-
-
 class SurveyFields:
     """Fields properties object.
 
@@ -1554,3 +1467,130 @@ class SurveyFields:
         ax.set_ylim(- self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
 
         plt.show()
+
+
+class SnHost:
+    """Class containing the SN Host parameters.
+
+    Parameters
+    ----------
+    config : str
+        Configuration of host.
+    z_range : list(float)
+        The redshift range.
+
+    Attributes
+    ----------
+    _table : pandas.DataFrame
+        Pandas dataframe that contains host data.
+    _max_dz : float
+        The maximum redshift gap between 2 host.
+    _z_range : list(float)
+        A copy of input z_range.
+    _file
+        A copy of input host_file.
+
+    Methods
+    -------
+    _read_host_file()
+        Extract host from host file.
+    random_host(n, z_range, rand_seed)
+        Random choice of host in a redshift range.
+
+    """
+
+    def __init__(self, config, z_range=None):
+        """Initialize SnHost class."""
+        self._z_range = z_range
+        self._config = config
+        self._table = self._read_host_file()
+        self._max_dz = None
+
+        # Default parameter
+        if 'distrib' not in self.config:
+            self._config['distrib'] = 'as_sn'
+
+    @property
+    def config(self):
+        """Get the configuration dic of host."""
+        return self._config
+
+    @property
+    def max_dz(self):
+        """Get the maximum redshift gap."""
+        if self._max_dz is None:
+            redshift_copy = np.sort(np.copy(self.table['redshift']))
+            diff = redshift_copy[1:] - redshift_copy[:-1]
+            self._max_dz = np.max(diff)
+        return self._max_dz
+
+    @property
+    def table(self):
+        """Get astropy Table of host."""
+        return self._table
+
+    def _read_host_file(self):
+        """Extract host from host file.
+
+        Returns
+        -------
+        astropy.Table
+            astropy Table containing host.
+
+        """
+        with fits.open(self.config['host_file']) as hostf:
+            host_list = pd.DataFrame.from_records(hostf[1].data[:])
+        host_list = host_list.astype('float64')
+        ra_mask = host_list['ra'] < 0
+        host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
+        if self._z_range is not None:
+            z_min, z_max = self._z_range
+            if z_max > host_list['redshift'].max() or z_min < host_list['redshift'].min():
+                warnings.warn('Simulation redshift range does not match host file redshift range',
+                              UserWarning)
+            return host_list.query(f'redshift >= {z_min} & redshift <= {z_max}')
+        return host_list
+
+    def host_near_z(self, z_list, treshold=1e-4):
+        """Take the nearest host from a redshift list.
+
+        Parameters
+        ----------
+        z_list : numpy.ndarray(float)
+            The redshifts.
+        treshold : float, optional
+            The maximum difference tolerance.
+
+        Returns
+        -------
+        astropy.Table
+            astropy Table containing the selected host.
+
+        """
+        idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
+        return self.table.iloc[idx]
+
+    def random_choice(self, n, rand_gen):
+        """Randomly select hosts.
+
+        Parameters
+        ----------
+        n : int
+            Number of hosts to select.
+        rand_gen : numpy.random.generator
+            A numpy random generator.
+
+        Returns
+        -------
+        pandas.dataframe
+            Table with selected hosts properties.
+
+        """
+        if self.config['distrib'].lower() == 'as_host':
+            p = None
+        elif self.config['distrib'].lower() == 'mass_weight':
+            p = self.table['mass']/self.table['mass'].sum()
+        else:
+            raise ValueError(f"{self.config['distrib']} is not an available option")
+        idx = rand_gen(self.table.index, p=p, size=n)
+        return self.table.iloc[idx]

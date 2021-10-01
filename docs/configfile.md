@@ -6,59 +6,62 @@ The input file is a .yml with the following structure:
 data:
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
-    write_format: 'format' or ['format1','format2'] #(Optional default pkl, fits)
+    write_format: 'format' or ['format1','format2']  # Optional default pkl, fits
 survey_config:
     survey_file: '/PATH/TO/FILE'
-    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in the database doesn't correpond to those in sncosmo registery)
-    add_data: ['keys1', 'keys2', ...] #(Optional add survey file keys to metadata)
-    survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...} #(Optional SQL conditions on key)
-    zp: INSTRUMENTAL ZEROPOINT  #(Optional, default given by survey file)
-    sig_zp: UNCERTAINTY ON ZEROPOINT #(Optional, default given by survey file)
-    sig_psf: GAUSSIAN PSF SIGMA #(Optional, default given by survey file as FWHMeff)
+    band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in the database doesn't correpond to those in sncosmo registery
+    add_data: ['keys1', 'keys2', ...]  # Optional add survey file keys to metadata
+    survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...}  # Optional SQL conditions on key
+    zp: INSTRUMENTAL ZEROPOINT  # Optional, default given by survey file)
+    sig_zp: UNCERTAINTY ON ZEROPOINT  # Optional, default given by survey file)
+    sig_psf: GAUSSIAN PSF SIGMA  # Optional, default given by survey file as FWHMeff
     noise_key: [key, type] type can be 'mlim5' or 'skysigADU'                      
     ra_size: RA FIELD SIZE in DEG
     dec_size: DEC FIELD SIZE in DEG
-    gain: CCD GAIN e-/ADU #(Optional, default given by survey file)
-    start_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
-    end_day: MJD NUMBER or 'YYYY-MM-DD' #(Optional, default given by survey file)
-    duration: SURVEY DURATION (DAYS) #(Optional, default given by survey file)
-    field_map: FIELD MAP FILE #(Optional, default is rectangle field)
-    fake_skynoise: [VALUE, 'add' or 'replace'] #(Optional, default is no fake_skynoise)
+    gain: CCD GAIN e-/ADU  # Optional, default given by survey file
+    start_day: MJD NUMBER or 'YYYY-MM-DD'  # Optional, default given by survey file
+    end_day: MJD NUMBER or 'YYYY-MM-DD'  # Optional, default given by survey file
+    duration: SURVEY DURATION (DAYS)  # Optional, default given by survey file
+    field_map: FIELD MAP FILE  # Optional, default is rectangle field
+    fake_skynoise: [VALUE, 'add' or 'replace']  # Optional, default is no fake_skynoise
     sub_field: 'sub_field_key' # Used to divided observation in CCD quadrant for example
 sn_gen:
-    n_sn: NUMBER OF SN TO GENERATE #(Optional)
-    duration_for_rate: FAKE DURATION ONLY USED TO GENERATE N SN (DAYS) #(Optional)
-    sn_rate: rate of SN/Mpc^3/year #(Optional, default=3e-5)
-    rate_pw: rate = sn_rate*(1+z)^rate_pw #(Optional, default=0)
-    nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS #(Optional defaut >= 1 ep)
-    randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional default random)
-    z_range: [ZMIN, ZMAX] # Cosmological redshift range
+    n_sn: NUMBER OF SN TO GENERATE  # Optional
+    duration_for_rate: FAKE DURATION ONLY USED TO GENERATE N SN (DAYS)  # Optional
+    sn_rate: rate of SN/Mpc^3/year  # Optional, default=3e-5
+    rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
+    nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS  # Optional, default >= 1 ep
+    randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional default random
+    z_range: [ZMIN, ZMAX]  # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
     mag_sct: SN INTRINSIC COHERENT SCATTERING
     sct_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
-cosmology: # Follow astropy formalism
+cosmology:  # Follow astropy formalism
     Om0: MATTER DENSITY  
     H0: HUBBLE CONSTANT
 cmb:
-    v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 369.82 km/s)
-    l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 264.021)            
-    b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 48.253)     
+    v_cmb: OUR PECULIAR VELOCITY  # Optional, default = 369.82 km/s
+    l_cmb: GAL L OF CMB DIPOLE  # Optional, default = 264.021            
+    b_cmb: GAL B OF CMB DIPOLE  # Optional, default = 48.253   
 model_config:
     model_name: 'THE MODEL NAME' # Example : 'salt2'
     model_dir: '/PATH/TO/SALT/MODEL'  
-    # Model parameters (here example for salt2)
+    # Model parameters : here example for salt2
     alpha: STRETCH CORRECTION = alpha*x1
     beta: COLOR CORRECTION = -beta*c   
     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
-    mw_dust: MODEL_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
+    mw_dust: MODEL_NAME  # RV = 3.1 or [MOD_NAME, RV], Optional
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
- host_file: '/PATH/TO/HOSTFILE' # Optional
- alpha_dipole: # Experimental alpha fine structure constant dipole, optional
-     coord: [RA, Dec] # Direction of the dipole
-     A: A_parameter # alpha dipole = A + B * cos(theta)
+ host:  # Optional
+ 	 host_file: '/PATH/TO/HOSTFILE' 
+ 	 distrib: 'as_sn', 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
+ 	 
+ alpha_dipole:  # Experimental alpha fine structure constant dipole, optional
+     coord: [RA, Dec]  # Direction of the dipole
+     A: A_parameter  # alpha dipole = A + B * cos theta
      B: B_parameter  
  
 ```
@@ -237,7 +240,17 @@ Default is all vpec = 0.
 
 
 
-##  host_file *optional*
+##  host *optional*
 
-Give the path to the host_file, used to generate SN in hosts, see [here](hostfile.md).
+ The host configuration to place SN in host, see [here](hostfile.md).
+
+* **host_file** is the path to the host_file, used to generate SN in hosts. *type* str
+
+* **distrib** is the distribution to use for redshift. *type* str.
+
+  The possibilities are:
+
+  * 'as_sn' : the simulation use the sn rate to generate redshifts distribution
+  * 'as_host' : the simulation use the host distribution to generate redshifts
+  * 'mass_weight' : host mass weight the distribution to generate redshifts as $w_i = \frac{m_i}{\sum_i m_i}$
 
