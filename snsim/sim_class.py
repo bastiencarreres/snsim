@@ -1595,4 +1595,4 @@ class SnHost:
         else:
             raise ValueError(f"{self.config['distrib']} is not an available option")
         idx = rand_gen.choice(self.table.index, p=p, size=n)
-        return self.table.iloc[idx]
+        return self.table.loc[idx]
