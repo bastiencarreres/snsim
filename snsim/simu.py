@@ -261,7 +261,6 @@ class Simulator:
         """Get the SnHost object of the simulation."""
         return self._host
 
-
     @property
     def nep_cut(self):
         """Get the list of epochs cuts."""
