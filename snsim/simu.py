@@ -115,7 +115,9 @@ class Simulator:
     | vpec_dist:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY
     |     sig_vpec: SIGMA VPEC
-    | host_file: 'PATH/TO/HOSTFILE' (Optional)
+    | host: (Optional)
+    |     host_file: 'PATH/TO/HOSTFILE'
+    |     distrib: 'as_sn', 'as_host' or 'mass_weight' #(Optional, default = 'as_sn')
     | alpha_dipole: #Experimental alpha fine structure constant dipole, optional
     |     coord: [RA, Dec] # Direction of the dipole
     |     A: A_parameter # alpha dipole = A + B * cos(theta)
@@ -153,7 +155,11 @@ class Simulator:
 
         self._sn_sample = None
         self._random_seed = None
-        self._host = None
+
+        if 'host' in self.config:
+            self._host = scls.SnHost(self.config['host'], self.z_range)
+        else:
+            self._host = None
 
         self._cosmology = ut.set_cosmo(self.config['cosmology'])
         self._survey = scls.SurveyObs(self.config['survey_config'])
@@ -253,13 +259,7 @@ class Simulator:
     @property
     def host(self):
         """Get the SnHost object of the simulation."""
-        if self._host is not None:
-            return self._host
-        elif 'host_file' in self.config:
-            self._host = scls.SnHost(self.config['host_file'], self.z_range)
-            return self._host
-        else:
-            return None
+        return self._host
 
     @property
     def nep_cut(self):

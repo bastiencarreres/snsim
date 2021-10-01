@@ -83,7 +83,7 @@ class SNSimSample:
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
-        self._sim_lcs = np.array(sim_lcs)
+        self._sim_lcs = self._init_sim_lcs(sim_lcs)
         self._model_dir = model_dir
         self._file_path = file_path
 
@@ -98,6 +98,28 @@ class SNSimSample:
             for b in lc['band']:
                 if b not in self._bands:
                     self._bands.append(b)
+
+    def _init_sim_lcs(self, sim_lcs):
+        """init the sim lcs array.
+
+        Parameters
+        ----------
+        sim_lcs : list
+            list that contains lcs.
+
+        Returns
+        -------
+        numpy.array(astropy.table.Table)
+            A numpy array that contains the same lcs.
+
+        """
+        if isinstance(sim_lcs, list):
+            new_lcs = np.empty(len(sim_lcs), dtype='object')
+            for i in range(len(new_lcs)):
+                new_lcs[i] = sim_lcs[i]
+        else:
+            new_lcs = sim_lcs
+        return new_lcs
 
     @classmethod
     def fromFile(cls, sim_file, model_dir=None):
@@ -121,14 +143,14 @@ class SNSimSample:
         file_path, file_ext = os.path.splitext(sim_file)
         sample_name = os.path.basename(file_path)
         if file_ext == '.fits':
-            sim_lcs = []
             with fits.open(file_path + file_ext) as sf:
                 header = sf[0].header
-                for hdu in sf[1:]:
+                sim_lcs = np.empty(len(sf[1:]), dtype='object')
+                for i, hdu in enumerate(sf[1:]):
                     data = hdu.data
                     tab = Table(data)
                     tab.meta = hdu.header
-                    sim_lcs.append(tab)
+                    sim_lcs[i] = tab
             return cls(sample_name, sim_lcs, header, model_dir=model_dir, file_path=file_path)
 
         elif file_ext == '.pkl':
