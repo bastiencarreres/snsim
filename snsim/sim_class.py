@@ -603,6 +603,8 @@ class SnGen:
                 host = self.host.host_near_z(zcos, treshold)
         else:
             host = self.host.random_choice(n_sn, rand_gen)
+            zcos = host['redshift'].values
+
         # -- Generate coherent mag scattering
         mag_sct = self.gen_coh_scatter(n_sn, rand_gen)
 
@@ -616,7 +618,6 @@ class SnGen:
         if self.host is not None:
             ra = host['ra'].values
             dec = host['dec'].values
-            zcos = host['redshift'].values
             vpec = host['v_radial'].values
         else:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
@@ -1548,7 +1549,8 @@ class SnHost:
             if z_max > host_list['redshift'].max() or z_min < host_list['redshift'].min():
                 warnings.warn('Simulation redshift range does not match host file redshift range',
                               UserWarning)
-            return host_list.query(f'redshift >= {z_min} & redshift <= {z_max}')
+            host_list.query(f'redshift >= {z_min} & redshift <= {z_max}', inplace=True)
+            host_list.reset_index(drop=True, inplace=True)
         return host_list
 
     def host_near_z(self, z_list, treshold=1e-4):
@@ -1592,5 +1594,5 @@ class SnHost:
             p = self.table['mass']/self.table['mass'].sum()
         else:
             raise ValueError(f"{self.config['distrib']} is not an available option")
-        idx = rand_gen(self.table.index, p=p, size=n)
+        idx = rand_gen.choice(self.table.index, p=p, size=n)
         return self.table.iloc[idx]
