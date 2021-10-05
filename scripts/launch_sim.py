@@ -100,6 +100,9 @@ keys_dic = {
     'vpec_dist': [
         'mean_vpec',
         'sig_vpec'],
+    'host': [
+        'host_file',
+        'distrib'],
     'alpha_dipole': [
         'coord',
         'A',
@@ -198,6 +201,7 @@ parser.add_argument("--sig_vpec", type=float, help="SIGMA PECULIAR VELOCITY")
 # HOST_FILE SECTION #
 #####################
 parser.add_argument("--host_file", type=str, help="'/PATH/TO/HOSTFILE'")
+parser.add_argument("--distrib", type=str, help="'as_sn', 'as_host' or 'mass_weight'")
 
 ########################
 # ALPHA_DIPOLE SECTION #
@@ -237,12 +241,6 @@ for K in keys_dic:
             if K not in param_dic:
                 param_dic[K] = {}
             param_dic[K][k] = yml_config[K][k]
-
-if args.host_file is not None:
-    param_dic['host_file'] = args.__dict__['host_file']
-
-elif yml_config is not None and 'host_file' in yml_config:
-    param_dic['host_file'] = yml_config['host_file']
 
 print('PARAMETERS USED IN SIMULATION\n')
 indent = '    '
