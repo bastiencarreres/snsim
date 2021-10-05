@@ -384,7 +384,7 @@ class SNSimSample:
             for i, lc in enumerate(self.sim_lcs):
                 if self._fit_res[i] is None:
                     fit_model.set(z=lc.meta['zobs'])
-                    if mw_dust is not None:
+                    if mw_mod is not None:
                         dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
                     self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(
                                                                                      lc,
@@ -392,7 +392,7 @@ class SNSimSample:
                                                                                      fit_par)
         else:
             fit_model.set(z=self.sim_lcs[sn_ID].meta['zobs'])
-            if mw_dust is not None:
+            if mw_mod is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sim_lcs[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
                                                                                 self.sim_lcs[sn_ID],
