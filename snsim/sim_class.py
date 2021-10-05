@@ -1101,6 +1101,7 @@ class SurveyObs:
             add_k = (k for k in self.config['add_data'] if k not in keys)
             keys += add_k
 
+        # Create the SQL query
         where = ''
         if 'survey_cut' in self.config:
             cut_dic = self.config['survey_cut']
@@ -1121,8 +1122,10 @@ class SurveyObs:
         obs_dic = pd.read_sql_query(query, con)
 
         # avoid crash on errors
-        obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
+        if 'fake_skynoise' not in self.config or self.config['fake_skynoise'][1].lower() == 'add':
+            obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
 
+        # Keep only epoch in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
 
         if start_day_input.mjd < obs_dic['expMJD'].min():
@@ -1132,10 +1135,14 @@ class SurveyObs:
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
                       inplace=True)
+
+        # Reset index of the pandas DataFrame
         obs_dic.reset_index(drop=True, inplace=True)
 
         if obs_dic.size == 0:
-            raise RuntimeError('No observation for the given survey start_day and duration')
+            raise RuntimeError('No observation for the given survey start_day and duration.')
+
+        # Effective start and end days
         start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
         end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
         return obs_dic, (start_day, end_day)
@@ -1252,7 +1259,7 @@ class SurveyObs:
         # Apply PSF
         skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
 
-        # Create obs table
+        # Create obs table following sncosmo formalism
         obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
                      'band': band,
                      'gain': gain,
