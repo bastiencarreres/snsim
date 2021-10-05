@@ -11,7 +11,7 @@ Github repository : https://github.com/bcarreres/snsim
 import os
 __snsim_dir_path__ = os.path.dirname(__file__)
 
-__version__ = "0.3.8"
+__version__ = "0.3.8_dev"
 
 
 
