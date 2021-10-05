@@ -258,5 +258,5 @@ sim = Simulator(param_dic)
 sim.simulate()
 
 if args.fit:
-    sim.fit_lc()
-    sim.write_fit()
+    sim.sn_sample.fit_lc()
+    sim.sn_sample.write_fit()
