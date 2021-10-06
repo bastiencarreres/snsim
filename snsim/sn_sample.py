@@ -362,12 +362,12 @@ class SNSimSample:
         if model_name in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
-        mw_mod = None
         if mw_dust == -2 and 'mwd_mod' in self.header:
             mw_mod = [self.header['mwd_mod'], self.header['mw_rv']]
         elif isinstance(mw_dust, (str, list, np.ndarray)):
             mw_mod = mw_dust
         else:
+            mw_mod = None
             print('Do not use mw dust')
 
         if mw_mod is not None:
@@ -413,7 +413,7 @@ class SNSimSample:
 
         """
         if write_path is None:
-            write_path = self._file_path + '_fit.fits'
+            write_path = self._file_path + self.name + '_fit.fits'
 
         if self.fit_res is None:
             print('Perform fit before write')
