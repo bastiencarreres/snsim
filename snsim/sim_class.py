@@ -1598,7 +1598,7 @@ class SnHost:
         if self.config['distrib'].lower() == 'as_host':
             p = None
         elif self.config['distrib'].lower() == 'mass_weight':
-            p = self.table['mass']/self.table['mass'].sum()
+            p = self.table['mass'] / self.table['mass'].sum()
         else:
             raise ValueError(f"{self.config['distrib']} is not an available option")
         idx = rand_gen.choice(self.table.index, p=p, size=n)

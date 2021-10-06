@@ -100,7 +100,7 @@ class SNSimSample:
                     self._bands.append(b)
 
     def _init_sim_lcs(self, sim_lcs):
-        """init the sim lcs array.
+        """Init the sim lcs array.
 
         Parameters
         ----------
