@@ -425,19 +425,6 @@ class SNSimSample:
 
         meta_keys = ['sn_id', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
                      'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
-        # sim_lc_meta = {'sn_id': self.get('sn_id'),
-        #                'ra': self.get('ra'),
-        #                'dec': self.get('dec'),
-        #                'vpec': self.get('vpec'),
-        #                'zpec': self.get('zpec'),
-        #                'z2cmb': self.get('z2cmb'),
-        #                'zcos': self.get('zcos'),
-        #                'zCMB': self.get('zCMB'),
-        #                'zobs': self.get('zobs'),
-        #                'sim_mu': self.get('sim_mu'),
-        #                'com_dist': self.get('com_dist'),
-        #                'sim_t0': self.get('sim_t0'),
-        #                'm_sct': self.get('m_sct')}
 
         model_name = self.header['Mname']
 

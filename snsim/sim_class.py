@@ -38,11 +38,12 @@ class SN:
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
-        Contains general model parameters and sncsomo parameters.
+        Contains general model parameters and sncosmo parameters.
 
       | model_par
       | ├── M0
       | ├── SN model general parameters
+      | ├── mod_fcov
       | └── sncosmo
       |     └── SN model parameters needed by sncosmo
 
@@ -273,17 +274,41 @@ class SN:
         -----
         Set the sim_lc attribute as an astropy Table
         """
+        random_seeds = rand_gen.integers(1000, 100000, size=2)
+
         params = {**{'z': self.zobs, 't0': self.sim_t0},
                   **self._model_par['sncosmo']}
-        self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [
-                                       params], scatter=False)[0]
+        self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model,
+                                       [params], scatter=False)[0]
+
+        if self._model_par['mod_fcov']:
+            self.sim_model.set(**params)
+
+            # From sncosmo
+            gen = np.random.default_rng(random_seeds[0])
+
+            #rdn_var = gen.random(len(self.sim_lc))
+            fluxcov = self.sim_model.bandfluxcov(self.sim_lc['band'],
+                                                 self.epochs['time'])[1]
+                                                 
+            #fluxcov = self.sim_lc['flux'] * rcov * self.sim_lc['flux'][:, np.newaxis]
+
+            self._sim_lc['flux'] += gen.multivariate_normal(np.zeros(len(fluxcov)),
+                                                            fluxcov,
+                                                            check_valid='ignore',
+                                                            method='cholesky')
+            #self._sim_lc['flux'] = nbf.rcov_to_flux(np.array(self.sim_lc['flux']), rcov, rdn_var)
+
+            self._sim_lc['fluxerr'] = np.sqrt(abs(self.sim_lc['flux']) / self.epochs['gain']
+                                              + self.epochs['skynoise']**2)
 
         self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 +
                                           (np.log(10) / 2.5 * self.sim_lc['flux'] *
                                           self.epochs['sig_zp'])**2)
 
-        self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
-                                               scale=self.sim_lc['fluxerr'])
+        gen = np.random.default_rng(random_seeds[1])
+        self._sim_lc['flux'] += gen.normal(loc=0.,
+                                           scale=self.sim_lc['fluxerr'])
 
         # Set magnitude
         self._sim_lc['mag'] = np.zeros(len(self._sim_lc))
@@ -314,8 +339,9 @@ class SN:
         Directly change the sim_lc attribute
 
         """
+        # Keys that don't need renaming
         not_to_change = ['G10', 'C11', 'mw_']
-        dont_touch = ['z', 'mw_r_v']
+        dont_touch = ['z', 'mw_r_v', 'fcov_seed']
 
         for k in self.epochs.keys():
             if k not in self.sim_lc.copy().keys():
@@ -364,6 +390,7 @@ class SnGen:
       | model_config
       | ├── model_dir # The directory of the model file
       | ├── model_name # The name of the model
+      | ├── mod_fcov # Use or not fluxcov
       | └── model parameters # All model needed parameters
     cmb : dict
         The cmb parameters.
@@ -652,6 +679,11 @@ class SnGen:
 
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
+
+        if 'mod_fcov' not in self.model_config:
+            model_default['mod_fcov'] = False
+        else:
+            model_default['mod_fcov'] = self.model_config['mod_fcov']
 
         model_par_list = ({**model_default, 'sncosmo': {**mpsn, **dstp}}
                           for mpsn, dstp in zip(rand_model_par, dust_par))
