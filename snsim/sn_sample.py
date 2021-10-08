@@ -246,7 +246,7 @@ class SNSimSample:
 
         for i, lc in enumerate(self.sim_lcs):
             selec_mask = np.zeros(len(lc), dtype='bool')
-            SNR = lc['flux']/lc['fluxerr']
+            SNR = lc['flux'] / lc['fluxerr']
             for b in self._bands:
                 bmask = lc['band'] == b
                 selec_mask[bmask] = rand_gen.random(np.sum(bmask)) <= SNR_proba[b](SNR[bmask])
