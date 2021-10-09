@@ -277,7 +277,7 @@ class SN:
 
         Notes
         -----
-        Set the sim_lc attribute as an astropy Table
+        Set the sim_lc attributes as an astropy Table
         """
         random_seeds = rand_gen.integers(1000, 100000, size=2)
 
@@ -301,6 +301,7 @@ class SN:
                                            zp=self.epochs['zp'],
                                            zpsys=self.epochs['zpsys'])
 
+        # Noise computation
         fluxerr = np.sqrt(np.abs(flux) / self.epochs['gain']
                           + self.epochs['skynoise']**2
                           + (np.log(10) / 2.5 * flux * self.epochs['sig_zp'])**2)

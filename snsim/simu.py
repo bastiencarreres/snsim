@@ -639,7 +639,8 @@ class Simulator:
                   **self.config['cosmology']}
 
         if isinstance(header['M0'], str) and header['M0'].lower() == 'jla':
-            header['M0_eff'] = ut.scale_M0_jla(self.cosmology.H0.value)
+            header['M0'] = ut.scale_M0_jla(self.cosmology.H0.value)
+            header['M0_mod'] = 'jla'
 
         if self.host is None:
             header['m_vp'] = self.config['vpec_dist']['mean_vpec']

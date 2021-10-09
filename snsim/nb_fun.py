@@ -306,14 +306,3 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
-
-
-@njit(cache=True)
-def rcov_to_flux(flux, rcov, random_var):
-    fluxcov = np.zeros(rcov.shape)
-    for i in range(len(flux)):
-        for j in range(len(flux)):
-            fluxcov[i, j] = flux[i] * rcov[i, j] * flux[j]
-
-    flux += np.linalg.cholesky(fluxcov) @ random_var
-    return flux
