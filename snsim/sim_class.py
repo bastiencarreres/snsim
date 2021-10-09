@@ -301,7 +301,7 @@ class SN:
                                            zp=self.epochs['zp'],
                                            zpsys=self.epochs['zpsys'])
 
-        # Noise computation
+        # Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerr = np.sqrt(np.abs(flux) / self.epochs['gain']
                           + self.epochs['skynoise']**2
                           + (np.log(10) / 2.5 * flux * self.epochs['sig_zp'])**2)
