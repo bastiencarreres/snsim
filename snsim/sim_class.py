@@ -2,8 +2,8 @@
 
 import sqlite3
 import warnings
+import copy
 import numpy as np
-import sncosmo as snc
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from astropy.table import Table
@@ -38,11 +38,12 @@ class SN:
     sim_model : sncosmo.Model
         The sncosmo model used to generate the SN ligthcurve.
     model_par : dict
-        Contains general model parameters and sncsomo parameters.
+        Contains general model parameters and sncosmo parameters.
 
       | model_par
       | ├── M0
       | ├── SN model general parameters
+      | ├── mod_fcov
       | └── sncosmo
       |     └── SN model parameters needed by sncosmo
 
@@ -77,13 +78,18 @@ class SN:
 
     def __init__(self, sn_par, sim_model, model_par):
         """Initialize SN class."""
-        self.sim_model = sim_model.__copy__()
+        self.sim_model = copy.copy(sim_model)
         self._sn_par = sn_par
         self._model_par = model_par
         self._init_model_par()
         self._epochs = None
         self._sim_lc = None
         self._ID = None
+
+        # Set sncosmo model parameters
+        params = {**{'z': self.zobs, 't0': self.sim_t0},
+                  **self._model_par['sncosmo']}
+        self.sim_model.set(**params)
 
     @property
     def ID(self):
@@ -271,35 +277,64 @@ class SN:
 
         Notes
         -----
-        Set the sim_lc attribute as an astropy Table
+        Set the sim_lc attributes as an astropy Table
         """
-        params = {**{'z': self.zobs, 't0': self.sim_t0},
-                  **self._model_par['sncosmo']}
-        self._sim_lc = snc.realize_lcs(self.epochs, self.sim_model, [
-                                       params], scatter=False)[0]
+        random_seeds = rand_gen.integers(1000, 100000, size=2)
 
-        self._sim_lc['fluxerr'] = np.sqrt(self.sim_lc['fluxerr']**2 +
-                                          (np.log(10) / 2.5 * self.sim_lc['flux'] *
-                                          self.epochs['sig_zp'])**2)
+        if self._model_par['mod_fcov']:
+            # Implement the flux variation due to simulation model covariance
+            gen = np.random.default_rng(random_seeds[0])
 
-        self._sim_lc['flux'] = rand_gen.normal(loc=self.sim_lc['flux'],
-                                               scale=self.sim_lc['fluxerr'])
+            flux, fluxcov = self.sim_model.bandfluxcov(self.epochs['band'],
+                                                       self.epochs['time'],
+                                                       zp=self.epochs['zp'],
+                                                       zpsys=self.epochs['zpsys'])
+
+            flux += gen.multivariate_normal(np.zeros(len(fluxcov)),
+                                            fluxcov,
+                                            check_valid='ignore',
+                                            method='eigh')
+
+        else:
+            flux = self.sim_model.bandflux(self.epochs['band'],
+                                           self.epochs['time'],
+                                           zp=self.epochs['zp'],
+                                           zpsys=self.epochs['zpsys'])
+
+        # Noise computation : Poisson Noise + Skynoise + ZP noise
+        fluxerr = np.sqrt(np.abs(flux) / self.epochs['gain']
+                          + self.epochs['skynoise']**2
+                          + (np.log(10) / 2.5 * flux * self.epochs['sig_zp'])**2)
+
+        gen = np.random.default_rng(random_seeds[1])
+        flux += gen.normal(loc=0., scale=fluxerr)
 
         # Set magnitude
-        self._sim_lc['mag'] = np.zeros(len(self._sim_lc))
-        self._sim_lc['magerr'] = np.zeros(len(self._sim_lc))
+        mag = np.zeros(len(flux))
+        magerr = np.zeros(len(flux))
 
-        positive_flux = self._sim_lc['flux'] > 0
+        positive_flux = flux > 0
 
-        self._sim_lc['mag'][positive_flux] = -2.5 * np.log10(self._sim_lc['flux'][positive_flux]) \
-            + self._sim_lc['zp'][positive_flux]
+        mag[positive_flux] = -2.5 * np.log10(flux[positive_flux]) + self.epochs['zp'][positive_flux]
 
-        self._sim_lc['magerr'][positive_flux] = 2.5 / np.log(10) \
-            * 1 / self._sim_lc['flux'][positive_flux] * self._sim_lc['fluxerr'][positive_flux]
+        magerr[positive_flux] = 2.5 / np.log(10) * 1 / flux[positive_flux] * fluxerr[positive_flux]
 
-        self._sim_lc['mag'][~positive_flux] = np.nan
-        self._sim_lc['magerr'][~positive_flux] = np.nan
+        mag[~positive_flux] = np.nan
+        magerr[~positive_flux] = np.nan
 
+        # Create astropy Table lightcurve
+        self._sim_lc = Table({'time': self.epochs['time'],
+                              'flux': flux,
+                              'fluxerr': fluxerr,
+                              'mag': mag,
+                              'magerr': magerr,
+                              'zp': self.epochs['zp'],
+                              'zpsys': self.epochs['zpsys'],
+                              'gain': self.epochs['zpsys'],
+                              'skynoise': self.epochs['skynoise']
+                              })
+
+        self.sim_lc.meta = {**{'z': self.zobs, 't0': self.sim_t0}, **self._model_par['sncosmo']}
         return self._reformat_sim_table()
 
     def _reformat_sim_table(self):
@@ -314,8 +349,9 @@ class SN:
         Directly change the sim_lc attribute
 
         """
+        # Keys that don't need renaming
         not_to_change = ['G10', 'C11', 'mw_']
-        dont_touch = ['z', 'mw_r_v']
+        dont_touch = ['z', 'mw_r_v', 'fcov_seed']
 
         for k in self.epochs.keys():
             if k not in self.sim_lc.copy().keys():
@@ -364,6 +400,7 @@ class SnGen:
       | model_config
       | ├── model_dir # The directory of the model file
       | ├── model_name # The name of the model
+      | ├── mod_fcov # Use or not fluxcov
       | └── model parameters # All model needed parameters
     cmb : dict
         The cmb parameters.
@@ -652,6 +689,11 @@ class SnGen:
 
         for k in self._model_keys:
             model_default[k] = self.model_config[k]
+
+        if 'mod_fcov' not in self.model_config:
+            model_default['mod_fcov'] = False
+        else:
+            model_default['mod_fcov'] = self.model_config['mod_fcov']
 
         model_par_list = ({**model_default, 'sncosmo': {**mpsn, **dstp}}
                           for mpsn, dstp in zip(rand_model_par, dust_par))
@@ -1161,13 +1203,11 @@ class SurveyObs:
             astropy table containing the SN observations.
 
         """
-        ModelMinT_obsfrm = SN_obj.sim_model.mintime() * (1 + SN_obj.zobs)
-        ModelMaxT_obsfrm = SN_obj.sim_model.maxtime() * (1 + SN_obj.zobs)
         SN_ra, SN_dec = SN_obj.coord
 
         # Time selection :
-        expr = ("(self.obs_table.expMJD - SN_obj.sim_t0 > ModelMinT_obsfrm) "
-                "& (self.obs_table.expMJD - SN_obj.sim_t0 < ModelMaxT_obsfrm)")
+        expr = ("(self.obs_table.expMJD  > SN_obj.sim_model.mintime()) "
+                "& (self.obs_table.expMJD < SN_obj.sim_model.maxtime())")
         epochs_selec = pd.eval(expr).to_numpy()
 
         is_obs = epochs_selec.any()

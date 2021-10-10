@@ -40,8 +40,8 @@ class SNSimSample:
         Copy of input sim_lcs.
     _model_dir : str or None
         Copy of input model_dir.
-    _file_path : str or None
-        Copy of input file_path.
+    _dir_path : str or None
+        Copy of input dir_path.
     _fit_model : sncosmo.Model
         The model used to fit SN.
     _fit_res : list
@@ -79,13 +79,13 @@ class SNSimSample:
         Plot a mollweide map of ra, dec.
     """
 
-    def __init__(self, sample_name, sim_lcs, header, model_dir=None, file_path=None):
+    def __init__(self, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
         self._sim_lcs = self._init_sim_lcs(sim_lcs)
         self._model_dir = model_dir
-        self._file_path = file_path
+        self._dir_path = dir_path
 
         self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
         self._fit_res = None
@@ -151,7 +151,8 @@ class SNSimSample:
                     tab = Table(data)
                     tab.meta = hdu.header
                     sim_lcs[i] = tab
-            return cls(sample_name, sim_lcs, header, model_dir=model_dir, file_path=file_path)
+            return cls(sample_name, sim_lcs, header, model_dir=model_dir,
+                       dir_path=os.path.dirname(file_path)+'/')
 
         elif file_ext == '.pkl':
             with open(file_path + file_ext, 'rb') as f:
@@ -245,7 +246,7 @@ class SNSimSample:
 
         for i, lc in enumerate(self.sim_lcs):
             selec_mask = np.zeros(len(lc), dtype='bool')
-            SNR = lc['flux']/lc['fluxerr']
+            SNR = lc['flux'] / lc['fluxerr']
             for b in self._bands:
                 bmask = lc['band'] == b
                 selec_mask[bmask] = rand_gen.random(np.sum(bmask)) <= SNR_proba[b](SNR[bmask])
@@ -312,7 +313,7 @@ class SNSimSample:
                                         lcs_list,
                                         header,
                                         self._model_dir,
-                                        self._file_path),
+                                        self._dir_path),
                             file)
 
     def write_select(self, formats=['pkl', 'fits']):
@@ -329,7 +330,7 @@ class SNSimSample:
             Just write a file.
 
         """
-        self._write_sim(self._file_path,
+        self._write_sim(self._dir_path,
                         formats=formats,
                         lcs_list=self.select_lcs,
                         sufname='_selected')
@@ -413,7 +414,7 @@ class SNSimSample:
 
         """
         if write_path is None:
-            write_path = self._file_path + self.name + '_fit.fits'
+            write_path = self._dir_path + self.name + '_fit.fits'
 
         if self.fit_res is None:
             print('Perform fit before write')
@@ -422,33 +423,21 @@ class SNSimSample:
             if res is None:
                 self.fit_lc(self.sim_lcs[i].meta['sn_id'])
 
-        sim_lc_meta = {'sn_id': self.get('sn_id'),
-                       'ra': self.get('ra'),
-                       'dec': self.get('dec'),
-                       'vpec': self.get('vpec'),
-                       'zpec': self.get('zpec'),
-                       'z2cmb': self.get('z2cmb'),
-                       'zcos': self.get('zcos'),
-                       'zCMB': self.get('zCMB'),
-                       'zobs': self.get('zobs'),
-                       'sim_mu': self.get('sim_mu'),
-                       'com_dist': self.get('com_dist'),
-                       'sim_t0': self.get('sim_t0'),
-                       'm_sct': self.get('m_sct')}
+        meta_keys = ['sn_id', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
+                     'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
 
         model_name = self.header['Mname']
 
         if model_name in ('salt2', 'salt3'):
-            sim_lc_meta['sim_x0'] = self.get('sim_x0')
-            sim_lc_meta['sim_mb'] = self.get('sim_mb')
-            sim_lc_meta['sim_x1'] = self.get('sim_x1')
-            sim_lc_meta['sim_c'] = self.get('sim_c')
+            meta_keys += ['sim_x0', 'sim_mb', 'sim_x1', 'sim_c']
+
+        if 'mw_dust' in self.header:
+            meta_keys.append('mw_ebv')
+
+        sim_lc_meta = {key: self.get(key) for key in meta_keys}
 
         if 'Smod' in self.header:
             sim_lc_meta['SM_seed'] = self.get(self.header['Smod'][:3] + '_RndS')
-
-        if 'mw_dust' in self.header:
-            sim_lc_meta['MW_EBV'] = self.get('mw_ebv')
 
         ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
 

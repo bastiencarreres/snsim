@@ -52,6 +52,7 @@ model_config:
     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
     mw_dust: MODEL_NAME  # RV = 3.1 or [MOD_NAME, RV], Optional
+    mod_fcov: True or False # Use the covariance of simulation model to scatter flux Optional, default = False
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
@@ -171,6 +172,19 @@ This section is about the model used to simulated SN Ia light curves.
   For more information go to the *sncosmo* documentation.
 
 Other parameters depends on the model.
+
+* **mod_fcov** use or not the simulation model covariance to scatter flux. *type* : boolean. *Optional* : default is False.
+
+  Flux covariance come from **sncosmo.Model.bandfluxcov()** and is apply using :
+
+  ```python
+  flux += np.random.multivariate_normal(np.zeros(len(fluxcov)),
+                                        fluxcov,
+                                        check_valid='ignore',
+                                        method='eigh')
+  ```
+
+   
 
 ### Salt 2 / 3 
 

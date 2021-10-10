@@ -111,6 +111,7 @@ class Simulator:
     |     beta: COLOR CORRECTION = -beta*c
     |     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
     |     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
+    |     mod_fcov : True or False #(Optional, default = False)
     |     mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
     | vpec_dist:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY
@@ -514,7 +515,7 @@ class Simulator:
                                       lcs_list,
                                       self._get_primary_header(),
                                       model_dir=model_dir,
-                                      file_path=self.config['data']['write_path'])
+                                      dir_path=self.config['data']['write_path'])
 
         self._sn_sample._header['n_sn'] = self._sn_sample.n_sn
 
@@ -638,7 +639,8 @@ class Simulator:
                   **self.config['cosmology']}
 
         if isinstance(header['M0'], str) and header['M0'].lower() == 'jla':
-            header['M0_eff'] = ut.scale_M0_jla(self.cosmology.H0.value)
+            header['M0'] = ut.scale_M0_jla(self.cosmology.H0.value)
+            header['M0_mod'] = 'jla'
 
         if self.host is None:
             header['m_vp'] = self.config['vpec_dist']['mean_vpec']
@@ -676,6 +678,12 @@ class Simulator:
 
         if 'sct_model' in self.config['sn_gen']:
             header['Smod'] = self.config['sn_gen']['sct_model']
+
+        if 'mod_fcov' in self.config['model_config']:
+            header['mod_fcov'] = self.config['model_config']['mod_fcov']
+        else:
+            header['mod_fcov'] = False
+
         return header
 
     def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
