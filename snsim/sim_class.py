@@ -322,6 +322,7 @@ class SN:
         mag[~positive_flux] = np.nan
         magerr[~positive_flux] = np.nan
 
+        # Create astropy Table lightcurve
         self._sim_lc = Table({'time': self.epochs['time'],
                               'flux': flux,
                               'fluxerr': fluxerr,
