@@ -96,7 +96,8 @@ keys_dic = {
         'beta',
         'dist_x1',
         'dist_c',
-        'mw_dust'],
+        'mw_dust',
+        'mod_fcov'],
     'vpec_dist': [
         'mean_vpec',
         'sig_vpec'],
@@ -185,6 +186,8 @@ parser.add_argument("--model_dir", type=str, help="'/PATH/TO/SALT/MODEL'")
 parser.add_argument("--model_name", type=int, help="'THE MODEL NAME', example 'salt2'")
 parser.add_argument("--mw_dust", type=str, nargs='+',
                     help="--mw_dust 'MODEL_NAME' or --mw_dust ['MODEL_NAME', RV]")
+
+parser.add_argument("--mod_fcov", type=bool, help="APPLY MODEL COV TO FLUX True or False")
 # SALT PARAM
 parser.add_argument("--alpha", type=float, help="STRETCH CORRECTION")
 parser.add_argument("--beta", type=float, help="COLOR CORRECTION")
