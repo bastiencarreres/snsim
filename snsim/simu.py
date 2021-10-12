@@ -470,6 +470,12 @@ class Simulator:
             print("\nUse mw dust model : "
                   f"{np.atleast_1d(self.config['model_config']['mw_dust'])[0]}")
 
+        if ('mod_fcov' in self.config['model_config']
+           and self.config['model_config']['mod_fcov']):
+            print('Model COV ON')
+        else:
+            print("Model COV OFF")
+
         print('-----------------------------------------------------------\n')
 
         if 'survey_cut' in self.config['survey_config']:

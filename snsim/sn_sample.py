@@ -551,7 +551,8 @@ class SNSimSample:
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
         elif plot_fit and selected:
-            print("You can't fit selected sn, write the in a file and load them as SNSimSample class")
+            print("You can't fit selected sn, write the in a file and load them"
+                  "as SNSimSample class")
         else:
             f_model = None
             cov_t0_x0_x1_c = None
