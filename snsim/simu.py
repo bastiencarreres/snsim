@@ -3,10 +3,8 @@
 import time
 import yaml
 import numpy as np
-from astropy.io import fits
 from . import utils as ut
 from . import sim_class as scls
-from . import plot_utils as plot_ut
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
 from .sn_sample import SNSimSample
@@ -119,6 +117,7 @@ class Simulator:
     | host: (Optional)
     |     host_file: 'PATH/TO/HOSTFILE'
     |     distrib: 'as_sn', 'as_host' or 'mass_weight' #(Optional, default = 'as_sn')
+    |     key_dic: {'column_name': 'new_column_name', etc} #(Optional to change columns names)
     | alpha_dipole: #Experimental alpha fine structure constant dipole, optional
     |     coord: [RA, Dec] # Direction of the dipole
     |     A: A_parameter # alpha dipole = A + B * cos(theta)
@@ -472,9 +471,9 @@ class Simulator:
 
         if ('mod_fcov' in self.config['model_config']
            and self.config['model_config']['mod_fcov']):
-            print('Model COV ON')
+            print("\nModel COV ON")
         else:
-            print("Model COV OFF")
+            print("\nModel COV OFF")
 
         print('-----------------------------------------------------------\n')
 
