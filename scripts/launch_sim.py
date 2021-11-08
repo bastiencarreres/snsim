@@ -205,6 +205,7 @@ print('PARAMETERS USED IN SIMULATION\n')
 indent = '    '
 for K in param_dic:
     if param_dic[K] == {}:
+        param_dic[K] = None
         continue
     if K == 'host_file':
         print(K + ": " + f"{param_dic['host_file']}")
