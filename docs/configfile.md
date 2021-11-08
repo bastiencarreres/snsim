@@ -59,7 +59,7 @@ model_config:
  host:  # Optional
  	 host_file: '/PATH/TO/HOSTFILE' 
  	 distrib: 'as_sn', 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
- 	 
+ 	 key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
  alpha_dipole:  # Experimental alpha fine structure constant dipole, optional
      coord: [RA, Dec]  # Direction of the dipole
      A: A_parameter  # alpha dipole = A + B * cos theta
@@ -259,6 +259,8 @@ Default is all vpec = 0.
  The host configuration to place SN in host, see [here](hostfile.md).
 
 * **host_file** is the path to the host_file, used to generate SN in hosts. *type* str
+
+* **key_dic** is a dictionary to change column name in order to correspond to what is needed (*cf* [host file doc](hostfile.md))
 
 * **distrib** is the distribution to use for redshift. *type* str.
 

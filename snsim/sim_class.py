@@ -3,6 +3,7 @@
 import sqlite3
 import warnings
 import copy
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -1121,7 +1122,8 @@ class SurveyObs:
                 'fieldRA',
                 'fieldDec']
 
-        if 'fake_skynoise' not in self.config or self.config['fake_skynoise'][1].lower() == 'add':
+        if ('fake_skynoise' not in self.config
+           or self.config['fake_skynoise'][1].lower() == 'add'):
             keys += [self.config['noise_key'][0]]
 
         if 'zp' not in self.config:
@@ -1164,7 +1166,8 @@ class SurveyObs:
         obs_dic = pd.read_sql_query(query, con)
 
         # avoid crash on errors
-        if 'fake_skynoise' not in self.config or self.config['fake_skynoise'][1].lower() == 'add':
+        if ('fake_skynoise' not in self.config
+           or self.config['fake_skynoise'][1].lower() == 'add'):
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
 
         # Keep only epoch in the survey time
@@ -1280,7 +1283,8 @@ class SurveyObs:
             gain = self.obs_table['gain'][epochs_selec]
 
         # Skynoise selection
-        if 'fake_skynoise' not in self.config or self.config['fake_skynoise'][1].lower() == 'add':
+        if ('fake_skynoise' not in self.config
+           or self.config['fake_skynoise'][1].lower() == 'add'):
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
                 mlim5 = self.obs_table[self.config['noise_key'][0]][epochs_selec]
@@ -1512,7 +1516,7 @@ class SurveyFields:
         ax.set_xlabel('RA')
         ax.set_ylabel('Dec')
         ax.set_xlim(-self._size[0] / 2 - 0.5, self._size[0] / 2 + 0.5)
-        ax.set_ylim(- self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
+        ax.set_ylim(-self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
 
         plt.show()
 
@@ -1586,14 +1590,29 @@ class SnHost:
             astropy Table containing host.
 
         """
-        with fits.open(self.config['host_file']) as hostf:
-            host_list = pd.DataFrame.from_records(hostf[1].data[:])
+        ext = os.path.splitext(self.config['host_file'])[-1]
+
+        if ext == '.fits':
+            with fits.open(self.config['host_file']) as hostf:
+                host_list = pd.DataFrame.from_records(hostf[1].data[:])
+        elif ext == '.csv':
+            host_list = pd.read_csv(self.config['host_file'])
+        else:
+            raise ValueError('Support .csv and .fits file')
+
+        if 'key_dic' in self.config:
+            key_dic = self.config['key_dic']
+        else:
+            key_dic = {}
+
         host_list = host_list.astype('float64')
+        host_list.rename(columns=key_dic, inplace=True)
         ra_mask = host_list['ra'] < 0
         host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
         if self._z_range is not None:
             z_min, z_max = self._z_range
-            if z_max > host_list['redshift'].max() or z_min < host_list['redshift'].min():
+            if (z_max > host_list['redshift'].max()
+               or z_min < host_list['redshift'].min()):
                 warnings.warn('Simulation redshift range does not match host file redshift range',
                               UserWarning)
             host_list.query(f'redshift >= {z_min} & redshift <= {z_max}', inplace=True)

@@ -32,6 +32,8 @@ def set_cosmo(cosmo_dic):
         if name in astropy_mod:
             if name == 'planck18':
                 return acosmo.Planck18
+            elif name == 'planck18_arxiv_v2':
+                return acosmo.Planck18_arXiv_v2
             elif name == 'planck15':
                 return acosmo.Planck15
             elif name == 'planck13':
