@@ -69,28 +69,28 @@ class Simulator:
     |     write_format: 'format' or ['format1','format2']
     | survey_config:
     |     survey_file: '/PATH/TO/FILE'
-    |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'} #(Optional -> if bandname in
-    |  survey_file doesn't match sncosmo name)
+    |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in
+    |  survey_file doesn't match sncosmo name
     |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata
     |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}
-    |     start_day: MJD NUMBER or 'YYYY-MM-DD'(Optional, default given by survey file)
-    |     duration: SURVEY DURATION (DAYS) (Optional, default given by survey file)
-    |     zp: INSTRUMENTAL ZEROPOINT (Optional, default given by survey file)
-    |     sig_zp: ZEROPOINT ERROR (Optional, default given by survey file)
-    |     sig_psf: GAUSSIAN PSF SIGMA (Otional, default given by survey file as FWHMeff)
+    |     start_day: MJD NUMBER or 'YYYY-MM-DD'  # Optional, default given by survey file
+    |     duration: SURVEY DURATION (DAYS)  # Optional, default given by survey file
+    |     zp: INSTRUMENTAL ZEROPOINT  # Optional, default given by survey file
+    |     sig_zp: ZEROPOINT ERROR  # Optional, default given by survey file
+    |     sig_psf: GAUSSIAN PSF SIGMA  # Otional, default given by survey file as FWHMeff
     |     noise_key: [key, type] type can be 'mlim5' or 'skysigADU'
     |     ra_size: RA FIELD SIZE
     |     dec_size: DEC FIELD SIZE
     |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
     |     sub_field: ['sub_field_file', 'sub_field_key']
-    |     fake_skynoise: [SIGMA_VALUE, 'add' or 'replace'] (Optional, default is 0)
+    |     fake_skynoise: [SIGMA_VALUE, 'add' or 'replace']  # Optional, default is 0
     | sn_gen:
-    |     n_sn: NUMBER OF SN TO GENERATE (Otional)
-    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN (Optional)
-    |     sn_rate: rate of SN/Mpc^3/year (Optional, default=3e-5) or 'ptf19'
-    |     rate_pw: rate = sn_rate*(1+z)^rate_pw (Optional, default=0)
+    |     n_sn: NUMBER OF SN TO GENERATE  # Optional
+    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN  # Optional
+    |     sn_rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
+    |     rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
     |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS
-    |     randseed: RANDSEED TO REPRODUCE SIMULATION #(Optional)
+    |     randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
     |     z_range: [ZMIN, ZMAX]
     |     M0: SN ABSOLUT MAGNITUDE
     |     mag_sct: SN INTRINSIC COHERENT SCATTERING
@@ -99,9 +99,9 @@ class Simulator:
     |     Om0: MATTER DENSITY
     |     H0: HUBBLE CONSTANT
     | cmb:
-    |     v_cmb: OUR PECULIAR VELOCITY #(Optional, default = 620 km/s)
-    |     l_cmb: GAL L OF CMB DIPOLE #(Optional, default = 271.0)
-    |     b_cmb: GAL B OF CMB DIPOLE #(Optional, default = 29.6)
+    |     v_cmb: OUR PECULIAR VELOCITY  # Optional, default = 620 km/s
+    |     l_cmb: GAL L OF CMB DIPOLE  # Optional, default = 271.0
+    |     b_cmb: GAL B OF CMB DIPOLE  # Optional, default = 29.6
     | model_config:
     |     model_name: 'THE MODEL NAME'  Example : 'salt2'
     |     model_dir: '/PATH/TO/SALT/MODEL'
@@ -109,18 +109,18 @@ class Simulator:
     |     beta: COLOR CORRECTION = -beta*c
     |     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
     |     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
-    |     mod_fcov : True or False #(Optional, default = False)
-    |     mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  #(Optional)
+    |     mod_fcov : True or False  # Optional, default = False
+    |     mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  # Optional
     | vpec_dist:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY
     |     sig_vpec: SIGMA VPEC
     | host: (Optional)
     |     host_file: 'PATH/TO/HOSTFILE'
-    |     distrib: 'as_sn', 'as_host' or 'mass_weight' #(Optional, default = 'as_sn')
-    |     key_dic: {'column_name': 'new_column_name', etc} #(Optional to change columns names)
-    | alpha_dipole: #Experimental alpha fine structure constant dipole, optional
-    |     coord: [RA, Dec] # Direction of the dipole
-    |     A: A_parameter # alpha dipole = A + B * cos(theta)
+    |     distrib: 'as_sn', 'as_host' or 'mass_weight'  # Optional, default = 'as_sn'
+    |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
+    | alpha_dipole:  # Optional, Experimental alpha fine structure constant dipole
+    |     coord: [RA, Dec]  # Direction of the dipole
+    |     A: A_parameter  # alpha dipole = A + B * cos(theta)
     |     B: B_parameter
     """
 
