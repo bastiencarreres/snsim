@@ -174,7 +174,7 @@ args_groups = {}
 for group in parser._action_groups:
     group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
     args_groups[group.title] = argparse.Namespace(**group_dict)
-print(args_groups)
+
 if args_groups['sn_gen'].nep_cut is not None:
     args.nep_cut = nep_cut(args.nep_cut)
 
