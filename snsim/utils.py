@@ -243,7 +243,7 @@ def snc_fitter(lc, fit_model, fit_par):
                                          res[1].source_peakmag('bessellb', 'ab'))
         res_dic = {k: v for k, v in zip(res[0]['param_names'], res[0]['parameters'])}
         res = np.append(res, res_dic)
-    except BaseException:
+    except RuntimeError:
         res = ['NaN', 'NaN', 'NaN']
     return res
 
