@@ -468,7 +468,7 @@ class SNSimSample:
             plt.show()
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
-                selected=False):
+                selected=False, figsize=(35 / 2.54, 20 / 2.54), dpi=120):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -565,7 +565,9 @@ class SNSimSample:
                         fit_cov=cov_t0_x0_x1_c,
                         zp=zp,
                         residuals=residuals,
-                        Jy=Jy)
+                        Jy=Jy,
+                        figsize=figsize,
+                        dpi=dpi)
 
     def plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
         """Plot a mollweide map of ra, dec.
