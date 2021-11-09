@@ -101,7 +101,9 @@ def plot_lc(
         snc_fit_model=None,
         fit_cov=None,
         residuals=False,
-        full_screen=False):
+        full_screen=False,
+        figsize=(35 / 2.54, 20 / 2.54),
+        dpi=120):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -140,7 +142,7 @@ def plot_lc(
     z = flux_table.meta['zobs']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
-    fig = plt.figure(figsize=(35 / 2.54, 20 / 2.54), dpi=120)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
 
     ###################
     # INIT THE FIGURE #
