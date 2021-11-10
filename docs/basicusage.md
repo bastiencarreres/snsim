@@ -14,13 +14,13 @@ sim = Simulator('yaml_cfg_file.yml')
 sim.simulate()
 ```
 
-The result is stored in sim.sn_list list which each entry is a SN object. Simulated lc and metadata are given by :
+The result is stored in sim.sn_sample object . Simulated lc and metadata are given by :
 ```python
-sim.sn_list[i].sim_lc
-sim.sn_list[i].sim_lc.meta
+sim.sn_sample.sim_lcs[i]
+sim.sn_sample.sim_lcs[i].meta
 
 #  For more information :
-help(snsim.SN)
+help(sim.sn_sample)
 ```
 The basic list of ligthcurves metadata is given in the following table :
 
