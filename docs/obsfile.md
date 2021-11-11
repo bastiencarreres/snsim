@@ -1,6 +1,6 @@
 # Observation database file
 
-It's a **SQL DataBase** (.db) or a **Comma-separated values ** (.csv) file which contain observations informations. It's used to find obs epoch and their noise.
+It's a **SQL DataBase** (.db) or a **Comma-separated values** (.csv) file which contain observations informations. It's used to find obs epoch and their noise.
 
 The SQL Table inside the SQL DataBase must be named **Summary**.
 
