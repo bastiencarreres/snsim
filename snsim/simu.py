@@ -71,6 +71,7 @@ class Simulator:
     |     survey_file: '/PATH/TO/FILE'
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in
     |  survey_file doesn't match sncosmo name
+    |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
     |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata
     |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}
     |     start_day: MJD NUMBER or 'YYYY-MM-DD'  # Optional, default given by survey file

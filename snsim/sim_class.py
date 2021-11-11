@@ -962,10 +962,16 @@ class SurveyObs:
         Create the astropy table from selection bool array.
     """
 
+    _base_keys = ['expMJD',
+                  'filter',
+                  'fieldID',
+                  'fieldRA',
+                  'fieldDec']
+
     def __init__(self, survey_config):
         """Initialize SurveyObs class."""
         self._config = survey_config
-        self._obs_table, self._start_end_days = self._extract_from_db()
+        self._obs_table, self._start_end_days = self._init_data()
         self.fields = self._init_fields()
 
     def _init_fields(self):
@@ -1094,33 +1100,28 @@ class SurveyObs:
 
         end_day = ut.init_astropy_time(end_day)
         if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
-            warnings.warn((f'Starting day {start_day.mjd:.3f} MJD or',
-                           'Ending day {end_day.mjd:.3f} MJD is outer of'
-                           'the survey range : {min_mjd:.3f} - {max_mjd:.3f}'),
+            print(start_day.mjd)
+            print(end_day.mjd)
+            print(type(start_day.mjd))
+            warnings.warn(f'Starting day {start_day.mjd:.3f} MJD or'
+                          f'Ending day {end_day.mjd:.3f} MJD is outer of'
+                          f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
                           UserWarning)
 
         if end_day.mjd < start_day.mjd:
             raise ValueError("The ending day is before the starting day !")
-
         return start_day, end_day
 
-    def _extract_from_db(self):
-        """Extract the observations table from SQL data base.
+    def _check_keys(self):
+        """Check which keys are needed.
 
         Returns
         -------
-        pandas.DataFrame
-            The observations table.
-        tuple(astropy.time.Time)
-            The starting time and ending time of the survey.
-        """
-        con = sqlite3.connect(self.config['survey_file'])
+        list(str)
+            All keys needed.
 
-        keys = ['expMJD',
-                'filter',
-                'fieldID',
-                'fieldRA',
-                'fieldDec']
+        """
+        keys = copy.copy(self._base_keys)
 
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
@@ -1144,17 +1145,56 @@ class SurveyObs:
         if 'add_data' in self.config:
             add_k = (k for k in self.config['add_data'] if k not in keys)
             keys += add_k
+        return keys
+
+    def _extract_from_csv(self, keys):
+        """Extract the observations table from csv file.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The observations table.
+        """
+        obs_dic = pd.read_csv(self.config['survey_file'])
+
+        if 'key_dic' in self.config:
+            obs_dic.rename(columns=self.config['key_dic'],
+                           inplace=True)
+
+        for k in keys:
+            if k not in obs_dic.keys().to_list():
+                raise KeyError(f'{k} is needed in csv file')
+
+        if 'survey_cut' in self.config:
+            query = ''
+            for cut_var in self.config['survey_cut']:
+                for cut in self.config['survey_cut'][cut_var]:
+                    query += f'{cut_var}{cut} &'
+            query = query[:-2]
+            obs_dic.query(query,
+                          inplace=True)
+        print(obs_dic)
+        return obs_dic
+
+    def _extract_from_db(self, keys):
+        """Extract the observations table from SQL data base.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The observations table.
+        """
+        con = sqlite3.connect(self.config['survey_file'])
 
         # Create the SQL query
         where = ''
         if 'survey_cut' in self.config:
-            cut_dic = self.config['survey_cut']
             where = " WHERE "
-            for cut_var in cut_dic:
+            for cut_var in self.config['survey_cut']:
                 where += "("
-                for cut in cut_dic[cut_var]:
+                for cut in self.config['survey_cut'][cut_var]:
                     cut_str = f"{cut}"
-                    where += f"{cut_var}{cut_str} OR "
+                    where += f"{cut_var}{cut_str} AND "
                 where = where[:-4]
                 where += ") AND "
             where = where[:-5]
@@ -1180,12 +1220,35 @@ class SurveyObs:
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
                       inplace=True)
+        return obs_dic
 
-        # Reset index of the pandas DataFrame
-        obs_dic.reset_index(drop=True, inplace=True)
+    def _init_data(self):
+        """Initialize observations table.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The observations table.
+        tuple(astropy.time.Time)
+            The starting time and ending time of the survey.
+        """
+        # Extract extension
+        ext = os.path.splitext(self.config['survey_file'])[-1]
+
+        # Init necessary keys
+        keys = self._check_keys()
+        if ext == '.db':
+            obs_dic = self._extract_from_db(keys)
+        elif ext == '.csv':
+            obs_dic = self._extract_from_csv(keys)
+        else:
+            raise ValueError('Accepted formats are .db and .csv')
 
         if obs_dic.size == 0:
             raise RuntimeError('No observation for the given survey start_day and duration.')
+
+        # Reset index of the pandas DataFrame
+        obs_dic.reset_index(drop=True, inplace=True)
 
         # Effective start and end days
         start_day = ut.init_astropy_time(obs_dic['expMJD'].min())

@@ -1,6 +1,6 @@
 # Observation database file
 
-It's a SQL DataBase file which contain observations informations. It's used to find obs epoch and their noise.
+It's a **SQL DataBase** (.db) or a **Comma-separated values ** (.csv) file which contain observations informations. It's used to find obs epoch and their noise.
 
 The SQL Table inside the SQL DataBase must be named **Summary**.
 
@@ -15,6 +15,8 @@ The required data keys are resumed in the next table :
 | Obs time in MJD | Obs band | The ID of the field | Right ascension of the obs field | Declinaison of the obs field | The column you want to use as noise in the simulation |
 
 **noise_key** has to be defined in the [configuration yaml file](./configfile.md)
+
+If you use **csv** file you can define a **key_dic** to change columns name to corresponds to what is needed.
 
 You can set a different zero point and its error for each observation by setting the two additional columns:
 
