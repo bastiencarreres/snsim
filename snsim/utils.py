@@ -218,7 +218,7 @@ def init_sn_model(name, model_dir=None):
     return None
 
 
-def snc_fitter(lc, fit_model, fit_par):
+def snc_fitter(lc, fit_model, fit_par, **kwargs):
     """Fit a given lightcurve with sncosmo.
 
     Parameters
@@ -237,13 +237,14 @@ def snc_fitter(lc, fit_model, fit_par):
 
     """
     try:
-        res = snc.fit_lc(lc, fit_model, fit_par, modelcov=True)
+        res = snc.fit_lc(data=lc, model=fit_model,
+                         vparam_names=fit_par, **kwargs)
         res[0]['param_names'] = np.append(res[0]['param_names'], 'mb')
         res[0]['parameters'] = np.append(res[0]['parameters'],
                                          res[1].source_peakmag('bessellb', 'ab'))
         res_dic = {k: v for k, v in zip(res[0]['param_names'], res[0]['parameters'])}
         res = np.append(res, res_dic)
-    except BaseException:
+    except RuntimeError:
         res = ['NaN', 'NaN', 'NaN']
     return res
 

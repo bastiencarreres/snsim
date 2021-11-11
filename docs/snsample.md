@@ -43,7 +43,7 @@ sim.sn.get('key')  # Where 'key' is a sn parameters such as 'sim_mb', 'ra', etc.
 
 The output file of write_fit is in the same directory as the simulation and has the same name + '_fit.fits'
 
-
+You can pass [**sncosmo.fit_lc()**](https://sncosmo.readthedocs.io/en/stable/api/sncosmo.fit_lc.html?highlight=fit_lc#sncosmo.fit_lc) arguments to the **SNSimSample.fit_lc()** function, the only no modifiable arguments are **data**, **model** and **vparam_names**.
 
 ## SNR selection
 

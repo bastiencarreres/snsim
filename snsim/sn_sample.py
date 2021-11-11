@@ -335,7 +335,7 @@ class SNSimSample:
                         lcs_list=self.select_lcs,
                         sufname='_selected')
 
-    def fit_lc(self, sn_ID=None, mw_dust=-2):
+    def fit_lc(self, sn_ID=None, mw_dust=-2, **kwargs):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
@@ -383,14 +383,13 @@ class SNSimSample:
 
         if sn_ID is None:
             for i, lc in enumerate(self.sim_lcs):
-                if self._fit_res[i] is None:
-                    fit_model.set(z=lc.meta['zobs'])
-                    if mw_mod is not None:
-                        dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
-                    self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(
-                                                                                     lc,
-                                                                                     fit_model,
-                                                                                     fit_par)
+                fit_model.set(z=lc.meta['zobs'])
+                if mw_mod is not None:
+                    dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
+                self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(lc,
+                                                                                        fit_model,
+                                                                                        fit_par,
+                                                                                        **kwargs)
         else:
             fit_model.set(z=self.sim_lcs[sn_ID].meta['zobs'])
             if mw_mod is not None:
@@ -398,7 +397,8 @@ class SNSimSample:
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
                                                                                 self.sim_lcs[sn_ID],
                                                                                 fit_model,
-                                                                                fit_par)
+                                                                                fit_par,
+                                                                                **kwargs)
 
     def write_fit(self, write_path=None):
         """Write fits results in fits format.

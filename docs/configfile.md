@@ -12,6 +12,7 @@ survey_config:
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in the database doesn't correpond to those in sncosmo registery
     add_data: ['keys1', 'keys2', ...]  # Optional add survey file keys to metadata
     survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...}  # Optional SQL conditions on key
+ 	key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
     zp: INSTRUMENTAL ZEROPOINT  # Optional, default given by survey file)
     sig_zp: UNCERTAINTY ON ZEROPOINT  # Optional, default given by survey file)
     sig_psf: GAUSSIAN PSF SIGMA  # Optional, default given by survey file as FWHMeff
@@ -85,10 +86,11 @@ This section of the yaml file only contains information about output files of th
 
 This section contains informations about the survey configuration :
 
-* **survey_file** is the path to the SQL database that describe observations.
+* **survey_file** is the path to the SQL database or the CSV file that describe observations.
 * **ra_size** is the Right Ascension size of the field in DEG.
 * **dec_size** is the Declinaison size of the field in DEG.
 * **noise_key** is a list that contains the **key** used in the SQL database for the noise, and the type of noise : **skysigADU** if it's directly the sky noise in **ADU** units, **mlim5** if it's the limiting magnitude at 5 $\sigma$. *type* : list(str). 
+* **key_dic** is a dictionary to use if you use csv file in order to change columns names.
 * **gain** is the gain of the CCD in $e^-$ / ADU. *type* : float. *Optional* : If not set, gain is taken in the SQL database.
 * **zp** is a constant zero point to use in simulation. *type* : float. *Optional* : If not set, zero point is taken in the SQL database.
 * **sig_zp** is the error on zero point. *type* : float. *Optional* : If not set, this parameter is taken in the SQL database.

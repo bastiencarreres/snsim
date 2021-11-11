@@ -86,6 +86,8 @@ survey_grp.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS"
 survey_grp.add_argument("--sub_field", type=str, help="SUBFIELD KEY")
 survey_grp.add_argument("--field_map", type=str, help="SUBFIELD MAP")
 survey_grp.add_argument("--fake_skynoise", nargs=2, help="[VALUE, 'add' or 'replace']")
+survey_grp.add_argument("--key_dic", type=yaml.load,
+                        help="Change column(s) name to correspond to what is needed")
 
 ###################
 # SN_GEN SECTION #
