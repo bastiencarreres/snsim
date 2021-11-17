@@ -358,7 +358,7 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
     ra = ra - 2 * np.pi * (ra > np.pi)
 
     if vpec is None:
-        plt.scatter(ra, dec, zorder=5, s=10, **kwarg)
+        plt.scatter(ra, dec, s=10, **kwarg)
     else:
         plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, s=10, **kwarg)
         plt.colorbar(plot, label='$v_p$ [km/s]')
