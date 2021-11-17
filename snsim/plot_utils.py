@@ -360,7 +360,7 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
     if vpec is None:
         plt.scatter(ra, dec, zorder=5, s=10, **kwarg)
     else:
-        plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, s=10, zorder=5, **kwarg)
+        plot = plt.scatter(ra, dec, c=vpec, vmin=-1500, vmax=1500, s=10, **kwarg)
         plt.colorbar(plot, label='$v_p$ [km/s]')
 
     if field_list is not None and field_dic is not None and field_size is not None:
