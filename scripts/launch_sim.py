@@ -221,9 +221,9 @@ for K in param_dic:
 
 param_dic['yaml_path'] = args.config_path
 
-#sim = Simulator(param_dic)
-#sim.simulate()
+sim = Simulator(param_dic)
+sim.simulate()
 
-#if args.fit:
-    #sim.sn_sample.fit_lc()
-    #sim.sn_sample.write_fit()
+if args.fit:
+    sim.sn_sample.fit_lc()
+    sim.sn_sample.write_fit()
