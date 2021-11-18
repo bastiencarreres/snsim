@@ -172,36 +172,39 @@ alphad_grp.add_argument("--alpha_B", dest="B", type=float,
 
 args = parser.parse_args()
 
-args_groups = {}
-for group in parser._action_groups:
-    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
-    args_groups[group.title] = argparse.Namespace(**group_dict)
-
-if args_groups['sn_gen'].nep_cut is not None:
+if args.nep_cut is not None:
     args.nep_cut = nep_cut(args.nep_cut)
 
 if args.mw_dust is not None:
     args.mw_dust = mw_dust_read(args.mw_dust)
 
-if args_groups['model_config'].dist_x1 is not None:
+if args.dist_x1 is not None:
     if args.dist_x1 not in ['N21']:
         args.dist_x1 = list(args.dist_x1)
         for i in range(len(args.dist_x1)):
             args.dist_x1[i] = float(args.dist_x1[i])
+
+args_groups = {}
+groups_title = []
+for group in parser._action_groups:
+    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+    args_groups[group.title] = argparse.Namespace(**group_dict)
 
 with open(args.config_path, "r") as f:
     yml_config = yaml.safe_load(f)
 
 param_dic = {}
 for K in args_groups:
-    param_dic[K] = {}
-
-for K in args_groups:
     for k in args_groups[K].__dict__:
+        val = None
         if args_groups[K].__dict__[k] is not None:
-            param_dic[K][k] = args_groups[K].__dict__[k]
+            val = args_groups[K].__dict__[k]
         elif yml_config is not None and K in yml_config and k in yml_config[K]:
-            param_dic[K][k] = yml_config[K][k]
+            val = yml_config[K][k]
+        if val is not None:
+            if K not in param_dic:
+                param_dic[K] = {}
+            param_dic[K][k] = val
 
 print('PARAMETERS USED IN SIMULATION\n')
 indent = '    '
@@ -218,9 +221,9 @@ for K in param_dic:
 
 param_dic['yaml_path'] = args.config_path
 
-sim = Simulator(param_dic)
-sim.simulate()
+#sim = Simulator(param_dic)
+#sim.simulate()
 
-if args.fit:
-    sim.sn_sample.fit_lc()
-    sim.sn_sample.write_fit()
+#if args.fit:
+    #sim.sn_sample.fit_lc()
+    #sim.sn_sample.write_fit()
