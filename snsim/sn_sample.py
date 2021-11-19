@@ -84,7 +84,7 @@ class SNSimSample:
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
-        self._sim_lcs = self._init_sim_lcs(sim_lcs)
+        self._sim_lcs = sim_lcs
         self._model_dir = model_dir
         self._dir_path = dir_path
 
@@ -99,28 +99,6 @@ class SNSimSample:
             for b in lc['band']:
                 if b not in self._bands:
                     self._bands.append(b)
-
-    def _init_sim_lcs(self, sim_lcs):
-        """Init the sim lcs array.
-
-        Parameters
-        ----------
-        sim_lcs : list
-            list that contains lcs.
-
-        Returns
-        -------
-        numpy.array(astropy.table.Table)
-            A numpy array that contains the same lcs.
-
-        """
-        if isinstance(sim_lcs, list):
-            new_lcs = np.empty(len(sim_lcs), dtype='object')
-            for i in range(len(new_lcs)):
-                new_lcs[i] = sim_lcs[i]
-        else:
-            new_lcs = sim_lcs
-        return new_lcs
 
     @classmethod
     def fromFile(cls, sim_file, model_dir=None):
@@ -146,11 +124,11 @@ class SNSimSample:
         if file_ext == '.fits':
             with fits.open(file_path + file_ext) as sf:
                 header = sf[0].header
-                sim_lcs = np.empty(len(sf[1:]), dtype='object')
+                sim_lcs = []
                 for i, hdu in enumerate(sf[1:]):
                     tab = Table(hdu.data)
                     tab.meta = hdu.header
-                    sim_lcs[i] = tab
+                    sim_lcs.append(tab)
             return cls(sample_name, sim_lcs, header, model_dir=model_dir,
                        dir_path=os.path.dirname(file_path) + '/')
 
