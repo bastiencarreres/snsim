@@ -367,6 +367,7 @@ class SNSimSample:
 
         mw_dust : str or list(str, float), default is the sim dust model
             A model of dust to apply if needed, follow dust_utils.init_mw_dust synthax
+            give any number != -2 for don't apply any dust.
 
         Returns
         -------
