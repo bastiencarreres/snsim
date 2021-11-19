@@ -2,6 +2,7 @@
 
 import os
 import pickle
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -147,16 +148,37 @@ class SNSimSample:
                 header = sf[0].header
                 sim_lcs = np.empty(len(sf[1:]), dtype='object')
                 for i, hdu in enumerate(sf[1:]):
-                    data = hdu.data
-                    tab = Table(data)
+                    tab = Table(hdu.data)
                     tab.meta = hdu.header
                     sim_lcs[i] = tab
             return cls(sample_name, sim_lcs, header, model_dir=model_dir,
-                       dir_path=os.path.dirname(file_path)+'/')
+                       dir_path=os.path.dirname(file_path) + '/')
 
         elif file_ext == '.pkl':
             with open(file_path + file_ext, 'rb') as f:
                 return pickle.load(f)
+
+    def set_fit_model(self, model, model_dir=None):
+        """Change the fit model by a given SNCosmo Model.
+
+        Parameters
+        ----------
+        model : sncosmo.models.Model or str
+            A sncosmo Model or a model name for utils.init_sn_model(model, model_dir).
+        model_dir : str
+            In case you want to set your model via utils.init_sn_model(model, model_dir).
+
+        Returns
+        -------
+        None
+            Set the self._fit_model attribute.
+        """
+        if isinstance(model, type(ut.init_sn_model('salt2'))):
+            self._fit_model = copy.copy(model)
+        elif isinstance(model, str):
+            self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
+        else:
+            raise ValueError('Input can be a sncosmo model or a string')
 
     @property
     def name(self):
@@ -343,6 +365,9 @@ class SNSimSample:
         sn_ID : int, default is None
             The SN ID, if not specified all SN are fit.
 
+        mw_dust : str or list(str, float), default is the sim dust model
+            A model of dust to apply if needed, follow dust_utils.init_mw_dust synthax
+
         Returns
         -------
         None
@@ -395,10 +420,10 @@ class SNSimSample:
             if mw_mod is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sim_lcs[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
-                                                                                self.sim_lcs[sn_ID],
-                                                                                fit_model,
-                                                                                fit_par,
-                                                                                **kwargs)
+                                                                                        self.sim_lcs[sn_ID],
+                                                                                        fit_model,
+                                                                                        fit_par,
+                                                                                        **kwargs)
 
     def write_fit(self, write_path=None):
         """Write fits results in fits format.
