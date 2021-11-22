@@ -3,6 +3,7 @@
 import os
 import pickle
 import copy
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -122,19 +123,25 @@ class SNSimSample:
         file_path, file_ext = os.path.splitext(sim_file)
         sample_name = os.path.basename(file_path)
         if file_ext == '.fits':
+            t0 = time.time()
             with fits.open(file_path + file_ext) as sf:
-                header = sf[0].header
                 sim_lcs = []
-                for i, hdu in enumerate(sf[1:]):
-                    tab = Table(hdu.data)
-                    tab.meta = hdu.header
-                    sim_lcs.append(tab)
+                for i, hdu in enumerate(sf):
+                    if i == 0:
+                        header = hdu.header
+                    else:
+                        tab = Table(hdu.data)
+                        tab.meta = hdu.header
+                        sim_lcs.append(tab)
+            print(time.time() - t0)
             return cls(sample_name, sim_lcs, header, model_dir=model_dir,
                        dir_path=os.path.dirname(file_path) + '/')
 
         elif file_ext == '.pkl':
             with open(file_path + file_ext, 'rb') as f:
-                return pickle.load(f)
+                pkl_dic = pickle.load(f)
+            return cls(pkl_dic['name'], pkl_dic['lcs'], pkl_dic['header'],
+                       model_dir=model_dir, dir_path=os.path.dirname(file_path) + '/')
 
     def set_fit_model(self, model, model_dir=None):
         """Change the fit model by a given SNCosmo Model.
@@ -309,11 +316,11 @@ class SNSimSample:
         # Export lcs as pickle
         if 'pkl' in formats:
             with open(write_path + self.name + sufname + '.pkl', 'wb') as file:
-                pickle.dump(SNSimSample(self.name + sufname,
-                                        lcs_list,
-                                        header,
-                                        self._model_dir,
-                                        self._dir_path),
+                pkl_dic = {'name': self.name + sufname,
+                           'lcs': lcs_list,
+                           'header': header}
+
+                pickle.dump(pkl_dic,
                             file)
 
     def write_select(self, formats=['pkl', 'fits']):
