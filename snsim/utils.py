@@ -244,7 +244,7 @@ def snc_fitter(lc, fit_model, fit_par, **kwargs):
                                          res[1].source_peakmag('bessellb', 'ab'))
         res_dic = {k: v for k, v in zip(res[0]['param_names'], res[0]['parameters'])}
         res = np.append(res, res_dic)
-    except RuntimeError:
+    except (RuntimeError, snc.fitting.DataQualityError):
         res = ['NaN', 'NaN', 'NaN']
     return res
 
