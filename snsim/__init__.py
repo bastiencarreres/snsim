@@ -12,7 +12,7 @@ import os
 __snsim_dir_path__ = os.path.dirname(__file__)
 
 
-__version__ = "0.3.11"
+__version__ = "0.3.12"
 
 from .simu import Simulator
 from .sn_sample import SNSimSample
