@@ -1100,9 +1100,6 @@ class SurveyObs:
 
         end_day = ut.init_astropy_time(end_day)
         if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
-            print(start_day.mjd)
-            print(end_day.mjd)
-            print(type(start_day.mjd))
             warnings.warn(f'Starting day {start_day.mjd:.3f} MJD or'
                           f'Ending day {end_day.mjd:.3f} MJD is outer of'
                           f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
@@ -1173,7 +1170,6 @@ class SurveyObs:
             query = query[:-2]
             obs_dic.query(query,
                           inplace=True)
-        print(obs_dic)
         return obs_dic
 
     def _extract_from_db(self, keys):

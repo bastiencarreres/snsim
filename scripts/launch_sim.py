@@ -62,12 +62,12 @@ data_grp.add_argument("--write_format",
 #########################
 survey_grp = parser.add_argument_group('survey_config')
 survey_grp.add_argument("--survey_file", type=str, help='/PATH/TO/FILE')
-survey_grp.add_argument("--band_dic", type=yaml.load,
+survey_grp.add_argument("--band_dic", type=yaml.safe_load,
                         help="{'band1_db_key':'band1_sncosmo_key', ...} database key -> sncosmo key,\
                            put dictionnary between double quotationmark")
 survey_grp.add_argument("--add_data", type=str, nargs='+',
                         help="--add_data 'key1' 'key2' ... # Add metadata from survey file to output")
-survey_grp.add_argument("--survey_cut", type=yaml.load,
+survey_grp.add_argument("--survey_cut", type=yaml.safe_load,
                         help="{'key1': ['conditon1','conditon2',...], 'key2':['conditon1'],...},\
                           put dictionnary between double quotation mark")
 survey_grp.add_argument("--zp", type=float, help="INSTRUMENTAL ZEROPOINT")
@@ -86,7 +86,7 @@ survey_grp.add_argument("--duration", type=float, help="SURVEY DURATION IN DAYS"
 survey_grp.add_argument("--sub_field", type=str, help="SUBFIELD KEY")
 survey_grp.add_argument("--field_map", type=str, help="SUBFIELD MAP")
 survey_grp.add_argument("--fake_skynoise", nargs=2, help="[VALUE, 'add' or 'replace']")
-survey_grp.add_argument("--s_key_dic", type=yaml.load,
+survey_grp.add_argument("--s_key_dic", type=yaml.safe_load,
                         help="Change column(s) name to correspond to what is needed", dest='key_dic')
 
 ###################
@@ -156,7 +156,7 @@ vpecdist_grp.add_argument("--sig_vpec", type=float, help="SIGMA PECULIAR VELOCIT
 host_grp = parser.add_argument_group('host')
 host_grp.add_argument("--host_file", type=str, help="'/PATH/TO/HOSTFILE'")
 host_grp.add_argument("--distrib", type=str, help="'as_sn', 'as_host' or 'mass_weight'")
-host_grp.add_argument("--h_key_dic", type=yaml.load,
+host_grp.add_argument("--h_key_dic", type=yaml.safe_load,
                       help="Change column(s) name to correspond to what is needed", dest='key_dic')
 
 ########################
