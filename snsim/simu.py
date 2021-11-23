@@ -517,11 +517,11 @@ class Simulator:
         else:
             lcs_list = self._fix_nsn_sim(rand_gen)
 
-        self._sn_sample = SNSimSample(self.sim_name,
-                                      lcs_list,
-                                      self._get_primary_header(),
-                                      model_dir=model_dir,
-                                      dir_path=self.config['data']['write_path'])
+        self._sn_sample = SNSimSample.fromDFlist(self.sim_name,
+                                                 lcs_list,
+                                                 self._get_primary_header(),
+                                                 model_dir=model_dir,
+                                                 dir_path=self.config['data']['write_path'])
 
         self._sn_sample._header['n_sn'] = self._sn_sample.n_sn
 

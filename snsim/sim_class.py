@@ -363,27 +363,27 @@ class SN:
             if k not in self.sim_lc.copy().keys():
                 self._sim_lc[k] = self.epochs[k].copy()
 
-        for k in self.sim_lc._meta.copy():
+        for k in self.sim_lc.attrs.copy():
             if k not in dont_touch and k[:3] not in not_to_change:
-                self.sim_lc._meta['sim_' + k] = self.sim_lc._meta.pop(k)
+                self.sim_lc.attrs['sim_' + k] = self.sim_lc.attrs.pop(k)
 
         if self.ID is not None:
-            self.sim_lc._meta['sn_id'] = self.ID
+            self.sim_lc.attrs['sn_id'] = self.ID
 
-        self.sim_lc._meta['vpec'] = self.vpec
-        self.sim_lc._meta['zcos'] = self.zcos
-        self.sim_lc._meta['zpec'] = self.zpec
-        self.sim_lc._meta['z2cmb'] = self.z2cmb
-        self.sim_lc._meta['zCMB'] = self.zCMB
-        self.sim_lc._meta['ra'] = self.coord[0]
-        self.sim_lc._meta['dec'] = self.coord[1]
-        self.sim_lc._meta['sim_mb'] = self.sim_mb
-        self.sim_lc._meta['sim_mu'] = self.sim_mu
-        self.sim_lc._meta['com_dist'] = self.como_dist
-        self.sim_lc._meta['m_sct'] = self.mag_sct
+        self.sim_lc.attrs['vpec'] = self.vpec
+        self.sim_lc.attrs['zcos'] = self.zcos
+        self.sim_lc.attrs['zpec'] = self.zpec
+        self.sim_lc.attrs['z2cmb'] = self.z2cmb
+        self.sim_lc.attrs['zCMB'] = self.zCMB
+        self.sim_lc.attrs['ra'] = self.coord[0]
+        self.sim_lc.attrs['dec'] = self.coord[1]
+        self.sim_lc.attrs['sim_mb'] = self.sim_mb
+        self.sim_lc.attrs['sim_mu'] = self.sim_mu
+        self.sim_lc.attrs['com_dist'] = self.como_dist
+        self.sim_lc.attrs['m_sct'] = self.mag_sct
 
         if 'adip_dM' in self._sn_par:
-            self.sim_lc._meta['adip_dM'] = self.adip_dM
+            self.sim_lc.attrs['adip_dM'] = self.adip_dM
 
 
 class SnGen:
