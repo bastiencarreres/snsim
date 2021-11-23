@@ -17,41 +17,6 @@ from . import dust_utils as dst_ut
 np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
 
-class SNDataFrame(pd.DataFrame):
-    """Inheritance class of pandas.DataFrame.
-
-    Attributes
-    ----------
-    _meta : dict
-        SNSample metadata.
-
-    """
-    _meta = {}
-
-    @property
-    def _constructor(self):
-        def construct(*args, **kwargs):
-            return SNDataFrame(*args, meta=self.meta, **kwargs)
-        return construct
-
-    def __init__(self, *args, meta={}, **kwargs):
-        self._meta = meta
-        super().__init__(*args, **kwargs)
-
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            return pd.DataFrame.__getitem__(self, item)
-        return self.loc[item]
-
-    def to_dict(self):
-        dic = pd.DataFrame.to_dict(self)
-        dic['meta'] = self.meta
-        return dic
-
-    @property
-    def meta(self):
-        return self._meta
-
 class SNSimSample:
     """Class to store simulated SN sample.
 
@@ -122,8 +87,9 @@ class SNSimSample:
         self._name = sample_name
         self._header = header
         self._sim_lcs = pd.concat(sim_lcs,
-                                  keys=(lc.meta['sn_id'] for lc in sim_lcs),
+                                  keys=(lc.attrs['sn_id'] for lc in sim_lcs),
                                   names=['sn_id'])
+        self._sim_lcs.attrs = {lc.attrs['sn_id']: lc.attrs for lc in sim_lcs}
         self._model_dir = model_dir
         self._dir_path = dir_path
 
@@ -161,7 +127,6 @@ class SNSimSample:
         file_path, file_ext = os.path.splitext(sim_file)
         sample_name = os.path.basename(file_path)
         if file_ext == '.fits':
-            t0 = time.time()
             with fits.open(file_path + file_ext) as sf:
                 sim_lcs = []
                 for i, hdu in enumerate(sf):
@@ -171,7 +136,6 @@ class SNSimSample:
                         tab = Table(hdu.data)
                         tab.meta = hdu.header
                         sim_lcs.append(tab)
-            print(time.time() - t0)
             return cls(sample_name, sim_lcs, header, model_dir=model_dir,
                        dir_path=os.path.dirname(file_path) + '/')
 
@@ -222,6 +186,10 @@ class SNSimSample:
     def sim_lcs(self):
         """Get sim_lcs."""
         return self._sim_lcs
+
+    @property
+    def meta(self):
+        return self._sim_lcs.attrs
 
     @property
     def fit_res(self):
@@ -313,10 +281,10 @@ class SNSimSample:
 
         """
         if select:
-            lcs_list = self.select_lcs
+            meta_list = self.select_lcs.attrs
         else:
-            lcs_list = self.sim_lcs
-        return np.array([lc.meta[key] for lc in lcs_list])
+            meta_list = self.sim_lcs.attrs
+        return np.array([meta[key] for meta in meta_list])
 
     def _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
         """Write simulation into a file.
@@ -432,22 +400,27 @@ class SNSimSample:
 
         if sn_ID is None:
             for i, lc in enumerate(self.sim_lcs):
-                fit_model.set(z=lc.meta['zobs'])
+                fit_model.set(z=self.sim_lcs.attrs[i]['zobs'])
                 if mw_mod is not None:
-                    dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
+                    dst_ut.add_mw_to_fit(fit_model,
+                                         self.sim_lcs.attrs[i]['mw_ebv'],
+                                         mod_name, rv=rv)
                 self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(lc,
                                                                                         fit_model,
                                                                                         fit_par,
                                                                                         **kwargs)
         else:
-            fit_model.set(z=self.sim_lcs[sn_ID].meta[sn_ID]['zobs'])
+            fit_model.set(z=self.sim_lcs.attrs[sn_ID]['zobs'])
             if mw_mod is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sim_lcs[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
+                dst_ut.add_mw_to_fit(fit_model,
+                                     self.sim_lcs.attrs[sn_ID]['mw_ebv'],
+                                     mod_name, rv=rv)
+
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
-                                                                                        self.sim_lcs[sn_ID],
-                                                                                        fit_model,
-                                                                                        fit_par,
-                                                                                        **kwargs)
+                                                                            self.sim_lcs[sn_ID],
+                                                                            fit_model,
+                                                                            fit_par,
+                                                                            **kwargs)
 
     def write_fit(self, write_path=None):
         """Write fits results in fits format.
@@ -470,7 +443,7 @@ class SNSimSample:
             self.fit_lc()
         for i, res in enumerate(self.fit_res):
             if res is None:
-                self.fit_lc(self.sim_lcs[i].meta['sn_id'])
+                self.fit_lc(self.sim_lcs.attrs[i]['sn_id'])
 
         meta_keys = ['sn_id', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
                      'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
@@ -549,33 +522,35 @@ class SNSimSample:
         """
         if selected:
             lc = self.select_lcs[sn_ID]
+            meta = self.select_lcs.attrs[sn_ID]
         else:
             lc = self.sim_lcs[sn_ID]
+            meta = self.sim_lcs.attrs[sn_ID]
 
         if plot_sim:
             model_name = self.header['Mname']
 
             s_model = ut.init_sn_model(model_name, self._model_dir)
 
-            dic_par = {'z': lc.meta['zobs'],
-                       't0': lc.meta['sim_t0']}
+            dic_par = {'z': meta['zobs'],
+                       't0': meta['sim_t0']}
 
             if model_name in ('salt2', 'salt3'):
-                dic_par['x0'] = lc.meta['sim_x0']
-                dic_par['x1'] = lc.meta['sim_x1']
-                dic_par['c'] = lc.meta['sim_c']
+                dic_par['x0'] = meta['sim_x0']
+                dic_par['x1'] = meta['sim_x1']
+                dic_par['c'] = meta['sim_c']
             s_model.set(**dic_par)
 
             if 'Smod' in self.header:
                 sct.init_sn_sct_model(s_model, self.header['Smod'])
                 par_rd_name = self.header['Smod'][:3] + '_RndS'
-                s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
+                s_model.set(**{par_rd_name: meta[par_rd_name]})
 
             if 'mwd_mod' in self.header:
                 dst_ut.init_mw_dust(s_model, [self.header['mwd_mod'], self.header['mw_rv']])
                 if self.header['mwd_mod'].lower() not in ['f99']:
-                    s_model.set(mw_r_v=lc.meta['mw_r_v'])
-                s_model.set(mw_ebv=lc.meta['mw_ebv'])
+                    s_model.set(mw_r_v=meta['mw_r_v'])
+                s_model.set(mw_ebv=meta['mw_ebv'])
         else:
             s_model = None
 
@@ -648,11 +623,11 @@ class SNSimSample:
         if plot_fields:
             field_list = []
 
-        for lc in self.sim_lcs:
-            ra.append(lc.meta['ra'])
-            dec.append(lc.meta['dec'])
+        for i, lc in enumerate(self.sim_lcs):
+            ra.append(self.sim_lcs.attrs[i]['ra'])
+            dec.append(self.sim_lcs.attrs[i]['dec'])
             if plot_vpec:
-                vpec.append(lc.meta['vpec'])
+                vpec.append(self.sim_lcs.attrs[i]['vpec'])
             if plot_fields:
                 field_list = np.concatenate((field_list, np.unique(lc['fieldID'])))
 

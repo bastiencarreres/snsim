@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from astropy.table import Table
 from astropy.io import fits
-from .sn_sample import SNDataFrame
 import pandas as pd
 from . import utils as ut
 from . import salt_utils as salt_ut
@@ -106,7 +105,7 @@ class SN:
         else:
             print('SN ID must be an integer')
         if self.sim_lc is not None:
-            self.sim_lc._meta['sn_id'] = self._ID
+            self.sim_lc.attrs['sn_id'] = self._ID
 
     @property
     def sim_t0(self):
@@ -325,19 +324,21 @@ class SN:
         magerr[~positive_flux] = np.nan
 
         # Create astropy Table lightcurve
-        self._sim_lc = SNDataFrame({'time': self.epochs['time'],
-                                    'flux': flux,
-                                    'fluxerr': fluxerr,
-                                    'mag': mag,
-                                    'magerr': magerr,
-                                    'zp': self.epochs['zp'],
-                                    'zpsys': self.epochs['zpsys'],
-                                    'gain': self.epochs['gain'],
-                                    'skynoise': self.epochs['skynoise'],
-                                    'epochs': np.arange(len(self.epochs['time']))
-                                    },
-                                   meta={**{'zobs': self.zobs, 't0': self.sim_t0},
-                                         **self._model_par['sncosmo']})
+        self._sim_lc = pd.DataFrame({'time': self.epochs['time'],
+                                     'flux': flux,
+                                     'fluxerr': fluxerr,
+                                     'mag': mag,
+                                     'magerr': magerr,
+                                     'zp': self.epochs['zp'],
+                                     'zpsys': self.epochs['zpsys'],
+                                     'gain': self.epochs['gain'],
+                                     'skynoise': self.epochs['skynoise'],
+                                     'epochs': np.arange(len(self.epochs['time']))
+                                     })
+
+        self._sim_lc.attrs = {**self.sim_lc.attrs,
+                              **{'zobs': self.zobs, 't0': self.sim_t0},
+                              **self._model_par['sncosmo']}
 
         self._sim_lc.set_index('epochs', inplace=True)
         return self._reformat_sim_table()
