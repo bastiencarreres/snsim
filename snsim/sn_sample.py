@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import Table
+import pandas as pd
 from . import utils as ut
 from . import scatter as sct
 from . import plot_utils as plot_ut
@@ -15,6 +16,41 @@ from . import dust_utils as dst_ut
 
 np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
+
+class SNDataFrame(pd.DataFrame):
+    """Inheritance class of pandas.DataFrame.
+
+    Attributes
+    ----------
+    _meta : dict
+        SNSample metadata.
+
+    """
+    _meta = {}
+
+    @property
+    def _constructor(self):
+        def construct(*args, **kwargs):
+            return SNDataFrame(*args, meta=self.meta, **kwargs)
+        return construct
+
+    def __init__(self, *args, meta={}, **kwargs):
+        self._meta = meta
+        super().__init__(*args, **kwargs)
+
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            return pd.DataFrame.__getitem__(self, item)
+        return self.loc[item]
+
+    def to_dict(self):
+        dic = pd.DataFrame.to_dict(self)
+        dic['meta'] = self.meta
+        return dic
+
+    @property
+    def meta(self):
+        return self._meta
 
 class SNSimSample:
     """Class to store simulated SN sample.
@@ -85,7 +121,9 @@ class SNSimSample:
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
-        self._sim_lcs = sim_lcs
+        self._sim_lcs = pd.concat(sim_lcs,
+                                  keys=(lc.meta['sn_id'] for lc in sim_lcs),
+                                  names=['sn_id'])
         self._model_dir = model_dir
         self._dir_path = dir_path
 
@@ -301,7 +339,7 @@ class SNSimSample:
 
         """
         if lcs_list is None:
-            lcs_list = self.sim_lcs
+            lcs_list = self.sim_lcs.to_dict()
         header = self.header.copy()
         header['n_sn'] = len(lcs_list)
         formats = np.atleast_1d(formats)
@@ -402,7 +440,7 @@ class SNSimSample:
                                                                                         fit_par,
                                                                                         **kwargs)
         else:
-            fit_model.set(z=self.sim_lcs[sn_ID].meta['zobs'])
+            fit_model.set(z=self.sim_lcs[sn_ID].meta[sn_ID]['zobs'])
             if mw_mod is not None:
                 dst_ut.add_mw_to_fit(fit_model, self.sim_lcs[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
@@ -568,8 +606,7 @@ class SNSimSample:
             f_model = None
             cov_t0_x0_x1_c = None
             residuals = False
-
-        plot_ut.plot_lc(self.sim_lcs[sn_ID],
+        plot_ut.plot_lc(lc,
                         mag=mag,
                         snc_sim_model=s_model,
                         snc_fit_model=f_model,
