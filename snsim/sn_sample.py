@@ -686,15 +686,7 @@ class SNSimSample:
             vpec = []
 
         if plot_fields:
-            field_list = []
-
-        for i, lc in enumerate(self.sim_lcs):
-            ra.append(self.sim_lcs.attrs[i]['ra'])
-            dec.append(self.sim_lcs.attrs[i]['dec'])
-            if plot_vpec:
-                vpec.append(self.sim_lcs.attrs[i]['vpec'])
-            if plot_fields:
-                field_list = np.concatenate((field_list, np.unique(lc['fieldID'])))
+            field_list = self.sim_lcs['fieldID'].unique()
 
         if plot_fields:
             field_list = np.unique(field_list)
@@ -703,9 +695,9 @@ class SNSimSample:
             field_size = None
             field_list = None
 
-        plot_ut.plot_ra_dec(np.asarray(ra),
-                            np.asarray(dec),
-                            vpec,
+        plot_ut.plot_ra_dec(self.get('ra'),
+                            self.get('dec'),
+                            self.get('vpec'),
                             field_list,
                             field_dic,
                             field_size,
