@@ -94,6 +94,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
 
 def plot_lc(
         flux_table,
+        meta,
         zp=25.,
         mag=False,
         Jy=False,
@@ -138,8 +139,8 @@ def plot_lc(
 
     time = flux_table['time']
 
-    t0 = flux_table.meta['sim_t0']
-    z = flux_table.meta['zobs']
+    t0 = meta['sim_t0']
+    z = meta['zobs']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
     fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -273,19 +274,19 @@ def plot_lc(
     fit_mwd_par = None
     if snc_sim_model is not None:
         plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
-        sim_par = [flux_table.meta['sim_t0'],
-                   flux_table.meta['sim_x0'],
-                   flux_table.meta['sim_mb'],
-                   flux_table.meta['sim_x1'],
-                   flux_table.meta['sim_c']]
+        sim_par = [meta['sim_t0'],
+                   meta['sim_x0'],
+                   meta['sim_mb'],
+                   meta['sim_x1'],
+                   meta['sim_c']]
         if 'mw_' in snc_sim_model.effect_names:
             sim_mwd_par = []
-            if 'mw_r_v' in flux_table.meta:
-                sim_mwd_par.append(flux_table.meta['mw_r_v'])
+            if 'mw_r_v' in meta:
+                sim_mwd_par.append(meta['mw_r_v'])
             else:
                 mod_index = np.where(np.array(snc_sim_model.effect_names) == 'mw_')[0][0]
                 sim_mwd_par.append(snc_sim_model.effects[mod_index]._r_v)
-            sim_mwd_par.append(flux_table.meta['mw_ebv'])
+            sim_mwd_par.append(meta['mw_ebv'])
 
     elif snc_fit_model is not None:
         plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)

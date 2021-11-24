@@ -3,11 +3,18 @@
 import os
 import pickle
 import copy
-import time
+import warnings
+try:
+    import json
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    json_pyarrow = True
+except ImportError:
+    json_pyarrow = False
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from astropy.table import Table
+import pandas as pd
 from . import utils as ut
 from . import scatter as sct
 from . import plot_utils as plot_ut
@@ -57,6 +64,8 @@ class SNSimSample:
 
     Methods
     -------
+    fromDFlist(cls, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
+        Initialize the class from a list of pandas.DataFrame.
     fromFile(cls, sim_file, model_dir=None)
         Initialize the class from a fits or pickle file.
     SNR_select(self, selec_function, SNR_mean=5, SNR_limit=[15, 0.99], \
@@ -64,9 +73,9 @@ class SNSimSample:
         Run a SNR efficiency detection on all lcs.
     get(self, key):
         Get an array of sim_lc metadata.
-    _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
+    _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_list=None, sufname=''):
         write simulation into a file.
-    write_select(self, formats=['pkl', 'fits']):
+    write_select(self, formats=['pkl', 'parquet']):
         Write a file containing only the selected SN epochs.
     fit_lc(self, sn_ID=None, mw_dust=-2):
        Fit all or just one SN lightcurve(s).
@@ -95,11 +104,43 @@ class SNSimSample:
 
         self._select_lcs = None
 
-        self._bands = []
-        for lc in sim_lcs:
-            for b in lc['band']:
-                if b not in self._bands:
-                    self._bands.append(b)
+        self._bands = self.sim_lcs['band'].unique()
+
+    @classmethod
+    def fromDFlist(cls, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
+        """Initialize the class from a list of pandas.DataFrame.
+
+        Parameters
+        ----------
+        cls : SNSimSample class
+            The SNSimSample class.
+        sim_file : str
+            The file to load.
+        model_dir : str, opt
+            The directory of the configuration files of the sim model.
+        sample_name : str
+            Name of the simulation.
+        sim_lcs : list(pandas.DataFrame)
+            The sim lightcurves.
+        header : dict
+            Simulation header.
+        model_dir : str, optional default is None
+            Simulation model directory.
+        dir_path : str, optional default is None
+            Path to the output directory.
+
+        Returns
+        -------
+        SNSimSample class object
+            A SNSimSample class with the simulated lcs.
+
+        """
+        lcs = pd.concat(sim_lcs,
+                        keys=(lc.attrs['sn_id'] for lc in sim_lcs),
+                        names=['sn_id'])
+        lcs.attrs = {lc.attrs['sn_id']: lc.attrs for lc in sim_lcs}
+        return cls(sample_name, lcs, header, model_dir=model_dir,
+                   dir_path=dir_path)
 
     @classmethod
     def fromFile(cls, sim_file, model_dir=None):
@@ -121,27 +162,42 @@ class SNSimSample:
 
         """
         file_path, file_ext = os.path.splitext(sim_file)
-        sample_name = os.path.basename(file_path)
-        if file_ext == '.fits':
-            t0 = time.time()
-            with fits.open(file_path + file_ext) as sf:
-                sim_lcs = []
-                for i, hdu in enumerate(sf):
-                    if i == 0:
-                        header = hdu.header
-                    else:
-                        tab = Table(hdu.data)
-                        tab.meta = hdu.header
-                        sim_lcs.append(tab)
-            print(time.time() - t0)
-            return cls(sample_name, sim_lcs, header, model_dir=model_dir,
-                       dir_path=os.path.dirname(file_path) + '/')
+        # TO DO : Re-implement fits ?
+        # sample_name = os.path.basename(file_path)
+        # if file_ext == '.fits':
+        #     with fits.open(file_path + file_ext) as sf:
+        #         sim_lcs = []
+        #         for i, hdu in enumerate(sf):
+        #             if i == 0:
+        #                 header = hdu.header
+        #             else:
+        #                 tab = hdu.data
+        #                 tab.meta = hdu.header
+        #                 sim_lcs.append(tab)
+        #     return cls(sample_name, sim_lcs, header, model_dir=model_dir,
+        #                dir_path=os.path.dirname(file_path) + '/')
 
-        elif file_ext == '.pkl':
+        if file_ext == '.pkl':
             with open(file_path + file_ext, 'rb') as f:
                 pkl_dic = pickle.load(f)
-            return cls(pkl_dic['name'], pkl_dic['lcs'], pkl_dic['header'],
-                       model_dir=model_dir, dir_path=os.path.dirname(file_path) + '/')
+                lcs = pd.DataFrame.from_dict(pkl_dic['lcs'])
+                lcs.index.set_names(['sn_id', 'epochs'], inplace=True)
+                lcs.attrs = pkl_dic['meta']
+                name = pkl_dic['name']
+                header = pkl_dic['header']
+
+        elif file_ext == '.parquet':
+            if json_pyarrow:
+                table = pq.read_table(file_path + file_ext)
+                lcs = table.to_pandas()
+                lcs.set_index(['sn_id', 'epochs'], inplace=True)
+                lcs.attrs = {int(k): val for k, val in json.loads(table.schema.metadata['attrs'.encode()]).items()}
+                name = table.schema.metadata['name'.encode()].decode()
+                header = json.loads(table.schema.metadata['header'.encode()])
+            else:
+                warnings.warn("You need pyarrow and json module to write parquet formats", UserWarning)
+        return cls(name, lcs, header,
+                   model_dir=model_dir, dir_path=os.path.dirname(file_path) + '/')
 
     def set_fit_model(self, model, model_dir=None):
         """Change the fit model by a given SNCosmo Model.
@@ -178,12 +234,17 @@ class SNSimSample:
     @property
     def n_sn(self):
         """Get SN number."""
-        return len(self._sim_lcs)
+        return len(self._sim_lcs.groupby('sn_id'))
 
     @property
     def sim_lcs(self):
         """Get sim_lcs."""
         return self._sim_lcs
+
+    @property
+    def meta(self):
+        """Get lcs meta dict."""
+        return self._sim_lcs.attrs
 
     @property
     def fit_res(self):
@@ -251,14 +312,9 @@ class SNSimSample:
                                                            SNR_limit[b][0],
                                                            SNR_limit[b][1])
 
-        for i, lc in enumerate(self.sim_lcs):
-            selec_mask = np.zeros(len(lc), dtype='bool')
-            SNR = lc['flux'] / lc['fluxerr']
-            for b in self._bands:
-                bmask = lc['band'] == b
-                selec_mask[bmask] = rand_gen.random(np.sum(bmask)) <= SNR_proba[b](SNR[bmask])
-            if np.sum(selec_mask) > 0:
-                self._select_lcs.append(self.sim_lcs[i][selec_mask])
+        SNR = self.sim_lcs['flux'] / self.sim_lcs['fluxerr']
+        SNR_pdet = np.array([SNR_proba[b](s) for b, s in zip(self.sim_lcs['band'], SNR)])
+        self._select_lcs = self.sim_lcs[rand_gen.random(len(SNR)) < SNR_pdet]
 
     def get(self, key, select=False):
         """Get an array of sim_lc metadata.
@@ -275,10 +331,10 @@ class SNSimSample:
 
         """
         if select:
-            lcs_list = self.select_lcs
+            meta_list = self.select_lcs.attrs.values()
         else:
-            lcs_list = self.sim_lcs
-        return np.array([lc.meta[key] for lc in lcs_list])
+            meta_list = self.sim_lcs.attrs.values()
+        return np.array([meta[key] for meta in meta_list])
 
     def _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
         """Write simulation into a file.
@@ -303,27 +359,40 @@ class SNSimSample:
         if lcs_list is None:
             lcs_list = self.sim_lcs
         header = self.header.copy()
-        header['n_sn'] = len(lcs_list)
+        header['n_sn'] = len(lcs_list.groupby('sn_id'))
         formats = np.atleast_1d(formats)
-        if 'fits' in formats:
-            lc_hdu_list = (fits.table_to_hdu(lc) for lc in lcs_list)
-            hdu_list = fits.HDUList(
-                [fits.PrimaryHDU(header=fits.Header(header))] + list(lc_hdu_list))
 
-            hdu_list.writeto(write_path + self.name + sufname + '.fits',
-                             overwrite=True)
+        # TO DO : Re-implement fits format?
+        # if 'fits' in formats:
+        #     lc_hdu_list = (fits.table_to_hdu(lc) for lc in lcs_list)
+        #     hdu_list = fits.HDUList(
+        #         [fits.PrimaryHDU(header=fits.Header(header))] + list(lc_hdu_list))
+        #
+        #     hdu_list.writeto(write_path + self.name + sufname + '.fits',
+        #                      overwrite=True)
 
         # Export lcs as pickle
         if 'pkl' in formats:
             with open(write_path + self.name + sufname + '.pkl', 'wb') as file:
                 pkl_dic = {'name': self.name + sufname,
-                           'lcs': lcs_list,
+                           'lcs': lcs_list.to_dict(),
+                           'meta': lcs_list.attrs,
                            'header': header}
 
                 pickle.dump(pkl_dic,
                             file)
 
-    def write_select(self, formats=['pkl', 'fits']):
+        if 'parquet' in formats:
+            lcs = pa.Table.from_pandas(lcs_list)
+            lcmeta = json.dumps(lcs_list.attrs)
+            header = json.dumps(header)
+            meta = {'name'.encode(): self.name.encode(),
+                    'attrs'.encode(): lcmeta.encode(),
+                    'header'.encode(): header.encode()}
+            lcs = lcs.replace_schema_metadata(meta)
+            pq.write_table(lcs, write_path + self.name + sufname + '.parquet')
+
+    def write_select(self, formats=['pkl', 'parquet']):
         """Write a file containing only the selected SN epochs.
 
         Parameters
@@ -365,9 +434,9 @@ class SNSimSample:
 
         """
         if self._fit_res is None:
-            self._fit_res = [None] * len(self.sim_lcs)
-            self._fit_resmod = [None] * len(self.sim_lcs)
-            self._fit_dic = [None] * len(self.sim_lcs)
+            self._fit_res = [None] * self.n_sn
+            self._fit_resmod = [None] * self.n_sn
+            self._fit_dic = [None] * self.n_sn
 
         fit_model = self._fit_model.__copy__()
         model_name = self.header['Mname']
@@ -393,23 +462,28 @@ class SNSimSample:
             print(f'Use MW dust model {mod_name} with RV = {rv}')
 
         if sn_ID is None:
-            for i, lc in enumerate(self.sim_lcs):
-                fit_model.set(z=lc.meta['zobs'])
+            for i, lc in self.sim_lcs.groupby('sn_id'):
+                fit_model.set(z=self.sim_lcs.attrs[i]['zobs'])
                 if mw_mod is not None:
-                    dst_ut.add_mw_to_fit(fit_model, lc.meta['mw_ebv'], mod_name, rv=rv)
-                self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(lc,
+                    dst_ut.add_mw_to_fit(fit_model,
+                                         self.sim_lcs.attrs[i]['mw_ebv'],
+                                         mod_name, rv=rv)
+                self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(self.sim_lcs.loc[i].to_records(),
                                                                                         fit_model,
                                                                                         fit_par,
                                                                                         **kwargs)
         else:
-            fit_model.set(z=self.sim_lcs[sn_ID].meta['zobs'])
+            fit_model.set(z=self.sim_lcs.attrs[sn_ID]['zobs'])
             if mw_mod is not None:
-                dst_ut.add_mw_to_fit(fit_model, self.sim_lcs[sn_ID].meta['mw_ebv'], mod_name, rv=rv)
+                dst_ut.add_mw_to_fit(fit_model,
+                                     self.sim_lcs.attrs[sn_ID]['mw_ebv'],
+                                     mod_name, rv=rv)
+
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
-                                                                                        self.sim_lcs[sn_ID],
-                                                                                        fit_model,
-                                                                                        fit_par,
-                                                                                        **kwargs)
+                                                                            self.sim_lcs.loc[sn_ID].to_records(),
+                                                                            fit_model,
+                                                                            fit_par,
+                                                                            **kwargs)
 
     def write_fit(self, write_path=None):
         """Write fits results in fits format.
@@ -432,7 +506,7 @@ class SNSimSample:
             self.fit_lc()
         for i, res in enumerate(self.fit_res):
             if res is None:
-                self.fit_lc(self.sim_lcs[i].meta['sn_id'])
+                self.fit_lc(self.sim_lcs.attrs[i]['sn_id'])
 
         meta_keys = ['sn_id', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
                      'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
@@ -510,34 +584,36 @@ class SNSimSample:
 
         """
         if selected:
-            lc = self.select_lcs[sn_ID]
+            lc = self.select_lcs.loc[sn_ID]
+            meta = self.select_lcs.attrs[sn_ID]
         else:
-            lc = self.sim_lcs[sn_ID]
+            lc = self.sim_lcs.loc[sn_ID]
+            meta = self.sim_lcs.attrs[sn_ID]
 
         if plot_sim:
             model_name = self.header['Mname']
 
             s_model = ut.init_sn_model(model_name, self._model_dir)
 
-            dic_par = {'z': lc.meta['zobs'],
-                       't0': lc.meta['sim_t0']}
+            dic_par = {'z': meta['zobs'],
+                       't0': meta['sim_t0']}
 
             if model_name in ('salt2', 'salt3'):
-                dic_par['x0'] = lc.meta['sim_x0']
-                dic_par['x1'] = lc.meta['sim_x1']
-                dic_par['c'] = lc.meta['sim_c']
+                dic_par['x0'] = meta['sim_x0']
+                dic_par['x1'] = meta['sim_x1']
+                dic_par['c'] = meta['sim_c']
             s_model.set(**dic_par)
 
             if 'Smod' in self.header:
                 sct.init_sn_sct_model(s_model, self.header['Smod'])
                 par_rd_name = self.header['Smod'][:3] + '_RndS'
-                s_model.set(**{par_rd_name: lc.meta[par_rd_name]})
+                s_model.set(**{par_rd_name: meta[par_rd_name]})
 
             if 'mwd_mod' in self.header:
                 dst_ut.init_mw_dust(s_model, [self.header['mwd_mod'], self.header['mw_rv']])
                 if self.header['mwd_mod'].lower() not in ['f99']:
-                    s_model.set(mw_r_v=lc.meta['mw_r_v'])
-                s_model.set(mw_ebv=lc.meta['mw_ebv'])
+                    s_model.set(mw_r_v=meta['mw_r_v'])
+                s_model.set(mw_ebv=meta['mw_ebv'])
         else:
             s_model = None
 
@@ -569,7 +645,8 @@ class SNSimSample:
             cov_t0_x0_x1_c = None
             residuals = False
 
-        plot_ut.plot_lc(self.sim_lcs[sn_ID],
+        plot_ut.plot_lc(lc,
+                        meta,
                         mag=mag,
                         snc_sim_model=s_model,
                         snc_fit_model=f_model,
@@ -611,11 +688,11 @@ class SNSimSample:
         if plot_fields:
             field_list = []
 
-        for lc in self.sim_lcs:
-            ra.append(lc.meta['ra'])
-            dec.append(lc.meta['dec'])
+        for i, lc in enumerate(self.sim_lcs):
+            ra.append(self.sim_lcs.attrs[i]['ra'])
+            dec.append(self.sim_lcs.attrs[i]['dec'])
             if plot_vpec:
-                vpec.append(lc.meta['vpec'])
+                vpec.append(self.sim_lcs.attrs[i]['vpec'])
             if plot_fields:
                 field_list = np.concatenate((field_list, np.unique(lc['fieldID'])))
 

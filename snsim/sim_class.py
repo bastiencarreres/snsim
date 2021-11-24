@@ -105,7 +105,7 @@ class SN:
         else:
             print('SN ID must be an integer')
         if self.sim_lc is not None:
-            self.sim_lc.meta['sn_id'] = self._ID
+            self.sim_lc.attrs['sn_id'] = self._ID
 
     @property
     def sim_t0(self):
@@ -324,18 +324,23 @@ class SN:
         magerr[~positive_flux] = np.nan
 
         # Create astropy Table lightcurve
-        self._sim_lc = Table({'time': self.epochs['time'],
-                              'flux': flux,
-                              'fluxerr': fluxerr,
-                              'mag': mag,
-                              'magerr': magerr,
-                              'zp': self.epochs['zp'],
-                              'zpsys': self.epochs['zpsys'],
-                              'gain': self.epochs['zpsys'],
-                              'skynoise': self.epochs['skynoise']
-                              })
+        self._sim_lc = pd.DataFrame({'time': self.epochs['time'],
+                                     'flux': flux,
+                                     'fluxerr': fluxerr,
+                                     'mag': mag,
+                                     'magerr': magerr,
+                                     'zp': self.epochs['zp'],
+                                     'zpsys': self.epochs['zpsys'],
+                                     'gain': self.epochs['gain'],
+                                     'skynoise': self.epochs['skynoise'],
+                                     'epochs': np.arange(len(self.epochs['time']))
+                                     })
 
-        self.sim_lc.meta = {**{'z': self.zobs, 't0': self.sim_t0}, **self._model_par['sncosmo']}
+        self._sim_lc.attrs = {**self.sim_lc.attrs,
+                              **{'zobs': self.zobs, 't0': self.sim_t0},
+                              **self._model_par['sncosmo']}
+
+        self._sim_lc.set_index('epochs', inplace=True)
         return self._reformat_sim_table()
 
     def _reformat_sim_table(self):
@@ -352,35 +357,33 @@ class SN:
         """
         # Keys that don't need renaming
         not_to_change = ['G10', 'C11', 'mw_']
-        dont_touch = ['z', 'mw_r_v', 'fcov_seed']
+        dont_touch = ['zobs', 'mw_r_v', 'fcov_seed']
 
         for k in self.epochs.keys():
             if k not in self.sim_lc.copy().keys():
                 self._sim_lc[k] = self.epochs[k].copy()
 
-        for k in self.sim_lc.meta.copy():
+        for k in self.sim_lc.attrs.copy():
             if k not in dont_touch and k[:3] not in not_to_change:
-                self.sim_lc.meta['sim_' + k] = self.sim_lc.meta.pop(k)
-
-        self.sim_lc.meta['zobs'] = self.sim_lc.meta.pop('z')
+                self.sim_lc.attrs['sim_' + k] = self.sim_lc.attrs.pop(k)
 
         if self.ID is not None:
-            self.sim_lc.meta['sn_id'] = self.ID
+            self.sim_lc.attrs['sn_id'] = self.ID
 
-        self.sim_lc.meta['vpec'] = self.vpec
-        self.sim_lc.meta['zcos'] = self.zcos
-        self.sim_lc.meta['zpec'] = self.zpec
-        self.sim_lc.meta['z2cmb'] = self.z2cmb
-        self.sim_lc.meta['zCMB'] = self.zCMB
-        self.sim_lc.meta['ra'] = self.coord[0]
-        self.sim_lc.meta['dec'] = self.coord[1]
-        self.sim_lc.meta['sim_mb'] = self.sim_mb
-        self.sim_lc.meta['sim_mu'] = self.sim_mu
-        self.sim_lc.meta['com_dist'] = self.como_dist
-        self.sim_lc.meta['m_sct'] = self.mag_sct
+        self.sim_lc.attrs['vpec'] = self.vpec
+        self.sim_lc.attrs['zcos'] = self.zcos
+        self.sim_lc.attrs['zpec'] = self.zpec
+        self.sim_lc.attrs['z2cmb'] = self.z2cmb
+        self.sim_lc.attrs['zCMB'] = self.zCMB
+        self.sim_lc.attrs['ra'] = self.coord[0]
+        self.sim_lc.attrs['dec'] = self.coord[1]
+        self.sim_lc.attrs['sim_mb'] = self.sim_mb
+        self.sim_lc.attrs['sim_mu'] = self.sim_mu
+        self.sim_lc.attrs['com_dist'] = self.como_dist
+        self.sim_lc.attrs['m_sct'] = self.mag_sct
 
         if 'adip_dM' in self._sn_par:
-            self.sim_lc.meta['adip_dM'] = self.adip_dM
+            self.sim_lc.attrs['adip_dM'] = self.adip_dM
 
 
 class SnGen:
