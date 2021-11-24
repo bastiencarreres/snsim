@@ -679,11 +679,10 @@ class SNSimSample:
         if field_dic is not None and field_size is not None:
             plot_fields = True
 
-        ra = []
-        dec = []
         vpec = None
+
         if plot_vpec:
-            vpec = []
+            vpec = self.get('vpec')
 
         if plot_fields:
             field_list = self.sim_lcs['fieldID'].unique()
@@ -697,7 +696,7 @@ class SNSimSample:
 
         plot_ut.plot_ra_dec(self.get('ra'),
                             self.get('dec'),
-                            self.get('vpec'),
+                            vpec,
                             field_list,
                             field_dic,
                             field_size,
