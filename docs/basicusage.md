@@ -16,13 +16,13 @@ sim.simulate()
 
 The result is stored in sim.sn_sample object . Simulated lc and metadata are given by :
 ```python
-sim.sn_sample.sim_lcs[i]
-sim.sn_sample.sim_lcs[i].meta
+sim.sn_sample.sim_lcs.loc[i] # sn_sample.sim_lcs is a pandas.DataFrame object
+sim.sn_sample.sim_lcs.meta[i] # metadata are stored in a dict in sn_sample.sim_lcs.attrs but there is a shortcut sim_lcs.meta
 
 #  For more information :
 help(sim.sn_sample)
 ```
-The basic list of ligthcurves metadata is given in the following table :
+The basic list of ligth-curves metadata is given in the following table :
 
 |       zobs        |  sim_t0  |    vpec (km/s)    |         zcos          |            zpec            |                       z2cmb                       |        zCMB        |      ra (rad)      |   dec (rad)    |          sn id           |           sim_mu           |          m_sct           |
 | :---------------: | :------: | :---------------: | :-------------------: | :------------------------: | :-----------------------------------------------: | :----------------: | :----------------: | :------------: | :----------------------: | :------------------------: | :----------------------: |

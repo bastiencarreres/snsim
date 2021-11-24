@@ -6,7 +6,7 @@ The input file is a .yml with the following structure:
 data:
     write_path: '/PATH/TO/OUTPUT'
     sim_name: 'NAME OF SIMULATION'
-    write_format: 'format' or ['format1','format2']  # Optional default pkl, fits
+    write_format: 'format' or ['format1','format2']  # Optional default pkl, parquet
 survey_config:
     survey_file: '/PATH/TO/FILE'
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in the database doesn't correpond to those in sncosmo registery
@@ -78,7 +78,7 @@ This section of the yaml file only contains information about output files of th
 
 * **sim_name** is the simulation file name. *type* : str
 
-* **write_format** is the desired output format(s), only **fits** or **pkl** are available.  *type* : str or list(str). *Optional*  : default is **fits**.
+  * **write_format** is the desired output format(s), only **parquet** or **pkl** are available.  *type* : str or list(str). *Optional*  : default is **parquet and pkl**. Note that **parquet** working only if you have **pyarrow** and **json** python modules installed.
 
   
 

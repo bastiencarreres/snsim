@@ -26,7 +26,7 @@ Or you can open register sim file .fits or .pkl :
 ```python
 from snsim import SNSimSample
 
-sim = SNSimSample.fromFile('sim_file.pkl/.fits', SALT2_dir)
+sim = SNSimSample.fromFile('sim_file.pkl/.parquet', model_dir=SALT2_dir)
 
 # Fit all the lcs
 sim.fit_lc()
@@ -35,10 +35,10 @@ sim.fit_lc()
 sim.write_fit()
 
 # You can acces the lcs :
-sim.sim_lcs()
+sim.sim_lcs # pandas.DataFrame object 
 
 # Or access to parameters list:
-sim.sn.get('key')  # Where 'key' is a sn parameters such as 'sim_mb', 'ra', etc... 
+sim.get('key')  # Where 'key' is a sn parameters such as 'sim_mb', 'ra', etc... 
 ```
 
 The output file of write_fit is in the same directory as the simulation and has the same name + '_fit.fits'
@@ -77,6 +77,6 @@ SNSimSample.SNR_select(selec_function, SNR_mean=5, SNR_limit=[15, 0.99], randsee
 The new sample of sn can be saved with :
 
 ```python
-SNSimSample.write_select(formats=['pkl', 'fits'])
+SNSimSample.write_select(formats=['pkl', 'parquet'])
 ```
 
