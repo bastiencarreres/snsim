@@ -234,7 +234,7 @@ class SNSimSample:
     @property
     def n_sn(self):
         """Get SN number."""
-        return len(self._sim_lcs.groupby('sn_id'))
+        return len(self.sim_lcs.index.levels[0])
 
     @property
     def sim_lcs(self):
@@ -359,7 +359,7 @@ class SNSimSample:
         if lcs_list is None:
             lcs_list = self.sim_lcs
         header = self.header.copy()
-        header['n_sn'] = len(lcs_list.groupby('sn_id'))
+        header['n_sn'] = len(lcs_list.index.levels[0])
         formats = np.atleast_1d(formats)
 
         # TO DO : Re-implement fits format?
