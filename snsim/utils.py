@@ -403,5 +403,5 @@ def SNR_pdet(SNR, SNR_mean, SNRp, p):
     where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_{mean}) - \ln(SNR_p)}`
 
     """
-    n = np.log((1-p)/p)/(np.log(SNR_mean) - np.log(SNRp))
-    return 1/(1 + (SNR_mean/SNR)**n)
+    n = np.log((1 - p) / p) / (np.log(SNR_mean) - np.log(SNRp))
+    return 1 / (1 + (SNR_mean / SNR)**n)

@@ -336,7 +336,7 @@ class SNSimSample:
             meta_list = self.sim_lcs.attrs.values()
         return np.array([meta[key] for meta in meta_list])
 
-    def _write_sim(self, write_path, formats=['pkl', 'fits'], lcs_list=None, sufname=''):
+    def _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_list=None, sufname=''):
         """Write simulation into a file.
 
         Parameters
