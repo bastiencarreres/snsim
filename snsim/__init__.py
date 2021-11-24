@@ -11,8 +11,7 @@ Github repository : https://github.com/bcarreres/snsim
 import os
 __snsim_dir_path__ = os.path.dirname(__file__)
 
-
-__version__ = "0.3.12_dev"
+__version__ = "0.3.13_dev"
 
 from .simu import Simulator
 from .sn_sample import SNSimSample
