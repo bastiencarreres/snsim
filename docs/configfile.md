@@ -78,7 +78,7 @@ This section of the yaml file only contains information about output files of th
 
 * **sim_name** is the simulation file name. *type* : str
 
-  * **write_format** is the desired output format(s), only **parquet** or **pkl** are available.  *type* : str or list(str). *Optional*  : default is **parquet and pkl**. Note that **parquet** working only if you have **pyarrow** and **json** python modules installed.
+* **write_format** is the desired output format(s), only **parquet** or **pkl** are available.  *type* : str or list(str). *Optional*  : default is **parquet and pkl**. Note that **parquet** working only if you have **pyarrow** and **json** python modules installed.
 
   
 
