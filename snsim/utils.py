@@ -2,13 +2,10 @@
 
 import numpy as np
 import sncosmo as snc
-from astropy.table import Table
 import astropy.time as atime
-from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as u
-from . import salt_utils as salt_ut
 from .constants import C_LIGHT_KMS
 
 
@@ -298,110 +295,3 @@ def flux_to_Jansky(zp, band):
     trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
     norm = 10**(-0.4 * zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
-
-
-def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
-    """Write fit into a fits file.
-
-    Parameters
-    ----------
-    sim_lcs_meta : dict{list}
-        Meta data of all lightcurves.
-    fit_res : list(sncosmo.utils.Result)
-        List of sncosmo fit results for each lightcurve.
-    directory : str
-        Destination of write file.
-    sim_meta : dict
-        General simulation meta data.
-
-    Returns
-    -------
-    None
-        Just write a file.
-
-    """
-    data = sim_lcs_meta.copy()
-
-    fit_keys = ['t0', 'e_t0',
-                'chi2', 'ndof']
-    MName = sim_meta['Mname']
-
-    if MName in ('salt2', 'salt3'):
-        fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
-                     'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
-                     'cov_mb_x1', 'cov_mb_c', 'cov_x1_c']
-
-    for k in fit_keys:
-        data[k] = []
-
-    for res, fd in zip(fit_res, fit_dic):
-        if res != 'NaN':
-            par = res['parameters']
-            data['t0'].append(fd['t0'])
-            data['e_t0'].append(np.sqrt(res['covariance'][0, 0]))
-
-            if MName in ('salt2', 'salt3'):
-                par_cov = res['covariance'][1:, 1:]
-                mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
-                data['x0'].append(fd['x0'])
-                data['e_x0'].append(np.sqrt(par_cov[0, 0]))
-                data['mb'].append(fd['mb'])
-                data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
-                data['x1'].append(fd['x1'])
-                data['e_x1'].append(np.sqrt(par_cov[1, 1]))
-                data['c'].append(fd['c'])
-                data['e_c'].append(np.sqrt(par_cov[2, 2]))
-                data['cov_x0_x1'].append(par_cov[0, 1])
-                data['cov_x0_c'].append(par_cov[0, 2])
-                data['cov_x1_c'].append(par_cov[1, 2])
-                data['cov_mb_x1'].append(mb_cov[0, 1])
-                data['cov_mb_c'].append(mb_cov[0, 2])
-
-            data['chi2'].append(res['chisq'])
-            data['ndof'].append(res['ndof'])
-        else:
-            for k in fit_keys:
-                data[k].append(np.nan)
-
-    for k, v in sim_lcs_meta.items():
-        data[k] = v
-
-    table = Table(data)
-
-    hdu = fits.table_to_hdu(table)
-    hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header(sim_meta)), hdu])
-    hdu_list.writeto(directory, overwrite=True)
-    print(f'Fit result output file : {directory}')
-
-
-def SNR_pdet(SNR, SNR_mean, SNRp, p):
-    r"""Approximation of the SNR detection probability.
-
-    Parameters
-    ----------
-    SNR : float or np.array(float)
-        The Signal to Noise Ratio.
-    SNR_mean : float
-        The SNR for which p = 0.5.
-    SNRp : float
-        The SNR for which we have a probability p of detection.
-    p : float
-        The probability of detection at SNRp.
-
-    Returns
-    -------
-    float or np.array(float)
-        Probability of detection.
-
-    Notes
-    -----
-    The detection probability function :
-
-    .. math::
-        P_{det}(SNR) = \frac{1}{1+\left(\frac{SNR_{mean}}{SNR}\right)^n}
-
-    where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_{mean}) - \ln(SNR_p)}`
-
-    """
-    n = np.log((1 - p) / p) / (np.log(SNR_mean) - np.log(SNRp))
-    return 1 / (1 + (SNR_mean / SNR)**n)

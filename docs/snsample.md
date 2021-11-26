@@ -2,8 +2,6 @@
 
 The SNSimSample class store simulated lightcurves.
 
-
-
 ## Fitting lightcurves
 
 *snsim* allow to fit lightcurves :
@@ -45,7 +43,21 @@ The output file of write_fit is in the same directory as the simulation and has 
 
 You can pass [**sncosmo.fit_lc()**](https://sncosmo.readthedocs.io/en/stable/api/sncosmo.fit_lc.html?highlight=fit_lc#sncosmo.fit_lc) arguments to the **SNSimSample.fit_lc()** function, the only no modifiable arguments are **data**, **model** and **vparam_names**.
 
-## SNR selection
+### Modified lcs
+
+ **SNSimSample** as a **modifed_lcs** attribute : this a copy of  sim lcs that you can modified as you want, using selection function, and then write as a new sim file :
+
+```python
+SNSimSample.write_mod(formats=['pkl', 'parquet'])
+```
+
+
+
+## Post Sim Tools
+
+The post-sim-tools module contains functions to run on simulated lcs.
+
+### SNR Selection
 
 The simulation ignored effect of selection efficiency. To introduce this effect the SNSimSample class has a SNR_select.
 
@@ -73,10 +85,4 @@ SNSimSample.SNR_select(selec_function, SNR_mean=5, SNR_limit=[15, 0.99], randsee
 ```
 
 
-
-The new sample of sn can be saved with :
-
-```python
-SNSimSample.write_select(formats=['pkl', 'parquet'])
-```
 

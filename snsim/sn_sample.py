@@ -1,24 +1,15 @@
 """SNSimSample class used to store simulations."""
 
 import os
-import pickle
 import copy
-import warnings
-try:
-    import json
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    json_pyarrow = True
-except ImportError:
-    json_pyarrow = False
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy.io import fits
 import pandas as pd
 from . import utils as ut
 from . import scatter as sct
 from . import plot_utils as plot_ut
 from . import dust_utils as dst_ut
+from . import io_utils as io_ut
 
 np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
@@ -57,7 +48,7 @@ class SNSimSample:
         Fit results.
     _fit_resmod : list(sncosmo.Model)
         Models after fit.
-    _select_lcs : list(astropy.Table)
+    modified_lcs : pandas.DataFrame
         List of new lcs after SNR detection.
     _bands : list(str)
         All used in sim lcs.
@@ -68,15 +59,12 @@ class SNSimSample:
         Initialize the class from a list of pandas.DataFrame.
     fromFile(cls, sim_file, model_dir=None)
         Initialize the class from a fits or pickle file.
-    SNR_select(self, selec_function, SNR_mean=5, SNR_limit=[15, 0.99], \
-               randseed=np.random.randint(1000, 100000))
-        Run a SNR efficiency detection on all lcs.
     get(self, key):
         Get an array of sim_lc metadata.
     _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_list=None, sufname=''):
         write simulation into a file.
-    write_select(self, formats=['pkl', 'parquet']):
-        Write a file containing only the selected SN epochs.
+    write_mod(self, formats=['pkl', 'parquet']):
+        Write a file containing only the modified SN epochs.
     fit_lc(self, sn_ID=None, mw_dust=-2):
        Fit all or just one SN lightcurve(s).
     write_fit(self, write_path=None):
@@ -84,7 +72,7 @@ class SNSimSample:
     plot_hist(self, key, ax=None, **kwargs):
         Plot the histogram of the key metadata.
     plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False, \
-            selected=False):
+            mod=False):
         Plot the given SN lightcurve.
     plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
         Plot a mollweide map of ra, dec.
@@ -94,7 +82,7 @@ class SNSimSample:
         """Initialize SNSimSample class."""
         self._name = sample_name
         self._header = header
-        self._sim_lcs = sim_lcs
+        self._sim_lcs = copy.copy(sim_lcs)
         self._model_dir = model_dir
         self._dir_path = dir_path
 
@@ -102,7 +90,7 @@ class SNSimSample:
         self._fit_res = None
         self._fit_resmod = None
 
-        self._select_lcs = None
+        self.modified_lcs = copy.copy(sim_lcs)
 
         self._bands = self.sim_lcs['band'].unique()
 
@@ -161,43 +149,10 @@ class SNSimSample:
             A SNSimSample class with the simulated lcs.
 
         """
-        file_path, file_ext = os.path.splitext(sim_file)
-        # TO DO : Re-implement fits ?
-        # sample_name = os.path.basename(file_path)
-        # if file_ext == '.fits':
-        #     with fits.open(file_path + file_ext) as sf:
-        #         sim_lcs = []
-        #         for i, hdu in enumerate(sf):
-        #             if i == 0:
-        #                 header = hdu.header
-        #             else:
-        #                 tab = hdu.data
-        #                 tab.meta = hdu.header
-        #                 sim_lcs.append(tab)
-        #     return cls(sample_name, sim_lcs, header, model_dir=model_dir,
-        #                dir_path=os.path.dirname(file_path) + '/')
+        name, header, lcs = io_ut.read_sim_file(sim_file)
 
-        if file_ext == '.pkl':
-            with open(file_path + file_ext, 'rb') as f:
-                pkl_dic = pickle.load(f)
-                lcs = pd.DataFrame.from_dict(pkl_dic['lcs'])
-                lcs.index.set_names(['sn_id', 'epochs'], inplace=True)
-                lcs.attrs = pkl_dic['meta']
-                name = pkl_dic['name']
-                header = pkl_dic['header']
-
-        elif file_ext == '.parquet':
-            if json_pyarrow:
-                table = pq.read_table(file_path + file_ext)
-                lcs = table.to_pandas()
-                lcs.set_index(['sn_id', 'epochs'], inplace=True)
-                lcs.attrs = {int(k): val for k, val in json.loads(table.schema.metadata['attrs'.encode()]).items()}
-                name = table.schema.metadata['name'.encode()].decode()
-                header = json.loads(table.schema.metadata['header'.encode()])
-            else:
-                warnings.warn("You need pyarrow and json module to write parquet formats", UserWarning)
         return cls(name, lcs, header,
-                   model_dir=model_dir, dir_path=os.path.dirname(file_path) + '/')
+                   model_dir=model_dir, dir_path=os.path.dirname(sim_file) + '/')
 
     def set_fit_model(self, model, model_dir=None):
         """Change the fit model by a given SNCosmo Model.
@@ -256,67 +211,7 @@ class SNSimSample:
         """Get fit sncosmo model results."""
         return self._fit_resmod
 
-    @property
-    def select_lcs(self):
-        """Get selected lcs."""
-        return self._select_lcs
-
-    def SNR_select(self,
-                   selec_function,
-                   SNR_mean=5,
-                   SNR_limit=[15, 0.99],
-                   randseed=np.random.randint(1000, 100000)):
-        r"""Run a SNR efficiency detection on all lcs.
-
-        Parameters
-        ----------
-        selec_function : str
-            Can be 'approx' function TODO : add interpolation for function from file.
-        SNR_mean : float or dic
-            The SNR for which the detection probability is 1/2 -> SNR_mean.
-        SNR_limit : list of dic(list)
-            A SNR and its probability of detection -> $SNR_p$ and p.
-        randseed : int
-            Randseed for random detection.
-
-        Returns
-        -------
-        None
-            Just fill the _select_lcs attribute.
-
-        Notes
-        -----
-        The detection probability function :
-
-        .. math::
-
-            P_\text{det}(SNR) = \frac{1}{1+\left(\frac{SNR_\text{mean}}{SNR}\right)^n}
-
-        where :math:`n = \frac{\ln\left(\frac{1-p}{p}\right)}{\ln(SNR_\text{mean}) - \ln(SNR_p)}`
-
-        """
-        rand_gen = np.random.default_rng(randseed)
-        self._select_lcs = []
-        SNR_proba = {}
-        if selec_function == 'approx':
-            if isinstance(SNR_limit, (list, np.ndarray)) and isinstance(SNR_mean, (int, float)):
-                for b in self._bands:
-                    SNR_proba[b] = lambda SNR: ut.SNR_pdet(SNR,
-                                                           SNR_mean,
-                                                           SNR_limit[0],
-                                                           SNR_limit[1])
-            else:
-                for b in self._bands:
-                    SNR_proba[b] = lambda SNR: ut.SNR_pdet(SNR,
-                                                           SNR_mean[b],
-                                                           SNR_limit[b][0],
-                                                           SNR_limit[b][1])
-
-        SNR = self.sim_lcs['flux'] / self.sim_lcs['fluxerr']
-        SNR_pdet = np.array([SNR_proba[b](s) for b, s in zip(self.sim_lcs['band'], SNR)])
-        self._select_lcs = self.sim_lcs[rand_gen.random(len(SNR)) < SNR_pdet]
-
-    def get(self, key, select=False):
+    def get(self, key, mod=False):
         """Get an array of sim_lc metadata.
 
         Parameters
@@ -330,13 +225,13 @@ class SNSimSample:
             The array of the key metadata for all SN.
 
         """
-        if select:
-            meta_list = self.select_lcs.attrs.values()
+        if mod:
+            meta_list = self.modified_lcs.attrs.values()
         else:
             meta_list = self.sim_lcs.attrs.values()
         return np.array([meta[key] for meta in meta_list])
 
-    def _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_list=None, sufname=''):
+    def _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_df=None, sufname=''):
         """Write simulation into a file.
 
         Parameters
@@ -345,8 +240,8 @@ class SNSimSample:
             The output directory.
         formats : lsit(str) or str, opt
             The output formats, 'pkl' or 'fits'.
-        lcs_list : np.ndarray(astropy.Table), opt
-            A table containing the lcs to write.
+        lcs_df : pd.dataframe, opt
+            A DataFrame containing the lcs to write.
         sufname : str, opt
             A suffix to put behind the file name.
 
@@ -356,44 +251,16 @@ class SNSimSample:
             Write an object.
 
         """
-        if lcs_list is None:
-            lcs_list = self.sim_lcs
+        if lcs_df is None:
+            lcs_df = self.sim_lcs
         header = self.header.copy()
-        header['n_sn'] = len(lcs_list.index.levels[0])
+        header['n_sn'] = len(lcs_df.index.levels[0])
         formats = np.atleast_1d(formats)
 
-        # TO DO : Re-implement fits format?
-        # if 'fits' in formats:
-        #     lc_hdu_list = (fits.table_to_hdu(lc) for lc in lcs_list)
-        #     hdu_list = fits.HDUList(
-        #         [fits.PrimaryHDU(header=fits.Header(header))] + list(lc_hdu_list))
-        #
-        #     hdu_list.writeto(write_path + self.name + sufname + '.fits',
-        #                      overwrite=True)
+        io_ut.write_sim(write_path, self.name + sufname, formats, header, lcs_df)
 
-        # Export lcs as pickle
-        if 'pkl' in formats:
-            with open(write_path + self.name + sufname + '.pkl', 'wb') as file:
-                pkl_dic = {'name': self.name + sufname,
-                           'lcs': lcs_list.to_dict(),
-                           'meta': lcs_list.attrs,
-                           'header': header}
-
-                pickle.dump(pkl_dic,
-                            file)
-
-        if 'parquet' in formats:
-            lcs = pa.Table.from_pandas(lcs_list)
-            lcmeta = json.dumps(lcs_list.attrs)
-            header = json.dumps(header)
-            meta = {'name'.encode(): self.name.encode(),
-                    'attrs'.encode(): lcmeta.encode(),
-                    'header'.encode(): header.encode()}
-            lcs = lcs.replace_schema_metadata(meta)
-            pq.write_table(lcs, write_path + self.name + sufname + '.parquet')
-
-    def write_select(self, formats=['pkl', 'parquet']):
-        """Write a file containing only the selected SN epochs.
+    def write_mod(self, formats=['pkl', 'parquet']):
+        """Write a file containing only the modified SN epochs.
 
         Parameters
         ----------
@@ -408,8 +275,8 @@ class SNSimSample:
         """
         self._write_sim(self._dir_path,
                         formats=formats,
-                        lcs_list=self.select_lcs,
-                        sufname='_selected')
+                        lcs_list=self.modified_lcs,
+                        sufname='_modified')
 
     def fit_lc(self, sn_ID=None, mw_dust=-2, **kwargs):
         """Fit all or just one SN lightcurve(s).
@@ -524,7 +391,7 @@ class SNSimSample:
         if 'Smod' in self.header:
             sim_lc_meta['SM_seed'] = self.get(self.header['Smod'][:3] + '_RndS')
 
-        ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
+        io_ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
 
     def plot_hist(self, key, ax=None, **kwargs):
         """Plot the histogram of the key metadata.
@@ -553,7 +420,7 @@ class SNSimSample:
             plt.show()
 
     def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
-                selected=False, figsize=(35 / 2.54, 20 / 2.54), dpi=120):
+                mod=False, figsize=(35 / 2.54, 20 / 2.54), dpi=120):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -570,8 +437,8 @@ class SNSimSample:
             If True plot the fitted lightcurve.
         Jy : boolean, default = False
             If True plot in Jansky.
-        selected : boolean, default = False
-            If True use the self.select_lcs rather than self.sim_lcs
+        mod : boolean, default = False
+            If True use the self.modified_lcs rather than self.sim_lcs
 
         Returns
         -------
@@ -583,9 +450,9 @@ class SNSimSample:
         Use plot_lc from utils.
 
         """
-        if selected:
-            lc = self.select_lcs.loc[sn_ID]
-            meta = self.select_lcs.attrs[sn_ID]
+        if mod:
+            lc = self.modified_lcs.loc[sn_ID]
+            meta = self.modified_lcs.attrs[sn_ID]
         else:
             lc = self.sim_lcs.loc[sn_ID]
             meta = self.sim_lcs.attrs[sn_ID]
@@ -617,7 +484,7 @@ class SNSimSample:
         else:
             s_model = None
 
-        if plot_fit and not selected:
+        if plot_fit and not mod:
             if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
                 if 'mwd_mod' in self.header:
@@ -637,8 +504,8 @@ class SNSimSample:
             f_model = self.fit_resmod[sn_ID]
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
-        elif plot_fit and selected:
-            print("You can't fit selected sn, write the in a file and load them"
+        elif plot_fit and mod:
+            print("You can't fit mod sn, write the in a file and load them"
                   "as SNSimSample class")
         else:
             f_model = None
