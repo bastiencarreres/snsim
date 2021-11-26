@@ -12,7 +12,7 @@ survey_config:
     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in the database doesn't correpond to those in sncosmo registery
     add_data: ['keys1', 'keys2', ...]  # Optional add survey file keys to metadata
     survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...}  # Optional SQL conditions on key
- 	key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
+    key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
     zp: INSTRUMENTAL ZEROPOINT  # Optional, default given by survey file)
     sig_zp: UNCERTAINTY ON ZEROPOINT  # Optional, default given by survey file)
     sig_psf: GAUSSIAN PSF SIGMA  # Optional, default given by survey file as FWHMeff
@@ -58,9 +58,9 @@ model_config:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
  host:
- 	 host_file: '/PATH/TO/HOSTFILE' 
- 	 distrib: 'as_sn', 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
- 	 key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
+     host_file: '/PATH/TO/HOSTFILE' 
+     distrib: 'as_sn', 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
+     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
  alpha_dipole:  # Experimental alpha fine structure constant dipole, optional
      coord: [RA, Dec]  # Direction of the dipole
      A: A_parameter  # alpha dipole = A + B * cos theta
