@@ -14,3 +14,5 @@
    snsim.dust_utils.rst
    snsim.scatter.rst
    snsim.nb_fun.rst
+   snsim.io_utils.rst
+   snsim.post_sim_tools.rst
