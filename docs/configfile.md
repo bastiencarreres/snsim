@@ -36,7 +36,7 @@ sn_gen:
     z_range: [ZMIN, ZMAX]  # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
     mag_sct: SN INTRINSIC COHERENT SCATTERING
-    sct_mod: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+    sct_mod: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
 cosmology:  # Follow astropy formalism
     Om0: MATTER DENSITY  
     H0: HUBBLE CONSTANT
@@ -50,17 +50,17 @@ model_config:
     # Model parameters : here example for salt2
     alpha: STRETCH CORRECTION = alpha*x1
     beta: COLOR CORRECTION = -beta*c   
-    dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
+    dist_x1: [MEAN X1, SIGMA X1] or [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
     mw_dust: MODEL_NAME  # RV = 3.1 or [MOD_NAME, RV], Optional
     mod_fcov: True or False # Use the covariance of simulation model to scatter flux Optional, default = False
- vpec_dist:
+vpec_dist: # Optional
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
- host:
+ host: # Optional 
      host_file: '/PATH/TO/HOSTFILE' 
-     distrib: 'as_sn', 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
-     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
+     distrib: 'as_sn' or 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
+     key_dic: {'column_name': 'new_column_name', ...}  # Optional, to change columns names
  alpha_dipole:  # Experimental alpha fine structure constant dipole, optional
      coord: [RA, Dec]  # Direction of the dipole
      A: A_parameter  # alpha dipole = A + B * cos theta
