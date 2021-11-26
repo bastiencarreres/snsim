@@ -57,7 +57,7 @@ model_config:
  vpec_dist:
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
- host:  # Optional
+ host:
  	 host_file: '/PATH/TO/HOSTFILE' 
  	 distrib: 'as_sn', 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
  	 key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
