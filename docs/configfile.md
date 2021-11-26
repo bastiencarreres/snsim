@@ -63,9 +63,9 @@ vpec_dist: # Optional
      key_dic: {'column_name': 'new_column_name', ...}  # Optional, to change columns names
  alpha_dipole:  # Experimental alpha fine structure constant dipole, optional
      coord: [RA, Dec]  # Direction of the dipole
-     A: A_parameter  # alpha dipole = A + B * cos theta
-     B: B_parameter  
- 
+     # alpha dipole = A + B * cos theta
+     A: A_parameter  
+     B: B_parameter
 ```
 
 
