@@ -438,14 +438,27 @@ class Simulator:
 
         print('-----------------------------------------------------------')
 
+        rate_str = "SN rate of r_v = {0:.2e}*(1+z)^{1} SN/Mpc^3/year "
+
         if self._use_rate:
-            use_rate_str = ''
+            rate_str = rate_str.format(self.sn_rate_z0[0], self.sn_rate_z0[1]) + "\n"
+            compute_z_cdf = True
         else:
             print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
-            use_rate_str = ' (only for redshifts simulation)'
+            if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
+                rate_str = 'Redshift distribution computed '
+                if self.host.config['distrib'] == 'as_host':
+                    rate_str += 'as host redshift distribution\n\n'
+                elif self.host.config['distrib'] == 'mass_weight':
+                    rate_str += 'as mass weighted host redshift distribution\n\n'
 
-        print(f"SN rate of r_v = {self.sn_rate_z0[0]:.2e}*(1+z)^{self.sn_rate_z0[1]} SN/Mpc^3/year"
-              + use_rate_str + "\n"
+                compute_z_cdf = False
+            else:
+                rate_str = rate_str.format(self.sn_rate_z0[0], self.sn_rate_z0[1])
+                rate_str += ' (only for redshifts simulation)\n\n'
+                compute_z_cdf = True
+
+        print(rate_str +
               "SN peak mintime : "
               f"{self.peak_time_range[0].mjd:.2f} MJD / {self.peak_time_range[0].iso}\n"
               "SN peak maxtime : "
@@ -503,8 +516,9 @@ class Simulator:
         sim_time = time.time()
 
         # -- Init the redshift distribution
-        z_shell, shell_time_rate = self._z_shell_time_rate()
-        self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+        if compute_z_cdf:
+            z_shell, shell_time_rate = self._z_shell_time_rate()
+            self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
 
         # -- Set the time range with time edges effects
         self.generator.time_range = [self.peak_time_range[0].mjd, self.peak_time_range[1].mjd]
