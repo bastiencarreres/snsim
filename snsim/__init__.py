@@ -15,3 +15,4 @@ __version__ = "0.3.13"
 
 from .simu import Simulator
 from .sn_sample import SNSimSample
+from . import post_sim_tools
