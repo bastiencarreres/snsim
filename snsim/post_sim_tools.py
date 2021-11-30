@@ -89,5 +89,5 @@ def SNR_select(selec_function,
                                                     SNR_limit[b][1])
 
     SNR = lcs['flux'] / lcs['fluxerr']
-    SNR_pdet = np.array([SNR_proba[b](s) for b, s in zip(lcs['band'], SNR)])
-    return lcs[rand_gen.random(len(SNR)) < SNR_pdet]
+    p_det = np.array([SNR_proba[b](s) for b, s in zip(lcs['band'], SNR)])
+    return lcs[rand_gen.random(len(SNR)) < p_det]
