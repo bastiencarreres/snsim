@@ -206,7 +206,7 @@ class SN:
             - x1 -> self.sim_x1
             - c -> self.sim_c
         """
-        M0 = self._model_par['M0']
+        M0 = self._model_par['M0'] + self.mag_sct
         if self.sim_model.source.name in ['salt2', 'salt3']:
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
