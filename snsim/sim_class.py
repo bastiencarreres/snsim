@@ -1203,22 +1203,6 @@ class SurveyObs:
         query = query[:-1]
         query += ' FROM Summary' + where + ';'
         obs_dic = pd.read_sql_query(query, con)
-
-        # avoid crash on errors
-        if ('fake_skynoise' not in self.config
-           or self.config['fake_skynoise'][1].lower() == 'add'):
-            obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
-
-        # Keep only epoch in the survey time
-        start_day_input, end_day_input = self._read_start_end_days(obs_dic)
-
-        if start_day_input.mjd < obs_dic['expMJD'].min():
-            raise ValueError('start_day before first day in survey file')
-        elif end_day_input.mjd > obs_dic['expMJD'].max():
-            raise ValueError('end_day after last day in survey file')
-
-        obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
-                      inplace=True)
         return obs_dic
 
     def _init_data(self):
@@ -1242,6 +1226,22 @@ class SurveyObs:
             obs_dic = self._extract_from_csv(keys)
         else:
             raise ValueError('Accepted formats are .db and .csv')
+
+        # avoid crash on errors
+        if ('fake_skynoise' not in self.config
+           or self.config['fake_skynoise'][1].lower() == 'add'):
+            obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
+
+        # Keep only epochs in the survey time
+        start_day_input, end_day_input = self._read_start_end_days(obs_dic)
+
+        if start_day_input.mjd < obs_dic['expMJD'].min():
+            raise ValueError('start_day before first day in survey file')
+        elif end_day_input.mjd > obs_dic['expMJD'].max():
+            raise ValueError('end_day after last day in survey file')
+
+        obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
+                      inplace=True)
 
         if obs_dic.size == 0:
             raise RuntimeError('No observation for the given survey start_day and duration.')
