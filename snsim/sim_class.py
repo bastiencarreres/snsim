@@ -1227,7 +1227,7 @@ class SurveyObs:
         else:
             raise ValueError('Accepted formats are .db and .csv')
 
-        # avoid crash on errors
+        # avoid crash on errors by removing errors <= 0
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
@@ -1235,9 +1235,12 @@ class SurveyObs:
         # Keep only epochs in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
 
-        if start_day_input.mjd < obs_dic['expMJD'].min():
+        minMJDinObs = obs_dic['expMJD'].min()
+        maxMJDinObs = obs_dic['expMJD'].max()
+
+        if start_day_input.mjd < minMJDinObs:
             raise ValueError('start_day before first day in survey file')
-        elif end_day_input.mjd > obs_dic['expMJD'].max():
+        elif end_day_input.mjd > maxMJDinObs:
             raise ValueError('end_day after last day in survey file')
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
@@ -1250,8 +1253,8 @@ class SurveyObs:
         obs_dic.reset_index(drop=True, inplace=True)
 
         # Effective start and end days
-        start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
-        end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
+        start_day = ut.init_astropy_time(minMJDinObs)
+        end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
     def epochs_selection(self, SN_obj):
