@@ -1103,23 +1103,25 @@ class SurveyObs:
 
         end_day = ut.init_astropy_time(end_day)
 
+        # Check that all is fine
         if end_day.mjd < start_day.mjd:
             raise ValueError("The ending day is before the starting day !")
 
-        if end_day.mjd > max_mjd:
-            warnings.warn(f'Ending day {end_day.mjd:.3f} MJD is outer of'
-                          f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
-                          UserWarning)
-        elif end_day < min_mjd:
+        if end_day.mjd < min_mjd:
             raise ValueError('Ending day before first obs file day')
+        elif end_day.mjd > max_mjd:
+            warnings.warn(f'Ending day {end_day.mjd:.3f} MJD is outer of'
+                          f' the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
+                          UserWarning)
 
-        if start_day.mjd < min_mjd:
+        if start_day.mjd > max_mjd:
+            raise ValueError('Starting day after last obs file day')
+        elif start_day.mjd < min_mjd:
             warnings.warn(f'Starting day {start_day.mjd:.3f} MJD is outer of'
                           f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
                           UserWarning)
-        elif start_day.mjd > max_mjd:
-            ValueError('Starting day after last obs file day')
-        return start_day, end_day, min_mjd, max_mjd
+
+        return start_day, end_day
 
     def _check_keys(self):
         """Check which keys are needed.
@@ -1242,12 +1244,7 @@ class SurveyObs:
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
 
         # Keep only epochs in the survey time
-        start_day_input, end_day_input, minMJDinObs, maxMJDinObs = self._read_start_end_days(obs_dic)
-
-        if start_day_input.mjd < minMJDinObs:
-            raise ValueError('start_day before first day in survey file')
-        elif end_day_input.mjd > maxMJDinObs:
-            raise ValueError('end_day after last day in survey file')
+        start_day_input, end_day_input = self._read_start_end_days(obs_dic)
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
                       inplace=True)
@@ -1259,8 +1256,8 @@ class SurveyObs:
         obs_dic.reset_index(drop=True, inplace=True)
 
         # Effective start and end days
-        start_day = ut.init_astropy_time(minMJDinObs)
-        end_day = ut.init_astropy_time(maxMJDinObs)
+        start_day = ut.init_astropy_time(obs_dic['expMJD'].min())
+        end_day = ut.init_astropy_time(obs_dic['expMJD'].max())
         return obs_dic, (start_day, end_day)
 
     def epochs_selection(self, SN_obj):
