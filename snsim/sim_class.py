@@ -400,7 +400,6 @@ class SnGen:
       | └── sct_model # Wavelenght dependant scattering (Optional)
     model_config : dict
         The parameters of the sn simulation model to use.
-
       | model_config
       | ├── model_dir # The directory of the model file
       | ├── model_name # The name of the model
@@ -408,7 +407,6 @@ class SnGen:
       | └── model parameters # All model needed parameters
     cmb : dict
         The cmb parameters.
-
       | cmb
       | ├── vcmb
       | ├── l_cmb

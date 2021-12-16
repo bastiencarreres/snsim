@@ -85,7 +85,7 @@ class Simulator:
     |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
     |     sub_field: ['sub_field_file', 'sub_field_key']
     |     fake_skynoise: [SIGMA_VALUE, 'add' or 'replace']  # Optional, default is 0
-    | sn_gen:
+    | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
     |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN  # Optional
     |     sn_rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
@@ -96,6 +96,13 @@ class Simulator:
     |     M0: SN ABSOLUT MAGNITUDE
     |     mag_sct: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+    |     model_config:
+    |         model_name: 'THE MODEL NAME'  Example : 'salt2'
+    |         model_dir: '/PATH/TO/SALT/MODEL'
+    |         alpha: STRETCH CORRECTION = alpha*x1
+    |         beta: COLOR CORRECTION = -beta*c
+    |         dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
+    |         dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
     | cosmology:
     |     Om0: MATTER DENSITY
     |     H0: HUBBLE CONSTANT
@@ -103,15 +110,9 @@ class Simulator:
     |     v_cmb: OUR PECULIAR VELOCITY  # Optional, default = 620 km/s
     |     l_cmb: GAL L OF CMB DIPOLE  # Optional, default = 271.0
     |     b_cmb: GAL B OF CMB DIPOLE  # Optional, default = 29.6
-    | model_config:
-    |     model_name: 'THE MODEL NAME'  Example : 'salt2'
-    |     model_dir: '/PATH/TO/SALT/MODEL'
-    |     alpha: STRETCH CORRECTION = alpha*x1
-    |     beta: COLOR CORRECTION = -beta*c
-    |     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
-    |     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
-    |     mod_fcov : True or False  # Optional, default = False
-    |     mw_dust: MOD_NAME #(RV = 3.1) or [MOD_NAME, RV]  # Optional
+    | mw_dust:
+    |     model: MOD_NAME
+    |     rv: Rv # Optional, default Rv = 3.1
     | vpec_dist:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY
     |     sig_vpec: SIGMA VPEC
@@ -164,8 +165,7 @@ class Simulator:
 
         self._cosmology = ut.set_cosmo(self.config['cosmology'])
         self._survey = scls.SurveyObs(self.config['survey_config'])
-        self._generator = scls.SnGen(self.sn_int_par,
-                                     self.config['model_config'],
+        self._generator = scls.SnGen(self.config['snia_gen'],
                                      self.cmb,
                                      self.cosmology,
                                      self.vpec_dist,
@@ -232,15 +232,6 @@ class Simulator:
     def fit_resmod(self):
         """Get the sn fit results sncosmo models."""
         return self._fit_resmod
-
-    @property
-    def sn_int_par(self):
-        """Get the intrinsic parameters of SN Ia."""
-        int_params = {'M0': self.config['sn_gen']['M0'],
-                      'mag_sct': self.config['sn_gen']['mag_sct']}
-        if 'sct_model' in self.config['sn_gen']:
-            int_params['sct_model'] = self.config['sn_gen']['sct_model']
-        return int_params
 
     @property
     def cosmology(self):
