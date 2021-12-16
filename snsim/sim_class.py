@@ -1102,14 +1102,25 @@ class SurveyObs:
             end_day = max_mjd
 
         end_day = ut.init_astropy_time(end_day)
-        if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
-            warnings.warn(f'Starting day {start_day.mjd:.3f} MJD or'
-                          f'Ending day {end_day.mjd:.3f} MJD is outer of'
+
+        # Check that all is fine
+        if end_day.mjd < start_day.mjd:
+            raise ValueError("The ending day is before the starting day !")
+
+        if end_day.mjd < min_mjd:
+            raise ValueError('Ending day before first obs file day')
+        elif end_day.mjd > max_mjd:
+            warnings.warn(f'Ending day {end_day.mjd:.3f} MJD is outer of'
+                          f' the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
+                          UserWarning)
+
+        if start_day.mjd > max_mjd:
+            raise ValueError('Starting day after last obs file day')
+        elif start_day.mjd < min_mjd:
+            warnings.warn(f'Starting day {start_day.mjd:.3f} MJD is outer of'
                           f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
                           UserWarning)
 
-        if end_day.mjd < start_day.mjd:
-            raise ValueError("The ending day is before the starting day !")
         return start_day, end_day
 
     def _check_keys(self):
@@ -1227,18 +1238,13 @@ class SurveyObs:
         else:
             raise ValueError('Accepted formats are .db and .csv')
 
-        # avoid crash on errors
+        # avoid crash on errors by removing errors <= 0
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
 
         # Keep only epochs in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
-
-        if start_day_input.mjd < obs_dic['expMJD'].min():
-            raise ValueError('start_day before first day in survey file')
-        elif end_day_input.mjd > obs_dic['expMJD'].max():
-            raise ValueError('end_day after last day in survey file')
 
         obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
                       inplace=True)
