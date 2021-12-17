@@ -8,6 +8,7 @@ The package use sncosmo.
 
 Github repository : https://github.com/bcarreres/snsim
 """
+
 import os
 __snsim_dir_path__ = os.path.dirname(__file__)
 
@@ -16,3 +17,6 @@ __version__ = "0.3.13_dev"
 from .simu import Simulator
 from .sn_sample import SNSimSample
 from . import post_sim_tools
+from . import transient
+from . import sim_class
+from . import utils

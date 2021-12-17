@@ -165,12 +165,15 @@ class Simulator:
 
         self._cosmology = ut.set_cosmo(self.config['cosmology'])
         self._survey = scls.SurveyObs(self.config['survey_config'])
-        self._generator = scls.SnGen(self.config['snia_gen'],
-                                     self.cmb,
-                                     self.cosmology,
-                                     self.vpec_dist,
-                                     host=self.host,
-                                     alpha_dipole=self.alpha_dipole)
+
+        self._generators = []
+        if 'snia_gen' in self.config:
+            self._generators.append(scls.SNIaGen(self.config['snia_gen'],
+                                                 self.cmb,
+                                                 self.cosmology,
+                                                 self.vpec_dist,
+                                                 host=self.host,
+                                                 alpha_dipole=self.alpha_dipole))
 
     @property
     def config(self):

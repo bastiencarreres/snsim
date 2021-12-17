@@ -492,7 +492,6 @@ class SnGen:
         self._vpec_dist = vpec_dist
         self._cosmology = cosmology
         self._host = host
-        self._alpha_dipole = alpha_dipole
         self._time_range = None
         self._z_cdf = None
 
