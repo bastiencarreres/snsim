@@ -172,8 +172,7 @@ class Simulator:
                                                  self.cmb,
                                                  self.cosmology,
                                                  self.vpec_dist,
-                                                 host=self.host,
-                                                 alpha_dipole=self.alpha_dipole))
+                                                 host=self.host))
 
     @property
     def config(self):
@@ -324,13 +323,6 @@ class Simulator:
         max_peak_time = self.survey.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
             * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
-
-    @property
-    def alpha_dipole(self):
-        """Get alpha dipole parameters."""
-        if 'alpha_dipole' in self.config:
-            return self.config['alpha_dipole']
-        return None
 
     def sn_rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
