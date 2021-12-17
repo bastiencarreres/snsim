@@ -7,6 +7,9 @@ from . import scatter as sct
 from . import salt_utils as salt_ut
 
 
+__GEN_DIC__ = {'snia_gen': SNIaGen}
+
+
 class BaseGen:
     def __init__(self, params, cmb, cosmology, vpec_dist,
                  host=None, alpha_dipole=None):
@@ -15,10 +18,30 @@ class BaseGen:
         self._cosmology = cosmology
         self._host = host
         self._alpha_dipole = alpha_dipole
+        self.rate_law = self._init_rate()
 
         self._time_range = None
         self._z_cdf = None
         self.sim_model = None
+
+    def _init_rate(self):
+        if 'rate' in self._params:
+            if isinstance(self._params['rate'], str):
+                try:
+                    sn_rate = float(self.config['sn_gen']['sn_rate'])
+                except:
+                    sn_rate = None
+            else:
+                sn_rate = self.config['sn_gen']['sn_rate']
+        else:
+            sn_rate = 3e-5
+
+        if 'rate_pw' in self._params:
+            rate_pw = self._params['rate_pw']
+        else:
+            rate_pw = 0
+
+        return rate, rate_pw
 
     def _init_dust(self):
         if 'mw_dust' in self.model_config:
@@ -57,14 +80,58 @@ class BaseGen:
             dust_par = [{}] * len(ra)
 
         default_par = [('zcos', zcos),
-                        ('como_dist', self.cosmology.comoving_distance(zcos).value),
-                        ('z2cmb', ut.compute_z2cmb(ra, dec, self.cmb)),
-                        ('sim_t0', t0),
-                        ('ra', ra),
-                        ('dec', dec),
-                        ('vpec', vpec)]
+                       ('como_dist', self.cosmology.comoving_distance(zcos).value),
+                       ('z2cmb', ut.compute_z2cmb(ra, dec, self.cmb)),
+                       ('sim_t0', t0),
+                       ('ra', ra),
+                       ('dec', dec),
+                       ('vpec', vpec)]
 
         return default_par, dust_par
+
+    def rate(self, z):
+        """Give the rate SNs/Mpc^3/year at redshift z.
+
+        Parameters
+        ----------
+        z : float, numpy.ndarray(float)
+            One of a list of cosmological redshift(s).
+
+        Returns
+        -------
+        float, numpy.ndarray(float)
+            One or a list of sn rate(s) corresponding to input redshift(s).
+
+        """
+        rate_z0, rpw = self.rate_law
+        return rate_z0 * (1 + z)**rpw
+
+    def _z_shell_time_rate(self):
+        """Give the time rate SN/years in redshift shell.
+
+        Parameters
+        ----------
+        z : numpy.ndarray
+            The redshift bins.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            Numpy array containing the time rate in each redshift bin.
+
+        """
+        z_min, z_max = self._params['z_range']
+        z_shell = np.linspace(z_min, z_max, 1000)
+        z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
+        rate = self.rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
+        co_dist = self.cosmology.comoving_distance(z_shell).value
+        shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
+
+        # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
+        shell_time_rate = rate * shell_vol / (1 + z_shell_center)
+
+        self.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+        return z_shell, shell_time_rate
 
     @property
     def host(self):
@@ -108,11 +175,6 @@ class BaseGen:
     def z_cdf(self):
         """Get the redshift cumulative distribution."""
         return self._z_cdf
-
-    @z_cdf.setter
-    def z_cdf(self, cdf):
-        """Set the redshift cumulative distribution."""
-        self._z_cdf = cdf
 
     @staticmethod
     def _construct_int_par(*arg):
@@ -237,13 +299,18 @@ class BaseGen:
 
 
 class SNIaGen(BaseGen):
+    _object_type = 'SN Ia'
     _available_models = ['salt2', 'salt3']
 
     def __init__(self, params, cmb, cosmology, vpec_dist,
                  host=None):
         super().__init__(cmb, cosmology, vpec_dist,
                          host=host, alpha_dipole=alpha_dipole)
+        if self.rate_law[0] is None:
+            self.rate_law = self._init_register_rate()
+
         self.sim_model = self._init_sim_model()
+
         self._init_dust()
         self._general_par = self._init_general_par()
 
@@ -267,12 +334,17 @@ class SNIaGen(BaseGen):
 
         return [SNIa(snp, self.sim_model, mp) for snp, mp in zip(sn_int_par_dict, model_par_list)]
 
+    def _init_register_rate(self):
+        if self._params['sn_rate'].lower() == 'ptf19':
+            sn_rate = 2.43e-5 * (70 / self.cosmology.H0.value)**3
+            return (sn_rate, 0)
+
     def _init_M0(self):
         if isinstance(self._params['M0'], (float, int)):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
-             return ut.scale_M0_jla(self.cosmology.H0.value)
+            return ut.scale_M0_jla(self.cosmology.H0.value)
 
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.

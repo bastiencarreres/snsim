@@ -7,6 +7,7 @@ from . import utils as ut
 from . import sim_class as scls
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
+from .generator import _gen_dic
 from .sn_sample import SNSimSample
 
 
@@ -166,13 +167,20 @@ class Simulator:
         self._cosmology = ut.set_cosmo(self.config['cosmology'])
         self._survey = scls.SurveyObs(self.config['survey_config'])
 
+        self._use_rate = []
         self._generators = []
-        if 'snia_gen' in self.config:
-            self._generators.append(scls.SNIaGen(self.config['snia_gen'],
-                                                 self.cmb,
-                                                 self.cosmology,
-                                                 self.vpec_dist,
-                                                 host=self.host))
+        for object in __GEN_DIC__:
+            if object in self.config:
+                self._generators.append(__GEN_DIC__[object](self.config[object],
+                                                            self.cmb,
+                                                            self.cosmology,
+                                                            self.vpec_dist,
+                                                            host=self.host))
+                if 'force_n' in self.config[object]:
+                    self._use_rate.append(False)
+                else:
+                    self._use_rate.append(True)
+
 
     @property
     def config(self):
@@ -216,11 +224,6 @@ class Simulator:
         return self.sn_sample.n_sn
 
     @property
-    def model_name(self):
-        """Get the name of sn model used."""
-        return self.config['model_config']['model_name']
-
-    @property
     def sn_sample(self):
         """Get the list of simulated sn."""
         return self._sn_sample
@@ -256,27 +259,7 @@ class Simulator:
         return self._host
 
     @property
-    def nep_cut(self):
-        """Get the list of epochs cuts."""
-        snc_mintime, snc_maxtime = self.generator.snc_model_time
-        if 'nep_cut' in self.config['sn_gen']:
-            nep_cut = self.config['sn_gen']['nep_cut']
-            if isinstance(nep_cut, (int)):
-                nep_cut = [
-                    (nep_cut,
-                     snc_mintime,
-                     snc_maxtime)]
-            elif isinstance(nep_cut, (list)):
-                for i, cut in enumerate(nep_cut):
-                    if len(cut) < 3:
-                        nep_cut[i].append(snc_mintime)
-                        nep_cut[i].append(snc_maxtime)
-        else:
-            nep_cut = [(1, snc_mintime, snc_maxtime)]
-        return nep_cut
-
-    @property
-    def rand_seed(self):
+    def randseed(self):
         """Get primary random seed of the simulation."""
         if 'randseed' in self.config['sn_gen']:
             return int(self.config['sn_gen']['randseed'])
@@ -289,28 +272,9 @@ class Simulator:
         """Get the simulation cosmological redshift range."""
         return self.config['sn_gen']['z_range']
 
-    @property
-    def sn_rate_z0(self):
-        """Get the sn rate parameters."""
-        if 'sn_rate' in self.config['sn_gen']:
-            if isinstance(self.config['sn_gen']['sn_rate'], str):
-                if self.config['sn_gen']['sn_rate'].lower() == 'ptf19':
-                    sn_rate = 2.43e-5 * (70 / self.cosmology.H0.value)**3
-                else:
-                    sn_rate = float(self.config['sn_gen']['sn_rate'])
-            else:
-                sn_rate = self.config['sn_gen']['sn_rate']
-        else:
-            sn_rate = 3e-5
-
-        if 'rate_pw' in self.config['sn_gen']:
-            rate_pw = self.config['sn_gen']['rate_pw']
-        else:
-            rate_pw = 0
-        return sn_rate, rate_pw
 
     @property
-    def peak_time_range(self):
+    def peak_time_range(self, generator):
         """Get the time range for simulate SN peak.
 
         Returns
@@ -318,53 +282,12 @@ class Simulator:
         tuple(float, float)
             Min and max time for SN peak generation.
         """
-        min_peak_time = self.survey.start_end_days[0] - self.generator.snc_model_time[1] \
+        min_peak_time = self.survey.start_end_days[0] - generator.snc_model_time[1] \
             * (1 + self.z_range[1])
-        max_peak_time = self.survey.start_end_days[1] + abs(self.generator.snc_model_time[0]) \
+        max_peak_time = self.survey.start_end_days[1] + abs(generator.snc_model_time[0]) \
             * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
-    def sn_rate(self, z):
-        """Give the rate SNs/Mpc^3/year at redshift z.
-
-        Parameters
-        ----------
-        z : float, numpy.ndarray(float)
-            One of a list of cosmological redshift(s).
-
-        Returns
-        -------
-        float, numpy.ndarray(float)
-            One or a list of sn rate(s) corresponding to input redshift(s).
-
-        """
-        rate_z0, rpw = self.sn_rate_z0
-        return rate_z0 * (1 + z)**rpw
-
-    def _z_shell_time_rate(self):
-        """Give the time rate SN/years in redshift shell.
-
-        Parameters
-        ----------
-        z : numpy.ndarray
-            The redshift bins.
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            Numpy array containing the time rate in each redshift bin.
-
-        """
-        z_min, z_max = self.z_range
-        z_shell = np.linspace(z_min, z_max, 1000)
-        z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
-        rate = self.sn_rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
-        co_dist = self.cosmology.comoving_distance(z_shell).value
-        shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
-
-        # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
-        shell_time_rate = rate * shell_vol / (1 + z_shell_center)
-        return z_shell, shell_time_rate
 
     def _gen_n_sn(self, rand_gen, z_shell_time_rate):
         """Generate the number of SN with Poisson law.
@@ -409,26 +332,49 @@ class Simulator:
         print('-----------------------------------------------------------')
         print(f"SIM NAME : {self.sim_name}\n"
               f"CONFIG FILE : {self._yml_path}\n"
-              f"SURVEY FILE : {self.config['survey_config']['survey_file']}")
-        if 'host_file' in self.config:
-            print(f"HOST FILE : {self.config['host_file']}")
-        if 'model_dir' in self.config['model_config']:
-            model_dir = self.config['model_config']['model_dir']
-            model_dir_str = f"from {model_dir}"
-        else:
-            model_dir = None
-            model_dir_str = "from sncosmo"
-        print(f"SN SIM MODEL : {self.model_name} " + model_dir_str + "\n"
+              f"SURVEY FILE : {self.config['survey_config']['survey_file']}"
               f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
               f"SIMULATION RANDSEED : {self.rand_seed}")
+        if 'host_file' in self.config:
+            print(f"HOST FILE : {self.config['host_file']}")
+        print('-----------------------------------------------------------')
+        rate_str = "Rate r_v = {0:.2e}*(1+z)^{1} SN/Mpc^3/year "
+
+        for i, gen in enumerate(self._generators):
+            print('OBJECT TYPE : ' + gen._object_type)
+            print(f"SN SIM MODEL : {gen._params['model_config']['model_name']}")
+
+            if 'model_dir' in gen._params['model_config']:
+                model_dir = gen._params['model_config']['model_dir']
+                model_dir_str = f"from {model_dir}"
+            else:
+                model_dir = None
+                model_dir_str = "from sncosmo"
+
+
+            if self._use_rate[i]:
+                rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1]) + "\n"
+                compute_z_cdf = True
+                z_shell, shell_time_rate = gen._z_shell_time_rate()
+            else:
+                print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
+                if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
+                    rate_str = 'Redshift distribution computed '
+                    if self.host.config['distrib'] == 'as_host':
+                        rate_str += 'as host redshift distribution\n\n'
+                    elif self.host.config['distrib'] == 'mass_weight':
+                        rate_str += 'as mass weighted host redshift distribution\n\n'
+                    compute_z_cdf = False
+                else:
+                    rate_str = rate_str.format(self.sn_rate_z0[0], self.sn_rate_z0[1])
+                    rate_str += ' (only for redshifts simulation)\n\n'
+                    compute_z_cdf = True
 
         print('-----------------------------------------------------------')
 
-        rate_str = "SN rate of r_v = {0:.2e}*(1+z)^{1} SN/Mpc^3/year "
 
-        if self._use_rate:
-            rate_str = rate_str.format(self.sn_rate_z0[0], self.sn_rate_z0[1]) + "\n"
-            compute_z_cdf = True
+
+
         else:
             print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
             if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':

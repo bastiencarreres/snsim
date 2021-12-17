@@ -262,6 +262,7 @@ class BasicTransient:
 
 
 class SNIa(BasicTransient):
+    _type = 'snIa'
     _available_models = ['salt2', 'salt3']
 
     def __init__(self, sn_par, sim_model, model_par):
@@ -270,6 +271,7 @@ class SNIa(BasicTransient):
         super()._set_model()
 
     def _add_meta_to_table(self):
+        self.sim_lc.attrs['type'] = self._type
         self.sim_lc.attrs['m_sct'] = self.mag_sct
 
         if 'adip_dM' in self._params:
