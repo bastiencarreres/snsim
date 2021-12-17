@@ -355,7 +355,6 @@ class Simulator:
             if self._use_rate[i]:
                 rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1]) + "\n"
                 compute_z_cdf = True
-                z_shell, shell_time_rate = gen._z_shell_time_rate()
             else:
                 print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
@@ -369,26 +368,14 @@ class Simulator:
                     rate_str = rate_str.format(self.sn_rate_z0[0], self.sn_rate_z0[1])
                     rate_str += ' (only for redshifts simulation)\n\n'
                     compute_z_cdf = True
+                    
+            # -- Init the redshift distribution
+            if compute_z_cdf:
+                z_shell, shell_time_rate = gen._z_shell_time_rate()
+
 
         print('-----------------------------------------------------------')
 
-
-
-
-        else:
-            print(f"Generate {self.config['sn_gen']['n_sn']} SN Ia\n")
-            if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
-                rate_str = 'Redshift distribution computed '
-                if self.host.config['distrib'] == 'as_host':
-                    rate_str += 'as host redshift distribution\n\n'
-                elif self.host.config['distrib'] == 'mass_weight':
-                    rate_str += 'as mass weighted host redshift distribution\n\n'
-
-                compute_z_cdf = False
-            else:
-                rate_str = rate_str.format(self.sn_rate_z0[0], self.sn_rate_z0[1])
-                rate_str += ' (only for redshifts simulation)\n\n'
-                compute_z_cdf = True
 
         print(rate_str +
               "SN peak mintime : "
@@ -447,10 +434,7 @@ class Simulator:
 
         sim_time = time.time()
 
-        # -- Init the redshift distribution
-        if compute_z_cdf:
-            z_shell, shell_time_rate = self._z_shell_time_rate()
-            self.generator.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+
 
         # -- Set the time range with time edges effects
         self.generator.time_range = [self.peak_time_range[0].mjd, self.peak_time_range[1].mjd]
