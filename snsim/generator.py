@@ -1,5 +1,6 @@
 """This module contain generator class."""
 import numpy as np
+import abc
 from . import utils as ut
 from . import nb_fun as nbf
 from . import dust_utils as dst_ut
@@ -10,7 +11,8 @@ from . import transient as trs
 __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
 
 
-class BaseGen:
+class BaseGen(abc.ABC):
+    @abc.abstractmethod
     def __init__(self, params, cmb, cosmology, vpec_dist,
                  host=None, mw_dust=None, dipole=None):
 
@@ -19,14 +21,28 @@ class BaseGen:
         self._cosmology = cosmology
         self._vpec_dist = vpec_dist
         self._host = host
-        self._dipole = dipole
-        self.rate_law = self._init_rate()
         self._mw_dust = mw_dust
+        self._dipole = dipole
+
+        self.rate_law = self._init_rate()
+        self.sim_model = self._init_sim_model()
+
+
+        self._general_par = {}
+        # -- Fill the fcov param in self._general_par
+        self._init_fcov()
 
         self._time_range = None
         self._z_cdf = None
         self._z_time_rate = None
-        self.sim_model = None
+
+    @abc.abstractmethod
+    def __call__(self):
+        pass
+
+    @abc.abstractmethod
+    def _init_sim_model(self):
+        pass
 
     def _init_rate(self):
         if 'rate' in self._params:
@@ -40,9 +56,19 @@ class BaseGen:
             rate_pw = 0
         return rate, rate_pw
 
+    def _init_fcov(self):
+        if not hasattr(self.sim_model, 'bandflux_rcov'):
+            raise ValueError('This sncosmo model has no flux covariance available')
+        if 'mod_fcov' in self._params['model_config']:
+            self._general_par['mod_fcov'] = self._params['model_config']['mod_fcov']
+        else:
+            self._general_par['mod_fcov'] = False
+
     def _init_dust(self):
         if self.mw_dust is not None:
-            dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
+            if 'rv' not in self.mw_dust:
+                self.mw_dust['rv'] = 3.1
+                dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
 
     def gen_transient_par(self, n_sn, rand_gen=None):
         if rand_gen is None:
@@ -159,6 +185,26 @@ class BaseGen:
 
         print('OBJECT TYPE : ' + self._object_type)
         print(f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str)
+
+    def _get_primary_header(self):
+        """Generate the primary header of sim fits file..
+
+        Returns
+        -------
+        None
+
+        """
+        basic_header = {'rate': self.rate_law[0],
+                        'rate_pw': self.rate_law[1]}
+
+
+        if self.mw_dust is not None:
+            header['mw_mod'] = self.mw_dust['model']
+            header['mw_rv'] = self.mw_dust['rv']
+
+        if 'mod_fcov' in self._params['model_config']:
+            header['mod_fcov'] = self.config['model_config']['mod_fcov']
+
 
     @property
     def snc_model_time(self):
@@ -338,10 +384,9 @@ class SNIaGen(BaseGen):
         if isinstance(self.rate_law[0], str):
             self.rate_law = self._init_register_rate()
 
-        self.sim_model = self._init_sim_model()
 
-        self._init_dust()
-        self._general_par = self._init_general_par()
+        super()
+        self._update_general_par()
 
     def __call__(self, n_sn, rand_gen=None):
         # -- Generate default transient parameters
@@ -394,7 +439,7 @@ class SNIaGen(BaseGen):
             sct.init_sn_sct_model(model, self._params['sct_model'])
         return model
 
-    def _init_general_par(self):
+    def _update_general_par(self):
         """Initialise the general parameters, depends on the SN simulation model.
 
         Returns
@@ -406,16 +451,11 @@ class SNIaGen(BaseGen):
         if model_name in ('salt2', 'salt3'):
             model_keys = ['alpha', 'beta']
 
-        model_par = {'M0': self._init_M0()}
+        self._general_par['M0'] = self._init_M0()}
+
         for k in model_keys:
-            model_par[k] = self._params['model_config'][k]
-
-        if 'mod_fcov' not in self._params['model_config']:
-            model_par['mod_fcov'] = False
-        else:
-            model_par['mod_fcov'] = self._params['model_config']['mod_fcov']
-
-        return model_par
+            self._general_par[k] = self._params['model_config'][k]
+        return
 
     def gen_coh_scatter(self, n, rand_gen):
         """Generate n coherent mag scattering term.

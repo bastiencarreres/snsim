@@ -4,7 +4,6 @@ import os
 import sncosmo as snc
 import sfdmap
 from snsim import __snsim_dir_path__
-import numpy as np
 import glob
 import requests
 import tarfile
