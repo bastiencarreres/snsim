@@ -14,7 +14,10 @@ class BasicTransient:
         self._model_par = model_par
 
         if 'mw_' in self.sim_model.effect_names:
-            self.mw_ebv = self._model_par['sncosmo']['mw_ebv']
+            self.mw_ebv = self._params['sncosmo']['mw_ebv']
+
+        if 'dip_dM' in model_par:
+            self.dip_dM = self._model_par['dip_dM']
 
         self._epochs = None
         self._sim_lc = None
@@ -23,7 +26,7 @@ class BasicTransient:
     def _set_model(self):
         # Set sncosmo model parameters
         params = {**{'z': self.zobs, 't0': self.sim_t0},
-                  **self._model_par['sncosmo']}
+                  **self._params['sncosmo']}
         self.sim_model.set(**params)
 
     def pass_cut(self, nep_cut):
@@ -128,7 +131,7 @@ class BasicTransient:
 
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
-                              **self._model_par['sncosmo']}
+                              **self._params['sncosmo']}
 
         self._sim_lc.set_index('epochs', inplace=True)
         return self._reformat_sim_table()
@@ -177,12 +180,12 @@ class BasicTransient:
 
     @property
     def ID(self):
-        """Get SN ID."""
+        """Get ID."""
         return self._ID
 
     @ID.setter
     def ID(self, ID):
-        """Set SN ID."""
+        """Set ID."""
         if isinstance(ID, int):
             self._ID = ID
         else:
@@ -192,67 +195,67 @@ class BasicTransient:
 
     @property
     def sim_t0(self):
-        """Get SN peakmag time."""
+        """Get peakmag time."""
         return self._params['sim_t0']
 
     @property
     def vpec(self):
-        """Get SN peculiar velocity."""
+        """Get peculiar velocity."""
         return self._params['vpec']
 
     @property
     def zcos(self):
-        """Get SN cosmological redshift."""
+        """Get cosmological redshift."""
         return self._params['zcos']
 
     @property
     def como_dist(self):
-        """Get SN comoving distance."""
+        """Get comoving distance."""
         return self._params['como_dist']
 
     @property
     def coord(self):
-        """Get SN coordinates (ra,dec)."""
+        """Get coordinates (ra,dec)."""
         return self._params['ra'], self._params['dec']
 
     @property
     def mag_sct(self):
-        """Get SN coherent scattering term."""
+        """Get coherent scattering term."""
         return self._params['mag_sct']
 
     @property
     def zpec(self):
-        """Get SN peculiar velocity redshift."""
+        """Get peculiar velocity redshift."""
         return self.vpec / C_LIGHT_KMS
 
     @property
     def zCMB(self):
-        """Get SN CMB frame redshift."""
+        """Get CMB frame redshift."""
         return (1 + self.zcos) * (1 + self.zpec) - 1.
 
     @property
     def z2cmb(self):
-        """Get SN redshift due to our motion relative to CMB."""
+        """Get redshift due to our motion relative to CMB."""
         return self._params['z2cmb']
 
     @property
     def zobs(self):
-        """Get SN observed redshift."""
+        """Get observed redshift."""
         return (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
 
     @property
     def epochs(self):
-        """Get SN observed redshift."""
+        """Get observed redshift."""
         return self._epochs
 
     @epochs.setter
     def epochs(self, ep_dic):
-        """Get SN observed epochs."""
+        """Get observed epochs."""
         self._epochs = ep_dic
 
     @property
     def sim_mu(self):
-        """Get SN distance moduli."""
+        """Get distance moduli."""
         return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) *
                             (1 + self.zpec)**2 * self.como_dist) + 25
 
@@ -302,15 +305,15 @@ class SNIa(BasicTransient):
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
             alpha = self._model_par['alpha']
             beta = self._model_par['beta']
-            x1 = self._model_par['sncosmo']['x1']
-            c = self._model_par['sncosmo']['c']
+            x1 = self._params['sncosmo']['x1']
+            c = self._params['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * x1 + beta * c
 
             # Compute the x0 parameter
             self.sim_model.set(x1=x1, c=c)
             self.sim_model.set_source_peakmag(mb, 'bessellb', 'ab')
             self.sim_x0 = self.sim_model.get('x0')
-            self._model_par['sncosmo']['x0'] = self.sim_x0
+            self._params['sncosmo']['x0'] = self.sim_x0
 
             self.sim_x1 = x1
             self.sim_c = c
@@ -320,7 +323,7 @@ class SNIa(BasicTransient):
         # Dipole
         if 'dip_dM' in self._params:
             mb += self._params['dip_dM']
-            self.adip_dM = self._params['dip_dM']
+            self.dip_dM = self._params['dip_dM']
 
         self.sim_mb = mb
 

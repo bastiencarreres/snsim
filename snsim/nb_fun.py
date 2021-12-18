@@ -1,5 +1,5 @@
 """This module contains functions with numba decorator to speed up the simulation."""
-from numba import njit
+from numba import njit, jit
 import numpy as np
 from numba.core import types
 from numba.typed import Dict
@@ -204,6 +204,27 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
     epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
                                                                      obs_fieldID]))
     return epochs_selec.any(), epochs_selec
+
+
+@njit(cache=True)
+def radec_to_cart_2d(ra, dec):
+    """Compute carthesian vector for given RA Dec coordinates.
+
+    Parameters
+    ----------
+    ra : float or numpy.ndarray
+        Right Ascension.
+    dec :  float or numpy.ndarray
+        Declinaison.
+
+    Returns
+    -------
+    numpy.ndarray(float)
+        Carthesian coordinates corresponding to RA Dec coordinates.
+
+    """
+    cart_vec = np.vstack((np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec))).T
+    return cart_vec
 
 
 @njit(cache=True)

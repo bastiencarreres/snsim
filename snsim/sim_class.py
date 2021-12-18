@@ -908,7 +908,7 @@ class SnGen:
     def _compute_alpha_dipole(self, ra, dec):
         cart_vec = nbf.radec_to_cart(self.alpha_dipole['coord'][0],
                                      self.alpha_dipole['coord'][1])
-        sn_vec = ut.radec_to_cart(ra, dec)
+        sn_vec = nbf.radec_to_cart_2d(ra, dec)
         delta_M = 1 / 0.98 * (self.alpha_dipole['A'] + self.alpha_dipole['B'] * cart_vec @ sn_vec)
         return delta_M
 

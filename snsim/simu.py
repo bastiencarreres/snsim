@@ -4,9 +4,11 @@ import time
 import yaml
 import numpy as np
 from . import utils as ut
+from . import generator
 from . import sim_class as scls
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
+
 from .generator import __GEN_DIC__
 from .sn_sample import SNSimSample
 
@@ -155,28 +157,36 @@ class Simulator:
         self._sample = None
         self._random_seed = None
 
+        # -- Init cosmological model
+        self._cosmology = ut.set_cosmo(self.config['cosmology'])
+
+        # -- Init SurveyObs object
+        self._survey = scls.SurveyObs(self.config['survey_config'])
+
+        # -- Init host object
         if 'host' in self.config:
             self._host = scls.SnHost(self.config['host'], self.z_range)
         else:
             self._host = None
 
-        self._cosmology = ut.set_cosmo(self.config['cosmology'])
-        self._survey = scls.SurveyObs(self.config['survey_config'])
-
-        self._use_rate = []
-        self._generators = []
+        # -- Init mw dust
         if 'mw_dust' in self.config:
             mw_dust = self.config['mw_dust']
         else:
             mw_dust = None
+
+        # -- Init dipole
         if 'dipole' in self.config:
             dipole = self.config['dipole']
         else:
             dipole = None
 
+        # -- Init generators
+        self._use_rate = []
+        self._generators = []
         for object_name in __GEN_DIC__:
             if object_name in self.config:
-                gen_class = getattr(snsim.generator, __GEN_DIC__[object])
+                gen_class = getattr(generator, __GEN_DIC__[object])
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
@@ -388,9 +398,9 @@ class Simulator:
         #     print("\nUse intrinsic scattering model : "
         #           f"{self.config['sn_gen']['sct_model']}")
         #
-        # if 'mw_dust' in self.config['model_config']:
-        #     print("\nUse mw dust model : "
-        #           f"{np.atleast_1d(self.config['model_config']['mw_dust'])[0]}")
+        if 'mw_dust' in self.config['model_config']:
+            print("\nUse mw dust model : "
+            f"{self.config['mw_dust']['model']}")
 
         # if ('mod_fcov' in self.config['model_config']
         #    and self.config['model_config']['mod_fcov']):

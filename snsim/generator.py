@@ -73,15 +73,6 @@ class BaseGen:
             ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[0]))
             vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[1]))
 
-        # -- Add dust if necessary
-        if 'mw_' in self.sim_model.effect_names:
-            dust_par = self._dust_par(ra, dec)
-        else:
-            dust_par = [{}] * len(ra)
-
-        if 'dipole' in self._params:
-            default_par['adip_dM'] = self._compute_dipole(ra,
-                                                          dec)
         default_par = {'zcos': zcos,
                        'como_dist': self.cosmology.comoving_distance(zcos).value,
                        'z2cmb': ut.compute_z2cmb(ra, dec, self.cmb),
@@ -90,7 +81,21 @@ class BaseGen:
                        'dec': dec,
                        'vpec': vpec}
 
-        return default_par, dust_par
+        if self.dipole is not None:
+            default_par['dip_dM'] = self._compute_dipole(ra, dec)
+
+        return default_par
+
+    def _build_sn_int_par(self, sn_int_par, snc_par={}):
+        # -- Add dust if necessary
+        if 'mw_' in self.sim_model.effect_names:
+            dust_par = self._dust_par(sn_int_par['ra'], sn_int_par['dec'])
+        else:
+            dust_par = [{}] * len(sn_int_par['ra'])
+
+        dic = ({**{k: sn_int_par[k][i] for k in sn_int_par},
+                **{'sncosmo': {**sncp, **dstp}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
+        return dic
 
     def rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
@@ -139,8 +144,9 @@ class BaseGen:
     def _compute_dipole(self, ra, dec):
         cart_vec = nbf.radec_to_cart(self.dipole['coord'][0],
                                      self.dipole['coord'][1])
-        sn_vec = ut.radec_to_cart(ra, dec)
-        delta_M = self.dipole['A'] + self.dipole['B'] * cart_vec @ sn_vec
+
+        sn_vec = nbf.radec_to_cart_2d(ra, dec)
+        delta_M = self.dipole['A'] + self.dipole['B'] *  sn_vec @ cart_vec
         return delta_M
 
     def print_config(self):
@@ -206,12 +212,6 @@ class BaseGen:
     def z_cdf(self):
         """Get the redshift cumulative distribution."""
         return self._z_cdf
-
-    @staticmethod
-    def _construct_int_par(input_dic):
-        dic = ({k: input_dic[k][i] for k in input_dic.keys()}
-               for i in range(len(input_dic['ra'])))
-        return dic
 
     def gen_peak_time(self, n, rand_gen):
         """Generate uniformly n peak time in the survey time range.
@@ -344,22 +344,19 @@ class SNIaGen(BaseGen):
         self._general_par = self._init_general_par()
 
     def __call__(self, n_sn, rand_gen=None):
-        # Generate default transient parameters
-        sn_int_par, dust_par = super().gen_transient_par(n_sn, rand_gen=rand_gen)
+        # -- Generate default transient parameters
+        sn_int_par = super().gen_transient_par(n_sn, rand_gen=rand_gen)
 
         # -- Generate coherent mag scattering
         sn_int_par['mag_sct'] = self.gen_coh_scatter(n_sn, rand_gen)
 
         opt_seed = rand_gen.integers(1000, 1e6)
-        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seed),
-                                            z=sn_int_par['zcos'])
+        snc_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seed),
+                                     z=sn_int_par['zcos'])
 
-        model_par_list = ({**self._general_par, 'sncosmo': {**mpsn, **dstp}}
-                          for mpsn, dstp in zip(rand_model_par, dust_par))
+        sn_int_par = super()._build_sn_int_par(sn_int_par, snc_par=snc_par)
 
-        sn_int_par = super()._construct_int_par(sn_int_par)
-
-        return [trs.SNIa(snp, self.sim_model, mp) for snp, mp in zip(sn_int_par, model_par_list)]
+        return [trs.SNIa(snp, self.sim_model, self._general_par) for snp in sn_int_par]
 
     def _init_register_rate(self):
         if self._params['sn_rate'].lower() == 'ptf19':
