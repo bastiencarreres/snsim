@@ -5,47 +5,44 @@ from . import nb_fun as nbf
 from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
+from . import transient as trs
 
-
-__GEN_DIC__ = {'snia_gen': SNIaGen}
+__GEN_DIC__ = {'snia_gen': 'SNIaGen'}
 
 
 class BaseGen:
     def __init__(self, params, cmb, cosmology, vpec_dist,
-                 host=None, alpha_dipole=None):
+                 host=None, mw_dust=None, dipole=None):
+
         self._params = params
         self._cmb = cmb
         self._cosmology = cosmology
+        self._vpec_dist = vpec_dist
         self._host = host
-        self._alpha_dipole = alpha_dipole
+        self._dipole = dipole
         self.rate_law = self._init_rate()
+        self._mw_dust = mw_dust
 
         self._time_range = None
         self._z_cdf = None
+        self._z_time_rate = None
         self.sim_model = None
 
     def _init_rate(self):
         if 'rate' in self._params:
-            if isinstance(self._params['rate'], str):
-                try:
-                    sn_rate = float(self.config['sn_gen']['sn_rate'])
-                except:
-                    sn_rate = None
-            else:
-                sn_rate = self.config['sn_gen']['sn_rate']
+            rate = self.config['sn_gen']['sn_rate']
         else:
-            sn_rate = 3e-5
+            rate = 3e-5
 
         if 'rate_pw' in self._params:
             rate_pw = self._params['rate_pw']
         else:
             rate_pw = 0
-
         return rate, rate_pw
 
     def _init_dust(self):
-        if 'mw_dust' in self.model_config:
-            dst_ut.init_mw_dust(self.sim_model, self.model_config['mw_dust'])
+        if self.mw_dust is not None:
+            dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
 
     def gen_transient_par(self, n_sn, rand_gen=None):
         if rand_gen is None:
@@ -64,14 +61,17 @@ class BaseGen:
             host = self.host.random_choice(n_sn, rand_gen)
             zcos = host['redshift'].values
 
+        # -- Generate 2 randseeds for optionnal parameters randomization
+        opt_seeds = rand_gen.integers(low=1000, high=1e6, size=2)
+
         # -- If there is hosts use them
         if self.host is not None:
             ra = host['ra'].values
             dec = host['dec'].values
             vpec = host['v_radial'].values
         else:
-            ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[1]))
-            vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[2]))
+            ra, dec = self.gen_coord(n_sn, np.random.default_rng(opt_seeds[0]))
+            vpec = self.gen_vpec(n_sn, np.random.default_rng(opt_seeds[1]))
 
         # -- Add dust if necessary
         if 'mw_' in self.sim_model.effect_names:
@@ -79,13 +79,16 @@ class BaseGen:
         else:
             dust_par = [{}] * len(ra)
 
-        default_par = [('zcos', zcos),
-                       ('como_dist', self.cosmology.comoving_distance(zcos).value),
-                       ('z2cmb', ut.compute_z2cmb(ra, dec, self.cmb)),
-                       ('sim_t0', t0),
-                       ('ra', ra),
-                       ('dec', dec),
-                       ('vpec', vpec)]
+        if 'dipole' in self._params:
+            default_par['adip_dM'] = self._compute_dipole(ra,
+                                                          dec)
+        default_par = {'zcos': zcos,
+                       'como_dist': self.cosmology.comoving_distance(zcos).value,
+                       'z2cmb': ut.compute_z2cmb(ra, dec, self.cmb),
+                       'sim_t0': t0,
+                       'ra': ra,
+                       'dec': dec,
+                       'vpec': vpec}
 
         return default_par, dust_par
 
@@ -106,7 +109,7 @@ class BaseGen:
         rate_z0, rpw = self.rate_law
         return rate_z0 * (1 + z)**rpw
 
-    def _z_shell_time_rate(self):
+    def compute_zcdf(self, z_range):
         """Give the time rate SN/years in redshift shell.
 
         Parameters
@@ -120,7 +123,7 @@ class BaseGen:
             Numpy array containing the time rate in each redshift bin.
 
         """
-        z_min, z_max = self._params['z_range']
+        z_min, z_max = z_range
         z_shell = np.linspace(z_min, z_max, 1000)
         z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
         rate = self.rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
@@ -130,8 +133,31 @@ class BaseGen:
         # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = rate * shell_vol / (1 + z_shell_center)
 
-        self.z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
-        return z_shell, shell_time_rate
+        self._z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+        self._z_time_rate = z_shell, shell_time_rate
+
+    def _compute_dipole(self, ra, dec):
+        cart_vec = nbf.radec_to_cart(self.dipole['coord'][0],
+                                     self.dipole['coord'][1])
+        sn_vec = ut.radec_to_cart(ra, dec)
+        delta_M = self.dipole['A'] + self.dipole['B'] * cart_vec @ sn_vec
+        return delta_M
+
+    def print_config(self):
+        if 'model_dir' in self._params['model_config']:
+            model_dir = self._params['model_config']['model_dir']
+            model_dir_str = f"from {model_dir}"
+        else:
+            model_dir = None
+            model_dir_str = " from sncosmo"
+
+        print('OBJECT TYPE : ' + self._object_type)
+        print(f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str)
+
+    @property
+    def snc_model_time(self):
+        """Get the sncosmo model mintime and maxtime."""
+        return self.sim_model.mintime(), self.sim_model.maxtime()
 
     @property
     def host(self):
@@ -144,9 +170,14 @@ class BaseGen:
         return self._vpec_dist
 
     @property
-    def alpha_dipole(self):
+    def mw_dust(self):
+        """Get the mw_dust parameters."""
+        return self._mw_dust
+
+    @property
+    def dipole(self):
         """Get alpha dipole parameters."""
-        return self._alpha_dipole
+        return self._dipole
 
     @property
     def cosmology(self):
@@ -177,10 +208,9 @@ class BaseGen:
         return self._z_cdf
 
     @staticmethod
-    def _construct_int_par(*arg):
-        keys = [a[0] for a in arg]
-        data = [a[1] for a in arg]
-        dic = ({k: val for k, val in zip(keys, values)} for values in zip(*data))
+    def _construct_int_par(input_dic):
+        dic = ({k: input_dic[k][i] for k in input_dic.keys()}
+               for i in range(len(input_dic['ra'])))
         return dic
 
     def gen_peak_time(self, n, rand_gen):
@@ -282,15 +312,13 @@ class BaseGen:
 
         """
         ebv = dst_ut.compute_ebv(ra, dec)
-        if isinstance(self.model_config['mw_dust'], str):
-            mod_name = self.model_config['mw_dust']
-            r_v = 3.1
-        elif isinstance(self.model_config['mw_dust'], (list, np.ndarray)):
-            mod_name = self.model_config['mw_dust'][0]
-            r_v = self.model_config['mw_dust'][1]
+        mod_name = self.mw_dust['model']
+        if 'rv' in self.mw_dust:
+            rv = self.mw_dust['rv']
+        else:
+            rv = 3.1
         if mod_name.lower() in ['ccm89', 'od94']:
-            r_v = np.ones(len(ra)) * r_v
-            dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
+            dust_par = [{'mw_r_v': rv, 'mw_ebv': e} for e in ebv]
         elif mod_name.lower() in ['f99']:
             dust_par = [{'mw_ebv': e} for e in ebv]
         else:
@@ -303,10 +331,11 @@ class SNIaGen(BaseGen):
     _available_models = ['salt2', 'salt3']
 
     def __init__(self, params, cmb, cosmology, vpec_dist,
-                 host=None):
-        super().__init__(cmb, cosmology, vpec_dist,
-                         host=host, alpha_dipole=alpha_dipole)
-        if self.rate_law[0] is None:
+                 mw_dust=None, host=None, dipole=None):
+        super().__init__(params, cmb, cosmology, vpec_dist,
+                         host=host, mw_dust=mw_dust, dipole=dipole)
+
+        if isinstance(self.rate_law[0], str):
             self.rate_law = self._init_register_rate()
 
         self.sim_model = self._init_sim_model()
@@ -319,20 +348,18 @@ class SNIaGen(BaseGen):
         sn_int_par, dust_par = super().gen_transient_par(n_sn, rand_gen=rand_gen)
 
         # -- Generate coherent mag scattering
-        sn_int_par.append(('mag_sct', self.gen_coh_scatter(n_sn, rand_gen)))
+        sn_int_par['mag_sct'] = self.gen_coh_scatter(n_sn, rand_gen)
 
-        if 'dipole' in self._params:
-            sn_int_par.append(('adip_dM', self._compute_dipole(ra, dec)))
+        opt_seed = rand_gen.integers(1000, 1e6)
+        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seed),
+                                            z=sn_int_par['zcos'])
 
-        rand_model_par = self.gen_model_par(n_sn, np.random.default_rng(opt_seeds[0]), z=zcos)
-
-        # Convert sn_int_par to dict
-        sn_int_par_dict = self._construct_sn_int(*sn_int_par)
-
-        model_par_list = ({**self.general_par, 'sncosmo': {**mpsn, **dstp}}
+        model_par_list = ({**self._general_par, 'sncosmo': {**mpsn, **dstp}}
                           for mpsn, dstp in zip(rand_model_par, dust_par))
 
-        return [SNIa(snp, self.sim_model, mp) for snp, mp in zip(sn_int_par_dict, model_par_list)]
+        sn_int_par = super()._construct_int_par(sn_int_par)
+
+        return [trs.SNIa(snp, self.sim_model, mp) for snp, mp in zip(sn_int_par, model_par_list)]
 
     def _init_register_rate(self):
         if self._params['sn_rate'].lower() == 'ptf19':
@@ -410,7 +437,7 @@ class SNIaGen(BaseGen):
 
         """
         mag_sct = rand_gen.normal(
-            loc=0, scale=self.sn_int_par['mag_sct'], size=n)
+            loc=0, scale=self._params['mag_sct'], size=n)
         return mag_sct
 
     def gen_model_par(self, n, rand_gen, z=None):
@@ -429,11 +456,11 @@ class SNIaGen(BaseGen):
             One dictionnary containing 'parameters names': numpy.ndaray(float).
 
         """
-        model_name = self.model_config['model_name']
+        model_name = self._params['model_config']['model_name']
 
         if model_name in ('salt2', 'salt3'):
 
-            if self.model_config['dist_x1'] in ['N21']:
+            if self._params['model_config']['dist_x1'] in ['N21']:
                 z_for_dist = z
             else:
                 z_for_dist = None
@@ -469,23 +496,16 @@ class SNIaGen(BaseGen):
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        if isinstance(self.model_config['dist_x1'], str):
-            if self.model_config['dist_x1'].lower() == 'n21':
+        if isinstance(self._params['model_config']['dist_x1'], str):
+            if self._params['model_config']['dist_x1'].lower() == 'n21':
                 sim_x1 = salt_ut.n21_x1_model(z, rand_gen=rand_gen)
         else:
-            sim_x1 = ut.asym_gauss(*self.model_config['dist_x1'],
+            sim_x1 = ut.asym_gauss(*self._params['model_config']['dist_x1'],
                                    rand_gen=rand_gen,
                                    size=n)
 
-        sim_c = ut.asym_gauss(*self.model_config['dist_c'],
+        sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
                               rand_gen=rand_gen,
                               size=n)
 
         return sim_x1, sim_c
-
-    def _compute_dipole(self, ra, dec):
-        cart_vec = nbf.radec_to_cart(self._params['dipole']['coord'][0],
-                                     self._params['dipole']['coord'][1])
-        sn_vec = ut.radec_to_cart(ra, dec)
-        delta_M =self._params['dipole']['A'] + self._params['dipole']['B'] * cart_vec @ sn_vec)
-        return delta_M

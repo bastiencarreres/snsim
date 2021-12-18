@@ -7,6 +7,7 @@ from .constants import C_LIGHT_KMS
 
 
 class BasicTransient:
+    _type = ''
     def __init__(self, parameters, sim_model, model_par):
         self.sim_model = copy.copy(sim_model)
         self._params = parameters
@@ -317,9 +318,9 @@ class SNIa(BasicTransient):
         # elif self.sim_model.source.name == 'snoopy':
             # TODO
         # Dipole
-        if 'dip_dM' in self._sn_par:
-            mb += self._sn_par['dip_dM']
-            self.adip_dM = self._sn_par['dip_dM']
+        if 'dip_dM' in self._params:
+            mb += self._params['dip_dM']
+            self.adip_dM = self._params['dip_dM']
 
         self.sim_mb = mb
 

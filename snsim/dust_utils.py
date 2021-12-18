@@ -42,14 +42,14 @@ def check_files_and_dowload():
             break
 
 
-def init_mw_dust(model, mw_dust_mod):
+def init_mw_dust(model, mw_dust):
     """Set MW dut effect on sncosmo model.
 
     Parameters
     ----------
     model : sncosmo.Model
         The sncosmo model which to add the mw dust.
-    mw_dust_mod : str or list
+    mw_dust_mod : dic
         The model of dust to apply.
 
     Returns
@@ -59,17 +59,16 @@ def init_mw_dust(model, mw_dust_mod):
 
     """
     f99_r_v = 3.1
-    if isinstance(mw_dust_mod, (list, np.ndarray)):
-        f99_r_v = mw_dust_mod[1]
-        mw_dust_mod = mw_dust_mod[0]
-    if mw_dust_mod.lower() == 'ccm89':
+    if 'rv' in mw_dust:
+        f99_r_v = mw_dust['rv']
+    if mw_dust['model'].lower() == 'ccm89':
         dust = snc.CCM89Dust()
-    elif mw_dust_mod.lower() == 'od94':
+    elif mw_dust['model'].lower() == 'od94':
         dust = snc.OD94Dust()
-    elif mw_dust_mod.lower() == 'f99':
+    elif mw_dust['model'].lower() == 'f99':
         dust = snc.F99Dust(r_v=f99_r_v)
     else:
-        raise ValueError(f'{mw_dust_mod} model does not exist in sncosmo')
+        raise ValueError(f"{mw_dust['model']} model does not exist in sncosmo")
 
     model.add_effect(dust, frame='obs', name='mw_')
 

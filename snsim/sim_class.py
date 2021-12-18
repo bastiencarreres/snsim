@@ -1002,6 +1002,26 @@ class SurveyObs:
                             self.config['dec_size'],
                             field_map)
 
+    def print_config(self):
+        print(f"SURVEY FILE : {self.config['survey_file']}")
+
+        print("First day in survey_file : "
+              f"{self.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
+              "Last day in survey_file : "
+              f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}")
+
+        print(f"Survey effective duration is {self.survey.duration:.2f} days")
+
+        if 'survey_cut' in self.config:
+            for k, v in self.config['survey_config']['survey_cut'].items():
+                conditions_str = ''
+                for cond in v:
+                    conditions_str += str(cond) + ' OR '
+                conditions_str = conditions_str[:-4]
+                print(f'Select {k}: ' + conditions_str)
+        else:
+            print('No cut on survey file.')
+
     @property
     def config(self):
         """Survey configuration."""
@@ -1254,7 +1274,7 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-    def epochs_selection(self, SN_obj):
+    def epochs_selection(self, coords, model_t_range):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -1268,11 +1288,11 @@ class SurveyObs:
             astropy table containing the SN observations.
 
         """
-        SN_ra, SN_dec = SN_obj.coord
+        Obj_ra, Obj_dec = coords
 
         # Time selection :
-        expr = ("(self.obs_table.expMJD  > SN_obj.sim_model.mintime()) "
-                "& (self.obs_table.expMJD < SN_obj.sim_model.maxtime())")
+        expr = ("(self.obs_table.expMJD  > model_t_range[0]) "
+                "& (self.obs_table.expMJD < model_t_range[1])")
         epochs_selec = pd.eval(expr).to_numpy()
 
         is_obs = epochs_selec.any()
@@ -1282,7 +1302,7 @@ class SurveyObs:
             selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
 
             # Create a dic[fields] = obs_subfield
-            dic_map = self.fields.is_in_field(SN_ra, SN_dec, selec_fields_ID)
+            dic_map = self.fields.is_in_field(Obj_ra, Obj_dec, selec_fields_ID)
 
             # Update the epochs_selec mask and check if there is some observations
             is_obs, epochs_selec = nbf.map_obs_fields(
