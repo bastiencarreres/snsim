@@ -1,24 +1,35 @@
 """Contains transients models."""
 
 import copy
+import abc
 import numpy as np
 import pandas as pd
 from .constants import C_LIGHT_KMS
 
 
-class BasicTransient:
+class BasicAstrObj(abc.ABC):
     _type = ''
     def __init__(self, parameters, sim_model, model_par):
+
+        # -- sncosmo model
         self.sim_model = copy.copy(sim_model)
+
+        # -- Intrinsic parameters of the astrobj
         self._params = parameters
         self._model_par = model_par
+        self._update_model_par()
 
+        # -- Add dust and dipole if necessary
         if 'mw_' in self.sim_model.effect_names:
             self.mw_ebv = self._params['sncosmo']['mw_ebv']
 
-        if 'dip_dM' in model_par:
+        if 'dip_dM' in self._params:
             self.dip_dM = self._model_par['dip_dM']
 
+        # -- set parameters of the sncosmo model
+        self._set_model()
+
+        # -- Define attributes to be set
         self._epochs = None
         self._sim_lc = None
         self._ID = None
@@ -28,6 +39,10 @@ class BasicTransient:
         params = {**{'z': self.zobs, 't0': self.sim_t0},
                   **self._params['sncosmo']}
         self.sim_model.set(**params)
+
+    @abc.abstractmethod
+    def _update_model_par(self):
+        pass
 
     def pass_cut(self, nep_cut):
         """Check if the Transient pass the given cuts.
@@ -265,14 +280,12 @@ class BasicTransient:
         return self._sim_lc
 
 
-class SNIa(BasicTransient):
+class SNIa(BasicAstrObj):
     _type = 'snIa'
     _available_models = ['salt2', 'salt3']
 
     def __init__(self, sn_par, sim_model, model_par):
         super().__init__(sn_par, sim_model, model_par)
-        self._init_model_par()
-        super()._set_model()
 
     def _add_meta_to_table(self):
         self.sim_lc.attrs['type'] = self._type
@@ -281,7 +294,7 @@ class SNIa(BasicTransient):
         if 'adip_dM' in self._params:
             self.sim_lc.attrs['adip_dM'] = self.adip_dM
 
-    def _init_model_par(self):
+    def _update_model_par(self):
         """Extract and compute SN parameters that depends on used model.
 
         Returns
@@ -318,12 +331,8 @@ class SNIa(BasicTransient):
             self.sim_x1 = x1
             self.sim_c = c
 
-        # elif self.sim_model.source.name == 'snoopy':
-            # TODO
-        # Dipole
         if 'dip_dM' in self._params:
             mb += self._params['dip_dM']
-            self.dip_dM = self._params['dip_dM']
 
         self.sim_mb = mb
 

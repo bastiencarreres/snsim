@@ -17,6 +17,7 @@ __version__ = "0.3.13_dev"
 from .simu import Simulator
 from .sn_sample import SNSimSample
 from . import post_sim_tools
-from . import transient
+from . import transients
+from . import generators
 from . import sim_class
 from . import utils

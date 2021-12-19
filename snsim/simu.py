@@ -4,12 +4,12 @@ import time
 import yaml
 import numpy as np
 from . import utils as ut
-from . import generator
+from . import generators
 from . import sim_class as scls
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
 
-from .generator import __GEN_DIC__
+from .generators import __GEN_DIC__
 from .sn_sample import SNSimSample
 
 
