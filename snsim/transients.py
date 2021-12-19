@@ -91,7 +91,7 @@ class BasicAstrObj(abc.ABC):
         print(self.sim_model.parameters)
 
         if self._model_par['mod_fcov']:
-            # Implement the flux variation due to simulation model covariance
+            # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
             flux, fluxcov = self.sim_model.bandfluxcov(self.epochs['band'],
                                                        self.epochs['time'],
@@ -110,7 +110,7 @@ class BasicAstrObj(abc.ABC):
                                            zpsys=self.epochs['zpsys'])
 
 
-        # Noise computation : Poisson Noise + Skynoise + ZP noise
+        # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerr = np.sqrt(np.abs(flux) / self.epochs['gain']
                           + self.epochs['skynoise']**2
                           + (np.log(10) / 2.5 * flux * self.epochs['sig_zp'])**2)
