@@ -394,19 +394,9 @@ class Simulator:
 
         print('-----------------------------------------------------------')
 
-        # if 'sct_model' in self.config['sn_gen']:
-        #     print("\nUse intrinsic scattering model : "
-        #           f"{self.config['sn_gen']['sct_model']}")
-        #
-        if 'mw_dust' in self.config['model_config']:
+        if 'mw_dust' in self.config:
             print("\nUse mw dust model : "
             f"{self.config['mw_dust']['model']}")
-
-        # if ('mod_fcov' in self.config['model_config']
-        #    and self.config['model_config']['mod_fcov']):
-        #     print("\nModel COV ON")
-        # else:
-        #     print("\nModel COV OFF")
 
         print('-----------------------------------------------------------\n')
 
@@ -433,7 +423,7 @@ class Simulator:
                 lcs_list += self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
             else:
                 lcs_list += self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
-
+            
             self._samples.append(SNSimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                         lcs_list,
                                                         self._get_primary_header(),

@@ -65,6 +65,10 @@ class BaseGen(abc.ABC):
     def gen_snc_par(self, astrobj_par, rand_gen):
         pass
 
+    @abc.abstractmethod
+    def _add_print(self):
+        pass
+
     def _init_rate(self):
         if 'rate' in self._params:
             rate = self.config['sn_gen']['sn_rate']
@@ -202,6 +206,15 @@ class BaseGen(abc.ABC):
 
         print('OBJECT TYPE : ' + self._object_type)
         print(f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str)
+
+        self._add_print()
+
+        if self._general_par['mod_fcov']:
+            print("\nModel COV ON")
+        else:
+            print("\nModel COV OFF")
+
+
 
     def _get_primary_header(self):
         """Generate the primary header of sim fits file..
@@ -460,6 +473,13 @@ class SNIaGen(BaseGen):
         # -- Generate coherent mag scattering
         astrobj_par['mag_sct'] = self.gen_coh_scatter(n_sn, rand_gen)
 
+    def _add_print(self):
+        if 'sct_model' in self._params:
+            print("\nUse intrinsic scattering model : "
+                  f"{self._params['sct_model']}")
+
+        pass
+
     def gen_coh_scatter(self, n_sn, rand_gen):
         """Generate n coherent mag scattering term.
 
@@ -480,11 +500,11 @@ class SNIaGen(BaseGen):
         return mag_sct
 
     def gen_snc_par(self, n_sn, astrobj_par, rand_gen):
-        """Generate model dependant parameters.
+        """Generate sncosmo model dependant parameters (others than redshift and t0).
 
         Parameters
         ----------
-        n : int
+        n_sn : int
             Number of parameters to generate.
         rand_gen : numpy.random.default_rng
             Numpy random generator.
