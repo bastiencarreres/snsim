@@ -163,6 +163,12 @@ class Simulator:
         # -- Init SurveyObs object
         self._survey = scls.SurveyObs(self.config['survey_config'])
 
+        # -- Init vpec_dist
+        if 'vpec_dist' in self.config:
+            self._vpec_dist = self.config['vpec_dist']
+        else:
+            self._vpec_dist = None
+
         # -- Init host object
         if 'host' in self.config:
             self._host = scls.SnHost(self.config['host'], self.z_range)
@@ -190,7 +196,7 @@ class Simulator:
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
-                                                  self.vpec_dist,
+                                                  vpec_dist = self.vpec_dist,
                                                   host=self.host,
                                                   mw_dust=mw_dust,
                                                   dipole=dipole))
@@ -423,7 +429,7 @@ class Simulator:
                 lcs_list += self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
             else:
                 lcs_list += self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
-            
+
             self._samples.append(SNSimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                         lcs_list,
                                                         self._get_primary_header(),
@@ -538,68 +544,6 @@ class Simulator:
                     raise_trigger += 1
             n_to_sim = generator._params['force_n'] - len(lcs)
         return lcs
-
-    def _get_primary_header(self):
-        """Generate the primary header of sim fits file..
-
-        Returns
-        -------
-        None
-
-        """
-        header = {'M0': self.config['sn_gen']['M0'],
-                  'sigM': self.config['sn_gen']['mag_sct'],
-                  'sn_rate': self.sn_rate_z0[0],
-                  'rate_pw': self.sn_rate_z0[1],
-                  **self.config['cosmology']}
-
-        if isinstance(header['M0'], str) and header['M0'].lower() == 'jla':
-            header['M0'] = ut.scale_M0_jla(self.cosmology.H0.value)
-            header['M0_mod'] = 'jla'
-
-        if self.host is None:
-            header['m_vp'] = self.config['vpec_dist']['mean_vpec']
-            header['s_vp'] = self.config['vpec_dist']['sig_vpec']
-
-        if self.model_name == 'salt2' or self.model_name == 'salt3':
-            fits_dic = {'model_name': 'Mname',
-                        'alpha': 'alpha',
-                        'beta': 'beta'}
-
-            header['mean_x1'] = self.config['model_config']['dist_x1'][0]
-            if len(self.config['model_config']['dist_x1']) == 3:
-                header['s_x1_low'] = self.config['model_config']['dist_x1'][1]
-                header['s_x1_hi'] = self.config['model_config']['dist_x1'][2]
-            else:
-                header['sig_x1'] = self.config['model_config']['dist_x1'][1]
-
-            header['mean_c'] = self.config['model_config']['dist_c'][0]
-            if len(self.config['model_config']['dist_c']) == 3:
-                header['s_c_low'] = self.config['model_config']['dist_c'][1]
-                header['s_c_hi'] = self.config['model_config']['dist_c'][2]
-            else:
-                header['sig_c'] = self.config['model_config']['dist_c'][1]
-
-        if 'mw_dust' in self.config['model_config']:
-            if isinstance(self.config['model_config']['mw_dust'], (list, np.ndarray)):
-                header['mwd_mod'] = self.config['model_config']['mw_dust'][0]
-                header['mw_rv'] = self.config['model_config']['mw_dust'][1]
-            else:
-                header['mwd_mod'] = self.config['model_config']['mw_dust']
-                header['mw_rv'] = 3.1
-
-        for k, v in fits_dic.items():
-            header[v] = self.config['model_config'][k]
-
-        if 'sct_model' in self.config['sn_gen']:
-            header['Smod'] = self.config['sn_gen']['sct_model']
-
-        if 'mod_fcov' in self.config['model_config']:
-            header['mod_fcov'] = self.config['model_config']['mod_fcov']
-        else:
-            header['mod_fcov'] = False
-
-        return header
 
     def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
         """Plot a mollweide map of ra, dec.

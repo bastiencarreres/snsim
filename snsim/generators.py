@@ -13,8 +13,11 @@ __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
 
 class BaseGen(abc.ABC):
     @abc.abstractmethod
-    def __init__(self, params, cmb, cosmology, vpec_dist,
+    def __init__(self, params, cmb, cosmology, vpec_dist=None,
                  host=None, mw_dust=None, dipole=None):
+
+        if vpec_dist is not None and host is not None:
+            raise ValueError("You can't set vpec_dist and host at the same time")
 
         self._params = params
         self._cmb = cmb
@@ -69,6 +72,10 @@ class BaseGen(abc.ABC):
     def _add_print(self):
         pass
 
+    @abc.abstractmethod
+    def _update_header(self):
+        pass
+
     def _init_rate(self):
         if 'rate' in self._params:
             rate = self.config['sn_gen']['sn_rate']
@@ -116,14 +123,21 @@ class BaseGen(abc.ABC):
         # -- Generate 2 randseeds for optionnal parameters randomization
         opt_seeds = rand_gen.integers(low=1000, high=1e6, size=2)
 
-        # -- If there is hosts use them
+        # -- Generate ra, dec
         if self.host is not None:
             ra = host['ra'].values
             dec = host['dec'].values
-            vpec = host['v_radial'].values
         else:
             ra, dec = self.gen_coord(n_obj, np.random.default_rng(opt_seeds[0]))
+
+        # -- Generate vpec
+        if self.vpec_dist is not None:
             vpec = self.gen_vpec(n_obj, np.random.default_rng(opt_seeds[1]))
+        elif self.host is not None:
+            vpec = host['v_radial'].values
+        else:
+            vpec = np.zeros(len(ra))
+
 
         astrobj_par = {'zcos': zcos,
                        'como_dist': self.cosmology.comoving_distance(zcos).value,
@@ -214,26 +228,29 @@ class BaseGen(abc.ABC):
         else:
             print("\nModel COV OFF")
 
-
-
-    def _get_primary_header(self):
-        """Generate the primary header of sim fits file..
+    def _get_header(self):
+        """Generate header of sim file..
 
         Returns
         -------
         None
 
         """
-        basic_header = {'rate': self.rate_law[0],
-                        'rate_pw': self.rate_law[1]}
-
+        header = {'obj_type' : self._object_type,
+                  'rate': self.rate_law[0],
+                  'rate_pw': self.rate_law[1]}
+        header = {**header, **self._general_par}
 
         if self.mw_dust is not None:
             header['mw_mod'] = self.mw_dust['model']
             header['mw_rv'] = self.mw_dust['rv']
 
-        if 'mod_fcov' in self._params['model_config']:
-            header['mod_fcov'] = self.config['model_config']['mod_fcov']
+        if self.vpec_dist is not None:
+            header['m_vp'] = self.vpec_dist['mean_vpec']
+            header['s_vp'] = self.vpec_dist['sig_vpec']
+
+        self._update_header(header)
+        return header
 
 
     @property
@@ -407,7 +424,7 @@ class SNIaGen(BaseGen):
     _astrobj_class = getattr(trs, 'SNIa')
     _available_models = ['salt2', 'salt3']
 
-    def __init__(self, params, cmb, cosmology, vpec_dist,
+    def __init__(self, params, cmb, cosmology, vpec_dist=None,
                  mw_dust=None, host=None, dipole=None):
         super().__init__(params, cmb, cosmology, vpec_dist,
                          host=host, mw_dust=mw_dust, dipole=dipole)
@@ -464,6 +481,7 @@ class SNIaGen(BaseGen):
             model_keys = ['alpha', 'beta']
 
         self._general_par['M0'] = self._init_M0()
+        self._general_par['sigM'] = self._params['mag_sct']
 
         for k in model_keys:
             self._general_par[k] = self._params['model_config'][k]
@@ -478,7 +496,33 @@ class SNIaGen(BaseGen):
             print("\nUse intrinsic scattering model : "
                   f"{self._params['sct_model']}")
 
-        pass
+    def _update_header(self, header):
+        model_name = self._params['model_config']['model_name']
+        if model_name.lower() in ['salt2', 'salt3']:
+
+            if isinstance(self._params['model_config']['dist_x1'], str):
+                header['dist_x1'] = self._params['model_config']['dist_x1']
+            else:
+                if len(self._params['model_config']['dist_x1']) == 3:
+                    header['dist_x1'] = 'asym_gauss'
+                    header['sig_x1_low'] = self._params['model_config']['dist_x1'][1]
+                    header['sig_x1_hi'] = self._params['model_config']['dist_x1'][2]
+                elif len(self._params['model_config']['dist_x1']) == 2:
+                    header['dist_x1'] = 'gauss'
+                    header['sig_x1'] = self._params['model_config']['dist_x1'][1]
+
+                header['mean_c'] = self._params['model_config']['dist_c'][0]
+
+            if len(self._params['model_config']['dist_c']) == 3:
+                header['dist_c'] = 'asym_gauss'
+                header['sig_c_low'] = self._params['model_config']['dist_c'][1]
+                header['sig_c_hi'] = self._params['model_config']['dist_c'][2]
+            else:
+                header['dist_c'] = 'gauss'
+                header['sig_c'] = self._params['model_config']['dist_c'][1]
+
+        if 'sct_model' in self._params:
+            header['sct_mod'] = self._params['sct_model']
 
     def gen_coh_scatter(self, n_sn, rand_gen):
         """Generate n coherent mag scattering term.
