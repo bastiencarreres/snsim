@@ -432,7 +432,7 @@ class Simulator:
 
             self._samples.append(SNSimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                         lcs_list,
-                                                        self._get_primary_header(),
+                                                        gen._get_header(),
                                                         model_dir=None,
                                                         dir_path=self.config['data']['write_path']))
 
