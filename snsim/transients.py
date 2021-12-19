@@ -24,7 +24,7 @@ class BasicAstrObj(abc.ABC):
             self.mw_ebv = self._params['sncosmo']['mw_ebv']
 
         if 'dip_dM' in self._params:
-            self.dip_dM = self._model_par['dip_dM']
+            self.dip_dM = self._params['dip_dM']
 
         # -- set parameters of the sncosmo model
         self._set_model()
