@@ -8,10 +8,33 @@ from .constants import C_LIGHT_KMS
 
 
 class BasicAstrObj(abc.ABC):
+    """Short summary.
+
+    Parameters
+    ----------
+    parameters : dict
+        Parameters of the obj.
+        parameters
+        ├── zcos, cosmological redshift
+        ├── z2cmb, CMB dipole redshift contribution
+        ├── como_dist, comoving distance of the obj
+        ├── vpec, obj peculiar velocity
+        ├── ra, obj Right Ascension
+        ├── dec, obj Declinaison
+        ├── sim_t0, obj peak time
+        ├── dip_dM, magnitude modification due to a dipole
+        └── sncosmo
+            └── sncosmo parameters
+    sim_model : sncosmo.Model
+        sncosmo Model to use.
+    model_par : dict
+        General model parameters.
+        model_par
+        +-- mod_fcov, boolean to use or not model flux covariance
+    """
     _type = ''
 
     def __init__(self, parameters, sim_model, model_par):
-
         # -- sncosmo model
         self.sim_model = copy.copy(sim_model)
 
@@ -43,6 +66,16 @@ class BasicAstrObj(abc.ABC):
 
     @abc.abstractmethod
     def _update_model_par(self):
+        """Abstract method to add general model parameters,
+        call during __init__.
+        """
+
+        pass
+
+    def _add_meta_to_table(self):
+        """Optional method to add metadata to sim_lc,
+        called during _reformat_sim_table.
+        """
         pass
 
     def pass_cut(self, nep_cut):
@@ -73,7 +106,7 @@ class BasicAstrObj(abc.ABC):
             return True
 
     def gen_flux(self, rand_gen):
-        """Generate the SN lightcurve.
+        """Generate the obj lightcurve.
 
         Parameters
         ----------
@@ -150,9 +183,6 @@ class BasicAstrObj(abc.ABC):
         self._sim_lc.set_index('epochs', inplace=True)
         return self._reformat_sim_table()
 
-    def _add_meta_to_table():
-        pass
-
     def _reformat_sim_table(self):
         """Give the good format to the sncosmo output Table.
 
@@ -177,6 +207,8 @@ class BasicAstrObj(abc.ABC):
             if k not in dont_touch and k[:3] not in not_to_change:
                 self.sim_lc.attrs['sim_' + k] = self.sim_lc.attrs.pop(k)
 
+        self.sim_lc.attrs['type'] = self._type
+
         if self.ID is not None:
             self.sim_lc.attrs['id'] = self.ID
 
@@ -190,6 +222,10 @@ class BasicAstrObj(abc.ABC):
         self.sim_lc.attrs['sim_mb'] = self.sim_mb
         self.sim_lc.attrs['sim_mu'] = self.sim_mu
         self.sim_lc.attrs['com_dist'] = self.como_dist
+
+        if 'dip_dM' in self._params:
+            self.sim_lc.attrs['dip_dM'] = self.dip_dM
+
         self._add_meta_to_table()
 
     @property
@@ -280,6 +316,23 @@ class BasicAstrObj(abc.ABC):
 
 
 class SNIa(BasicAstrObj):
+    """SNIa object class.
+
+    Parameters
+    ----------
+    sn_par : dict
+        Parameters of the SN.
+      | same as BasicAstrObj parameters
+      | └── mag_sct, coherent mag scattering.
+    sim_model : sncosmo.Model
+        sncosmo Model to use.
+    model_par : dict
+        General model parameters.
+      | same as BasicAstrObj model_par
+      | ├── M0, SNIa absolute magnitude
+      | ├── sigM, sigma of coherent scattering
+      | └── used model parameters
+    """
     _type = 'snIa'
     _available_models = ['salt2', 'salt3']
 
@@ -287,18 +340,11 @@ class SNIa(BasicAstrObj):
         super().__init__(sn_par, sim_model, model_par)
 
     def _add_meta_to_table(self):
-        self.sim_lc.attrs['type'] = self._type
+        """Add metadata to sim_lc."""
         self.sim_lc.attrs['m_sct'] = self.mag_sct
-
-        if 'adip_dM' in self._params:
-            self.sim_lc.attrs['adip_dM'] = self.adip_dM
 
     def _update_model_par(self):
         """Extract and compute SN parameters that depends on used model.
-
-        Returns
-        -------
-        None
 
         Notes
         -----

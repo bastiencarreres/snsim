@@ -1,7 +1,7 @@
-**sim\_class**
+**astrobj**
 ==============
 
-.. automodule:: snsim.sim_class
+.. automodule:: snsim.astrobj
    :members:
    :undoc-members:
    :show-inheritance:

@@ -35,32 +35,6 @@ class SurveyObs:
       | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
       | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
       | └── sub_field, SUBFIELD KEY -> str, opt
-
-    Attributes
-    ----------
-    _config : dict
-        Copy of the survey_config input dict.
-    _obs_table : pandas.DataFrame
-        Table containing observations.
-    fields : SurveyFields
-        SurveyFields object contains fields properties.
-
-    Methods
-    -------
-    _init_field_dic(self):
-        Create a dictionnary with fieldID and coord.
-
-    _extract_from_db(self)
-        Extract the observation from SQL data base.
-
-     _read_start_end_days(self):
-        Initialise the start and ending day from survey configuration.
-
-    epochs_selection(self, SN)
-        Give the epochs of observation of a given SN.
-
-     _make_obs_table(self, epochs_selec):
-        Create the astropy table from selection bool array.
     """
 
     _base_keys = ['expMJD',
@@ -520,27 +494,6 @@ class SurveyFields:
         The DEC size of the field in deg.
     field_map : str
         The path of the field map or just a str.
-
-    Attributes
-    ----------
-    _size : numpy.array(float, float)
-        RA, DEC size in degrees.
-    _dic : dict
-        A copy of the input fields_dic.
-    _sub_field_map : numpy.array(int) or None
-        The map of the field subparts.
-
-    Methods
-    -------
-    _init_fields_map()
-        Init the subfield map parameters.
-    is_in_field(SN_ra, SN_dec, fields_pre_selec=None)
-        Check if a SN is in a field and return the coordinates in the field frame.
-    in_which_sub_field(obs_fieldsID, coord_in_obs_fields)
-        Find in which subfield is the SN.
-    show_map():
-        Plot an ASCII representation of subfields.
-
     """
 
     def __init__(self, fields_dic, ra_size, dec_size, field_map):
@@ -678,14 +631,7 @@ class SurveyFields:
         return obsfield_map
 
     def show_map(self):
-        """Plot a representation of subfields.
-
-        Returns
-        -------
-        None
-            Just print something.
-
-        """
+        """Plot a representation of subfields."""
         fig, ax = plt.subplots()
         for k, corners in self._sub_fields_corners.items():
             corners_deg = np.degrees(corners)
@@ -709,27 +655,8 @@ class SnHost:
     ----------
     config : str
         Configuration of host.
-    z_range : list(float)
+    z_range : list(float), opt
         The redshift range.
-
-    Attributes
-    ----------
-    _table : pandas.DataFrame
-        Pandas dataframe that contains host data.
-    _max_dz : float
-        The maximum redshift gap between 2 host.
-    _z_range : list(float)
-        A copy of input z_range.
-    _file
-        A copy of input host_file.
-
-    Methods
-    -------
-    _read_host_file()
-        Extract host from host file.
-    random_host(n, z_range, rand_seed)
-        Random choice of host in a redshift range.
-
     """
 
     def __init__(self, config, z_range=None):

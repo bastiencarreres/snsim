@@ -212,9 +212,9 @@ def radec_to_cart_2d(ra, dec):
 
     Parameters
     ----------
-    ra : float or numpy.ndarray
+    ra : numpy.ndarray
         Right Ascension.
-    dec :  float or numpy.ndarray
+    dec : numpy.ndarray
         Declinaison.
 
     Returns
@@ -233,14 +233,14 @@ def radec_to_cart(ra, dec):
 
     Parameters
     ----------
-    ra : float or numpy.ndarray
+    ra : float
         Right Ascension.
-    dec :  float or numpy.ndarray
+    dec :  float
         Declinaison.
 
     Returns
     -------
-    numpy.ndarray(float)
+    numpy.array(float)
         Carthesian coordinates corresponding to RA Dec coordinates.
 
     """

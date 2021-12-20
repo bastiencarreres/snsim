@@ -29,53 +29,6 @@ class SimSample:
         The path to the simulation model files.
     file_path : str, opt
         Path of the sample.
-
-    Attributes
-    ----------
-    _name : str
-        Copy of input sample name.
-    _header : dict
-        Copy of input header.
-    _sim_lcs : np.ndarray(astropy.Table)
-        Copy of input sim_lcs.
-    _model_dir : str or None
-        Copy of input model_dir.
-    _dir_path : str or None
-        Copy of input dir_path.
-    _fit_model : sncosmo.Model
-        The model used to fit SN.
-    _fit_res : list
-        Fit results.
-    _fit_resmod : list(sncosmo.Model)
-        Models after fit.
-    modified_lcs : pandas.DataFrame
-        List of new lcs after SNR detection.
-    _bands : list(str)
-        All used in sim lcs.
-
-    Methods
-    -------
-    fromDFlist(cls, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
-        Initialize the class from a list of pandas.DataFrame.
-    fromFile(cls, sim_file, model_dir=None)
-        Initialize the class from a fits or pickle file.
-    get(self, key):
-        Get an array of sim_lc metadata.
-    _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_list=None, sufname=''):
-        write simulation into a file.
-    write_mod(self, formats=['pkl', 'parquet']):
-        Write a file containing only the modified SN epochs.
-    fit_lc(self, sn_ID=None, mw_dust=-2):
-       Fit all or just one SN lightcurve(s).
-    write_fit(self, write_path=None):
-        Write fits results in fits format.
-    plot_hist(self, key, ax=None, **kwargs):
-        Plot the histogram of the key metadata.
-    plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False, \
-            mod=False):
-        Plot the given SN lightcurve.
-    plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
-        Plot a mollweide map of ra, dec.
     """
 
     def __init__(self, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
@@ -231,15 +184,19 @@ class SimSample:
         return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
-        """Change the fit model by a given SNCosmo Model.
+        """Set the fit with a given SNCosmo Model.
 
         Parameters
         ----------
         model : sncosmo.models.Model or str
             A sncosmo Model or a model name for utils.init_sn_model(model, model_dir).
-        model_dir : str
+        model_dir : str, opt
             In case you want to set your model via utils.init_sn_model(model, model_dir).
-
+        mw_dust : dict, opt
+            Milky Wat dust model to apply.
+          | mw_dust
+          | ├── model : str (model name)
+          | └── rv : float, opt
         Returns
         -------
         None

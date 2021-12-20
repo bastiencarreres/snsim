@@ -10,7 +10,7 @@ from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
 
 from .generators import __GEN_DIC__
-from .sn_sample import SimSample
+from .sample import SimSample
 
 
 class Simulator:
@@ -20,47 +20,6 @@ class Simulator:
     ----------
     param_dic : dict / str
         The configuration yaml file / The dictionnary containing all simulation parameters.
-
-    Attributes
-    ----------
-    _config : dict
-        The simulation parameters dictionnary
-    _sn_list : list (init value = None)
-        List containing simulated SN object
-    _fit_res : list (init value = None)
-        List containing sncosmo fit results
-    _random_seed : int (init value = None)
-        The primary random seed of the simulation
-    _host : SnHost (default = None)
-        Host object of the simulation
-    _obs : ObsTable
-        ObsTable object of the simulation.
-    _generator : SNGen
-        SNGen object of the simulation
-    _use_rate : boolean
-        Is the number of SN to simulate fixed?
-
-    Methods
-    -------
-    sn_rate(z)
-        Give the rate SNs/Mpc^3/year at redshift z.
-    simulate()
-        Launch the simulation.
-    plot_ra_dec(self, plot_vpec=False, **kwarg):
-        Plot a mollweide map of ra, dec.
-    write_fit()
-        Write fits results in fits format.
-    _time_rate_bins()
-        Give the time rate SN/years in redshift bins.
-    _gen_n_sn(rand_seed)
-        Generate the number of SN with Poisson law.
-    _cadence_sim()
-        Simulaton where the number of SN observed is determined by
-        survey properties and poisson law.
-    _fix_nsn_sim()
-        Simulation where the number of SN is fixed.
-    _get_primary_header()
-        Generate the primary header of sim fits file.
 
     Notes
     -----
@@ -98,8 +57,8 @@ class Simulator:
     |     rv: Rv # Optional, default Rv = 3.1
     | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
-    |     sn_rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
-    |     rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
+    |     rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
+    |     rate_pw: rate = rate*(1+z)^rate_pw  # Optional, default=0
     |     M0: SN ABSOLUT MAGNITUDE
     |     mag_sct: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
@@ -206,99 +165,6 @@ class Simulator:
                 else:
                     self._use_rate.append(True)
 
-    @property
-    def config(self):
-        """Get the whole configuration dic."""
-        return self._config
-
-    @property
-    def sim_name(self):
-        """Get sim name."""
-        return self.config['data']['sim_name']
-
-    @property
-    def vpec_dist(self):
-        """Get vpec option."""
-        if 'vpec_dist' in self.config:
-            return self.config['vpec_dist']
-        elif 'host_file' in self.config:
-            return None
-        else:
-            return {'mean_vpec': 0., 'sig_vpec': 0.}
-
-    @property
-    def cmb(self):
-        """Get cmb parameters."""
-        cmb_dic = {'v_cmb': VCMB, 'l_cmb': L_CMB, 'b_cmb': B_CMB}
-        if 'cmb' in self.config:
-            if 'v_cmb' in self.config['cmb']:
-                cmb_dic['v_cmb'] = self.config['cmb']['v_cmb']
-            if 'l_cmb' in self.config['cmb']:
-                cmb_dic['l_cmb'] = self.config['cmb']['l_cmb']
-            if 'b_cmb' in self.config['cmb']:
-                cmb_dic['b_cmb'] = self.config['cmb']['b_cmb']
-        return cmb_dic
-
-    @property
-    def sample(self):
-        """Get the list of simulated sn."""
-        return self._sample
-
-    @property
-    def cosmology(self):
-        """Get astropy cosmological model used in simulation."""
-        return self._cosmology
-
-    @property
-    def survey(self):
-        """Get the SurveyObs object of the simulation."""
-        return self._survey
-
-    @property
-    def generators(self):
-        """Get the SNGen object of the simulation."""
-        return self._generators
-
-    @property
-    def host(self):
-        """Get the SnHost object of the simulation."""
-        return self._host
-
-    @property
-    def randseed(self):
-        """Get primary random seed of the simulation."""
-        if 'randseed' in self.config['sim_par']:
-            return int(self.config['sim_par']['randseed'])
-        elif self._random_seed is None:
-            self._random_seed = np.random.randint(low=1000, high=100000)
-        return self._random_seed
-
-    @property
-    def z_range(self):
-        """Get z_range."""
-        return self.config['sim_par']['z_range']
-
-    @property
-    def nep_cut(self):
-        """Get the list of epochs cuts."""
-        snc_mintime = -20
-        snc_maxtime = 50
-        if 'nep_cut' in self.config['sim_par']:
-            nep_cut = self.config['sim_par']['nep_cut']
-            if isinstance(nep_cut, (int)):
-                nep_cut = [
-                    (nep_cut,
-                     snc_mintime,
-                     snc_maxtime)]
-            elif isinstance(nep_cut, (list)):
-                for i, cut in enumerate(nep_cut):
-                    if len(cut) < 3:
-                        nep_cut[i].append(snc_mintime)
-                        nep_cut[i].append(snc_maxtime)
-        else:
-            nep_cut = [(1, snc_mintime, snc_maxtime)]
-        return nep_cut
-
     def peak_time_range(self, trange_model):
         """Get the time range for simulate SN peak.
 
@@ -377,7 +243,7 @@ class Simulator:
                 compute_z_cdf = True
                 gen.compute_zcdf(self.z_range)
             else:
-                print(f"Generate {gen._params['force_n']} SN Ia\n")
+                print(f"\nGenerate {gen._params['force_n']} SN Ia\n")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
                     rate_str = 'Redshift distribution computed '
                     if self.host.config['distrib'] == 'as_host':
@@ -437,7 +303,9 @@ class Simulator:
                                                       model_dir=None,
                                                       dir_path=self.config['data']['write_path']))
 
-            print(f'{len(lcs_list)} {gen._object_type} lcs generated in {time.time() - sim_time:.1f} seconds')
+            print(f'{len(lcs_list)} {gen._object_type} lcs generated'
+                  f' in {time.time() - sim_time:.1f} seconds')
+
             write_time = time.time()
             self._samples[-1]._write_sim(self.config['data']['write_path'],
                                          self.config['data']['write_format'])
@@ -529,7 +397,7 @@ class Simulator:
         while len(lcs) < generator._params['force_n']:
             list_tmp = generator(n_to_sim, rand_gen)
             for obj in list_tmp:
-                obj.epochs = self.survey.epochs_selection((obj.ra, obj.dec),
+                obj.epochs = self.survey.epochs_selection(obj.coord,
                                                           (obj.sim_model.mintime(),
                                                            obj.sim_model.maxtime()))
                 if obj.pass_cut(self.nep_cut):
@@ -570,3 +438,96 @@ class Simulator:
                                    field_dic=field_dic,
                                    field_size=field_size,
                                    **kwarg)
+
+    @property
+    def config(self):
+        """Get the whole configuration dic."""
+        return self._config
+
+    @property
+    def sim_name(self):
+        """Get sim name."""
+        return self.config['data']['sim_name']
+
+    @property
+    def vpec_dist(self):
+        """Get vpec option."""
+        if 'vpec_dist' in self.config:
+            return self.config['vpec_dist']
+        elif 'host_file' in self.config:
+            return None
+        else:
+            return {'mean_vpec': 0., 'sig_vpec': 0.}
+
+    @property
+    def cmb(self):
+        """Get cmb parameters."""
+        cmb_dic = {'v_cmb': VCMB, 'l_cmb': L_CMB, 'b_cmb': B_CMB}
+        if 'cmb' in self.config:
+            if 'v_cmb' in self.config['cmb']:
+                cmb_dic['v_cmb'] = self.config['cmb']['v_cmb']
+            if 'l_cmb' in self.config['cmb']:
+                cmb_dic['l_cmb'] = self.config['cmb']['l_cmb']
+            if 'b_cmb' in self.config['cmb']:
+                cmb_dic['b_cmb'] = self.config['cmb']['b_cmb']
+        return cmb_dic
+
+    @property
+    def samples(self):
+        """Get the list of simulated sn."""
+        return self._samples
+
+    @property
+    def cosmology(self):
+        """Get astropy cosmological model used in simulation."""
+        return self._cosmology
+
+    @property
+    def survey(self):
+        """Get the SurveyObs object of the simulation."""
+        return self._survey
+
+    @property
+    def generators(self):
+        """Get the SNGen object of the simulation."""
+        return self._generators
+
+    @property
+    def host(self):
+        """Get the SnHost object of the simulation."""
+        return self._host
+
+    @property
+    def randseed(self):
+        """Get primary random seed of the simulation."""
+        if 'randseed' in self.config['sim_par']:
+            return int(self.config['sim_par']['randseed'])
+        elif self._random_seed is None:
+            self._random_seed = np.random.randint(low=1000, high=100000)
+        return self._random_seed
+
+    @property
+    def z_range(self):
+        """Get z_range."""
+        return self.config['sim_par']['z_range']
+
+    @property
+    def nep_cut(self):
+        """Get the list of epochs cuts."""
+        snc_mintime = -20
+        snc_maxtime = 50
+        if 'nep_cut' in self.config['sim_par']:
+            nep_cut = self.config['sim_par']['nep_cut']
+            if isinstance(nep_cut, (int)):
+                nep_cut = [
+                    (nep_cut,
+                     snc_mintime,
+                     snc_maxtime)]
+            elif isinstance(nep_cut, (list)):
+                for i, cut in enumerate(nep_cut):
+                    if len(cut) < 3:
+                        nep_cut[i].append(snc_mintime)
+                        nep_cut[i].append(snc_maxtime)
+        else:
+            nep_cut = [(1, snc_mintime, snc_maxtime)]
+        return nep_cut

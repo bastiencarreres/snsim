@@ -187,6 +187,18 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
 
 
 def open_fit(file):
+    """USe to open fit file.
+
+    Parameters
+    ----------
+    file : str
+        Fit results parquet file
+    Returns
+    -------
+    pandas.DataFrame
+        The fit results.
+
+    """
     table = pq.read_table(file)
     fit = table.to_pandas()
     fit.attrs = json.loads(table.schema.metadata['header'.encode()])
