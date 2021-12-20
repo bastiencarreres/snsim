@@ -15,9 +15,10 @@ __snsim_dir_path__ = os.path.dirname(__file__)
 __version__ = "0.3.13_dev"
 
 from .simu import Simulator
-from .sn_sample import SNSimSample
+from .sn_sample import SimSample
 from . import post_sim_tools
 from . import transients
 from . import generators
 from . import survey_host
 from . import utils
+from . import io_utils

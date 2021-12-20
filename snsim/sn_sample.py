@@ -1,4 +1,4 @@
-"""SNSimSample class used to store simulations."""
+"""SimSample class used to store simulations."""
 
 import os
 import copy
@@ -14,7 +14,7 @@ from . import io_utils as io_ut
 np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
 
-class SNSimSample:
+class SimSample:
     """Class to store simulated SN sample.
 
     Parameters
@@ -79,12 +79,14 @@ class SNSimSample:
     """
 
     def __init__(self, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
-        """Initialize SNSimSample class."""
+        """Initialize SimSample class."""
         self._name = sample_name
         self._header = header
         self._sim_lcs = copy.copy(sim_lcs)
         self._model_dir = model_dir
         self._dir_path = dir_path
+
+        self._sim_model = self._init_sim_model()
 
         self._fit_model = None
         self._fit_res = None
@@ -100,8 +102,8 @@ class SNSimSample:
 
         Parameters
         ----------
-        cls : SNSimSample class
-            The SNSimSample class.
+        cls : SimSample class
+            The SimSample class.
         sim_file : str
             The file to load.
         model_dir : str, opt
@@ -119,8 +121,8 @@ class SNSimSample:
 
         Returns
         -------
-        SNSimSample class object
-            A SNSimSample class with the simulated lcs.
+        SimSample class object
+            A SimSample class with the simulated lcs.
 
         """
         lcs = pd.concat(sim_lcs,
@@ -136,8 +138,8 @@ class SNSimSample:
 
         Parameters
         ----------
-        cls : SNSimSample class
-            The SNSimSample class.
+        cls : SimSample class
+            The SimSample class.
         sim_file : str
             The file to load.
         model_dir : str, opt
@@ -145,14 +147,88 @@ class SNSimSample:
 
         Returns
         -------
-        SNSimSample class object
-            A SNSimSample class with the simulated lcs.
+        SimSample class object
+            A SimSample class with the simulated lcs.
 
         """
         name, header, lcs = io_ut.read_sim_file(sim_file)
 
         return cls(name, lcs, header,
                    model_dir=model_dir, dir_path=os.path.dirname(sim_file) + '/')
+
+    def _init_sim_model(self):
+        """Initialize sim model.
+
+        Returns
+        -------
+        sncosmo.Model
+            sncosmo sim model.
+
+        """
+        model_name = self.header['model_name']
+
+        sim_model = ut.init_sn_model(model_name, self._model_dir)
+
+        if 'sct_mod' in self.header:
+            sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
+
+        if 'mw_mod' in self.header:
+            dst_ut.init_mw_dust(sim_model, {'model': self.header['mw_mod'],
+                                            'rv': self.header['mw_rv']})
+        return sim_model
+
+    def _set_obj_effects_model(self, model, ID):
+        """Set the model parameters of one obj.
+
+        Parameters
+        ----------
+        model : sncosmo.Model
+            The model to use.
+        ID : int
+            obj ID.
+
+        Returns
+        -------
+        None
+            Directly set model parameters.
+
+        """
+        for effect, eff_name in zip(model.effects,
+                                    model.effect_names):
+            for par in effect.param_names:
+                pname = eff_name + par
+                if pname in self.sim_lcs.attrs[ID]:
+                    model.set(**{pname: self.sim_lcs.attrs[ID][pname]})
+                elif pname in self.header:
+                    model.set(**{pname: self.header[pname]})
+                else:
+                    raise AttributeError(f'{pname} not found')
+
+    def get_obj_sim_model(self, obj_ID):
+        """Get th sim model of one obj.
+
+        Parameters
+        ----------
+        obj_ID : int
+            ID of the obj.
+
+        Returns
+        -------
+        sncosmo.Model
+            sncosmo sim model of the obj.
+
+        """
+        simmod = copy.copy(self._sim_model)
+        par = {'z': self.meta[obj_ID]['zobs'],
+               't0': self.meta[obj_ID]['sim_t0']}
+
+        if self.header['obj_type'].lower() == 'snia':
+            par = {**par, **self._get_snia_simsncpar(obj_ID)}
+
+        simmod.set(**par)
+        self._set_obj_effects_model(simmod, obj_ID)
+
+        return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
         """Change the fit model by a given SNCosmo Model.
@@ -178,64 +254,57 @@ class SNSimSample:
         if mw_dust is not None:
             dst_ut.init_mw_dust(self._fit_model, mw_dust)
 
-    @property
-    def name(self):
-        """Get sample name."""
-        return self._name
-
-    @property
-    def header(self):
-        """Get header."""
-        return self._header
-
-    @property
-    def n_obj(self):
-        """Get SN number."""
-        return len(self.sim_lcs.index.levels[0])
-
-    @property
-    def sim_lcs(self):
-        """Get sim_lcs."""
-        return self._sim_lcs
-
-    @property
-    def meta(self):
-        """Get lcs meta dict."""
-        return self._sim_lcs.attrs
-
-    @property
-    def fit_model(self):
-        return self._fit_model
-
-    @property
-    def fit_res(self):
-        """Get fit results list."""
-        return self._fit_res
-
-    @property
-    def fit_resmod(self):
-        """Get fit sncosmo model results."""
-        return self._fit_resmod
-
-    def get(self, key, mod=False):
-        """Get an array of sim_lc metadata.
+    def fit_lc(self, obj_ID=None, **kwargs):
+        """Fit all or just one SN lightcurve(s).
 
         Parameters
         ----------
-        key : str
-            The metadata to access.
+        sn_ID : int, default is None
+            The SN ID, if not specified all SN are fit.
 
         Returns
         -------
-        numpy.ndarray
-            The array of the key metadata for all SN.
+        None
+            Directly modified the _fit_res attribute.
+
+        Notes
+        -----
+        Use snc_fitter from utils
 
         """
-        if mod:
-            meta_list = self.modified_lcs.attrs.values()
+        if self.fit_model is None:
+            raise ValueError('Set fit model before launch fit')
+
+        if self._fit_res is None:
+            self._fit_res = [None] * self.n_obj
+            self._fit_resmod = [None] * self.n_obj
+            self._fit_dic = [None] * self.n_obj
+
+        fit_model = self.fit_model.__copy__()
+
+        if fit_model.source.name[:5] in ('salt2', 'salt3'):
+            fit_par = ['t0', 'x0', 'x1', 'c']
+
+        print('Use model:')
+        print(self.fit_model._headsummary())
+
+        if obj_ID is None:
+            for i, lc in self.sim_lcs.groupby('sn_id'):
+                fit_model.set(z=self.sim_lcs.attrs[i]['zobs'])
+                self._set_obj_effects_model(fit_model, i)
+                self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(self.sim_lcs.loc[i].to_records(),
+                                                                                        fit_model,
+                                                                                        fit_par,
+                                                                                        **kwargs)
         else:
-            meta_list = self.sim_lcs.attrs.values()
-        return np.array([meta[key] for meta in meta_list])
+            fit_model.set(z=self.sim_lcs.attrs[obj_ID]['zobs'])
+            self._set_obj_effects_model(fit_model, obj_ID)
+
+            self._fit_res[obj_ID], self._fit_resmod[obj_ID], self._fit_dic[obj_ID] = ut.snc_fitter(
+                                                                            self.sim_lcs.loc[obj_ID].to_records(),
+                                                                            fit_model,
+                                                                            fit_par,
+                                                                            **kwargs)
 
     def _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_df=None, sufname=''):
         """Write simulation into a file.
@@ -284,65 +353,6 @@ class SNSimSample:
                         lcs_list=self.modified_lcs,
                         sufname='_modified')
 
-    def fit_lc(self, sn_ID=None, **kwargs):
-        """Fit all or just one SN lightcurve(s).
-
-        Parameters
-        ----------
-        sn_ID : int, default is None
-            The SN ID, if not specified all SN are fit.
-
-        Returns
-        -------
-        None
-            Directly modified the _fit_res attribute.
-
-        Notes
-        -----
-        Use snc_fitter from utils
-
-        """
-        if self.fit_model is None:
-            raise ValueError('Set fit model before launch fit')
-
-        if self._fit_res is None:
-            self._fit_res = [None] * self.n_obj
-            self._fit_resmod = [None] * self.n_obj
-            self._fit_dic = [None] * self.n_obj
-
-        fit_model = self.fit_model.__copy__()
-
-        if fit_model.source.name[:5] in ('salt2', 'salt3'):
-            fit_par = ['t0', 'x0', 'x1', 'c']
-
-        print('Use model:')
-        print(self.fit_model._headsummary())
-
-        if sn_ID is None:
-            for i, lc in self.sim_lcs.groupby('sn_id'):
-                fit_model.set(z=self.sim_lcs.attrs[i]['zobs'])
-                for effect, eff_name in zip(self._fit_model.effects,
-                                            self._fit_model.effect_names):
-                    for par in effect.param_names:
-                        pname = eff_name + par
-                        fit_model.set(**{pname: self.sim_lcs.attrs[i][pname]})
-                self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(self.sim_lcs.loc[i].to_records(),
-                                                                                        fit_model,
-                                                                                        fit_par,
-                                                                                        **kwargs)
-        else:
-            fit_model.set(z=self.sim_lcs.attrs[sn_ID]['zobs'])
-            for effect, eff_name in zip(self._fit_model.effects,
-                                        self._fit_model.effect_names):
-                for par in effect.param_names:
-                    pname = eff_name + par
-                    fit_model.set(**{pname: self.sim_lcs.attrs[sn_ID][pname]})
-            self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
-                                                                            self.sim_lcs.loc[sn_ID].to_records(),
-                                                                            fit_model,
-                                                                            fit_par,
-                                                                            **kwargs)
-
     def write_fit(self, write_path=None):
         """Write fits results in fits format.
 
@@ -371,7 +381,7 @@ class SNSimSample:
 
         model_name = self.header['model_name']
 
-        if model_name in ('salt2', 'salt3'):
+        if model_name[:4] == 'salt':
             meta_keys += ['sim_x0', 'sim_mb', 'sim_x1', 'sim_c']
 
         if 'mw_dust' in self.header:
@@ -410,7 +420,7 @@ class SNSimSample:
         if show:
             plt.show()
 
-    def plot_lc(self, sn_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
+    def plot_lc(self, obj_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
                 mod=False, figsize=(35 / 2.54, 20 / 2.54), dpi=120):
         """Plot the given SN lightcurve.
 
@@ -442,56 +452,33 @@ class SNSimSample:
 
         """
         if mod:
-            lc = self.modified_lcs.loc[sn_ID]
-            meta = self.modified_lcs.attrs[sn_ID]
+            lc = self.modified_lcs.loc[obj_ID]
+            meta = self.modified_lcs.attrs[obj_ID]
         else:
-            lc = self.sim_lcs.loc[sn_ID]
-            meta = self.sim_lcs.attrs[sn_ID]
+            lc = self.sim_lcs.loc[obj_ID]
+            meta = self.sim_lcs.attrs[obj_ID]
 
         if plot_sim:
-            model_name = self.header['model_name']
-
-            s_model = ut.init_sn_model(model_name, self._model_dir)
-
-            dic_par = {'z': meta['zobs'],
-                       't0': meta['sim_t0']}
-
-            if model_name in ('salt2', 'salt3'):
-                dic_par['x0'] = meta['sim_x0']
-                dic_par['x1'] = meta['sim_x1']
-                dic_par['c'] = meta['sim_c']
-            s_model.set(**dic_par)
-
-            if 'sct_mod' in self.header:
-                sct.init_sn_sct_model(s_model, self.header['sct_mod'])
-                par_rd_name = self.header['sct_mod'][:3] + '_RndS'
-                s_model.set(**{par_rd_name: meta[par_rd_name]})
-
-            if 'mw_mod' in self.header:
-                dst_ut.init_mw_dust(s_model, {'model': self.header['mw_mod'],
-                                              'rv': self.header['mw_rv']})
-                if self.header['mw_mod'].lower() not in ['f99']:
-                    s_model.set(mw_r_v=meta['mw_r_v'])
-                s_model.set(mw_ebv=meta['mw_ebv'])
+            s_model = self.get_obj_sim_model(obj_ID)
         else:
             s_model = None
 
         if plot_fit and not mod:
-            if self.fit_res is None or self.fit_res[sn_ID] is None:
+            if self.fit_res is None or self.fit_res[obj_ID] is None:
                 print('This SN was not fitted, launch fit')
-                self.fit_lc(sn_ID)
+                self.fit_lc(obj_ID)
 
-            if self.fit_res[sn_ID] == 'NaN':
+            if self.fit_res[obj_ID] == 'NaN':
                 print('This sn has no fit results')
                 return
 
-            f_model = self.fit_resmod[sn_ID]
-            cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
+            f_model = self.fit_resmod[obj_ID]
+            cov_t0_x0_x1_c = self.fit_res[obj_ID]['covariance'][:, :]
             residuals = True
 
         elif plot_fit and mod:
             print("You can't fit mod sn, write the in a file and load them"
-                  "as SNSimSample class")
+                  "as SimSample class")
         else:
             f_model = None
             cov_t0_x0_x1_c = None
@@ -553,3 +540,89 @@ class SNSimSample:
                             field_dic,
                             field_size,
                             **kwarg)
+
+    def _get_snia_simsncpar(self, ID):
+        """Get sncosmo par of one obj for a SNIa model.
+
+        Parameters
+        ----------
+        ID : int
+            Obj ID.
+
+        Returns
+        -------
+        dict
+            Dict containing model parameters values.
+
+        """
+        dic_par = {}
+        if self._sim_model.source.name[:4] == 'salt':
+            dic_par['x0'] = self.meta[ID]['sim_x0']
+            dic_par['x1'] = self.meta[ID]['sim_x1']
+            dic_par['c'] = self.meta[ID]['sim_c']
+        return dic_par
+
+    def get(self, key, mod=False):
+        """Get an array of sim_lc metadata.
+
+        Parameters
+        ----------
+        key : str
+            The metadata to access.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the key metadata for all SN.
+
+        """
+        if mod:
+            meta_list = self.modified_lcs.attrs.values()
+        else:
+            meta_list = self.sim_lcs.attrs.values()
+        return np.array([meta[key] for meta in meta_list])
+
+    @property
+    def name(self):
+        """Get sample name."""
+        return self._name
+
+    @property
+    def header(self):
+        """Get header."""
+        return self._header
+
+    @property
+    def n_obj(self):
+        """Get SN number."""
+        return len(self.sim_lcs.index.levels[0])
+
+    @property
+    def sim_lcs(self):
+        """Get sim_lcs."""
+        return self._sim_lcs
+
+    @property
+    def meta(self):
+        """Get lcs meta dict."""
+        return self._sim_lcs.attrs
+
+    @property
+    def sim_model(self):
+        """Get sim model."""
+        return self._sim_model
+
+    @property
+    def fit_model(self):
+        """Get fit model."""
+        return self._fit_model
+
+    @property
+    def fit_res(self):
+        """Get fit results list."""
+        return self._fit_res
+
+    @property
+    def fit_resmod(self):
+        """Get fit sncosmo model results."""
+        return self._fit_resmod

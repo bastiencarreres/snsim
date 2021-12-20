@@ -13,8 +13,6 @@ try:
 except ImportError:
     json_pyarrow = False
 from . import salt_utils as salt_ut
-from astropy.table import Table
-from astropy.io import fits
 
 
 class NpEncoder(json.JSONEncoder):
@@ -59,8 +57,7 @@ def write_sim(wpath, name, formats, header, data):
                        'meta': data.attrs,
                        'header': header}
 
-            pickle.dump(pkl_dic,
-                        file)
+            pickle.dump(pkl_dic, file)
 
     if 'parquet' in formats and json_pyarrow:
         lcs = pa.Table.from_pandas(data)
@@ -74,15 +71,6 @@ def write_sim(wpath, name, formats, header, data):
 
     elif 'parquet' in formats and not json_pyarrow:
         warnings.warn('You need pyarrow and json modules to use .parquet format', UserWarning)
-
-    # TO DO : Re-implement fits format?
-    # if 'fits' in formats:
-    #     lc_hdu_list = (fits.table_to_hdu(lc) for lc in lcs_list)
-    #     hdu_list = fits.HDUList(
-    #         [fits.PrimaryHDU(header=fits.Header(header))] + list(lc_hdu_list))
-    #
-    #     hdu_list.writeto(write_path + self.name + sufname + '.fits',
-    #                      overwrite=True)
 
 
 def read_sim_file(file_path):
@@ -115,27 +103,12 @@ def read_sim_file(file_path):
             table = pq.read_table(file_path + file_ext)
             lcs = table.to_pandas()
             lcs.set_index(['sn_id', 'epochs'], inplace=True)
-            lcs.attrs = {int(k): val for k, val in json.loads(table.schema.metadata['attrs'.encode()]).items()}
+            lcs.attrs = {int(k): val
+                         for k, val in json.loads(table.schema.metadata['attrs'.encode()]).items()}
             name = table.schema.metadata['name'.encode()].decode()
             header = json.loads(table.schema.metadata['header'.encode()])
         else:
             warnings.warn("You need pyarrow and json module to write parquet formats", UserWarning)
-
-        # TO DO : Re-implement fits ?
-        # sample_name = os.path.basename(file_path)
-        # if file_ext == '.fits':
-        #     with fits.open(file_path + file_ext) as sf:
-        #         sim_lcs = []
-        #         for i, hdu in enumerate(sf):
-        #             if i == 0:
-        #                 header = hdu.header
-        #             else:
-        #                 tab = hdu.data
-        #                 tab.meta = hdu.header
-        #                 sim_lcs.append(tab)
-        #     return cls(sample_name, sim_lcs, header, model_dir=model_dir,
-        #                dir_path=os.path.dirname(file_path) + '/')
-
     return name, header, lcs
 
 
@@ -205,9 +178,18 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
     for k, v in sim_lcs_meta.items():
         data[k] = v
 
-    table = Table(data)
+    df = pd.DataFrame(data)
+    table = pa.Table.from_pandas(df)
+    header = json.dumps(sim_meta, cls=NpEncoder)
+    table = table.replace_schema_metadata({'header'.encode(): header.encode()})
+    pq.write_table(table, directory + '.parquet')
+    print(f"Fit result output file : {directory}.parquet")
 
-    hdu = fits.table_to_hdu(table)
-    hdu_list = fits.HDUList([fits.PrimaryHDU(header=fits.Header(sim_meta)), hdu])
-    hdu_list.writeto(directory, overwrite=True)
-    print(f'Fit result output file : {directory}')
+
+def open_fit(file):
+    table = pq.read_table(file)
+    fit = table.to_pandas()
+    fit.attrs = json.loads(table.schema.metadata['header'.encode()])
+    fit.set_index(['sn_id'], inplace=True)
+
+    return fit

@@ -107,14 +107,14 @@ class SurveyObs:
         print(f"SURVEY FILE : {self.config['survey_file']}")
 
         print("First day in survey_file : "
-              f"{self.start_end_days[0].mjd:.2f} MJD / {self.survey.start_end_days[0].iso}\n"
+              f"{self.start_end_days[0].mjd:.2f} MJD / {self.start_end_days[0].iso}\n"
               "Last day in survey_file : "
               f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}")
 
-        print(f"Survey effective duration is {self.survey.duration:.2f} days")
+        print(f"Survey effective duration is {self.duration:.2f} days")
 
         if 'survey_cut' in self.config:
-            for k, v in self.config['survey_config']['survey_cut'].items():
+            for k, v in self.config['survey_cut'].items():
                 conditions_str = ''
                 for cond in v:
                     conditions_str += str(cond) + ' OR '
@@ -391,10 +391,8 @@ class SurveyObs:
         """
         Obj_ra, Obj_dec = coords
 
-        # Time selection :
-        expr = ("(self.obs_table.expMJD  > model_t_range[0]) "
-                "& (self.obs_table.expMJD < model_t_range[1])")
-        epochs_selec = pd.eval(expr).to_numpy()
+        epochs_selec = ((self.obs_table.expMJD > model_t_range[0])
+                        & (self.obs_table.expMJD < model_t_range[1])).to_numpy()
 
         is_obs = epochs_selec.any()
 

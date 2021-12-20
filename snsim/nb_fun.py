@@ -1,5 +1,5 @@
 """This module contains functions with numba decorator to speed up the simulation."""
-from numba import njit, jit
+from numba import njit
 import numpy as np
 from numba.core import types
 from numba.typed import Dict

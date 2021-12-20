@@ -10,7 +10,7 @@ from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
 
 from .generators import __GEN_DIC__
-from .sn_sample import SNSimSample
+from .sn_sample import SimSample
 
 
 class Simulator:
@@ -92,12 +92,12 @@ class Simulator:
     |     randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
     |     z_range: [ZMIN, ZMAX]
     |     nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS
+    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
     | mw_dust:
     |     model: MOD_NAME
     |     rv: Rv # Optional, default Rv = 3.1
     | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
-    |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N SN  # Optional
     |     sn_rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
     |     rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
     |     M0: SN ABSOLUT MAGNITUDE
@@ -151,7 +151,7 @@ class Simulator:
             raise KeyError("Set a survey_file -> type help(sn_sim) to print the syntax")
 
         # Check if the sfdmap need to be download
-        if 'mw_dust' in self.config['model_config']:
+        if 'mw_dust' in self.config:
             dst_ut.check_files_and_dowload()
 
         self._sample = None
@@ -192,7 +192,7 @@ class Simulator:
         self._generators = []
         for object_name in __GEN_DIC__:
             if object_name in self.config:
-                gen_class = getattr(generators, __GEN_DIC__[object])
+                gen_class = getattr(generators, __GEN_DIC__[object_name])
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
@@ -201,7 +201,7 @@ class Simulator:
                                                   mw_dust=mw_dust,
                                                   dipole=dipole))
                 # cadence sim or n fixed
-                if 'force_n' in self.config[object]:
+                if 'force_n' in self.config[object_name]:
                     self._use_rate.append(False)
                 else:
                     self._use_rate.append(True)
@@ -267,18 +267,24 @@ class Simulator:
     @property
     def randseed(self):
         """Get primary random seed of the simulation."""
-        if 'randseed' in self.config['sn_gen']:
-            return int(self.config['sn_gen']['randseed'])
+        if 'randseed' in self.config['sim_par']:
+            return int(self.config['sim_par']['randseed'])
         elif self._random_seed is None:
             self._random_seed = np.random.randint(low=1000, high=100000)
         return self._random_seed
 
-    def nep_cut(self, generator):
+    @property
+    def z_range(self):
+        """Get z_range."""
+        return self.config['sim_par']['z_range']
+
+    @property
+    def nep_cut(self):
         """Get the list of epochs cuts."""
-        snc_mintime = generator.sim_model.mintime()
-        snc_maxtime = generator.sim_model.maxtime()
-        if 'nep_cut' in self.config['sn_gen']:
-            nep_cut = self.config['sn_gen']['nep_cut']
+        snc_mintime = -20
+        snc_maxtime = 50
+        if 'nep_cut' in self.config['sim_par']:
+            nep_cut = self.config['sim_par']['nep_cut']
             if isinstance(nep_cut, (int)):
                 nep_cut = [
                     (nep_cut,
@@ -291,7 +297,7 @@ class Simulator:
                         nep_cut[i].append(snc_maxtime)
         else:
             nep_cut = [(1, snc_mintime, snc_maxtime)]
-        return
+        return nep_cut
 
     def peak_time_range(self, trange_model):
         """Get the time range for simulate SN peak.
@@ -305,7 +311,7 @@ class Simulator:
         max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
-    def _gen_n_sn(self, rand_gen, z_shell_time_rate):
+    def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -320,12 +326,7 @@ class Simulator:
             bin.
 
         """
-        if 'duration_for_rate' in self.config['sn_gen']:
-            time_in_days = self.config['sn_gen']['duration_for_rate']
-        else:
-            min_peak_time, max_peak_time = self.peak_time_range
-            time_in_days = max_peak_time.mjd - min_peak_time.mjd
-        return rand_gen.poisson(time_in_days / 365.25 * np.sum(z_shell_time_rate))
+        return rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
 
     def simulate(self):
         """Launch the simulation.
@@ -346,21 +347,21 @@ class Simulator:
         """
         print(SN_SIM_PRINT)
 
-        print('-----------------------------------------------------------')
+        print('-----------------------------------------------------------\n')
 
         print(f"SIM NAME : {self.sim_name}\n"
               f"CONFIG FILE : {self._yml_path}\n"
               f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
-              f"SIMULATION RANDSEED : {self.rand_seed}")
+              f"SIMULATION RANDSEED : {self.randseed}")
 
         if 'host_file' in self.config:
             print(f"HOST FILE : {self.config['host_file']}")
 
-        print('-----------------------------------------------------------')
+        print('\n-----------------------------------------------------------\n')
 
         self.survey.print_config()
 
-        print('-----------------------------------------------------------')
+        print('\n-----------------------------------------------------------\n')
 
         rate_str = "Rate r_v = {0:.2e}*(1+z)^{1} SN/Mpc^3/year "
 
@@ -368,13 +369,13 @@ class Simulator:
             gen.print_config()
 
             # -- Set the time range with time edges effects
-            peak_time_range = self.peak_time_range(self, gen.snc_model_time)
-            gen.time_range = [self.peak_time_range[0].mjd, self.peak_time_range[1].mjd]
+            peak_time_range = self.peak_time_range(gen.snc_model_time)
+            gen.time_range = (peak_time_range[0].mjd, peak_time_range[1].mjd)
 
             if use_rate:
                 rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1]) + "\n"
                 compute_z_cdf = True
-                gen.compute_zcdf(self.z_range, return_shell=True)
+                gen.compute_zcdf(self.z_range)
             else:
                 print(f"Generate {gen._params['force_n']} SN Ia\n")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
@@ -392,24 +393,24 @@ class Simulator:
             if compute_z_cdf:
                 gen.compute_zcdf(self.z_range)
 
-            print(rate_str +
+            print('\n' + rate_str +
                   "Peak mintime : "
                   f"{peak_time_range[0].mjd:.2f} MJD / {peak_time_range[0].iso}\n"
                   "Peak maxtime : "
-                  f"{peak_time_range[1].mjd:.2f} MJD / {peak_time_range[1].iso} \n\n")
+                  f"{peak_time_range[1].mjd:.2f} MJD / {peak_time_range[1].iso} ")
 
-        print('-----------------------------------------------------------')
+        print('\n-----------------------------------------------------------\n')
 
         if 'mw_dust' in self.config:
-            print("\nUse mw dust model : "
-            f"{self.config['mw_dust']['model']}")
+            print("Use mw dust model : "
+                  f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['rv']}")
 
-        print('-----------------------------------------------------------\n')
+            print('\n-----------------------------------------------------------\n')
 
         print("Ligthcurves cuts :")
 
         for cut in self.nep_cut:
-            print_cut = f'- At least {cut[0]} epochs between {cut[1]} and {cut[2]}'
+            print_cut = f'- At least {cut[0]} epochs between {cut[1]} and {cut[2]} rest-frame phase'
             if len(cut) == 4:
                 print_cut += f' in {cut[3]} band'
             print(print_cut)
@@ -417,8 +418,8 @@ class Simulator:
         print('\n-----------------------------------------------------------\n')
 
         # -- Create the random generator object with the rand seed
-        rand_gen = np.random.default_rng(self.rand_seed)
-        seed_list = rand_gen.random.integers(1000, 1e6, size=len(self.generators))
+        rand_gen = np.random.default_rng(self.randseed)
+        seed_list = rand_gen.integers(1000, 1e6, size=len(self.generators))
 
         self._samples = []
         Obj_ID = 0
@@ -430,11 +431,11 @@ class Simulator:
             else:
                 lcs_list += self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
 
-            self._samples.append(SNSimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
-                                                        lcs_list,
-                                                        gen._get_header(),
-                                                        model_dir=None,
-                                                        dir_path=self.config['data']['write_path']))
+            self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
+                                                      lcs_list,
+                                                      gen._get_header(),
+                                                      model_dir=None,
+                                                      dir_path=self.config['data']['write_path']))
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated in {time.time() - sim_time:.1f} seconds')
             write_time = time.time()
@@ -445,22 +446,19 @@ class Simulator:
 
         print('\n-----------------------------------------------------------\n')
 
-        print('\n-----------------------------------------------------------\n')
-
-        # print('OUTPUT FILE(S) : ')
-        # if isinstance(self.config['data']['write_format'], str):
-        #     print(self.config['data']['write_path']
-        #           + self.sim_name
-        #           + '.'
-        #           + self.config['data']['write_format'])
-        # else:
-        #     for f in self.config['data']['write_format']:
-        #         print('- '
-        #               + self.config['data']['write_path']
-        #               + self.sim_name
-        #               + '.'
-        #               + f)
-        # print("\n")
+        print('OUTPUT FILE(S) : ')
+        if isinstance(self.config['data']['write_format'], str):
+            print(self.config['data']['write_path']
+                  + self.sim_name
+                  + '.'
+                  + self.config['data']['write_format'])
+        else:
+            for f in self.config['data']['write_format']:
+                print('- '
+                      + self.config['data']['write_path']
+                      + self.sim_name
+                      + '.'
+                      + f)
 
     def _cadence_sim(self, rand_gen, generator, Obj_ID=0):
         """Simulate a number of SN according to poisson law.
@@ -490,11 +488,15 @@ class Simulator:
         """
         # -- Generate the number of SN
         lcs = []
-        n_sn = self._gen_n_sn(rand_gen, generator.z_shell_time_rate[1])
+        if 'duration_for_rate' in self.config['sim_par']:
+            duration = self.config['sim_par']['duration_for_rate']
+        else:
+            duration = generator.time_range[1] - generator.time_range[0]
+        n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1], duration)
         list_tmp = generator(n_sn, rand_gen)
 
         for obj in list_tmp:
-            obj.epochs = self.survey.epochs_selection((obj.ra, obj.dec),
+            obj.epochs = self.survey.epochs_selection(obj.coord,
                                                       (obj.sim_model.mintime(),
                                                        obj.sim_model.maxtime()))
             if obj.pass_cut(self.nep_cut):

@@ -189,6 +189,7 @@ class BaseGen(abc.ABC):
 
         """
         z_min, z_max = z_range
+
         z_shell = np.linspace(z_min, z_max, 1000)
         z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
         rate = self.rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
@@ -419,7 +420,7 @@ class BaseGen(abc.ABC):
 
 
 class SNIaGen(BaseGen):
-    _object_type = 'SN Ia'
+    _object_type = 'SNIa'
     _astrobj_class = getattr(trs, 'SNIa')
     _available_models = ['salt2', 'salt3']
 
@@ -427,7 +428,6 @@ class SNIaGen(BaseGen):
                  mw_dust=None, host=None, dipole=None):
         super().__init__(params, cmb, cosmology, vpec_dist,
                          host=host, mw_dust=mw_dust, dipole=dipole)
-
         if isinstance(self.rate_law[0], str):
             self.rate_law = self._init_register_rate()
 
@@ -497,7 +497,7 @@ class SNIaGen(BaseGen):
 
     def _update_header(self, header):
         model_name = self._params['model_config']['model_name']
-        if model_name.lower()[:5] in ['salt2', 'salt3']:
+        if model_name.lower()[:4] == 'salt':
 
             if isinstance(self._params['model_config']['dist_x1'], str):
                 header['dist_x1'] = self._params['model_config']['dist_x1']
@@ -522,6 +522,16 @@ class SNIaGen(BaseGen):
 
         if 'sct_model' in self._params:
             header['sct_mod'] = self._params['sct_model']
+            if self._params['sct_model'].lower() == 'g10':
+                params = ['G10_L0', 'G10_F0', 'G10_F1', 'G10_dL']
+                for par in params:
+                    pos = np.where(np.array(self.sim_model.param_names) == par)[0]
+                    header[par] = self.sim_model.parameters[pos][0]
+            elif self._params['sct_model'].lower() == 'c11':
+                params = ['C11_Cuu', 'C11_Sc']
+                for par in params:
+                    pos = np.where(np.array(self.sim_model.param_names) == par)[0]
+                    header[par] = self.sim_model.parameters[pos][0]
 
     def gen_coh_scatter(self, n_sn, rand_gen):
         """Generate n coherent mag scattering term.
