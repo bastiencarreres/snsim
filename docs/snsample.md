@@ -9,28 +9,29 @@ The SNSimSample class store simulated lightcurves.
 You can direct fit after running the simulation
 ```python
 # Fit 1 lc by id
-sim.sn_sample.fit_lc(id)
+sim.samples[i].fit_lc(id)
 
 # Fit all the lcs
-sim.sn_sample.fit_lc()
+sim.samples[i].fit_lc()
 
 # Write the fit
-sim.sn_sample.write_fit()
+sim.samples[i].write_fit()
 ```
 
 
 Or you can open register sim file .fits or .pkl :
 
 ```python
-from snsim import SNSimSample
+from snsim import SimSample
 
-sim = SNSimSample.fromFile('sim_file.pkl/.parquet', model_dir=SALT2_dir)
+sim = SimSample.fromFile('sim_file.pkl/.parquet', model_dir=None)
 
 # Fit all the lcs
+sim.set_fit_model(model, model_dir=None, mw_dust=None)
 sim.fit_lc()
 
 # Write the fit
-sim.write_fit()
+sim.write_fit(write_path=None)
 
 # You can acces the lcs :
 sim.sim_lcs # pandas.DataFrame object 
@@ -48,7 +49,7 @@ You can pass [**sncosmo.fit_lc()**](https://sncosmo.readthedocs.io/en/stable/api
  **SNSimSample** as a **modifed_lcs** attribute : this a copy of  sim lcs that you can modified as you want, using selection function, and then write as a new sim file :
 
 ```python
-SNSimSample.write_mod(formats=['pkl', 'parquet'])
+SimSample.write_mod(formats=['pkl', 'parquet'])
 ```
 
 
@@ -77,12 +78,7 @@ n = \frac{\ln\left(\frac{1 - p}{p}\right)}{\ln(SNR_\text{mean}) - \ln(SNR_p)}
 $$
 
 
-The function can be used as :
 
-```python
-# By default SNR_mean = 5 and P(SNR=15) = 0.99
-SNSimSample.SNR_select(selec_function, SNR_mean=5, SNR_limit=[15, 0.99], randseed=np.random.randint(1000, 100000))
-```
 
 
 

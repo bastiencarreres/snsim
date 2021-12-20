@@ -1,7 +1,7 @@
-**sn\_sample**
+**sample**
 ================
 
-.. automodule:: snsim.sn_sample
+.. automodule:: snsim.sample
    :members:
    :undoc-members:
    :show-inheritance:

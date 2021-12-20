@@ -207,19 +207,40 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
 
 
 @njit(cache=True)
-def radec_to_cart(ra, dec):
+def radec_to_cart_2d(ra, dec):
     """Compute carthesian vector for given RA Dec coordinates.
 
     Parameters
     ----------
-    ra : float or numpy.ndarray
+    ra : numpy.ndarray
         Right Ascension.
-    dec :  float or numpy.ndarray
+    dec : numpy.ndarray
         Declinaison.
 
     Returns
     -------
     numpy.ndarray(float)
+        Carthesian coordinates corresponding to RA Dec coordinates.
+
+    """
+    cart_vec = np.vstack((np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec))).T
+    return cart_vec
+
+
+@njit(cache=True)
+def radec_to_cart(ra, dec):
+    """Compute carthesian vector for given RA Dec coordinates.
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension.
+    dec :  float
+        Declinaison.
+
+    Returns
+    -------
+    numpy.array(float)
         Carthesian coordinates corresponding to RA Dec coordinates.
 
     """

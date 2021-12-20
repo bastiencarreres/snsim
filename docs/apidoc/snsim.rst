@@ -6,8 +6,10 @@
    :caption: Contents:
 
    snsim.simu.rst
-   snsim.sim_class.rst
-   snsim.sn_sample.rst
+   snsim.generators.rst
+   snsim.astrobj.rst
+   snsim.survey_host.rst
+   snsim.sample.rst
    snsim.plot_utils.rst
    snsim.utils.rst
    snsim.salt_utils.rst

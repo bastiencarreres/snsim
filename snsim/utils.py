@@ -198,7 +198,7 @@ def init_sn_model(name, model_dir=None):
     name : str
         Name of the model.
     model_dir : str
-        PAth to the model files.
+        Path to the model files.
 
     Returns
     -------
