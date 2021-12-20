@@ -17,6 +17,18 @@ from astropy.table import Table
 from astropy.io import fits
 
 
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
+
+
 def write_sim(wpath, name, formats, header, data):
     """Write simulated lcs.
 
@@ -52,8 +64,8 @@ def write_sim(wpath, name, formats, header, data):
 
     if 'parquet' in formats and json_pyarrow:
         lcs = pa.Table.from_pandas(data)
-        lcmeta = json.dumps(data.attrs)
-        header = json.dumps(header)
+        lcmeta = json.dumps(data.attrs, cls=NpEncoder)
+        header = json.dumps(header, cls=NpEncoder)
         meta = {'name'.encode(): name.encode(),
                 'attrs'.encode(): lcmeta.encode(),
                 'header'.encode(): header.encode()}
@@ -151,9 +163,9 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
 
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
-    MName = sim_meta['Mname']
+    MName = sim_meta['model_name']
 
-    if MName in ('salt2', 'salt3'):
+    if MName[:5] in ('salt2', 'salt3'):
         fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
                      'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
                      'cov_mb_x1', 'cov_mb_c', 'cov_x1_c']
@@ -167,7 +179,7 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
             data['t0'].append(fd['t0'])
             data['e_t0'].append(np.sqrt(res['covariance'][0, 0]))
 
-            if MName in ('salt2', 'salt3'):
+            if MName[:5] in ('salt2', 'salt3'):
                 par_cov = res['covariance'][1:, 1:]
                 mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
                 data['x0'].append(fd['x0'])

@@ -19,5 +19,5 @@ from .sn_sample import SNSimSample
 from . import post_sim_tools
 from . import transients
 from . import generators
-from . import sim_class
+from . import survey_host
 from . import utils

@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 from . import utils as ut
 from . import generators
-from . import sim_class as scls
+from . import survey_host as sh
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
 
@@ -161,7 +161,7 @@ class Simulator:
         self._cosmology = ut.set_cosmo(self.config['cosmology'])
 
         # -- Init SurveyObs object
-        self._survey = scls.SurveyObs(self.config['survey_config'])
+        self._survey = sh.SurveyObs(self.config['survey_config'])
 
         # -- Init vpec_dist
         if 'vpec_dist' in self.config:
@@ -171,7 +171,7 @@ class Simulator:
 
         # -- Init host object
         if 'host' in self.config:
-            self._host = scls.SnHost(self.config['host'], self.z_range)
+            self._host = sh.SnHost(self.config['host'], self.z_range)
         else:
             self._host = None
 
@@ -192,11 +192,11 @@ class Simulator:
         self._generators = []
         for object_name in __GEN_DIC__:
             if object_name in self.config:
-                gen_class = getattr(generator, __GEN_DIC__[object])
+                gen_class = getattr(generators, __GEN_DIC__[object])
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
-                                                  vpec_dist = self.vpec_dist,
+                                                  vpec_dist=self.vpec_dist,
                                                   host=self.host,
                                                   mw_dust=mw_dust,
                                                   dipole=dipole))
@@ -273,10 +273,10 @@ class Simulator:
             self._random_seed = np.random.randint(low=1000, high=100000)
         return self._random_seed
 
-    @property
-    def nep_cut(self):
+    def nep_cut(self, generator):
         """Get the list of epochs cuts."""
-        snc_mintime, snc_maxtime = self.generator.snc_model_time
+        snc_mintime = generator.sim_model.mintime()
+        snc_maxtime = generator.sim_model.maxtime()
         if 'nep_cut' in self.config['sn_gen']:
             nep_cut = self.config['sn_gen']['nep_cut']
             if isinstance(nep_cut, (int)):
@@ -444,8 +444,6 @@ class Simulator:
             print(f'Sim file write in {time.time() - write_time:.1f} seconds')
 
         print('\n-----------------------------------------------------------\n')
-
-
 
         print('\n-----------------------------------------------------------\n')
 

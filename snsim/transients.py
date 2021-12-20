@@ -9,6 +9,7 @@ from .constants import C_LIGHT_KMS
 
 class BasicAstrObj(abc.ABC):
     _type = ''
+
     def __init__(self, parameters, sim_model, model_par):
 
         # -- sncosmo model
@@ -88,7 +89,6 @@ class BasicAstrObj(abc.ABC):
         Set the sim_lc attributes as an astropy Table
         """
         random_seeds = rand_gen.integers(1000, 100000, size=2)
-        print(self.sim_model.parameters)
 
         if self._model_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
@@ -108,7 +108,6 @@ class BasicAstrObj(abc.ABC):
                                            self.epochs['time'],
                                            zp=self.epochs['zp'],
                                            zpsys=self.epochs['zpsys'])
-
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerr = np.sqrt(np.abs(flux) / self.epochs['gain']

@@ -86,7 +86,7 @@ class SNSimSample:
         self._model_dir = model_dir
         self._dir_path = dir_path
 
-        self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
+        self._fit_model = None
         self._fit_res = None
         self._fit_resmod = None
 
@@ -154,7 +154,7 @@ class SNSimSample:
         return cls(name, lcs, header,
                    model_dir=model_dir, dir_path=os.path.dirname(sim_file) + '/')
 
-    def set_fit_model(self, model, model_dir=None):
+    def set_fit_model(self, model, model_dir=None, mw_dust=None):
         """Change the fit model by a given SNCosmo Model.
 
         Parameters
@@ -172,9 +172,11 @@ class SNSimSample:
         if isinstance(model, type(ut.init_sn_model('salt2'))):
             self._fit_model = copy.copy(model)
         elif isinstance(model, str):
-            self._fit_model = ut.init_sn_model(self.header['Mname'], model_dir)
+            self._fit_model = ut.init_sn_model(self.header['model_name'], model_dir)
         else:
             raise ValueError('Input can be a sncosmo model or a string')
+        if mw_dust is not None:
+            dst_ut.init_mw_dust(self._fit_model, mw_dust)
 
     @property
     def name(self):
@@ -187,7 +189,7 @@ class SNSimSample:
         return self._header
 
     @property
-    def n_sn(self):
+    def n_obj(self):
         """Get SN number."""
         return len(self.sim_lcs.index.levels[0])
 
@@ -200,6 +202,10 @@ class SNSimSample:
     def meta(self):
         """Get lcs meta dict."""
         return self._sim_lcs.attrs
+
+    @property
+    def fit_model(self):
+        return self._fit_model
 
     @property
     def fit_res(self):
@@ -254,7 +260,7 @@ class SNSimSample:
         if lcs_df is None:
             lcs_df = self.sim_lcs
         header = self.header.copy()
-        header['n_sn'] = len(lcs_df.index.levels[0])
+        header['n_obj'] = len(lcs_df.index.levels[0])
         formats = np.atleast_1d(formats)
 
         io_ut.write_sim(write_path, self.name + sufname, formats, header, lcs_df)
@@ -278,17 +284,13 @@ class SNSimSample:
                         lcs_list=self.modified_lcs,
                         sufname='_modified')
 
-    def fit_lc(self, sn_ID=None, mw_dust=-2, **kwargs):
+    def fit_lc(self, sn_ID=None, **kwargs):
         """Fit all or just one SN lightcurve(s).
 
         Parameters
         ----------
         sn_ID : int, default is None
             The SN ID, if not specified all SN are fit.
-
-        mw_dust : str or list(str, float), default is the sim dust model
-            A model of dust to apply if needed, follow dust_utils.init_mw_dust synthax
-            give any number != -2 for don't apply any dust.
 
         Returns
         -------
@@ -300,52 +302,41 @@ class SNSimSample:
         Use snc_fitter from utils
 
         """
-        if self._fit_res is None:
-            self._fit_res = [None] * self.n_sn
-            self._fit_resmod = [None] * self.n_sn
-            self._fit_dic = [None] * self.n_sn
+        if self.fit_model is None:
+            raise ValueError('Set fit model before launch fit')
 
-        fit_model = self._fit_model.__copy__()
-        model_name = self.header['Mname']
-        if model_name in ('salt2', 'salt3'):
+        if self._fit_res is None:
+            self._fit_res = [None] * self.n_obj
+            self._fit_resmod = [None] * self.n_obj
+            self._fit_dic = [None] * self.n_obj
+
+        fit_model = self.fit_model.__copy__()
+
+        if fit_model.source.name[:5] in ('salt2', 'salt3'):
             fit_par = ['t0', 'x0', 'x1', 'c']
 
-        if mw_dust == -2 and 'mwd_mod' in self.header:
-            mw_mod = [self.header['mwd_mod'], self.header['mw_rv']]
-        elif isinstance(mw_dust, (str, list, np.ndarray)):
-            mw_mod = mw_dust
-        else:
-            mw_mod = None
-            print('Do not use mw dust')
-
-        if mw_mod is not None:
-            dst_ut.init_mw_dust(fit_model, mw_mod)
-            if isinstance(mw_mod, (list, np.ndarray)):
-                rv = mw_mod[1]
-                mod_name = mw_mod[0]
-            else:
-                rv = 3.1
-                mod_name = mw_mod
-            print(f'Use MW dust model {mod_name} with RV = {rv}')
+        print('Use model:')
+        print(self.fit_model._headsummary())
 
         if sn_ID is None:
             for i, lc in self.sim_lcs.groupby('sn_id'):
                 fit_model.set(z=self.sim_lcs.attrs[i]['zobs'])
-                if mw_mod is not None:
-                    dst_ut.add_mw_to_fit(fit_model,
-                                         self.sim_lcs.attrs[i]['mw_ebv'],
-                                         mod_name, rv=rv)
+                for effect, eff_name in zip(self._fit_model.effects,
+                                            self._fit_model.effect_names):
+                    for par in effect.param_names:
+                        pname = eff_name + par
+                        fit_model.set(**{pname: self.sim_lcs.attrs[i][pname]})
                 self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(self.sim_lcs.loc[i].to_records(),
                                                                                         fit_model,
                                                                                         fit_par,
                                                                                         **kwargs)
         else:
             fit_model.set(z=self.sim_lcs.attrs[sn_ID]['zobs'])
-            if mw_mod is not None:
-                dst_ut.add_mw_to_fit(fit_model,
-                                     self.sim_lcs.attrs[sn_ID]['mw_ebv'],
-                                     mod_name, rv=rv)
-
+            for effect, eff_name in zip(self._fit_model.effects,
+                                        self._fit_model.effect_names):
+                for par in effect.param_names:
+                    pname = eff_name + par
+                    fit_model.set(**{pname: self.sim_lcs.attrs[sn_ID][pname]})
             self._fit_res[sn_ID], self._fit_resmod[sn_ID], self._fit_dic[sn_ID] = ut.snc_fitter(
                                                                             self.sim_lcs.loc[sn_ID].to_records(),
                                                                             fit_model,
@@ -378,7 +369,7 @@ class SNSimSample:
         meta_keys = ['sn_id', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
                      'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
 
-        model_name = self.header['Mname']
+        model_name = self.header['model_name']
 
         if model_name in ('salt2', 'salt3'):
             meta_keys += ['sim_x0', 'sim_mb', 'sim_x1', 'sim_c']
@@ -388,8 +379,8 @@ class SNSimSample:
 
         sim_lc_meta = {key: self.get(key) for key in meta_keys}
 
-        if 'Smod' in self.header:
-            sim_lc_meta['SM_seed'] = self.get(self.header['Smod'][:3] + '_RndS')
+        if 'sct_mod' in self.header:
+            sim_lc_meta['SM_seed'] = self.get(self.header['sct_mod'][:3] + '_RndS')
 
         io_ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
 
@@ -458,7 +449,7 @@ class SNSimSample:
             meta = self.sim_lcs.attrs[sn_ID]
 
         if plot_sim:
-            model_name = self.header['Mname']
+            model_name = self.header['model_name']
 
             s_model = ut.init_sn_model(model_name, self._model_dir)
 
@@ -471,14 +462,15 @@ class SNSimSample:
                 dic_par['c'] = meta['sim_c']
             s_model.set(**dic_par)
 
-            if 'Smod' in self.header:
-                sct.init_sn_sct_model(s_model, self.header['Smod'])
-                par_rd_name = self.header['Smod'][:3] + '_RndS'
+            if 'sct_mod' in self.header:
+                sct.init_sn_sct_model(s_model, self.header['sct_mod'])
+                par_rd_name = self.header['sct_mod'][:3] + '_RndS'
                 s_model.set(**{par_rd_name: meta[par_rd_name]})
 
-            if 'mwd_mod' in self.header:
-                dst_ut.init_mw_dust(s_model, [self.header['mwd_mod'], self.header['mw_rv']])
-                if self.header['mwd_mod'].lower() not in ['f99']:
+            if 'mw_mod' in self.header:
+                dst_ut.init_mw_dust(s_model, {'model': self.header['mw_mod'],
+                                              'rv': self.header['mw_rv']})
+                if self.header['mw_mod'].lower() not in ['f99']:
                     s_model.set(mw_r_v=meta['mw_r_v'])
                 s_model.set(mw_ebv=meta['mw_ebv'])
         else:
@@ -487,15 +479,7 @@ class SNSimSample:
         if plot_fit and not mod:
             if self.fit_res is None or self.fit_res[sn_ID] is None:
                 print('This SN was not fitted, launch fit')
-                if 'mwd_mod' in self.header:
-                    print('Use sim input mw dust')
-                    if 'mw_rv' in self.header:
-                        mw_dust = [self.header['mwd_mod'], self.header['mw_rv']]
-                    else:
-                        mw_dust = [self.header['mwd_mod'], 3.1]
-                else:
-                    mw_dust = None
-                self.fit_lc(sn_ID, mw_dust=mw_dust)
+                self.fit_lc(sn_ID)
 
             if self.fit_res[sn_ID] == 'NaN':
                 print('This sn has no fit results')
@@ -504,6 +488,7 @@ class SNSimSample:
             f_model = self.fit_resmod[sn_ID]
             cov_t0_x0_x1_c = self.fit_res[sn_ID]['covariance'][:, :]
             residuals = True
+
         elif plot_fit and mod:
             print("You can't fit mod sn, write the in a file and load them"
                   "as SNSimSample class")

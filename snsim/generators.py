@@ -138,7 +138,6 @@ class BaseGen(abc.ABC):
         else:
             vpec = np.zeros(len(ra))
 
-
         astrobj_par = {'zcos': zcos,
                        'como_dist': self.cosmology.comoving_distance(zcos).value,
                        'z2cmb': ut.compute_z2cmb(ra, dec, self.cmb),
@@ -236,11 +235,12 @@ class BaseGen(abc.ABC):
         None
 
         """
-        header = {'obj_type' : self._object_type,
+        header = {'obj_type': self._object_type,
                   'rate': self.rate_law[0],
-                  'rate_pw': self.rate_law[1]}
-        header = {**header, **self._general_par}
+                  'rate_pw': self.rate_law[1],
+                  'model_name': self.sim_model.source.name}
 
+        header = {**header, **self._general_par}
         if self.mw_dust is not None:
             header['mw_mod'] = self.mw_dust['model']
             header['mw_rv'] = self.mw_dust['rv']
@@ -251,7 +251,6 @@ class BaseGen(abc.ABC):
 
         self._update_header(header)
         return header
-
 
     @property
     def snc_model_time(self):
@@ -477,7 +476,7 @@ class SNIaGen(BaseGen):
             A dict containing all the usefull keys of the SN model.
         """
         model_name = self._params['model_config']['model_name']
-        if model_name in ('salt2', 'salt3'):
+        if model_name[:5] in ('salt2', 'salt3'):
             model_keys = ['alpha', 'beta']
 
         self._general_par['M0'] = self._init_M0()
@@ -498,7 +497,7 @@ class SNIaGen(BaseGen):
 
     def _update_header(self, header):
         model_name = self._params['model_config']['model_name']
-        if model_name.lower() in ['salt2', 'salt3']:
+        if model_name.lower()[:5] in ['salt2', 'salt3']:
 
             if isinstance(self._params['model_config']['dist_x1'], str):
                 header['dist_x1'] = self._params['model_config']['dist_x1']
