@@ -26,17 +26,27 @@ survey_config:
     field_map: FIELD MAP FILE  # Optional, default is rectangle field
     fake_skynoise: [VALUE, 'add' or 'replace']  # Optional, default is no fake_skynoise
     sub_field: 'sub_field_key' # Used to divided observation in CCD quadrant for example
-sn_gen:
-    n_sn: NUMBER OF SN TO GENERATE  # Optional
-    duration_for_rate: FAKE DURATION ONLY USED TO GENERATE N SN (DAYS)  # Optional
-    sn_rate: rate of SN/Mpc^3/year  # Optional, default=3e-5
+sim_par:
+    z_range: [ZMIN, ZMAX]
+    randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
+    nep_cut: [[nep_min1,Tmin,Tmax], [nep_min2,Tmin2,Tmax2,'filter1'], ...] EP CUTS
+    duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
+snia_gen:
+    force_n: NUMBER OF OBJ TO GENERATE  # Optional
+    sn_rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
     rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
-    nep_cut: [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...] EP CUTS  # Optional, default >= 1 ep
-    randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional default random
-    z_range: [ZMIN, ZMAX]  # Cosmological redshift range
     M0: SN ABSOLUT MAGNITUDE
     mag_sct: SN INTRINSIC COHERENT SCATTERING
-    sct_mod: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+    sct_model: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+    mod_fcov: True or False # Use the covariance of simulation model to scatter flux Optional, default = False
+    model_config:
+        model_name: 'THE MODEL NAME' #  Example : 'salt2'
+        model_dir: '/PATH/TO/SALT/MODEL'
+        # Model parameters : here example for salt
+        alpha: STRETCH CORRECTION = alpha*x1
+        beta: COLOR CORRECTION = -beta*c
+        dist_x1: [MEAN X1, SIGMA X1] or [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
+        dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
 cosmology:  # Follow astropy formalism
     Om0: MATTER DENSITY  
     H0: HUBBLE CONSTANT
@@ -44,24 +54,17 @@ cmb:
     v_cmb: OUR PECULIAR VELOCITY  # Optional, default = 369.82 km/s
     l_cmb: GAL L OF CMB DIPOLE  # Optional, default = 264.021            
     b_cmb: GAL B OF CMB DIPOLE  # Optional, default = 48.253   
-model_config:
-    model_name: 'THE MODEL NAME' # Example : 'salt2'
-    model_dir: '/PATH/TO/SALT/MODEL'  
-    # Model parameters : here example for salt2
-    alpha: STRETCH CORRECTION = alpha*x1
-    beta: COLOR CORRECTION = -beta*c   
-    dist_x1: [MEAN X1, SIGMA X1] or [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
-    dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
-    mw_dust: MODEL_NAME  # RV = 3.1 or [MOD_NAME, RV], Optional
-    mod_fcov: True or False # Use the covariance of simulation model to scatter flux Optional, default = False
+mw_dust: # Optional
+    model: MOD_NAME
+    rv: Rv # Optional, default Rv = 3.1
 vpec_dist: # Optional
      mean_vpec: MEAN SN PECULIAR VEL
      sig_vpec: SIGMA VPEC
- host: # Optional 
+host: # Optional 
      host_file: '/PATH/TO/HOSTFILE' 
      distrib: 'as_sn' or 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
      key_dic: {'column_name': 'new_column_name', ...}  # Optional, to change columns names
- alpha_dipole:  # Experimental alpha fine structure constant dipole, optional
+dipole:  # Experimental dipole, optional
      coord: [RA, Dec]  # Direction of the dipole
      # alpha dipole = A + B * cos theta
      A: A_parameter  
@@ -80,7 +83,7 @@ This section of the yaml file only contains information about output files of th
 
 * **write_format** is the desired output format(s), only **parquet** or **pkl** are available.  *type* : str or list(str). *Optional*  : default is **parquet and pkl**. Note that **parquet** working only if you have **pyarrow** and **json** python modules installed.
 
-  
+
 
 ## survey_config 
 
@@ -107,11 +110,45 @@ This section contains informations about the survey configuration :
 
 
 
-## sn_gen
+## **sim_par** 
 
-This section concern the supernovae properties.
+* **z_range** cosmological redshift range in which generate obj. *type* : list(float). 
+* **randseed** the randseed used to produce the simulation. *type* : int. *Optional* : default is random.
+* **duration_for_rate** allow to use a different duration for the survey and the number of SN, it must be in **days**. *type* : float. *Optional* 
+* **nep_cut** is a filter function to only generate SN with a minimum number of epochs. It can be just a number or you can specify different requirements for each band. *type* int or list. *Optional* 
 
-* **z_range** cosmological redshift range in which generate SN Ia. *type* : list(float). 
+
+
+## Astro Obj 
+
+Here we enumerate the different astro obj
+
+### Common properties
+
+Common properties to all astro obj
+
+* **force_n** force the number of SN to generate. *type* int. *Optional*
+* **rate** is the rate of SN in units of SN/Mpc$^3$/year. *type* : float or str. *Optional* : default value is $3 \times 10^{-5}\ SN.Mpc^{-3}.year^{-1}$ .
+* **rate_pw** give an evolution of the rate with redshift as $r_v(z) = (1+z)^{rate_pw} r_v(0)$. *type* float. *Optional* : default is 0. 
+* **mod_fcov** use or not the simulation model covariance to scatter flux. *type* : boolean. *Optional* : default is False.
+
+Flux covariance come from **sncosmo.Model.bandfluxcov()** and is apply using :
+
+```python
+flux += np.random.multivariate_normal(np.zeros(len(fluxcov)),
+                                      fluxcov,
+                                      check_valid='ignore',
+                                      method='eigh')
+```
+
+
+* **mode_config** contains parameters of the model used to simulated SN Ia light curves.
+  * **model_name** give the name of your model.
+  * **model_dir** give the path  to the model files. *type* : str. *Optional* : if not given, use **model_name** as *sncosmo* built-in source.
+
+### snia_gen
+
+This section concern the type Ia supernovae properties.
 
 * **M0** is the absolute magnitude of Supernovae in rest-frame Bessell B band. *type* : float or str.
 
@@ -122,73 +159,30 @@ This section concern the supernovae properties.
 
 * **mag_sct** the SN Ia coherent intrinsic scattering. For each SN $M_0 \rightarrow M_0 + \sigma_M$. *type* : float.
 
-* **randseed** the randseed used to produce the simulation. *type* : int. *Optional* : default is random.
+* **rate**
 
-* **n_sn** force the number of SN to generate. *type* int. *Optional*
+  Additional possibilities are:
 
-* **sn_rate** is the rate of SN in units of SN/Mpc$^3$/year. *type* : float or str. *Optional* : default value is $3 \times 10^{-5}\ SN.Mpc^{-3}.year^{-1}$ .
-
-  Possibilities are:
-
-  * Directly give a float number
   * Give 'ptf19' : use the [PTF19](https://arxiv.org/abs/1903.08580) SN Ia rate $r_v = 2.43 \times10^{-5} \ SN.Mpc^{-3}.year^{-1}$ for $H_0 = 70$ km/s/Mpc. $r_v$  is rescale in function of the $H_0$ set in cosmology.
 
   Note that the rate is used to generate the redshift distribution.
-
-* **rate_pw** give an evolution of the rate with redshift as $r_v(z) = (1+z)^{rate_pw} r_v(0)$. *type* float. *Optional* : default is 0. 
-
-* **duration_for_rate** allow to use a different duration for the survey and the number of SN, it must be in **days**. *type* : float. *Optional* 
-
-* **nep_cut** is a filter function to only generate SN with a minimum number of epochs. It can be just a number or you can specify different requirements for each band. *type* int or list. *Optional* 
 
 * **sct_mod** a model of wavelength dependant scattering. Follow nomanclature of [Kessler et al. 2012](https://arxiv.org/abs/1209.2482). *type* : str. *Optional*
 
   Possibilities are:
 
-  *  **'G10'** for [Guy et al. 2010](https://arxiv.org/abs/1010.4743) model.
-  *  **'C11'** or **'C11_0'** for [Chotard et al. 2011](https://arxiv.org/abs/1103.5300) model with correlation between U' and U = 0, **'C11_1'** for Cor(U',U) = 1 and **'C11_2'** for Cor(U',U) = -1.
-
-
-
-##  model_config
-
-This section is about the model used to simulated SN Ia light curves.
-
-* **model_name** give the name of your model.
+  * **'G10'** for [Guy et al. 2010](https://arxiv.org/abs/1010.4743) model.
+  * **'C11'** or **'C11_0'** for [Chotard et al. 2011](https://arxiv.org/abs/1103.5300) model with correlation between U' and U = 0, **'C11_1'** for Cor(U',U) = 1 and **'C11_2'** for Cor(U',U) = -1.
+  
+* Available model for ** model_config**:
 
   Possibilities are :
 
-  * salt2
-  * salt3
+  * all sncosmo **salt** models
 
-* **model_dir** give the path  to the model files. *type* : str. *Optional* : if not given, use **model_name** as *sncosmo* built-in source.
 
-* **mw_dust** is the model of Milky Way dust to apply, the second term is optional and correspond to the $R_V$ value, by default $R_V = 3.1$. *type* : list(str, float). *Optional* : if not set, no dust.
 
-  Possibilities are :
-
-  * **CCM89**
-  * **OD94** 
-  * **F99** 
-
-  For more information go to the *sncosmo* documentation.
-
-Other parameters depends on the model.
-
-* **mod_fcov** use or not the simulation model covariance to scatter flux. *type* : boolean. *Optional* : default is False.
-
-  Flux covariance come from **sncosmo.Model.bandfluxcov()** and is apply using :
-
-  ```python
-  flux += np.random.multivariate_normal(np.zeros(len(fluxcov)),
-                                        fluxcov,
-                                        check_valid='ignore',
-                                        method='eigh')
-  ```
-
-   
-
-### Salt 2 / 3 
+#### Salt 2 / 3 
 
 * **alpha** correspond to the stretch correction in Tripp relation : $\alpha x_1$. *type* float.
 
@@ -207,10 +201,27 @@ Other parameters depends on the model.
   Possibilities are:
 
   * [MEAN, SIGMA] for gaussian  distribution.
-
+  
   * [MEAN, SIGMA-, SIGMA+]  for asymmetric gaussian distribution.
-
+  
     
+
+## **mw_dust**
+The model of Milky Way dust to apply. *Optional* : not set, no dust.
+
+* **model** the name of the MW dust to use.
+  Possibilities are :
+  * **CCM89**
+
+  * **OD94** 
+
+  * **F99** 
+
+* **rv**  $R_V$ value. *type* : float. *Optional* : default $R_v=3.1$.
+
+For more information go to the *sncosmo* documentation.
+
+
 
 ## cosmology
 
