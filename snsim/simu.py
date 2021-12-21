@@ -451,12 +451,7 @@ class Simulator:
     @property
     def vpec_dist(self):
         """Get vpec option."""
-        if 'vpec_dist' in self.config:
-            return self.config['vpec_dist']
-        elif 'host_file' in self.config:
-            return None
-        else:
-            return {'mean_vpec': 0., 'sig_vpec': 0.}
+        return self._vpec_dist
 
     @property
     def cmb(self):
