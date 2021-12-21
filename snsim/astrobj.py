@@ -30,7 +30,7 @@ class BasicAstrObj(abc.ABC):
     model_par : dict
         General model parameters.
         model_par
-        +-- mod_fcov, boolean to use or not model flux covariance
+        └── mod_fcov, boolean to use or not model flux covariance
     """
     _type = ''
 
