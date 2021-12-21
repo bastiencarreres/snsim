@@ -110,7 +110,7 @@ This section contains informations about the survey configuration :
 
 
 
-## **sim_par** 
+## sim_par
 
 * **z_range** cosmological redshift range in which generate obj. *type* : list(float). 
 * **randseed** the randseed used to produce the simulation. *type* : int. *Optional* : default is random.
@@ -119,9 +119,12 @@ This section contains informations about the survey configuration :
 
 
 
-## Astro Obj 
+## astrobj_gen 
 
-Here we enumerate the different astro obj
+Here we present how to generate different astrobj : each astrobj configuration us represented by a yaml section named astrobj_gen.
+Available astrobj are :
+* SNIa
+(Future implementaiton for new astrobj)
 
 ### Common properties
 
@@ -142,7 +145,7 @@ flux += np.random.multivariate_normal(np.zeros(len(fluxcov)),
 ```
 
 
-* **mode_config** contains parameters of the model used to simulated SN Ia light curves.
+* **model_config** contains parameters of the model used to simulated SN Ia light curves.
   * **model_name** give the name of your model.
   * **model_dir** give the path  to the model files. *type* : str. *Optional* : if not given, use **model_name** as *sncosmo* built-in source.
 
@@ -174,11 +177,9 @@ This section concern the type Ia supernovae properties.
   * **'G10'** for [Guy et al. 2010](https://arxiv.org/abs/1010.4743) model.
   * **'C11'** or **'C11_0'** for [Chotard et al. 2011](https://arxiv.org/abs/1103.5300) model with correlation between U' and U = 0, **'C11_1'** for Cor(U',U) = 1 and **'C11_2'** for Cor(U',U) = -1.
   
-* Available model for ** model_config**:
+* Available model for **model_config**:
 
-  Possibilities are :
-
-  * all sncosmo **salt** models
+  * all sncosmo **salt** models.
 
 
 
