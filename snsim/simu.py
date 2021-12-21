@@ -412,7 +412,7 @@ class Simulator:
             n_to_sim = generator._params['force_n'] - len(lcs)
         return lcs
 
-    def plot_ra_dec(self, plot_vpec=False, plot_fields=False, **kwarg):
+    def plot_ra_dec(self, idx, plot_vpec=False, plot_fields=False, **kwarg):
         """Plot a mollweide map of ra, dec.
 
         Parameters
@@ -433,10 +433,10 @@ class Simulator:
             field_dic = None
             field_size = None
 
-        self.sn_sample.plot_ra_dec(plot_vpec=plot_vpec,
-                                   field_dic=field_dic,
-                                   field_size=field_size,
-                                   **kwarg)
+        self.samples[idx].plot_ra_dec(plot_vpec=plot_vpec,
+                                      field_dic=field_dic,
+                                      field_size=field_size,
+                                      **kwarg)
 
     @property
     def config(self):
