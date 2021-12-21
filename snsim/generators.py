@@ -76,12 +76,14 @@ class BaseGen(abc.ABC):
 
     def __call__(self, n_obj, rand_gen):
         """Launch the simulation of obj.
+
         Parameters
         ----------
         n_obj : int
             Number of obj to simulate.
         rand_seed : int
             The random seed of the simulation.
+
         Returns
         -------
         list(AstrObj)
@@ -304,6 +306,7 @@ class BaseGen(abc.ABC):
 
     def gen_astrobj_par(self, n_obj, rand_gen):
         """Generate basic obj properties.
+
         Parameters
         ----------
         n_obj: int
