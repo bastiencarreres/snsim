@@ -289,13 +289,12 @@ class Simulator:
 
         self._samples = []
         Obj_ID = 0
-        lcs_list = []
         for use_rate, seed, gen in zip(self._use_rate, seed_list, self.generators):
             sim_time = time.time()
             if use_rate:
-                lcs_list += self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
+                lcs_list = self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
             else:
-                lcs_list += self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
+                lcs_list = self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
 
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,

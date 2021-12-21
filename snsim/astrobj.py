@@ -14,17 +14,17 @@ class BasicAstrObj(abc.ABC):
     ----------
     parameters : dict
         Parameters of the obj.
-        parameters
-        ├── zcos, cosmological redshift
-        ├── z2cmb, CMB dipole redshift contribution
-        ├── como_dist, comoving distance of the obj
-        ├── vpec, obj peculiar velocity
-        ├── ra, obj Right Ascension
-        ├── dec, obj Declinaison
-        ├── sim_t0, obj peak time
-        ├── dip_dM, magnitude modification due to a dipole
-        └── sncosmo
-            └── sncosmo parameters
+      | parameters
+      | ├── zcos, cosmological redshift
+      | ├── z2cmb, CMB dipole redshift contribution
+      | ├── como_dist, comoving distance of the obj
+      | ├── vpec, obj peculiar velocity
+      | ├── ra, obj Right Ascension
+      | ├── dec, obj Declinaison
+      | ├── sim_t0, obj peak time
+      | ├── dip_dM, magnitude modification due to a dipole
+      | └── sncosmo
+      |     └── sncosmo parameters
     sim_model : sncosmo.Model
         sncosmo Model to use.
     model_par : dict
@@ -69,7 +69,6 @@ class BasicAstrObj(abc.ABC):
         """Abstract method to add general model parameters,
         call during __init__.
         """
-
         pass
 
     def _add_meta_to_table(self):
