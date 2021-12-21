@@ -283,4 +283,3 @@ Default is all vpec = 0.
   * 'as_sn' : the simulation use the sn rate to generate redshifts distribution
   * 'as_host' : the simulation use the host distribution to generate redshifts
   * 'mass_weight' : host mass weight the distribution to generate redshifts as $w_i = \frac{m_i}{\sum_i m_i}$
-
