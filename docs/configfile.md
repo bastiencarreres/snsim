@@ -110,7 +110,7 @@ This section contains informations about the survey configuration :
 
 
 
-## sim_par 
+## sim_par
 
 * **z_range** cosmological redshift range in which generate obj. *type* : list(float). 
 * **randseed** the randseed used to produce the simulation. *type* : int. *Optional* : default is random.
@@ -145,7 +145,7 @@ flux += np.random.multivariate_normal(np.zeros(len(fluxcov)),
 ```
 
 
-* **mode_config** contains parameters of the model used to simulated SN Ia light curves.
+* **model_config** contains parameters of the model used to simulated SN Ia light curves.
   * **model_name** give the name of your model.
   * **model_dir** give the path  to the model files. *type* : str. *Optional* : if not given, use **model_name** as *sncosmo* built-in source.
 
