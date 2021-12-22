@@ -29,7 +29,7 @@ survey_config:
 sim_par:
     z_range: [ZMIN, ZMAX]
     randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
-    nep_cut: [[nep_min1,Tmin,Tmax], [nep_min2,Tmin2,Tmax2,'filter1'], ...] EP CUTS
+    nep_cut: [[nep_min1,Tmin,Tmax], [nep_min2,Tmin2,Tmax2,'filter1'], ...] EP CUTS # Optional
     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
 snia_gen:
     force_n: NUMBER OF OBJ TO GENERATE  # Optional
@@ -207,10 +207,10 @@ This section concern the type Ia supernovae properties.
   
     
 
-## **mw_dust**
+## mw_dust
 The model of Milky Way dust to apply. *Optional* : not set, no dust.
 
-* **model** the name of the MW dust to use.
+* **model** the name of the MW dust to use. *type* : str.
   Possibilities are :
   * **CCM89**
 
@@ -218,7 +218,7 @@ The model of Milky Way dust to apply. *Optional* : not set, no dust.
 
   * **F99** 
 
-* **rv**  $R_V$ value. *type* : float. *Optional* : default $R_v=3.1$.
+* **rv**  MW $R_V$ value. *type* : float. *Optional* : default $R_v=3.1$.
 
 For more information go to the *sncosmo* documentation.
 
