@@ -324,7 +324,7 @@ class SimSample:
 
         """
         if write_path is None:
-            write_path = self._dir_path + self.name + '_fit.fits'
+            write_path = self._dir_path + self.name + '_fit'
 
         if self.fit_res is None:
             print('Perform fit before write')
