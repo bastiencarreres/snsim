@@ -194,6 +194,12 @@ class Simulator:
         """
         return rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
 
+    def _get_cosmo_header(self):
+        if 'name' in self.config['cosmology']:
+            return {'cosmod_name': self.config['cosmology']['name']}
+        else:
+            return self.config['cosmology']
+
     def simulate(self):
         """Launch the simulation.
 
@@ -298,7 +304,8 @@ class Simulator:
 
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
-                                                      gen._get_header(),
+                                                      {**gen._get_header(),
+                                                       **self._get_cosmo_header()},
                                                       model_dir=None,
                                                       dir_path=self.config['data']['write_path']))
 
