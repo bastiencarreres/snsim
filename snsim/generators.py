@@ -646,6 +646,7 @@ class SNIaGen(BaseGen):
             if isinstance(self._params['model_config']['dist_x1'], str):
                 header['dist_x1'] = self._params['model_config']['dist_x1']
             else:
+                header['mean_x1'] = self._params['model_config']['dist_x1'][0]
                 if len(self._params['model_config']['dist_x1']) == 3:
                     header['dist_x1'] = 'asym_gauss'
                     header['sig_x1_low'] = self._params['model_config']['dist_x1'][1]
@@ -654,7 +655,7 @@ class SNIaGen(BaseGen):
                     header['dist_x1'] = 'gauss'
                     header['sig_x1'] = self._params['model_config']['dist_x1'][1]
 
-                header['mean_c'] = self._params['model_config']['dist_c'][0]
+            header['mean_c'] = self._params['model_config']['dist_c'][0]
 
             if len(self._params['model_config']['dist_c']) == 3:
                 header['dist_c'] = 'asym_gauss'

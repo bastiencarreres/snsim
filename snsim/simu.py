@@ -314,18 +314,13 @@ class Simulator:
         print('\n-----------------------------------------------------------\n')
 
         print('OUTPUT FILE(S) : ')
-        if isinstance(self.config['data']['write_format'], str):
-            print(self.config['data']['write_path']
-                  + self.sim_name
+        formats = np.atleast_1d(self.config['data']['write_format'])
+        for f in formats:
+            print('- '
+                  + self.config['data']['write_path']
+                  + self.sim_name + '_' + gen._object_type
                   + '.'
-                  + self.config['data']['write_format'])
-        else:
-            for f in self.config['data']['write_format']:
-                print('- '
-                      + self.config['data']['write_path']
-                      + self.sim_name
-                      + '.'
-                      + f)
+                  + f)
 
     def _cadence_sim(self, rand_gen, generator, Obj_ID=0):
         """Simulate a number of SN according to poisson law.
