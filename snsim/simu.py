@@ -239,7 +239,7 @@ class Simulator:
 
         print('\n-----------------------------------------------------------\n')
 
-        rate_str = "Rate r_v = {0:.2e}*(1+z)^{1} SN/Mpc^3/year "
+        rate_str = "Rate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
 
         for use_rate, gen in zip(self._use_rate, self.generators):
             gen.print_config()
@@ -253,7 +253,7 @@ class Simulator:
                 compute_z_cdf = True
                 gen.compute_zcdf(self.z_range)
             else:
-                print(f"Generate {gen._params['force_n']} SN Ia\n")
+                print(f"\nGenerate {gen._params['force_n']} SN Ia")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
                     rate_str = 'Redshift distribution computed '
                     if self.host.config['distrib'] == 'as_host':
@@ -315,7 +315,6 @@ class Simulator:
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated'
                   f' in {time.time() - sim_time:.1f} seconds')
-
             write_time = time.time()
             self._samples[-1]._write_sim(self.config['data']['write_path'],
                                          self.config['data']['write_format'])
