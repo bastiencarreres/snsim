@@ -719,16 +719,17 @@ class SNIaGen(BaseGen):
             One dictionnary containing 'parameters names': numpy.ndaray(float).
 
         """
+
         model_name = self._params['model_config']['model_name']
-
+        model_seed = rand_gen.integers(1000, 1e6)
         if model_name in ('salt2', 'salt3'):
-
             if self._params['model_config']['dist_x1'] in ['N21']:
                 z_for_dist = astrobj_par['zcos']
             else:
                 z_for_dist = None
 
-            sim_x1, sim_c = self.gen_salt_par(n_sn, rand_gen, z=z_for_dist)
+            sim_x1, sim_c = self.gen_salt_par(n_sn, np.random.default_rng(model_seed),
+                                              z=z_for_dist)
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
@@ -759,16 +760,18 @@ class SNIaGen(BaseGen):
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
+        salt2_seeds = rand_gen.integers(1000, 1e6, size=2)
+        x1_gen = np.random.default_rng(salt2_seeds[0])
+        c_gen = np.random.default_rng(salt2_seeds[1])
         if isinstance(self._params['model_config']['dist_x1'], str):
             if self._params['model_config']['dist_x1'].lower() == 'n21':
-                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=rand_gen)
+                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=x1_gen)
         else:
             sim_x1 = ut.asym_gauss(*self._params['model_config']['dist_x1'],
-                                   rand_gen=rand_gen,
+                                   rand_gen=x1_gen,
                                    size=n_sn)
 
         sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
-                              rand_gen=rand_gen,
+                              rand_gen=c_gen,
                               size=n_sn)
-
         return sim_x1, sim_c
