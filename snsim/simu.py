@@ -90,7 +90,7 @@ class Simulator:
     |     B: B_parameter
     """
 
-    def __init__(self, param_dic):
+    def __init__(self, param_dic, plot_config=False):
         """Initialise Simulator class."""
         # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
@@ -164,6 +164,10 @@ class Simulator:
                     self._use_rate.append(False)
                 else:
                     self._use_rate.append(True)
+
+        if plot_config:
+            print('PARAMETERS USED IN SIMULATION\n')
+            ut.print_dic(self.config)
 
     def peak_time_range(self, trange_model):
         """Get the time range for simulate SN peak.
@@ -249,7 +253,7 @@ class Simulator:
                 compute_z_cdf = True
                 gen.compute_zcdf(self.z_range)
             else:
-                print(f"\nGenerate {gen._params['force_n']} SN Ia\n")
+                print(f"Generate {gen._params['force_n']} SN Ia\n")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
                     rate_str = 'Redshift distribution computed '
                     if self.host.config['distrib'] == 'as_host':
@@ -362,7 +366,7 @@ class Simulator:
         else:
             duration = generator.time_range[1] - generator.time_range[0]
         n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1], duration)
-        list_tmp = generator(n_sn, rand_gen)
+        list_tmp = generator(n_sn, rand_gen.integers(1000, 1e6))
 
         for obj in list_tmp:
             obj.epochs = self.survey.epochs_selection(obj.coord,
@@ -396,7 +400,7 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
-            list_tmp = generator(n_to_sim, rand_gen)
+            list_tmp = generator(n_to_sim, rand_gen.integers(1000, 1e6))
             for obj in list_tmp:
                 obj.epochs = self.survey.epochs_selection(obj.coord,
                                                           (obj.sim_model.mintime(),
