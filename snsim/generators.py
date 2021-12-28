@@ -576,7 +576,7 @@ class SNIaGen(BaseGen):
                  mw_dust=None, host=None, dipole=None):
         super().__init__(params, cmb, cosmology, vpec_dist,
                          host=host, mw_dust=mw_dust, dipole=dipole)
-        if isinstance(self.rate_law[0], str):
+        if self.rate_law[0] is None:
             self.rate_law = self._init_register_rate()
 
     def _init_register_rate(self):
