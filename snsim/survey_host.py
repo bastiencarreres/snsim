@@ -746,7 +746,7 @@ class SnHost:
         idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
         return self.table.iloc[idx]
 
-    def random_choice(self, n, rand_gen):
+    def random_choice(self, n, rand_seed):
         """Randomly select hosts.
 
         Parameters
@@ -762,6 +762,7 @@ class SnHost:
             Table with selected hosts properties.
 
         """
+        rand_gen = np.random.default_rng(rand_seed)
         if self.config['distrib'].lower() == 'as_host':
             p = None
         elif self.config['distrib'].lower() == 'mass_weight':

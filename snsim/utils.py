@@ -295,3 +295,13 @@ def flux_to_Jansky(zp, band):
     trans_int = np.sum(trans / nu) * dnu / snc.constants.H_ERG_S
     norm = 10**(-0.4 * zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
+
+
+def print_dic(dic, prefix=''):
+    indent = '    '
+    for K in dic:
+        if isinstance(dic[K], dict):
+            print(prefix + K + ':')
+            print_dic(dic[K], prefix=prefix + indent)
+        else:
+            print(prefix + f'{K}: {dic[K]}')

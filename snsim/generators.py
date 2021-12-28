@@ -1,6 +1,7 @@
 """This module contain generators class."""
-import numpy as np
+
 import abc
+import numpy as np
 from . import utils as ut
 from . import nb_fun as nbf
 from . import dust_utils as dst_ut
@@ -74,7 +75,7 @@ class BaseGen(abc.ABC):
         self._z_cdf = None
         self._z_time_rate = None
 
-    def __call__(self, n_obj, rand_gen):
+    def __call__(self, n_obj, rand_seed):
         """Launch the simulation of obj.
 
         Parameters
@@ -89,9 +90,13 @@ class BaseGen(abc.ABC):
         list(AstrObj)
             A list containing Astro Object.
         """
+        rand_gen = np.random.default_rng(rand_seed)
         astrobj_par, dust_par = self.gen_astrobj_par(n_obj, rand_gen)
-        self._update_astrobj_par(n_obj, astrobj_par, rand_gen)
-        snc_par = self.gen_snc_par(n_obj, astrobj_par, rand_gen)
+
+        # -- Initialise 2 new random generators for inherited class function
+        update_seeds = rand_gen.integers(1000, 1e6, size=2)
+        self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[0]))
+        snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[1]))
 
         astrobj_list = ({**{k: astrobj_par[k][i] for k in astrobj_par},
                          **{'sncosmo': {**sncp, **dstp}}}
@@ -337,11 +342,12 @@ class BaseGen(abc.ABC):
                 treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
                 host = self.host.host_near_z(zcos, treshold)
         else:
-            host = self.host.random_choice(n_obj, rand_gen)
+            hseed = rand_gen.integers(1000, 1e6)
+            host = self.host.random_choice(n_obj, hseed)
             zcos = host['redshift'].values
 
         # -- Generate 2 randseeds for optionnal parameters randomization
-        opt_seeds = rand_gen.integers(low=1000, high=1e6, size=2)
+        opt_seeds = rand_gen.integers(1000, 1e6, size=2)
 
         # -- Generate ra, dec
         if self.host is not None:
@@ -713,16 +719,17 @@ class SNIaGen(BaseGen):
             One dictionnary containing 'parameters names': numpy.ndaray(float).
 
         """
+
         model_name = self._params['model_config']['model_name']
-
+        model_seed = rand_gen.integers(1000, 1e6)
         if model_name in ('salt2', 'salt3'):
-
             if self._params['model_config']['dist_x1'] in ['N21']:
                 z_for_dist = astrobj_par['zcos']
             else:
                 z_for_dist = None
 
-            sim_x1, sim_c = self.gen_salt_par(n_sn, rand_gen, z=z_for_dist)
+            sim_x1, sim_c = self.gen_salt_par(n_sn, np.random.default_rng(model_seed),
+                                              z=z_for_dist)
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
@@ -753,16 +760,18 @@ class SNIaGen(BaseGen):
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
+        salt2_seeds = rand_gen.integers(1000, 1e6, size=2)
+        x1_gen = np.random.default_rng(salt2_seeds[0])
+        c_gen = np.random.default_rng(salt2_seeds[1])
         if isinstance(self._params['model_config']['dist_x1'], str):
             if self._params['model_config']['dist_x1'].lower() == 'n21':
-                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=rand_gen)
+                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=x1_gen)
         else:
             sim_x1 = ut.asym_gauss(*self._params['model_config']['dist_x1'],
-                                   rand_gen=rand_gen,
+                                   rand_gen=x1_gen,
                                    size=n_sn)
 
         sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
-                              rand_gen=rand_gen,
+                              rand_gen=c_gen,
                               size=n_sn)
-
         return sim_x1, sim_c

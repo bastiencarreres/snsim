@@ -90,7 +90,7 @@ class Simulator:
     |     B: B_parameter
     """
 
-    def __init__(self, param_dic):
+    def __init__(self, param_dic, plot_config=False):
         """Initialise Simulator class."""
         # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
@@ -165,6 +165,10 @@ class Simulator:
                 else:
                     self._use_rate.append(True)
 
+        if plot_config:
+            print('PARAMETERS USED IN SIMULATION\n')
+            ut.print_dic(self.config)
+
     def peak_time_range(self, trange_model):
         """Get the time range for simulate SN peak.
 
@@ -193,6 +197,12 @@ class Simulator:
 
         """
         return rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
+
+    def _get_cosmo_header(self):
+        if 'name' in self.config['cosmology']:
+            return {'cosmod_name': self.config['cosmology']['name']}
+        else:
+            return self.config['cosmology']
 
     def simulate(self):
         """Launch the simulation.
@@ -229,7 +239,7 @@ class Simulator:
 
         print('\n-----------------------------------------------------------\n')
 
-        rate_str = "Rate r_v = {0:.2e}*(1+z)^{1} SN/Mpc^3/year "
+        rate_str = "Rate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
 
         for use_rate, gen in zip(self._use_rate, self.generators):
             gen.print_config()
@@ -243,7 +253,7 @@ class Simulator:
                 compute_z_cdf = True
                 gen.compute_zcdf(self.z_range)
             else:
-                print(f"\nGenerate {gen._params['force_n']} SN Ia\n")
+                print(f"\nGenerate {gen._params['force_n']} SN Ia")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
                     rate_str = 'Redshift distribution computed '
                     if self.host.config['distrib'] == 'as_host':
@@ -298,13 +308,13 @@ class Simulator:
 
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
-                                                      gen._get_header(),
+                                                      {**gen._get_header(),
+                                                       **self._get_cosmo_header()},
                                                       model_dir=None,
                                                       dir_path=self.config['data']['write_path']))
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated'
                   f' in {time.time() - sim_time:.1f} seconds')
-
             write_time = time.time()
             self._samples[-1]._write_sim(self.config['data']['write_path'],
                                          self.config['data']['write_format'])
@@ -355,7 +365,7 @@ class Simulator:
         else:
             duration = generator.time_range[1] - generator.time_range[0]
         n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1], duration)
-        list_tmp = generator(n_sn, rand_gen)
+        list_tmp = generator(n_sn, rand_gen.integers(1000, 1e6))
 
         for obj in list_tmp:
             obj.epochs = self.survey.epochs_selection(obj.coord,
@@ -389,7 +399,7 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
-            list_tmp = generator(n_to_sim, rand_gen)
+            list_tmp = generator(n_to_sim, rand_gen.integers(1000, 1e6))
             for obj in list_tmp:
                 obj.epochs = self.survey.epochs_selection(obj.coord,
                                                           (obj.sim_model.mintime(),

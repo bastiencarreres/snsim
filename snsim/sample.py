@@ -239,7 +239,7 @@ class SimSample:
 
         fit_model = self.fit_model.__copy__()
 
-        if fit_model.source.name[:5] in ('salt2', 'salt3'):
+        if fit_model.source.name[:4] == 'salt':
             fit_par = ['t0', 'x0', 'x1', 'c']
 
         print('Use model:')
