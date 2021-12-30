@@ -93,7 +93,7 @@ def read_sim_file(file_path):
         with open(file_path + file_ext, 'rb') as f:
             pkl_dic = pickle.load(f)
             lcs = pd.DataFrame.from_dict(pkl_dic['lcs'])
-            lcs.index.set_names(['sn_id', 'epochs'], inplace=True)
+            lcs.index.set_names(['ID', 'epochs'], inplace=True)
             lcs.attrs = pkl_dic['meta']
             name = pkl_dic['name']
             header = pkl_dic['header']
@@ -102,7 +102,7 @@ def read_sim_file(file_path):
         if json_pyarrow:
             table = pq.read_table(file_path + file_ext)
             lcs = table.to_pandas()
-            lcs.set_index(['sn_id', 'epochs'], inplace=True)
+            lcs.set_index(['ID', 'epochs'], inplace=True)
             lcs.attrs = {int(k): val
                          for k, val in json.loads(table.schema.metadata['attrs'.encode()]).items()}
             name = table.schema.metadata['name'.encode()].decode()
@@ -112,7 +112,7 @@ def read_sim_file(file_path):
     return name, header, lcs
 
 
-def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
+def write_fit(sim_lcs_meta, fit_res, directory, sim_meta={}):
     """Write fit into a fits file.
 
     Parameters
@@ -146,15 +146,16 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
     for k in fit_keys:
         data[k] = []
 
-    for res, fd in zip(fit_res, fit_dic):
-        if res != 'NaN':
-            par = res['parameters']
+    for obj_ID in fit_res:
+        fd = fit_res[obj_ID]['params']
+        snc_out = fit_res[obj_ID]['snc_out']
+        if snc_out != 'NaN':
             data['t0'].append(fd['t0'])
-            data['e_t0'].append(np.sqrt(res['covariance'][0, 0]))
+            data['e_t0'].append(np.sqrt(snc_out['covariance'][0, 0]))
 
             if MName[:5] in ('salt2', 'salt3'):
-                par_cov = res['covariance'][1:, 1:]
-                mb_cov = salt_ut.cov_x0_to_mb(par[2], par_cov)
+                par_cov = snc_out['covariance'][1:, 1:]
+                mb_cov = salt_ut.cov_x0_to_mb(fd['x0'], par_cov)
                 data['x0'].append(fd['x0'])
                 data['e_x0'].append(np.sqrt(par_cov[0, 0]))
                 data['mb'].append(fd['mb'])
@@ -169,8 +170,8 @@ def write_fit(sim_lcs_meta, fit_res, fit_dic, directory, sim_meta={}):
                 data['cov_mb_x1'].append(mb_cov[0, 1])
                 data['cov_mb_c'].append(mb_cov[0, 2])
 
-            data['chi2'].append(res['chisq'])
-            data['ndof'].append(res['ndof'])
+            data['chi2'].append(snc_out['chisq'])
+            data['ndof'].append(snc_out['ndof'])
         else:
             for k in fit_keys:
                 data[k].append(np.nan)
@@ -202,6 +203,6 @@ def open_fit(file):
     table = pq.read_table(file)
     fit = table.to_pandas()
     fit.attrs = json.loads(table.schema.metadata['header'.encode()])
-    fit.set_index(['sn_id'], inplace=True)
+    fit.set_index(['ID'], inplace=True)
 
     return fit

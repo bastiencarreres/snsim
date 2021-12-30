@@ -240,7 +240,7 @@ class BasicAstrObj(abc.ABC):
         else:
             print('SN ID must be an integer')
         if self.sim_lc is not None:
-            self.sim_lc.attrs['sn_id'] = self._ID
+            self.sim_lc.attrs['ID'] = self._ID
 
     @property
     def sim_t0(self):

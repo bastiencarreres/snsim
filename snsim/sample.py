@@ -43,7 +43,6 @@ class SimSample:
 
         self._fit_model = None
         self._fit_res = None
-        self._fit_resmod = None
 
         self.modified_lcs = copy.copy(sim_lcs)
 
@@ -79,9 +78,9 @@ class SimSample:
 
         """
         lcs = pd.concat(sim_lcs,
-                        keys=(lc.attrs['sn_id'] for lc in sim_lcs),
-                        names=['sn_id'])
-        lcs.attrs = {lc.attrs['sn_id']: lc.attrs for lc in sim_lcs}
+                        keys=(lc.attrs['ID'] for lc in sim_lcs),
+                        names=['ID'])
+        lcs.attrs = {lc.attrs['ID']: lc.attrs for lc in sim_lcs}
         return cls(sample_name, lcs, header, model_dir=model_dir,
                    dir_path=dir_path)
 
@@ -216,7 +215,7 @@ class SimSample:
 
         Parameters
         ----------
-        sn_ID : int, default is None
+        ID : int, default is None
             The SN ID, if not specified all SN are fit.
 
         Returns
@@ -233,9 +232,7 @@ class SimSample:
             raise ValueError('Set fit model before launch fit')
 
         if self._fit_res is None:
-            self._fit_res = [None] * self.n_obj
-            self._fit_resmod = [None] * self.n_obj
-            self._fit_dic = [None] * self.n_obj
+            self._fit_res = {}
 
         fit_model = self.fit_model.__copy__()
 
@@ -246,22 +243,27 @@ class SimSample:
         print(self.fit_model._headsummary())
 
         if obj_ID is None:
-            for i, lc in self.sim_lcs.groupby('sn_id'):
-                fit_model.set(z=self.sim_lcs.attrs[i]['zobs'])
-                self._set_obj_effects_model(fit_model, i)
-                self._fit_res[i], self._fit_resmod[i], self._fit_dic[i] = ut.snc_fitter(self.sim_lcs.loc[i].to_records(),
-                                                                                        fit_model,
-                                                                                        fit_par,
-                                                                                        **kwargs)
+            for obj_id, lc in self.sim_lcs.groupby('ID'):
+                fit_model.set(z=self.sim_lcs.attrs[obj_id]['zobs'])
+                self._set_obj_effects_model(fit_model, obj_id)
+                snc_out, snc_mod, params = ut.snc_fitter(self.sim_lcs.loc[obj_id].to_records(),
+                                                         fit_model,
+                                                         fit_par,
+                                                         **kwargs)
+                self._fit_res[obj_id] = {'snc_out': snc_out,
+                                         'snc_mod': snc_mod,
+                                         'params': params}
         else:
             fit_model.set(z=self.sim_lcs.attrs[obj_ID]['zobs'])
             self._set_obj_effects_model(fit_model, obj_ID)
 
-            self._fit_res[obj_ID], self._fit_resmod[obj_ID], self._fit_dic[obj_ID] = ut.snc_fitter(
-                                                                            self.sim_lcs.loc[obj_ID].to_records(),
-                                                                            fit_model,
-                                                                            fit_par,
-                                                                            **kwargs)
+            snc_out, snc_mod, params = ut.snc_fitter(self.sim_lcs.loc[obj_ID].to_records(),
+                                                     fit_model,
+                                                     fit_par,
+                                                     **kwargs)
+            self._fit_res[obj_ID] = {'snc_out': snc_out,
+                                     'snc_mod': snc_mod,
+                                     'params': params}
 
     def _write_sim(self, write_path, formats=['pkl', 'parquet'], lcs_df=None, sufname=''):
         """Write simulation into a file.
@@ -307,7 +309,7 @@ class SimSample:
         """
         self._write_sim(self._dir_path,
                         formats=formats,
-                        lcs_list=self.modified_lcs,
+                        lcs_df=self.modified_lcs,
                         sufname='_modified')
 
     def write_fit(self, write_path=None):
@@ -329,11 +331,13 @@ class SimSample:
         if self.fit_res is None:
             print('Perform fit before write')
             self.fit_lc()
-        for i, res in enumerate(self.fit_res):
-            if res is None:
-                self.fit_lc(self.sim_lcs.attrs[i]['sn_id'])
+        if len(self.fit_res) < self.n_obj:
+            print('Not all object are fitted')
+            for id in self.get('ID'):
+                if id not in self.fit_res:
+                    self.fit_lc(id)
 
-        meta_keys = ['sn_id', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
+        meta_keys = ['ID', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
                      'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
 
         model_name = self.header['model_name']
@@ -349,7 +353,7 @@ class SimSample:
         if 'sct_mod' in self.header:
             sim_lc_meta['SM_seed'] = self.get(self.header['sct_mod'][:3] + '_RndS')
 
-        io_ut.write_fit(sim_lc_meta, self.fit_res, self._fit_dic, write_path, sim_meta=self.header)
+        io_ut.write_fit(sim_lc_meta, self.fit_res, write_path, sim_meta=self.header)
 
     def plot_hist(self, key, ax=None, **kwargs):
         """Plot the histogram of the key metadata.
@@ -383,8 +387,8 @@ class SimSample:
 
         Parameters
         ----------
-        sn_ID : int
-            The Supernovae ID.
+        obj_ID : int
+            The Object ID.
         mag : boolean, default = False
             If True plot the magnitude instead of the flux.
         zp : float
