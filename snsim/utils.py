@@ -238,7 +238,7 @@ def snc_fitter(lc, fit_model, fit_par, **kwargs):
                          vparam_names=fit_par, **kwargs)
         if res[0]['covariance'] is None:
             res[0]['covariance'] = np.empty((len(res[0]['vparam_names']),
-                                             len(res[0]['vparam_names']))
+                                             len(res[0]['vparam_names'])))
             res[0]['covariance'][:] = np.nan
 
         res[0]['param_names'] = np.append(res[0]['param_names'], 'mb')
