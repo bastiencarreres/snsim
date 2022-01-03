@@ -236,9 +236,14 @@ def snc_fitter(lc, fit_model, fit_par, **kwargs):
     try:
         res = snc.fit_lc(data=lc, model=fit_model,
                          vparam_names=fit_par, **kwargs)
+        if res[0]['covariance'] is None:
+            res[0]['covariance'] = np.empty(len(res[0]['vparam_names']))
+            res[0]['covariance'][:] = np.nan
+
         res[0]['param_names'] = np.append(res[0]['param_names'], 'mb')
         res[0]['parameters'] = np.append(res[0]['parameters'],
                                          res[1].source_peakmag('bessellb', 'ab'))
+
         res_dic = {k: v for k, v in zip(res[0]['param_names'], res[0]['parameters'])}
         res = np.append(res, res_dic)
     except (RuntimeError, snc.fitting.DataQualityError):
