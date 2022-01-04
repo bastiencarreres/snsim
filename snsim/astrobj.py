@@ -209,7 +209,7 @@ class BasicAstrObj(abc.ABC):
         self.sim_lc.attrs['type'] = self._type
 
         if self.ID is not None:
-            self.sim_lc.attrs['id'] = self.ID
+            self.sim_lc.attrs['ID'] = self.ID
 
         self.sim_lc.attrs['vpec'] = self.vpec
         self.sim_lc.attrs['zcos'] = self.zcos
