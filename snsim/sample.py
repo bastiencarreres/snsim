@@ -433,8 +433,8 @@ class SimSample:
                 print('This sn has no fit results')
                 return
 
-            f_model = self.fit_resmod[obj_ID]
-            cov_t0_x0_x1_c = self.fit_res[obj_ID]['covariance'][:, :]
+            f_model = self.fit_res[obj_ID]['snc_mod']
+            cov_t0_x0_x1_c = self.fit_res[obj_ID]['snc_out']['covariance'][:, :]
             residuals = True
 
         elif plot_fit and mod:
@@ -574,16 +574,6 @@ class SimSample:
         return self._sim_model
 
     @property
-    def fit_model(self):
-        """Get fit model."""
-        return self._fit_model
-
-    @property
     def fit_res(self):
         """Get fit results list."""
         return self._fit_res
-
-    @property
-    def fit_resmod(self):
-        """Get fit sncosmo model results."""
-        return self._fit_resmod
