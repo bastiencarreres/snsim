@@ -574,6 +574,11 @@ class SimSample:
         return self._sim_model
 
     @property
+    def fit_model(self):
+        """Get fit model."""
+        return self._fit_model
+
+    @property
     def fit_res(self):
         """Get fit results list."""
         return self._fit_res
