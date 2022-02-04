@@ -705,8 +705,10 @@ class SnHost:
                 host_list = pd.DataFrame.from_records(hostf[1].data[:])
         elif ext == '.csv':
             host_list = pd.read_csv(self.config['host_file'])
+        elif ext == '.parquet':
+            host_list = pd.read_parquet(self.config['host_file'])
         else:
-            raise ValueError('Support .csv and .fits file')
+            raise ValueError('Support .csv, .fits or .parquet files')
 
         if 'key_dic' in self.config:
             key_dic = self.config['key_dic']
