@@ -97,9 +97,9 @@ class BasicAstrObj(abc.ABC):
             for cut in nep_cut:
                 cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.zobs), cut[2] * (1 + self.zobs)
                 test = (self.epochs['time'] - self.sim_t0 > cutMin_obsfrm)
-                test *= (self.epochs['time'] - self.sim_t0 < cutMax_obsfrm)
+                test &= (self.epochs['time'] - self.sim_t0 < cutMax_obsfrm)
                 if len(cut) == 4:
-                    test *= (self.epochs['band'] == cut[3])
+                    test &= (self.epochs['band'] == cut[3])
                 if np.sum(test) < int(cut[0]):
                     return False
             return True
@@ -198,9 +198,9 @@ class BasicAstrObj(abc.ABC):
         not_to_change = ['G10', 'C11', 'mw_']
         dont_touch = ['zobs', 'mw_r_v', 'fcov_seed']
 
-        for k in self.epochs.keys():
-            if k not in self.sim_lc.copy().keys():
-                self._sim_lc[k] = self.epochs[k].copy()
+        for k in self.epochs.columns:
+            if k not in self.sim_lc.columns:
+                self._sim_lc[k] = self.epochs[k].to_numpy()
 
         for k in self.sim_lc.attrs.copy():
             if k not in dont_touch and k[:3] not in not_to_change:

@@ -7,7 +7,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
 from . import utils as ut
@@ -462,15 +461,15 @@ class SurveyObs:
         skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
 
         # Create obs table following sncosmo formalism
-        obs = Table({'time': obs_selec['expMJD'],
-                     'band': band,
-                     'gain': gain,
-                     'skynoise': skynoise,
-                     'zp': zp,
-                     'sig_zp': sig_zp,
-                     'zpsys': ['ab'] * np.sum(epochs_selec),
-                     'fieldID': obs_selec['fieldID']})
+        obs = pd.DataFrame({'time': obs_selec['expMJD'],
+                            'band': band,
+                            'gain': gain,
+                            'skynoise': skynoise,
+                            'zp': zp,
+                            'sig_zp': sig_zp,
+                            'fieldID': obs_selec['fieldID']})
 
+        obs['zpsys'] = 'ab'
         if 'sub_field' in self.config:
             obs[self.config['sub_field']] = obs_selec[self.config['sub_field']]
 
