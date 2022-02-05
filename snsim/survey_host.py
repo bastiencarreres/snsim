@@ -409,45 +409,46 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
+        obs_selec = self.obs_table.iloc[epochs_selec]
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
-            band = self.obs_table['filter'][epochs_selec].map(self.band_dic).to_numpy(dtype='str')
+            band = obs_selec['filter'].map(self.band_dic).to_numpy(dtype='str')
         else:
-            band = self.obs_table['filter'][epochs_selec].astype('U27').to_numpy(dtype='str')
+            band = obs_selec['filter'].astype('U27').to_numpy(dtype='str')
 
         # Zero point selection
         if self.zp[0] != 'zp_in_obs':
             zp = np.ones(np.sum(epochs_selec)) * self.zp[0]
         else:
-            zp = self.obs_table['zp'][epochs_selec]
+            zp = obs_selec['zp']
 
         # Sig Zero point selection
         if self.zp[1] != 'sig_zp_in_obs':
             sig_zp = np.ones(np.sum(epochs_selec)) * self.zp[1]
         else:
-            sig_zp = self.obs_table['sig_zp'][epochs_selec]
+            sig_zp = obs_selec['sig_zp']
 
         # PSF selection
         if self.sig_psf != 'psf_in_obs':
             sig_psf = np.ones(np.sum(epochs_selec)) * self.sig_psf
         else:
-            sig_psf = self.obs_table['FWHMeff'][epochs_selec] / (2 * np.sqrt(2 * np.log(2)))
+            sig_psf = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
 
         # Gain
         if self.gain != 'gain_in_obs':
             gain = np.ones(np.sum(epochs_selec)) * self.gain
         else:
-            gain = self.obs_table['gain'][epochs_selec]
+            gain = obs_selec['gain']
 
         # Skynoise selection
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
-                mlim5 = self.obs_table[self.config['noise_key'][0]][epochs_selec]
+                mlim5 = obs_selec[self.config['noise_key'][0]]
                 skynoise = 10.**(0.4 * (zp - mlim5)) / 5
             elif self.config['noise_key'][1] == 'skysigADU':
-                skynoise = self.obs_table[self.config['noise_key'][0]][epochs_selec]
+                skynoise = obs_selec[self.config['noise_key'][0]].copy()
             else:
                 raise ValueError('Noise type should be mlim5 or skysigADU')
             if 'fake_skynoise' in self.config:
@@ -461,25 +462,25 @@ class SurveyObs:
         skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
 
         # Create obs table following sncosmo formalism
-        obs = Table({'time': self._obs_table['expMJD'][epochs_selec],
+        obs = Table({'time': obs_selec['expMJD'],
                      'band': band,
                      'gain': gain,
                      'skynoise': skynoise,
                      'zp': zp,
                      'sig_zp': sig_zp,
                      'zpsys': ['ab'] * np.sum(epochs_selec),
-                     'fieldID': self._obs_table['fieldID'][epochs_selec]})
+                     'fieldID': obs_selec['fieldID']})
 
         if 'sub_field' in self.config:
-            obs[self.config['sub_field']] = self._obs_table[self.config['sub_field']][epochs_selec]
+            obs[self.config['sub_field']] = obs_selec[self.config['sub_field']]
 
         if 'add_data' in self.config:
             for k in self.config['add_data']:
                 if k not in obs.keys():
                     if self.obs_table[k].dtype == 'object':
-                        obs[k] = self.obs_table[k][epochs_selec].astype('U27').to_numpy(dtype='str')
+                        obs[k] = obs_selec[k].astype('U27').to_numpy(dtype='str')
                     else:
-                        obs[k] = self.obs_table[k][epochs_selec]
+                        obs[k] = obs_selec[k]
         return obs
 
 
