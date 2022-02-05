@@ -1,5 +1,5 @@
 """This module contains functions with numba decorator to speed up the simulation."""
-from numba import njit
+from numba import njit, prange
 import numpy as np
 from numba.core import types
 from numba.typed import Dict
@@ -91,7 +91,7 @@ def R_base(a, t, vec, to_field_frame=True):
         return R @ vec
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
 
@@ -111,7 +111,7 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
 
     """
     new_radec = np.zeros((2, len(ra_frame)))
-    for i in range(len(ra_frame)):
+    for i in prange(len(ra_frame)):
         x, y, z = R_base(ra_frame[i], -dec_frame[i], vec)
         new_radec[0][i] = np.arctan2(y, x)
         new_radec[1][i] = np.arcsin(z)
@@ -248,7 +248,7 @@ def radec_to_cart(ra, dec):
     return cart_vec
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
                 subfields_id, subfields_corners, type=types.float64[::1]):
     """Chek if a SN is in fields.
@@ -288,7 +288,8 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
     dic_map = Dict.empty(key_type=types.i8,
                          value_type=types.i8)
 
-    for i, fID in enumerate(obs_fieldID):
+    for i in prange(len(obs_fieldID)):
+        fID = obs_fieldID[i]
         for subf, subf_id in zip(subfields_corners, subfields_id):
             obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
             obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
