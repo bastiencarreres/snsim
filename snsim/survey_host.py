@@ -343,6 +343,8 @@ class SurveyObs:
 
         # Reset index of the pandas DataFrame
         obs_dic.reset_index(drop=True, inplace=True)
+        minMJDinObs = obs_dic['expMJD'].min()
+        maxMJDinObs = obs_dic['expMJD'].max()
 
         # Effective start and end days
         start_day = ut.init_astropy_time(minMJDinObs)
