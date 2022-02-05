@@ -7,7 +7,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-from astropy.table import Table
 from astropy.io import fits
 import pandas as pd
 from . import utils as ut
