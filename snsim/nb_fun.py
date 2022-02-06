@@ -179,7 +179,7 @@ def map_obs_fields(fieldID, obsfield):
 
 
 @njit(cache=True, parallel=True)
-def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
     """Return boolean array corresponding to observed subfields.
 
     Parameters
@@ -200,8 +200,8 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
 
     """
 
-    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
-                                                                      obs_fieldID]))
+    epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
+                                              obs_fieldID]))
     return epochs_selec.any(), epochs_selec
 
 
