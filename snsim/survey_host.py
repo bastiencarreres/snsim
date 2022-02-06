@@ -415,35 +415,38 @@ class SurveyObs:
 
         """
         obs_selec = self.obs_table.iloc[epochs_selec]
+        obs = pd.DataFrame({'time': obs_selec['expMJD'],
+                            'fieldID': obs_selec['fieldID']})
+
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
-            band = obs_selec['filter'].map(self.band_dic).to_numpy(dtype='str')
+            obs['band'] = obs_selec['filter'].map(self.band_dic).to_numpy(dtype='str')
         else:
-            band = obs_selec['filter'].astype('U27').to_numpy(dtype='str')
+            obs['band'] = obs_selec['filter'].astype('U27').to_numpy(dtype='str')
 
         # Zero point selection
         if self.zp[0] != 'zp_in_obs':
-            zp = np.ones(np.sum(epochs_selec)) * self.zp[0]
+            obs['zp'] = self.zp[0]
         else:
-            zp = obs_selec['zp']
+            obs['zp'] = obs_selec['zp']
 
         # Sig Zero point selection
         if self.zp[1] != 'sig_zp_in_obs':
-            sig_zp = np.ones(np.sum(epochs_selec)) * self.zp[1]
+            obs['sig_zp'] = self.zp[1]
         else:
-            sig_zp = obs_selec['sig_zp']
-
-        # PSF selection
-        if self.sig_psf != 'psf_in_obs':
-            sig_psf = np.ones(np.sum(epochs_selec)) * self.sig_psf
-        else:
-            sig_psf = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
+            obs['sig_zp'] = obs_selec['sig_zp']
 
         # Gain
         if self.gain != 'gain_in_obs':
-            gain = np.ones(np.sum(epochs_selec)) * self.gain
+            obs['gain'] = self.gain
         else:
-            gain = obs_selec['gain']
+            obs['gain'] = obs_selec['gain']
+
+        # PSF selection
+        if self.sig_psf != 'psf_in_obs':
+            sig_psf = np.ones(len(obs_selec)) * self.sig_psf
+        else:
+            sig_psf = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
 
         # Skynoise selection
         if ('fake_skynoise' not in self.config
@@ -451,7 +454,7 @@ class SurveyObs:
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
                 mlim5 = obs_selec[self.config['noise_key'][0]]
-                skynoise = 10.**(0.4 * (zp - mlim5)) / 5
+                skynoise = 10.**(0.4 * (obs['zp'] - mlim5)) / 5
             elif self.config['noise_key'][1] == 'skysigADU':
                 skynoise = obs_selec[self.config['noise_key'][0]].copy()
             else:
@@ -459,23 +462,19 @@ class SurveyObs:
             if 'fake_skynoise' in self.config:
                 skynoise = np.sqrt(skynoise**2 + self.config['fake_skynoise'][0])
         elif self.config['fake_skynoise'][1].lower() == 'replace':
-            skynoise = np.ones(np.sum(epochs_selec)) * self.config['fake_skynoise'][0]
+            skynoise = np.ones(len(obs_selec)) * self.config['fake_skynoise'][0]
         else:
             raise ValueError("fake_skynoise type should be 'add' or 'replace'")
 
         # Apply PSF
-        skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
+        psf_mask = sig_psf > 0
+        skynoise[psf_mask] *= np.sqrt(4 * np.pi * sig_psf[psf_mask]**2)
 
         # Create obs table following sncosmo formalism
-        obs = pd.DataFrame({'time': obs_selec['expMJD'],
-                            'band': band,
-                            'gain': gain,
-                            'skynoise': skynoise,
-                            'zp': zp,
-                            'sig_zp': sig_zp,
-                            'fieldID': obs_selec['fieldID']})
+        obs['skynoise'] = skynoise
 
         obs['zpsys'] = 'ab'
+
         if 'sub_field' in self.config:
             obs[self.config['sub_field']] = obs_selec[self.config['sub_field']]
 
@@ -531,15 +530,16 @@ class SurveyFields:
                              -self.size[1] / 2,
                              self.size[1] / 2])
 
-        vec = np.ascontiguousarray([np.cos(ra_edges) * np.cos(dec_edges),
-                                    np.sin(ra_edges) * np.cos(dec_edges),
-                                    np.sin(dec_edges)]).T
+        vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
+                        np.sin(ra_edges) * np.cos(dec_edges),
+                        np.sin(dec_edges)]).T
 
         fvertices = []
         for k in self._dic:
             ra = self._dic[k]['ra']
             dec = self._dic[k]['dec']
-            new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
+            new_coord = [nbf.R_base(ra, -dec, np.ascontiguousarray(v),
+                         to_field_frame=False) for v in vec]
             new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
 
             vertices = []
