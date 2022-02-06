@@ -347,6 +347,12 @@ class SurveyObs:
         minMJDinObs = obs_dic['expMJD'].min()
         maxMJDinObs = obs_dic['expMJD'].max()
 
+        # Change band name to correpond with sncosmo bands
+        if self.band_dic is not None:
+            obs_dic['filter'] = obs_dic['filter'].map(self.band_dic).to_numpy(dtype='str')
+        else:
+            obs_dic['filter'] = obs_dic['filter'].astype('U27').to_numpy(dtype='str')
+
         # Effective start and end days
         start_day = ut.init_astropy_time(minMJDinObs)
         end_day = ut.init_astropy_time(maxMJDinObs)
@@ -416,13 +422,8 @@ class SurveyObs:
         """
         obs_selec = self.obs_table.iloc[epochs_selec]
         obs = pd.DataFrame({'time': obs_selec['expMJD'],
-                            'fieldID': obs_selec['fieldID']})
-
-        # Change band name to correpond with sncosmo bands
-        if self.band_dic is not None:
-            obs['band'] = obs_selec['filter'].map(self.band_dic).to_numpy(dtype='str')
-        else:
-            obs['band'] = obs_selec['filter'].astype('U27').to_numpy(dtype='str')
+                            'fieldID': obs_selec['fieldID'],
+                            'band': obs_selec['filter']})
 
         # Zero point selection
         if self.zp[0] != 'zp_in_obs':
