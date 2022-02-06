@@ -90,7 +90,7 @@ def R_base(a, t, vec, to_field_frame=True):
     else:
         return R @ vec
 
-
+    
 @njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
@@ -180,7 +180,7 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
     return epochs_selec.any(), epochs_selec
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
     """Return boolean array corresponding to observed subfields.
 
@@ -201,8 +201,9 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
         Is there an observation and the selection of observations.
 
     """
+
     epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
-                                                                     obs_fieldID]))
+                                                                      obs_fieldID]))
     return epochs_selec.any(), epochs_selec
 
 

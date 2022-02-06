@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from astropy.io import fits
 import pandas as pd
+from shapely import geometry as shp_geo
+from shapely import ops as shp_ops
 from . import utils as ut
 from . import nb_fun as nbf
 
@@ -366,6 +368,10 @@ class SurveyObs:
         """
         Obj_ra, Obj_dec = coords
 
+        if not (self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec))
+           or self.fields.footprint.contains(shp_geo.Point(Obj_ra + 2 * np.pi, Obj_dec))):
+            return None
+
         epochs_selec = ((self.obs_table.expMJD > model_t_range[0])
                         & (self.obs_table.expMJD < model_t_range[1])).to_numpy()
 
@@ -503,11 +509,60 @@ class SurveyFields:
         self._size = np.array([ra_size, dec_size])
         self._dic = fields_dic
         self._sub_field_map = None
+        self._compute_field_polygon()
         self._init_fields_map(field_map)
+
+    def _compute_field_polygon(self):
+
+        ra_edges = np.array([self.size[0] / 2,
+                            self.size[0] / 2,
+                            -self.size[0] / 2,
+                            -self.size[0] / 2])
+
+        dec_edges = np.array([self.size[1] / 2,
+                             -self.size[1] / 2,
+                             -self.size[1] / 2,
+                             self.size[1] / 2])
+
+        vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
+                        np.sin(ra_edges) * np.cos(dec_edges),
+                        np.sin(dec_edges)]).T
+
+        fvertices = []
+        for k in self._dic:
+            ra = self._dic[k]['ra']
+            dec = self._dic[k]['dec']
+            new_coord = [nbf.R_base(ra, -dec, v, to_field_frame=False) for v in vec]
+            new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
+
+            vertices = []
+            for p in new_radec:
+                ra = p[0] + 2 * np.pi * (p[0] < 0)
+                vertices.append([ra, p[1]])
+
+            if (vertices[0][0] < vertices[3][0]) & (vertices[2][0] > np.pi):
+                vertices[0][0] += 2 * np.pi
+
+            elif (vertices[0][0] < vertices[3][0]) & (vertices[2][0] < np.pi):
+                vertices[0][0] += 2 * np.pi
+                vertices[1][0] += 2 * np.pi
+                vertices[2][0] += 2 * np.pi
+
+            if (vertices[1][0] < vertices[2][0]) & (vertices[3][0] > np.pi):
+                vertices[1][0] += 2 * np.pi
+
+            elif (vertices[1][0] < vertices[2][0]) & (vertices[3][0] < np.pi):
+                vertices[0][0] += 2 * np.pi
+                vertices[3][0] += 2 * np.pi
+                vertices[1][0] += 2 * np.pi
+
+            self._dic[k]['polygon'] = shp_geo.Polygon(vertices)
+            fvertices.append(self._dic[k]['polygon'])
+        self.footprint = shp_ops.unary_union(fvertices)
 
     @property
     def size(self):
-        """Get field size (ra,dec) in radians."""
+        """Get field size ra, dec in radians."""
         return np.radians(self._size)
 
     def read_sub_field_map(self, field_map):
