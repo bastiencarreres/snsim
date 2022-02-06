@@ -384,19 +384,23 @@ class SurveyObs:
         is_obs = epochs_selec.any()
 
         if is_obs:
-            selected_obs = self.obs_table[epochs_selec]
+            selected_fields = self.obs_table['fieldID'][epochs_selec]
 
             # Create a dic[fields] = obs_subfield
-            dic_map = self.fields.is_in_field(Obj_ra, Obj_dec, selected_obs['fieldID'].unique())
+            dic_map = self.fields.is_in_field(Obj_ra, Obj_dec, selected_fields.unique())
 
             # Update the epochs_selec mask and check if there is some observations
-            is_obs, epochs_selec = nbf.map_obs_fields(selected_obs['fieldID'].to_numpy(), dic_map)
+            is_obs, epochs_selec = nbf.map_obs_fields(epochs_selec, selected_fields.to_numpy(),
+                                                      dic_map)
+
         if is_obs and 'sub_field' in self.config:
-            selected_obs = selected_obs[epochs_selec]
+            selected_obs = self.obs_table[epochs_selec]
             is_obs, epochs_selec = nbf.map_obs_subfields(
                 selected_obs['fieldID'].to_numpy(),
                 selected_obs[self.config['sub_field']].to_numpy(),
                 dic_map)
+        else:
+            selected_obs = self.obs_table
         if is_obs:
             return self._make_obs_table(selected_obs[epochs_selec])
         return None

@@ -156,7 +156,7 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
 
 
 @njit(cache=True)
-def map_obs_fields(fieldID, obsfield):
+def map_obs_fields(epochs_selec, fieldID, obsfield):
     """Return the boolean array corresponding to observed fields.
 
     Parameters
@@ -174,11 +174,12 @@ def map_obs_fields(fieldID, obsfield):
         Is there an observation and the selection of observations.
 
     """
-    epochs_selec = np.array([True if fID in obsfield else False for fID in fieldID])
+    epochs_selec[epochs_selec] &= np.array([True if fID in obsfield
+                                            else False for fID in fieldID])
     return epochs_selec.any(), epochs_selec
 
 
-@njit(cache=True, parallel=True)
+@njit(cache=True)
 def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
     """Return boolean array corresponding to observed subfields.
 
