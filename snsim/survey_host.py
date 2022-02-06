@@ -513,7 +513,14 @@ class SurveyFields:
         self._init_fields_map(field_map)
 
     def _compute_field_polygon(self):
+        """Create shapely polygon for each of the fields and init the survey footprint.
 
+        Returns
+        -------
+        None
+            Directly set self.footprint and self._dic['polygon'].
+
+        """
         ra_edges = np.array([self.size[0] / 2,
                             self.size[0] / 2,
                             -self.size[0] / 2,
@@ -524,9 +531,9 @@ class SurveyFields:
                              -self.size[1] / 2,
                              self.size[1] / 2])
 
-        vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
-                        np.sin(ra_edges) * np.cos(dec_edges),
-                        np.sin(dec_edges)]).T
+        vec = np.ascontiguousarray([np.cos(ra_edges) * np.cos(dec_edges),
+                                    np.sin(ra_edges) * np.cos(dec_edges),
+                                    np.sin(dec_edges)]).T
 
         fvertices = []
         for k in self._dic:
@@ -566,6 +573,19 @@ class SurveyFields:
         return np.radians(self._size)
 
     def read_sub_field_map(self, field_map):
+        """Read the sub-field map file.
+
+        Parameters
+        ----------
+        field_map : str
+            Path to the field map config file.
+
+        Returns
+        -------
+        dict
+            A dict containing the corner postion of the field.
+
+        """
         file = open(field_map)
         # Header symbol
         dic_symbol = {}
@@ -617,10 +637,10 @@ class SurveyFields:
                         ra_metric += subfield_ra_size
                     else:
                         corner_dic[int(elmt)] = np.array([
-                                    [ra_metric, dec_metric],
-                                    [ra_metric + subfield_ra_size, dec_metric],
-                                    [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
-                                    [ra_metric, dec_metric - subfield_dec_size]])
+                            [ra_metric, dec_metric],
+                            [ra_metric + subfield_ra_size, dec_metric],
+                            [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
+                            [ra_metric, dec_metric - subfield_dec_size]])
                         ra_metric += subfield_ra_size
                 dec_metric -= subfield_dec_size
         self.dic_sfld_file = dic_symbol

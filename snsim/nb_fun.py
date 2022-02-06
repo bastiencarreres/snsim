@@ -90,7 +90,6 @@ def R_base(a, t, vec, to_field_frame=True):
     else:
         return R @ vec
 
-    
 @njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
