@@ -456,6 +456,7 @@ class SurveyObs:
 
         """
         obs_selec.rename(columns={'expMJD': 'time', 'filter': 'band'}, inplace=True)
+        obs_selec.drop(labels=['fieldRA', 'fieldDec'], axis=1, inplace=True)
 
         # PSF selection
         if self.sig_psf == 'psf_in_obs':
