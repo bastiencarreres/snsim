@@ -78,6 +78,7 @@ class SurveyObs:
                             self.config['dec_size'],
                             field_map)
 
+
     def print_config(self):
         print(f"SURVEY FILE : {self.config['survey_file']}")
 
@@ -320,10 +321,45 @@ class SurveyObs:
         else:
             raise ValueError('Accepted formats are .db and .csv')
 
-        # avoid crash on errors by removing errors <= 0
+        keys = ['gain', 'zp', 'sig_zp']
+        # Add noise key + avoid crash on errors by removing errors <= 0
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
+            keys.append(self.config['noise_key'][0])
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
+
+        # Add subfield key
+        if 'sub_field' in self.config:
+            keys.append(self.config['sub_field'])
+
+        # Add optional keys
+        if 'add_data' in self.config:
+            keys = self.config['add_data']
+            for k in self.config['add_data']:
+                if obs_dic[k].dtype == 'object':
+                    obs_dic[k] = obs_dic[k].astype('U27').to_numpy(dtype='str')
+
+        # Gain
+        if self.gain != 'gain_in_obs':
+            obs_dic['gain'] = self.gain
+
+        # Zero point selection
+        if self.zp[0] != 'zp_in_obs':
+            obs_dic['zp'] = self.zp[0]
+
+        # Sig Zero point selection
+        if self.zp[1] != 'sig_zp_in_obs':
+            obs_dic['sig_zp'] = self.zp[1]
+
+        # PSF selection
+        if self.sig_psf != 'psf_in_obs':
+            keys.append('sig_psf')
+            obs_dic['sig_psf'] = self.sig_psf
+        else:
+            keys.append('FWHMeff')
+
+        # Remove useless columns
+        obs_dic = obs_dic[self._base_keys + keys]
 
         # Keep only epochs in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
@@ -394,15 +430,15 @@ class SurveyObs:
                                                       dic_map)
 
         if is_obs and 'sub_field' in self.config:
-            selected_obs = self.obs_table[epochs_selec]
+            obs_selec = self.obs_table[epochs_selec]
             is_obs, epochs_selec = nbf.map_obs_subfields(
-                selected_obs['fieldID'].to_numpy(),
-                selected_obs[self.config['sub_field']].to_numpy(),
+                obs_selec['fieldID'].to_numpy(),
+                obs_selec[self.config['sub_field']].to_numpy(),
                 dic_map)
         else:
-            selected_obs = self.obs_table
+            obs_selec = self.obs_table
         if is_obs:
-            return self._make_obs_table(selected_obs[epochs_selec])
+            return self._make_obs_table(obs_selec[epochs_selec].copy())
         return None
 
     def _make_obs_table(self, obs_selec):
@@ -419,33 +455,12 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
-        obs = pd.DataFrame({'time': obs_selec['expMJD'],
-                            'fieldID': obs_selec['fieldID'],
-                            'band': obs_selec['filter']})
-
-        # Zero point selection
-        if self.zp[0] != 'zp_in_obs':
-            obs['zp'] = self.zp[0]
-        else:
-            obs['zp'] = obs_selec['zp']
-
-        # Sig Zero point selection
-        if self.zp[1] != 'sig_zp_in_obs':
-            obs['sig_zp'] = self.zp[1]
-        else:
-            obs['sig_zp'] = obs_selec['sig_zp']
-
-        # Gain
-        if self.gain != 'gain_in_obs':
-            obs['gain'] = self.gain
-        else:
-            obs['gain'] = obs_selec['gain']
+        obs_selec.rename(columns={'expMJD': 'time', 'filter': 'band'}, inplace=True)
 
         # PSF selection
-        if self.sig_psf != 'psf_in_obs':
-            sig_psf = np.ones(len(obs_selec)) * self.sig_psf
-        else:
-            sig_psf = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
+        if self.sig_psf == 'psf_in_obs':
+            obs_selec['sig_psf'] = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
+            obs_selec.drop('FWHMeff', inplace=True)
 
         # Skynoise selection
         if ('fake_skynoise' not in self.config
@@ -453,7 +468,7 @@ class SurveyObs:
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
                 mlim5 = obs_selec[self.config['noise_key'][0]]
-                skynoise = 10.**(0.4 * (obs['zp'] - mlim5)) / 5
+                skynoise = 10.**(0.4 * (obs_selec['zp'] - mlim5)) / 5
             elif self.config['noise_key'][1] == 'skysigADU':
                 skynoise = obs_selec[self.config['noise_key'][0]].copy()
             else:
@@ -466,25 +481,16 @@ class SurveyObs:
             raise ValueError("fake_skynoise type should be 'add' or 'replace'")
 
         # Apply PSF
-        psf_mask = sig_psf > 0
-        skynoise[psf_mask] *= np.sqrt(4 * np.pi * sig_psf[psf_mask]**2)
+        psf_mask = obs_selec['sig_psf'] > 0
+        skynoise[psf_mask] *= np.sqrt(4 * np.pi * obs_selec['sig_psf'][psf_mask]**2)
 
-        # Create obs table following sncosmo formalism
-        obs['skynoise'] = skynoise
+        # Skynoise column
+        obs_selec['skynoise'] = skynoise
 
-        obs['zpsys'] = 'ab'
+        # Magnitude system
+        obs_selec['zpsys'] = 'ab'
 
-        if 'sub_field' in self.config:
-            obs[self.config['sub_field']] = obs_selec[self.config['sub_field']]
-
-        if 'add_data' in self.config:
-            for k in self.config['add_data']:
-                if k not in obs.keys():
-                    if self.obs_table[k].dtype == 'object':
-                        obs[k] = obs_selec[k].astype('U27').to_numpy(dtype='str')
-                    else:
-                        obs[k] = obs_selec[k]
-        return obs
+        return obs_selec
 
 
 class SurveyFields:
