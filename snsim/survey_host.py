@@ -399,8 +399,8 @@ class SurveyObs:
            or self.fields.footprint.contains(shp_geo.Point(Obj_ra + 2 * np.pi, Obj_dec))):
             return None
 
-        epochs_selec = ((self.obs_table.expMJD > model_t_range[0])
-                        & (self.obs_table.expMJD < model_t_range[1])).to_numpy()
+        expr = f'(self.obs_table.expMJD > {model_t_range[0]}) & (self.obs_table.expMJD < {model_t_range[1]})'
+        epochs_selec = pd.eval(expr).to_numpy()
 
         is_obs = epochs_selec.any()
 
@@ -454,20 +454,20 @@ class SurveyObs:
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
                 mlim5 = obs_selec[self.config['noise_key'][0]]
-                skynoise = 10.**(0.4 * (obs_selec['zp'] - mlim5)) / 5
+                skynoise = pd.eval("10.**(0.4 * (obs_selec.zp - mlim5)) / 5")
             elif self.config['noise_key'][1] == 'skysigADU':
                 skynoise = obs_selec[self.config['noise_key'][0]].copy()
             else:
                 raise ValueError('Noise type should be mlim5 or skysigADU')
             if 'fake_skynoise' in self.config:
-                skynoise = np.sqrt(skynoise**2 + self.config['fake_skynoise'][0])
+                skynoise = pd.eval(f"sqrt(skynoise**2 + {self.config['fake_skynoise'][0]}")
         elif self.config['fake_skynoise'][1].lower() == 'replace':
             skynoise = np.ones(len(obs_selec)) * self.config['fake_skynoise'][0]
         else:
             raise ValueError("fake_skynoise type should be 'add' or 'replace'")
 
         # Apply PSF
-        psf_mask = obs_selec['sig_psf'] > 0
+        psf_mask = pd.eval('obs_selec.sig_psf > 0').to_numpy()
         skynoise[psf_mask] *= np.sqrt(4 * np.pi * obs_selec['sig_psf'][psf_mask]**2)
 
         # Skynoise column
