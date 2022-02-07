@@ -241,16 +241,20 @@ class SurveyObs:
             keys += add_k
         return keys
 
-    def _extract_from_csv(self, keys):
-        """Extract the observations table from csv file.
+    def _extract_from_file(self, ext, keys):
+        """Extract the observations table from csv or parquet file.
 
         Returns
         -------
         pandas.DataFrame
             The observations table.
         """
-        obs_dic = pd.read_csv(self.config['survey_file'])
+        if ext == '.csv':
+            obs_dic = pd.read_csv(self.config['survey_file'])
+        elif ext == '.parquet':
+            obs_dic = pd.read_parquet(self.config['survey_file'])
 
+        # Optionnaly rename columns
         if 'key_dic' in self.config:
             obs_dic.rename(columns=self.config['key_dic'],
                            inplace=True)
@@ -316,47 +320,20 @@ class SurveyObs:
         keys = self._check_keys()
         if ext == '.db':
             obs_dic = self._extract_from_db(keys)
-        elif ext == '.csv':
-            obs_dic = self._extract_from_csv(keys)
+        elif ext in ['.csv', '.parquet']:
+            obs_dic = self._extract_from_file(ext, keys)
         else:
-            raise ValueError('Accepted formats are .db and .csv')
+            raise ValueError('Accepted formats are .db, .csv or .parquet')
 
-        keys = ['gain', 'zp', 'sig_zp']
         # Add noise key + avoid crash on errors by removing errors <= 0
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
-            keys.append(self.config['noise_key'][0])
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
-
-        # Add subfield key
-        if 'sub_field' in self.config:
-            keys.append(self.config['sub_field'])
-
-        # Add optional keys
-        if 'add_data' in self.config:
-            keys = self.config['add_data']
-            for k in self.config['add_data']:
-                if obs_dic[k].dtype == 'object':
-                    obs_dic[k] = obs_dic[k].astype('U27').to_numpy(dtype='str')
-
-        # Gain
-        if self.gain != 'gain_in_obs':
-            obs_dic['gain'] = self.gain
-
-        # Zero point selection
-        if self.zp[0] != 'zp_in_obs':
-            obs_dic['zp'] = self.zp[0]
-
-        # Sig Zero point selection
-        if self.zp[1] != 'sig_zp_in_obs':
-            obs_dic['sig_zp'] = self.zp[1]
 
         # PSF selection
         if self.sig_psf != 'psf_in_obs':
             keys.append('sig_psf')
             obs_dic['sig_psf'] = self.sig_psf
-        else:
-            keys.append('FWHMeff')
 
         # Remove useless columns
         obs_dic = obs_dic[self._base_keys + keys]
