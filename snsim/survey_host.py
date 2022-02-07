@@ -330,13 +330,21 @@ class SurveyObs:
            or self.config['fake_skynoise'][1].lower() == 'add'):
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
 
-        # PSF selection
+        # Remove useless columns
+        obs_dic = obs_dic[keys].copy()
+
+        # Add zp, sig_zp, PSF and gain if needed
+        if self.zp[0] != 'zp_in_obs':
+            obs_dic['zp'] = self.zp[0]
+
+        if self.zp[1] != 'sig_zp_in_obs':
+            obs_dic['sig_zp'] = self.zp[1]
+
         if self.sig_psf != 'psf_in_obs':
-            keys.append('sig_psf')
             obs_dic['sig_psf'] = self.sig_psf
 
-        # Remove useless columns
-        obs_dic = obs_dic[self._base_keys + keys]
+        if self.gain != 'gain_in_obs':
+            obs_dic['gain'] = self.gain
 
         # Keep only epochs in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
