@@ -5,6 +5,7 @@ import abc
 import numpy as np
 import pandas as pd
 from .constants import C_LIGHT_KMS
+from . import dust_utils as dst_ut
 
 
 class BasicAstrObj(abc.ABC):
@@ -44,10 +45,6 @@ class BasicAstrObj(abc.ABC):
         self._model_par = model_par
         self._update_model_par()
 
-        # -- Add dust and dipole if necessary
-        if 'mw_' in self.sim_model.effect_names:
-            self.mw_ebv = self._params['sncosmo']['mw_ebv']
-
         if 'dip_dM' in self._params:
             self.dip_dM = self._params['dip_dM']
 
@@ -70,6 +67,25 @@ class BasicAstrObj(abc.ABC):
         """Abstract method to add general model parameters,
         call during __init__.
         """
+        pass
+
+    @abc.abstractmethod
+    def _compute_if_pass_cut(self):
+        """Abstract method to launch computation of parameters.
+
+        """
+        pass
+
+    def _has_pass_cut(self):
+        """Action to made if the transient pass cut.
+
+        """
+        if 'mw_dust' in self._model_par:
+            self.mw_ebv = dst_ut.compute_ebv(*self.coord)
+            self._params['sncosmo']['mw_ebv'] = self.mw_ebv
+            if self._model_par['mw_dust'].lower() in ['ccm89', 'od94']:
+                self._params['sncosmo']['mw_r_v'] = self._model_par['mw_rv']
+        self._compute_if_pass_cut()
         pass
 
     def _add_meta_to_table(self):
@@ -103,6 +119,7 @@ class BasicAstrObj(abc.ABC):
                     test &= (self.epochs['band'] == cut[3])
                 if test.sum() < int(cut[0]):
                     return False
+            self._has_pass_cut()
             return True
 
     def gen_flux(self, rand_gen):
@@ -367,19 +384,21 @@ class SNIa(BasicAstrObj):
             c = self._params['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * x1 + beta * c
 
-            # Compute the x0 parameter
-            self.sim_model.set(x1=x1, c=c)
-            self.sim_model.set_source_peakmag(mb, 'bessellb', 'ab')
-            self.sim_x0 = self.sim_model.get('x0')
-            self._params['sncosmo']['x0'] = self.sim_x0
-
             self.sim_x1 = x1
             self.sim_c = c
 
         if 'dip_dM' in self._params:
             mb += self._params['dip_dM']
-
         self.sim_mb = mb
+
+    def _compute_if_pass_cut(self):
+        """Parameters to compute only if sn pass cuts."""
+        if self.sim_model.source.name in ['salt2', 'salt3']:
+            # Compute the x0 parameter
+            self.sim_model.set(x1=self.sim_x1, c=self.sim_c)
+            self.sim_model.set_source_peakmag(self.sim_mb, 'bessellb', 'ab')
+            self.sim_x0 = self.sim_model.get('x0')
+            self._params['sncosmo']['x0'] = self.sim_x0
 
     @property
     def mag_sct(self):
