@@ -91,7 +91,7 @@ class BaseGen(abc.ABC):
             A list containing Astro Object.
         """
         rand_gen = np.random.default_rng(rand_seed)
-        astrobj_par, dust_par = self.gen_astrobj_par(n_obj, rand_gen)
+        astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
 
         # -- Initialise 2 new random generators for inherited class function
         update_seeds = rand_gen.integers(1000, 1e6, size=2)
@@ -99,8 +99,8 @@ class BaseGen(abc.ABC):
         snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[1]))
 
         astrobj_list = ({**{k: astrobj_par[k][i] for k in astrobj_par},
-                         **{'sncosmo': {**sncp, **dstp}}}
-                        for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
+                         **{'sncosmo': sncp}}
+                        for i, sncp in enumerate(snc_par))
 
         return [self._astrobj_class(snp, self.sim_model, self._general_par) for snp in astrobj_list]
 
@@ -182,6 +182,9 @@ class BaseGen(abc.ABC):
 
     def _init_general_par(self):
         """Init general parameters."""
+        if self.mw_dust is not None:
+            self._general_par['mw_dust'] = self.mw_dust['model']
+            self._general_par['mw_rv'] = self.mw_dust['rv']
         if not hasattr(self.sim_model, 'bandfluxcov'):
             raise ValueError('This sncosmo model has no flux covariance available')
         if 'mod_fcov' in self._params:
@@ -279,36 +282,6 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def _dust_par(self, ra, dec):
-        """Compute dust parameters.
-
-        Parameters
-        ----------
-        ra : numpy.ndaray(float)
-            SN Right Ascension.
-        dec : numpy.ndarray(float)
-            SN Declinaison.
-
-        Returns
-        -------
-        list(dict)
-            List of Dictionnaries that contains Rv and E(B-V) for each SN.
-
-        """
-        ebv = dst_ut.compute_ebv(ra, dec)
-        mod_name = self.mw_dust['model']
-        if 'rv' in self.mw_dust:
-            rv = self.mw_dust['rv']
-        else:
-            rv = 3.1
-        if mod_name.lower() in ['ccm89', 'od94']:
-            dust_par = [{'mw_r_v': rv, 'mw_ebv': e} for e in ebv]
-        elif mod_name.lower() in ['f99']:
-            dust_par = [{'mw_ebv': e} for e in ebv]
-        else:
-            raise ValueError(f'{mod_name} is not implemented')
-        return dust_par
-
     def gen_astrobj_par(self, n_obj, rand_gen):
         """Generate basic obj properties.
 
@@ -375,13 +348,7 @@ class BaseGen(abc.ABC):
         if self.dipole is not None:
             astrobj_par['dip_dM'] = self._compute_dipole(ra, dec)
 
-        # -- Add dust if necessary
-        if self.mw_dust is not None:
-            dust_par = self._dust_par(astrobj_par['ra'], astrobj_par['dec'])
-        else:
-            dust_par = [{}] * len(astrobj_par['ra'])
-
-        return astrobj_par, dust_par
+        return astrobj_par
 
     def rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.

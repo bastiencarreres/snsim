@@ -90,7 +90,6 @@ def R_base(a, t, vec, to_field_frame=True):
     else:
         return R @ vec
 
-
 @njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
@@ -156,7 +155,7 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     return epochs_selec, np.unique(fieldID[epochs_selec])
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
     """Return the boolean array corresponding to observed fields.
 
@@ -166,8 +165,8 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
         Actual observations selection.
     fieldID : numpy.array(int)
         ID of fields.
-    mapdic : numba.Dict(int:bool)
-        Numba dic of observed subfield in each observed field.
+    obsfield : numba.Dict(int:bool)
+        Numba dic where keys are observed field.
 
     Returns
     -------
@@ -175,22 +174,27 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
         Is there an observation and the selection of observations.
 
     """
-    epochs_selec[np.copy(epochs_selec)] &= np.array([True if fID in obsfield
-                                                    else False for fID in fieldID])
-    return epochs_selec.any(), epochs_selec
+    bool_array = np.zeros(len(fieldID), dtype=types.boolean)
+    for i in prange(len(fieldID)):
+        fID = fieldID[i]
+        if fID in obsfield:
+            bool_array[i] = True
+
+    epochs_selec[epochs_selec] &= bool_array
+    return bool_array.any(), epochs_selec
 
 
 @njit(cache=True)
-def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
     """Return boolean array corresponding to observed subfields.
 
     Parameters
     ----------
     epochs_selec : numpy.array(bool)
         Actual observations selection.
-    obs_fieldID : bool
+    obs_fieldID : int
         Id of pre selected observed fields.
-    obs_subfield : bool
+    obs_subfield : int
         Observed subfields.
     mapdic : numba.Dict(int:int)
         Numba dic of observed subfield in each observed field.
@@ -201,8 +205,8 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
         Is there an observation and the selection of observations.
 
     """
-    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
-                                                                     obs_fieldID]))
+    epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
+                                             obs_fieldID], type=types.i8))
     return epochs_selec.any(), epochs_selec
 
 

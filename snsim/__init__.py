@@ -12,7 +12,7 @@ Github repository : https://github.com/bcarreres/snsim
 import os
 __snsim_dir_path__ = os.path.dirname(__file__)
 
-__version__ = "0.4.0"
+__version__ = "0.4.0_dev_shapely"
 
 
 from .simu import Simulator

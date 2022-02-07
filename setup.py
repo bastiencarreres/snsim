@@ -25,6 +25,7 @@ setup(
         "numpy >= 1.13.3",
         "scipy >= 0.9.0",
         "astropy >= 1.0.0",
+        "shapely >= 1.8.0",
         "numba",
         "pyyaml",
         "sfdmap"
