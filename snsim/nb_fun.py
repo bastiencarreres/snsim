@@ -126,8 +126,8 @@ def find_first(item, vec):
     return -1
 
 
-@njit(cache=True)
-def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
+@njit(cache=True, parallel=True)
+def time_selec(expMJD, ModelMinT, ModelMaxT):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -150,9 +150,15 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     numpy.ndarray(bool), numpy.ndarray(int)
         The boolean array of field selection and the id of selectionned fields.
     """
-    epochs_selec = (expMJD - t0 > ModelMinT) & \
-                   (expMJD - t0 < ModelMaxT)
-    return epochs_selec, np.unique(fieldID[epochs_selec])
+    bool_array = np.zeros(len(expMJD), dtype=types.boolean)
+    any = False
+    for i in prange(len(expMJD)):
+        time = expMJD[i]
+        if (time > ModelMinT) & (time < ModelMaxT):
+            bool_array[i] = True
+    if True in bool_array:
+        any = True
+    return any, bool_array
 
 
 @njit(cache=True, parallel=True)
@@ -175,13 +181,16 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
 
     """
     bool_array = np.zeros(len(fieldID), dtype=types.boolean)
+    any = False
     for i in prange(len(fieldID)):
         fID = fieldID[i]
         if fID in obsfield:
             bool_array[i] = True
 
+    if True in bool_array:
+        any = True
     epochs_selec[epochs_selec] &= bool_array
-    return bool_array.any(), epochs_selec
+    return any, epochs_selec,
 
 
 @njit(cache=True)
@@ -205,9 +214,12 @@ def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
         Is there an observation and the selection of observations.
 
     """
+    any = False
     epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
                                              obs_fieldID], type=types.i8))
-    return epochs_selec.any(), epochs_selec
+    if True in epochs_selec:
+        any = True
+    return any, epochs_selec
 
 
 @njit(cache=True)
