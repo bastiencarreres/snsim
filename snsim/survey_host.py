@@ -399,10 +399,8 @@ class SurveyObs:
            or self.fields.footprint.contains(shp_geo.Point(Obj_ra + 2 * np.pi, Obj_dec))):
             return None
 
-        expr = f'(self.obs_table.expMJD > {model_t_range[0]}) & (self.obs_table.expMJD < {model_t_range[1]})'
-        epochs_selec = pd.eval(expr).to_numpy()
-
-        is_obs = epochs_selec.any()
+        is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
+                                              model_t_range[0], model_t_range[1])
 
         if is_obs:
             selected_fields = self.obs_table['fieldID'][epochs_selec]
