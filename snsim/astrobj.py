@@ -64,22 +64,16 @@ class BasicAstrObj(abc.ABC):
 
     @abc.abstractmethod
     def _update_model_par(self):
-        """Abstract method to add general model parameters,
-        call during __init__.
-        """
+        """Abstract method to add general model parameters call during __init__."""
         pass
 
     @abc.abstractmethod
     def _compute_if_pass_cut(self):
-        """Abstract method to launch computation of parameters.
-
-        """
+        """Abstract method to launch computation of parameters."""
         pass
 
     def _has_pass_cut(self):
-        """Action to made if the transient pass cut.
-
-        """
+        """Action to made if the transient pass cut."""
         if 'mw_dust' in self._model_par:
             self.mw_ebv = dst_ut.compute_ebv(*self.coord)
             self._params['sncosmo']['mw_ebv'] = self.mw_ebv

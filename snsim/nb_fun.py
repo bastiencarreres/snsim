@@ -344,3 +344,15 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
+
+
+def pass_cut(time, band, t0, z, nep_cut):
+    phase = time - t0
+    for cut in nep_cut:
+        cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + z), cut[2] * (1 + z)
+        test = (phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)
+        if cut[3] != 'any_band':
+            test &= (band == cut[3])
+        if test.sum() > cut[0]:
+            return False
+    return True
