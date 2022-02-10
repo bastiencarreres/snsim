@@ -118,36 +118,6 @@ class BasicAstrObj(abc.ABC):
             self._has_pass_cut()
             return True
 
-    # def pass_cut(self, nep_cut):
-    #     """Check if the Transient pass the given cuts.
-    #
-    #     Parameters
-    #     ----------
-    #     nep_cut : list
-    #         nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...]
-    #
-    #     Returns
-    #     -------
-    #     boolean
-    #         True or False.
-    #
-    #     """
-    #     if self.epochs is None:
-    #         return False
-    #     else:
-    #         pass_cut = nbf.pass_cut(self.epochs['time'].to_numpy(),
-    #                                 self.epochs['band'].to_numpy(dtype=(np.str_, 8)),
-    #                                 self.sim_t0, self.zobs,
-    #                                 nep_cut['nep'],
-    #                                 nep_cut['mintime'],
-    #                                 nep_cut['maxtime'],
-    #                                 nep_cut['band'])
-    #         print(pass_cut)
-    #         if pass_cut:
-    #             self._has_pass_cut()
-    #             return True
-    #     return False
-
     def gen_flux(self, rand_gen):
         """Generate the obj lightcurve.
 
