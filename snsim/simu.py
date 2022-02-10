@@ -187,19 +187,19 @@ class Simulator:
         if 'nep_cut' in self.config['sim_par']:
             nep_cut = self.config['sim_par']['nep_cut']
             if isinstance(nep_cut, (int)):
-                cut_list.append((nep_cut, snc_mintime, snc_maxtime, 'any_band'))
+                cut_list.append((nep_cut, snc_mintime, snc_maxtime, 'any'))
             elif isinstance(nep_cut, (list)):
                 for i, cut in enumerate(nep_cut):
                     if len(cut) < 3:
-                        cut_list.append((cut[0], snc_mintime, snc_mintime, 'any_band'))
+                        cut_list.append((cut[0], snc_mintime, snc_mintime, 'any'))
                     elif len(cut) < 4:
-                        cut_list.append((cut[0], cut[1], cut[2], 'any_band'))
+                        cut_list.append((cut[0], cut[1], cut[2], 'any'))
                     else:
                         cut_list.append((cut[0], cut[1], cut[2], cut[3]))
 
         else:
-            cut_list = [(1, snc_mintime, snc_maxtime, 'any_band')]
-        dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.unicode_, 16)]
+            cut_list = [(1, snc_mintime, snc_maxtime, 'any')]
+        dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.str_, 8)]
         return np.asarray(cut_list, dtype=dt)
 
     def peak_time_range(self, trange_model):
