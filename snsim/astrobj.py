@@ -5,6 +5,7 @@ import abc
 import numpy as np
 import pandas as pd
 from .constants import C_LIGHT_KMS
+from . import nb_fun as nbf
 from . import dust_utils as dst_ut
 
 
@@ -88,6 +89,35 @@ class BasicAstrObj(abc.ABC):
         """
         pass
 
+    # def pass_cut(self, nep_cut):
+    #     """Check if the Transient pass the given cuts.
+    #
+    #     Parameters
+    #     ----------
+    #     nep_cut : list
+    #         nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...]
+    #
+    #     Returns
+    #     -------
+    #     boolean
+    #         True or False.
+    #
+    #     """
+    #     if self.epochs is None:
+    #         return False
+    #     else:
+    #         phase = self.epochs['time'] - self.sim_t0
+    #         for cut in nep_cut:
+    #             expr = ''
+    #             cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.zobs), cut[2] * (1 + self.zobs)
+    #             expr += "(phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)"
+    #             if len(cut) == 4:
+    #                 expr += f" & (self.epochs.band == '{cut[3]}')"
+    #             if pd.eval(expr).sum() < int(cut[0]):
+    #                 return False
+    #         self._has_pass_cut()
+    #         return True
+
     def pass_cut(self, nep_cut):
         """Check if the Transient pass the given cuts.
 
@@ -105,17 +135,13 @@ class BasicAstrObj(abc.ABC):
         if self.epochs is None:
             return False
         else:
-            phase = self.epochs['time'] - self.sim_t0
-            for cut in nep_cut:
-                expr = ''
-                cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.zobs), cut[2] * (1 + self.zobs)
-                expr += "(phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)"
-                if len(cut) == 4:
-                    expr += f" & (self.epochs.band == '{cut[3]}')"
-                if pd.eval(expr).sum() < int(cut[0]):
-                    return False
-            self._has_pass_cut()
-            return True
+            pass_cut = nbf.pass_cut(self.epochs['time'].to_numpy(),
+                                    self.epochs['band'].to_numpy(),
+                                    self.sim_t0, self.zobs, nep_cut)
+            if pass_cut:
+                self._has_pass_cut()
+                return True
+        return False
 
     def gen_flux(self, rand_gen):
         """Generate the obj lightcurve.

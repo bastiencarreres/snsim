@@ -197,7 +197,6 @@ class Simulator:
                     else:
                         cut_list.append((cut[0], cut[1], cut[2], cut[3]))
 
-
         else:
             cut_list = [(1, snc_mintime, snc_maxtime, 'any_band')]
         dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.unicode_, 16)]
