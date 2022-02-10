@@ -346,13 +346,14 @@ def find_idx_nearest_elmt(val, array, treshold):
     return smallest_diff_idx
 
 
-def pass_cut(time, band, t0, z, nep_cut):
-    phase = time - t0
-    for cut in nep_cut:
-        cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + z), cut[2] * (1 + z)
-        test = (phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)
-        if cut[3] != 'any_band':
-            test &= (band == cut[3])
-        if test.sum() > cut[0]:
-            return False
-    return True
+# @njit(cache=True)
+# def pass_cut(time, band, t0, z, nep, mintime, maxtime, bandcut):
+#     phase = time - t0
+#     for n, mint, maxt, bc in zip(nep, mintime, maxtime, bandcut):
+#         cutMin_obsfrm, cutMax_obsfrm = mint * (1 + z), maxt * (1 + z)
+#         test = (phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)
+#         if bc != 'any':
+#             test = [test[i] & (band[i] == bc) for i in len(band)]
+#         if np.sum(test) < n:
+#             return False
+#     return True
