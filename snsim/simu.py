@@ -146,6 +146,9 @@ class Simulator:
         else:
             dipole = None
 
+        # Init the cuts on lightcurves
+        self._nep_cut = self._init_nep_cuts()
+
         # -- Init generators
         self._use_rate = []
         self._generators = []
@@ -168,6 +171,36 @@ class Simulator:
         if plot_config:
             print('PARAMETERS USED IN SIMULATION\n')
             ut.print_dic(self.config)
+
+    def _init_nep_cuts(self):
+        """Init nep cut on transients.
+
+        Returns
+        -------
+        numpy.array()
+            Numpy array containing cuts.
+
+        """
+        snc_mintime = -20
+        snc_maxtime = 50
+        cut_list = []
+        if 'nep_cut' in self.config['sim_par']:
+            nep_cut = self.config['sim_par']['nep_cut']
+            if isinstance(nep_cut, (int)):
+                cut_list.append((nep_cut, snc_mintime, snc_maxtime, 'any'))
+            elif isinstance(nep_cut, (list)):
+                for i, cut in enumerate(nep_cut):
+                    if len(cut) < 3:
+                        cut_list.append((cut[0], snc_mintime, snc_mintime, 'any'))
+                    elif len(cut) < 4:
+                        cut_list.append((cut[0], cut[1], cut[2], 'any'))
+                    else:
+                        cut_list.append((cut[0], cut[1], cut[2], cut[3]))
+
+        else:
+            cut_list = [(1, snc_mintime, snc_maxtime, 'any')]
+        dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.str_, 8)]
+        return np.asarray(cut_list, dtype=dt)
 
     def peak_time_range(self, trange_model):
         """Get the time range for simulate SN peak.
@@ -513,20 +546,4 @@ class Simulator:
     @property
     def nep_cut(self):
         """Get the list of epochs cuts."""
-        snc_mintime = -20
-        snc_maxtime = 50
-        if 'nep_cut' in self.config['sim_par']:
-            nep_cut = self.config['sim_par']['nep_cut']
-            if isinstance(nep_cut, (int)):
-                nep_cut = [
-                    (nep_cut,
-                     snc_mintime,
-                     snc_maxtime)]
-            elif isinstance(nep_cut, (list)):
-                for i, cut in enumerate(nep_cut):
-                    if len(cut) < 3:
-                        nep_cut[i].append(snc_mintime)
-                        nep_cut[i].append(snc_maxtime)
-        else:
-            nep_cut = [(1, snc_mintime, snc_maxtime)]
-        return nep_cut
+        return self._nep_cut

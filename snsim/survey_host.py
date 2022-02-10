@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from astropy.io import fits
 import pandas as pd
+from shapely import geometry as shp_geo
+from shapely import ops as shp_ops
 from . import utils as ut
 from . import nb_fun as nbf
 
@@ -75,6 +77,7 @@ class SurveyObs:
                             self.config['ra_size'],
                             self.config['dec_size'],
                             field_map)
+
 
     def print_config(self):
         print(f"SURVEY FILE : {self.config['survey_file']}")
@@ -238,16 +241,20 @@ class SurveyObs:
             keys += add_k
         return keys
 
-    def _extract_from_csv(self, keys):
-        """Extract the observations table from csv file.
+    def _extract_from_file(self, ext, keys):
+        """Extract the observations table from csv or parquet file.
 
         Returns
         -------
         pandas.DataFrame
             The observations table.
         """
-        obs_dic = pd.read_csv(self.config['survey_file'])
+        if ext == '.csv':
+            obs_dic = pd.read_csv(self.config['survey_file'])
+        elif ext == '.parquet':
+            obs_dic = pd.read_parquet(self.config['survey_file'])
 
+        # Optionnaly rename columns
         if 'key_dic' in self.config:
             obs_dic.rename(columns=self.config['key_dic'],
                            inplace=True)
@@ -313,15 +320,31 @@ class SurveyObs:
         keys = self._check_keys()
         if ext == '.db':
             obs_dic = self._extract_from_db(keys)
-        elif ext == '.csv':
-            obs_dic = self._extract_from_csv(keys)
+        elif ext in ['.csv', '.parquet']:
+            obs_dic = self._extract_from_file(ext, keys)
         else:
-            raise ValueError('Accepted formats are .db and .csv')
+            raise ValueError('Accepted formats are .db, .csv or .parquet')
 
-        # avoid crash on errors by removing errors <= 0
+        # Add noise key + avoid crash on errors by removing errors <= 0
         if ('fake_skynoise' not in self.config
            or self.config['fake_skynoise'][1].lower() == 'add'):
             obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
+
+        # Remove useless columns
+        obs_dic = obs_dic[keys].copy()
+
+        # Add zp, sig_zp, PSF and gain if needed
+        if self.zp[0] != 'zp_in_obs':
+            obs_dic['zp'] = self.zp[0]
+
+        if self.zp[1] != 'sig_zp_in_obs':
+            obs_dic['sig_zp'] = self.zp[1]
+
+        if self.sig_psf != 'psf_in_obs':
+            obs_dic['sig_psf'] = self.sig_psf
+
+        if self.gain != 'gain_in_obs':
+            obs_dic['gain'] = self.gain
 
         # Keep only epochs in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
@@ -345,6 +368,12 @@ class SurveyObs:
         minMJDinObs = obs_dic['expMJD'].min()
         maxMJDinObs = obs_dic['expMJD'].max()
 
+        # Change band name to correpond with sncosmo bands
+        if self.band_dic is not None:
+            obs_dic['filter'] = obs_dic['filter'].map(self.band_dic).to_numpy(dtype='str')
+        else:
+            obs_dic['filter'] = obs_dic['filter'].astype('U27').to_numpy(dtype='str')
+
         # Effective start and end days
         start_day = ut.init_astropy_time(minMJDinObs)
         end_day = ut.init_astropy_time(maxMJDinObs)
@@ -366,35 +395,36 @@ class SurveyObs:
         """
         Obj_ra, Obj_dec = coords
 
-        epochs_selec = ((self.obs_table.expMJD > model_t_range[0])
-                        & (self.obs_table.expMJD < model_t_range[1])).to_numpy()
+        if not (self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec))
+           or self.fields.footprint.contains(shp_geo.Point(Obj_ra + 2 * np.pi, Obj_dec))):
+            return None
 
-        is_obs = epochs_selec.any()
+        is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
+                                              model_t_range[0], model_t_range[1])
 
         if is_obs:
-            # Select the observed fields
-            selec_fields_ID = self.obs_table['fieldID'][epochs_selec].unique()
+            selected_fields = self.obs_table['fieldID'][epochs_selec]
 
             # Create a dic[fields] = obs_subfield
-            dic_map = self.fields.is_in_field(Obj_ra, Obj_dec, selec_fields_ID)
+            dic_map = self.fields.is_in_field(Obj_ra, Obj_dec, selected_fields.unique())
 
             # Update the epochs_selec mask and check if there is some observations
-            is_obs, epochs_selec = nbf.map_obs_fields(
-                                                epochs_selec,
-                                                self.obs_table['fieldID'][epochs_selec].to_numpy(),
-                                                dic_map)
+            is_obs, epochs_selec = nbf.map_obs_fields(epochs_selec, selected_fields.to_numpy(),
+                                                      dic_map)
 
         if is_obs and 'sub_field' in self.config:
+            obs_selec = self.obs_table[epochs_selec]
             is_obs, epochs_selec = nbf.map_obs_subfields(
-                                epochs_selec,
-                                self.obs_table['fieldID'][epochs_selec].to_numpy(),
-                                self.obs_table[self.config['sub_field']][epochs_selec].to_numpy(),
-                                dic_map)
+                obs_selec['fieldID'].to_numpy(),
+                obs_selec[self.config['sub_field']].to_numpy(),
+                dic_map)
+        else:
+            obs_selec = self.obs_table
         if is_obs:
-            return self._make_obs_table(epochs_selec)
+            return self._make_obs_table(obs_selec[epochs_selec].copy())
         return None
 
-    def _make_obs_table(self, epochs_selec):
+    def _make_obs_table(self, obs_selec):
         """Create the astropy table from selection bool array.
 
         Parameters
@@ -408,36 +438,13 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
-        obs_selec = self.obs_table.iloc[epochs_selec]
-        # Change band name to correpond with sncosmo bands
-        if self.band_dic is not None:
-            band = obs_selec['filter'].map(self.band_dic).to_numpy(dtype='str')
-        else:
-            band = obs_selec['filter'].astype('U27').to_numpy(dtype='str')
-
-        # Zero point selection
-        if self.zp[0] != 'zp_in_obs':
-            zp = np.ones(np.sum(epochs_selec)) * self.zp[0]
-        else:
-            zp = obs_selec['zp']
-
-        # Sig Zero point selection
-        if self.zp[1] != 'sig_zp_in_obs':
-            sig_zp = np.ones(np.sum(epochs_selec)) * self.zp[1]
-        else:
-            sig_zp = obs_selec['sig_zp']
+        obs_selec.rename(columns={'expMJD': 'time', 'filter': 'band'}, inplace=True)
+        obs_selec.drop(labels=['fieldRA', 'fieldDec'], axis=1, inplace=True)
 
         # PSF selection
-        if self.sig_psf != 'psf_in_obs':
-            sig_psf = np.ones(np.sum(epochs_selec)) * self.sig_psf
-        else:
-            sig_psf = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
-
-        # Gain
-        if self.gain != 'gain_in_obs':
-            gain = np.ones(np.sum(epochs_selec)) * self.gain
-        else:
-            gain = obs_selec['gain']
+        if self.sig_psf == 'psf_in_obs':
+            obs_selec['sig_psf'] = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
+            obs_selec.drop('FWHMeff', inplace=True)
 
         # Skynoise selection
         if ('fake_skynoise' not in self.config
@@ -445,42 +452,29 @@ class SurveyObs:
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
                 mlim5 = obs_selec[self.config['noise_key'][0]]
-                skynoise = 10.**(0.4 * (zp - mlim5)) / 5
+                skynoise = pd.eval("10.**(0.4 * (obs_selec.zp - mlim5)) / 5")
             elif self.config['noise_key'][1] == 'skysigADU':
                 skynoise = obs_selec[self.config['noise_key'][0]].copy()
             else:
                 raise ValueError('Noise type should be mlim5 or skysigADU')
             if 'fake_skynoise' in self.config:
-                skynoise = np.sqrt(skynoise**2 + self.config['fake_skynoise'][0])
+                skynoise = pd.eval(f"sqrt(skynoise**2 + {self.config['fake_skynoise'][0]}")
         elif self.config['fake_skynoise'][1].lower() == 'replace':
-            skynoise = np.ones(np.sum(epochs_selec)) * self.config['fake_skynoise'][0]
+            skynoise = np.ones(len(obs_selec)) * self.config['fake_skynoise'][0]
         else:
             raise ValueError("fake_skynoise type should be 'add' or 'replace'")
 
         # Apply PSF
-        skynoise[sig_psf > 0] *= np.sqrt(4 * np.pi * sig_psf[sig_psf > 0]**2)
+        psf_mask = pd.eval('obs_selec.sig_psf > 0').to_numpy()
+        skynoise[psf_mask] *= np.sqrt(4 * np.pi * obs_selec['sig_psf'][psf_mask]**2)
 
-        # Create obs table following sncosmo formalism
-        obs = pd.DataFrame({'time': obs_selec['expMJD'],
-                            'band': band,
-                            'gain': gain,
-                            'skynoise': skynoise,
-                            'zp': zp,
-                            'sig_zp': sig_zp,
-                            'fieldID': obs_selec['fieldID']})
+        # Skynoise column
+        obs_selec['skynoise'] = skynoise
 
-        obs['zpsys'] = 'ab'
-        if 'sub_field' in self.config:
-            obs[self.config['sub_field']] = obs_selec[self.config['sub_field']]
+        # Magnitude system
+        obs_selec['zpsys'] = 'ab'
 
-        if 'add_data' in self.config:
-            for k in self.config['add_data']:
-                if k not in obs.keys():
-                    if self.obs_table[k].dtype == 'object':
-                        obs[k] = obs_selec[k].astype('U27').to_numpy(dtype='str')
-                    else:
-                        obs[k] = obs_selec[k]
-        return obs
+        return obs_selec
 
 
 class SurveyFields:
@@ -503,14 +497,84 @@ class SurveyFields:
         self._size = np.array([ra_size, dec_size])
         self._dic = fields_dic
         self._sub_field_map = None
+        self._compute_field_polygon()
         self._init_fields_map(field_map)
+
+    def _compute_field_polygon(self):
+        """Create shapely polygon for each of the fields and init the survey footprint.
+
+        Returns
+        -------
+        None
+            Directly set self.footprint and self._dic['polygon'].
+
+        """
+        ra_edges = np.array([self.size[0] / 2,
+                            self.size[0] / 2,
+                            -self.size[0] / 2,
+                            -self.size[0] / 2])
+
+        dec_edges = np.array([self.size[1] / 2,
+                             -self.size[1] / 2,
+                             -self.size[1] / 2,
+                             self.size[1] / 2])
+
+        vec = np.array([np.cos(ra_edges) * np.cos(dec_edges),
+                        np.sin(ra_edges) * np.cos(dec_edges),
+                        np.sin(dec_edges)]).T
+
+        fvertices = []
+        for k in self._dic:
+            ra = self._dic[k]['ra']
+            dec = self._dic[k]['dec']
+            new_coord = [nbf.R_base(ra, -dec, np.ascontiguousarray(v),
+                         to_field_frame=False) for v in vec]
+            new_radec = [[np.arctan2(x[1], x[0]), np.arcsin(x[2])] for x in new_coord]
+
+            vertices = []
+            for p in new_radec:
+                ra = p[0] + 2 * np.pi * (p[0] < 0)
+                vertices.append([ra, p[1]])
+
+            if (vertices[0][0] < vertices[3][0]) & (vertices[2][0] > np.pi):
+                vertices[0][0] += 2 * np.pi
+
+            elif (vertices[0][0] < vertices[3][0]) & (vertices[2][0] < np.pi):
+                vertices[0][0] += 2 * np.pi
+                vertices[1][0] += 2 * np.pi
+                vertices[2][0] += 2 * np.pi
+
+            if (vertices[1][0] < vertices[2][0]) & (vertices[3][0] > np.pi):
+                vertices[1][0] += 2 * np.pi
+
+            elif (vertices[1][0] < vertices[2][0]) & (vertices[3][0] < np.pi):
+                vertices[0][0] += 2 * np.pi
+                vertices[3][0] += 2 * np.pi
+                vertices[1][0] += 2 * np.pi
+
+            self._dic[k]['polygon'] = shp_geo.Polygon(vertices)
+            fvertices.append(self._dic[k]['polygon'])
+        self.footprint = shp_ops.unary_union(fvertices)
 
     @property
     def size(self):
-        """Get field size (ra,dec) in radians."""
+        """Get field size ra, dec in radians."""
         return np.radians(self._size)
 
     def read_sub_field_map(self, field_map):
+        """Read the sub-field map file.
+
+        Parameters
+        ----------
+        field_map : str
+            Path to the field map config file.
+
+        Returns
+        -------
+        dict
+            A dict containing the corner postion of the field.
+
+        """
         file = open(field_map)
         # Header symbol
         dic_symbol = {}
@@ -562,10 +626,10 @@ class SurveyFields:
                         ra_metric += subfield_ra_size
                     else:
                         corner_dic[int(elmt)] = np.array([
-                                    [ra_metric, dec_metric],
-                                    [ra_metric + subfield_ra_size, dec_metric],
-                                    [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
-                                    [ra_metric, dec_metric - subfield_dec_size]])
+                            [ra_metric, dec_metric],
+                            [ra_metric + subfield_ra_size, dec_metric],
+                            [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
+                            [ra_metric, dec_metric - subfield_dec_size]])
                         ra_metric += subfield_ra_size
                 dec_metric -= subfield_dec_size
         self.dic_sfld_file = dic_symbol

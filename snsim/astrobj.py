@@ -5,6 +5,8 @@ import abc
 import numpy as np
 import pandas as pd
 from .constants import C_LIGHT_KMS
+from . import nb_fun as nbf
+from . import dust_utils as dst_ut
 
 
 class BasicAstrObj(abc.ABC):
@@ -32,6 +34,7 @@ class BasicAstrObj(abc.ABC):
         model_par
         └── mod_fcov, boolean to use or not model flux covariance
     """
+
     _type = ''
 
     def __init__(self, parameters, sim_model, model_par):
@@ -42,10 +45,6 @@ class BasicAstrObj(abc.ABC):
         self._params = parameters
         self._model_par = model_par
         self._update_model_par()
-
-        # -- Add dust and dipole if necessary
-        if 'mw_' in self.sim_model.effect_names:
-            self.mw_ebv = self._params['sncosmo']['mw_ebv']
 
         if 'dip_dM' in self._params:
             self.dip_dM = self._params['dip_dM']
@@ -66,9 +65,22 @@ class BasicAstrObj(abc.ABC):
 
     @abc.abstractmethod
     def _update_model_par(self):
-        """Abstract method to add general model parameters,
-        call during __init__.
-        """
+        """Abstract method to add general model parameters call during __init__."""
+        pass
+
+    @abc.abstractmethod
+    def _compute_if_pass_cut(self):
+        """Abstract method to launch computation of parameters."""
+        pass
+
+    def _has_pass_cut(self):
+        """Action to made if the transient pass cut."""
+        if 'mw_dust' in self._model_par:
+            self.mw_ebv = dst_ut.compute_ebv(*self.coord)
+            self._params['sncosmo']['mw_ebv'] = self.mw_ebv
+            if self._model_par['mw_dust'].lower() in ['ccm89', 'od94']:
+                self._params['sncosmo']['mw_r_v'] = self._model_par['mw_rv']
+        self._compute_if_pass_cut()
         pass
 
     def _add_meta_to_table(self):
@@ -94,15 +106,47 @@ class BasicAstrObj(abc.ABC):
         if self.epochs is None:
             return False
         else:
+            phase = self.epochs['time'] - self.sim_t0
             for cut in nep_cut:
+                expr = ''
                 cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.zobs), cut[2] * (1 + self.zobs)
-                test = (self.epochs['time'] - self.sim_t0 > cutMin_obsfrm)
-                test &= (self.epochs['time'] - self.sim_t0 < cutMax_obsfrm)
-                if len(cut) == 4:
-                    test &= (self.epochs['band'] == cut[3])
-                if np.sum(test) < int(cut[0]):
+                expr += "(phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)"
+                if cut[3] != 'any':
+                    expr += f" & (self.epochs.band == '{cut[3]}')"
+                if pd.eval(expr).sum() < int(cut[0]):
                     return False
+            self._has_pass_cut()
             return True
+
+    # def pass_cut(self, nep_cut):
+    #     """Check if the Transient pass the given cuts.
+    #
+    #     Parameters
+    #     ----------
+    #     nep_cut : list
+    #         nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...]
+    #
+    #     Returns
+    #     -------
+    #     boolean
+    #         True or False.
+    #
+    #     """
+    #     if self.epochs is None:
+    #         return False
+    #     else:
+    #         pass_cut = nbf.pass_cut(self.epochs['time'].to_numpy(),
+    #                                 self.epochs['band'].to_numpy(dtype=(np.str_, 8)),
+    #                                 self.sim_t0, self.zobs,
+    #                                 nep_cut['nep'],
+    #                                 nep_cut['mintime'],
+    #                                 nep_cut['maxtime'],
+    #                                 nep_cut['band'])
+    #         print(pass_cut)
+    #         if pass_cut:
+    #             self._has_pass_cut()
+    #             return True
+    #     return False
 
     def gen_flux(self, rand_gen):
         """Generate the obj lightcurve.
@@ -366,19 +410,21 @@ class SNIa(BasicAstrObj):
             c = self._params['sncosmo']['c']
             mb = self.sim_mu + M0 - alpha * x1 + beta * c
 
-            # Compute the x0 parameter
-            self.sim_model.set(x1=x1, c=c)
-            self.sim_model.set_source_peakmag(mb, 'bessellb', 'ab')
-            self.sim_x0 = self.sim_model.get('x0')
-            self._params['sncosmo']['x0'] = self.sim_x0
-
             self.sim_x1 = x1
             self.sim_c = c
 
         if 'dip_dM' in self._params:
             mb += self._params['dip_dM']
-
         self.sim_mb = mb
+
+    def _compute_if_pass_cut(self):
+        """Parameters to compute only if sn pass cuts."""
+        if self.sim_model.source.name in ['salt2', 'salt3']:
+            # Compute the x0 parameter
+            self.sim_model.set(x1=self.sim_x1, c=self.sim_c)
+            self.sim_model.set_source_peakmag(self.sim_mb, 'bessellb', 'ab')
+            self.sim_x0 = self.sim_model.get('x0')
+            self._params['sncosmo']['x0'] = self.sim_x0
 
     @property
     def mag_sct(self):

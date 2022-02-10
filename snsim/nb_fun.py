@@ -90,7 +90,6 @@ def R_base(a, t, vec, to_field_frame=True):
     else:
         return R @ vec
 
-
 @njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
@@ -127,8 +126,8 @@ def find_first(item, vec):
     return -1
 
 
-@njit(cache=True)
-def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
+@njit(cache=True, parallel=True)
+def time_selec(expMJD, ModelMinT, ModelMaxT):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -151,12 +150,18 @@ def time_selec(expMJD, t0, ModelMaxT, ModelMinT, fieldID):
     numpy.ndarray(bool), numpy.ndarray(int)
         The boolean array of field selection and the id of selectionned fields.
     """
-    epochs_selec = (expMJD - t0 > ModelMinT) & \
-                   (expMJD - t0 < ModelMaxT)
-    return epochs_selec, np.unique(fieldID[epochs_selec])
+    bool_array = np.zeros(len(expMJD), dtype=types.boolean)
+    any = False
+    for i in prange(len(expMJD)):
+        time = expMJD[i]
+        if (time > ModelMinT) & (time < ModelMaxT):
+            bool_array[i] = True
+    if True in bool_array:
+        any = True
+    return any, bool_array
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
     """Return the boolean array corresponding to observed fields.
 
@@ -166,8 +171,8 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
         Actual observations selection.
     fieldID : numpy.array(int)
         ID of fields.
-    mapdic : numba.Dict(int:bool)
-        Numba dic of observed subfield in each observed field.
+    obsfield : numba.Dict(int:bool)
+        Numba dic where keys are observed field.
 
     Returns
     -------
@@ -175,22 +180,30 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
         Is there an observation and the selection of observations.
 
     """
-    epochs_selec[np.copy(epochs_selec)] &= np.array([True if fID in obsfield
-                                                    else False for fID in fieldID])
-    return epochs_selec.any(), epochs_selec
+    bool_array = np.zeros(len(fieldID), dtype=types.boolean)
+    any = False
+    for i in prange(len(fieldID)):
+        fID = fieldID[i]
+        if fID in obsfield:
+            bool_array[i] = True
+
+    if True in bool_array:
+        any = True
+    epochs_selec[epochs_selec] &= bool_array
+    return any, epochs_selec,
 
 
 @njit(cache=True)
-def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
+def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
     """Return boolean array corresponding to observed subfields.
 
     Parameters
     ----------
     epochs_selec : numpy.array(bool)
         Actual observations selection.
-    obs_fieldID : bool
+    obs_fieldID : int
         Id of pre selected observed fields.
-    obs_subfield : bool
+    obs_subfield : int
         Observed subfields.
     mapdic : numba.Dict(int:int)
         Numba dic of observed subfield in each observed field.
@@ -201,9 +214,12 @@ def map_obs_subfields(epochs_selec, obs_fieldID, obs_subfield, mapdic):
         Is there an observation and the selection of observations.
 
     """
-    epochs_selec[np.copy(epochs_selec)] &= (obs_subfield == np.array([mapdic[field] for field in
-                                                                     obs_fieldID]))
-    return epochs_selec.any(), epochs_selec
+    any = False
+    epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
+                                             obs_fieldID], type=types.i8))
+    if True in epochs_selec:
+        any = True
+    return any, epochs_selec
 
 
 @njit(cache=True)
@@ -328,3 +344,16 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
+
+
+# @njit(cache=True)
+# def pass_cut(time, band, t0, z, nep, mintime, maxtime, bandcut):
+#     phase = time - t0
+#     for n, mint, maxt, bc in zip(nep, mintime, maxtime, bandcut):
+#         cutMin_obsfrm, cutMax_obsfrm = mint * (1 + z), maxt * (1 + z)
+#         test = (phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)
+#         if bc != 'any':
+#             test = [test[i] & (band[i] == bc) for i in len(band)]
+#         if np.sum(test) < n:
+#             return False
+#     return True
