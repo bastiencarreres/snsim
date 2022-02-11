@@ -192,7 +192,8 @@ class BasicAstrObj(abc.ABC):
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
                               **self._params['sncosmo']}
-
+        
+        self._sim_lc.reset_index(inplace=True)
         self._sim_lc.index.set_names('epochs', inplace=True)
         return self._reformat_sim_table()
 
