@@ -186,9 +186,9 @@ class BasicAstrObj(abc.ABC):
                                                zpsys=self.epochs['zpsys'])
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
-        fluxerr = np.sqrt(np.abs(fluxtrue) / self.epochs.gain
-                 + self.epochs.skynoise**2
-                 + (np.log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)
+        fluxerr = pd.eval('sqrt(abs(fluxtrue) / self.epochs.gain \
+                 + self.epochs.skynoise**2 \
+                 + (log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)')
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
