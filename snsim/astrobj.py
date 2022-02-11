@@ -139,45 +139,47 @@ class BasicAstrObj(abc.ABC):
         if self._model_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
-            flux, fluxcov = self.sim_model.bandfluxcov(self.epochs['band'],
-                                                       self.epochs['time'],
-                                                       zp=self.epochs['zp'],
-                                                       zpsys=self.epochs['zpsys'])
+            fluxtrue, fluxcov = self.sim_model.bandfluxcov(self.epochs['band'],
+                                                           self.epochs['time'],
+                                                           zp=self.epochs['zp'],
+                                                           zpsys=self.epochs['zpsys'])
 
-            flux += gen.multivariate_normal(np.zeros(len(fluxcov)),
-                                            fluxcov,
-                                            check_valid='ignore',
-                                            method='eigh')
+            fluxtrue += gen.multivariate_normal(np.zeros(len(fluxcov)),
+                                                fluxcov,
+                                                check_valid='ignore',
+                                                method='eigh')
 
         else:
-            flux = self.sim_model.bandflux(self.epochs['band'],
-                                           self.epochs['time'],
-                                           zp=self.epochs['zp'],
-                                           zpsys=self.epochs['zpsys'])
+            fluxtrue = self.sim_model.bandflux(self.epochs['band'],
+                                               self.epochs['time'],
+                                               zp=self.epochs['zp'],
+                                               zpsys=self.epochs['zpsys'])
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
-        fluxerr = np.sqrt(np.abs(flux) / self.epochs['gain']
-                          + self.epochs['skynoise']**2
-                          + (np.log(10) / 2.5 * flux * self.epochs['sig_zp'])**2)
+        fluxerr = np.sqrt(np.abs(fluxtrue) / self.epochs.gain
+                 + self.epochs.skynoise**2
+                 + (np.log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)
 
         gen = np.random.default_rng(random_seeds[1])
-        flux += gen.normal(loc=0., scale=fluxerr)
+        flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
 
         # Set magnitude
         mag = np.zeros(len(flux))
         magerr = np.zeros(len(flux))
 
-        positive_flux = flux > 0
+        positive_fmask = pd.eval('flux > 0')
+        flux_pos = flux[positive_fmask]
 
-        mag[positive_flux] = -2.5 * np.log10(flux[positive_flux]) + self.epochs['zp'][positive_flux]
+        mag[positive_fmask] = -2.5 * np.log10(flux_pos) + self.epochs['zp'][positive_fmask]
 
-        magerr[positive_flux] = 2.5 / np.log(10) * 1 / flux[positive_flux] * fluxerr[positive_flux]
+        magerr[positive_fmask] = 2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
 
-        mag[~positive_flux] = np.nan
-        magerr[~positive_flux] = np.nan
+        mag[~positive_fmask] = np.nan
+        magerr[~positive_fmask] = np.nan
 
         # Create astropy Table lightcurve
         self._sim_lc = pd.DataFrame({'time': self.epochs['time'],
+                                     'fluxtrue': fluxtrue,
                                      'flux': flux,
                                      'fluxerr': fluxerr,
                                      'mag': mag,
@@ -185,15 +187,13 @@ class BasicAstrObj(abc.ABC):
                                      'zp': self.epochs['zp'],
                                      'zpsys': self.epochs['zpsys'],
                                      'gain': self.epochs['gain'],
-                                     'skynoise': self.epochs['skynoise'],
-                                     'epochs': np.arange(len(self.epochs['time']))
-                                     })
+                                     'skynoise': self.epochs['skynoise']})
 
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
                               **self._params['sncosmo']}
 
-        self._sim_lc.set_index('epochs', inplace=True)
+        self._sim_lc.index.set_names('epochs', inplace=True)
         return self._reformat_sim_table()
 
     def _reformat_sim_table(self):
