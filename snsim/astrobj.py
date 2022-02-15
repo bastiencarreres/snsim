@@ -157,8 +157,8 @@ class BasicAstrObj(abc.ABC):
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerr = np.sqrt(np.abs(fluxtrue) / self.epochs.gain
-                 + self.epochs.skynoise**2
-                 + (np.log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)
+                          + self.epochs.skynoise**2
+                          + (np.log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
@@ -189,10 +189,13 @@ class BasicAstrObj(abc.ABC):
                                      'gain': self.epochs['gain'],
                                      'skynoise': self.epochs['skynoise']})
 
+        #self._sim_lc['mag'] = pd.eval('-2.5 * log10(self._sim_lc.flux) + self.epochs.zp')
+        #self._sim_lc['magerr'] = pd.eval('2.5 / log(10) * 1 / self._sim_lc.flux * self._sim_lc.fluxerr')
+
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
                               **self._params['sncosmo']}
-        
+
         self._sim_lc.reset_index(inplace=True)
         self._sim_lc.index.set_names('epochs', inplace=True)
         return self._reformat_sim_table()

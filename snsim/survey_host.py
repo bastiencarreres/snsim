@@ -468,7 +468,8 @@ class SurveyObs:
 
         # Apply PSF
         psf_mask = pd.eval('obs_selec.sig_psf > 0').to_numpy()
-        skynoise[psf_mask] *= np.sqrt(4 * np.pi * obs_selec['sig_psf'][psf_mask]**2)
+        pos_spsf = obs_selec.sig_psf[psf_mask]
+        skynoise[psf_mask] *= pd.eval(f'sqrt(4 * {np.pi} * pos_spsf**2)')
 
         # Skynoise column
         obs_selec['skynoise'] = skynoise
