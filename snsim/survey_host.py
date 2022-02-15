@@ -400,8 +400,6 @@ class SurveyObs:
         is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
                                               model_t_range[0], model_t_range[1])
 
-        print('first ', is_obs)
-
         if is_obs:
             selected_fields = self.obs_table['fieldID'][epochs_selec]
 
@@ -411,7 +409,6 @@ class SurveyObs:
             # Update the epochs_selec mask and check if there is some observations
             is_obs, epochs_selec = nbf.map_obs_fields(epochs_selec, selected_fields.to_numpy(),
                                                       dic_map)
-            print('second ', is_obs)
 
         if is_obs and 'sub_field' in self.config:
             obs_selec = self.obs_table[epochs_selec]
@@ -419,7 +416,6 @@ class SurveyObs:
                 obs_selec['fieldID'].to_numpy(),
                 obs_selec[self.config['sub_field']].to_numpy(),
                 dic_map)
-            print('Third ', is_obs)
         else:
             obs_selec = self.obs_table
         if is_obs:
@@ -571,7 +567,6 @@ class SurveyFields:
             self._dic[k]['polygon'] = np.atleast_1d(poly)
         polys = np.concatenate([self._dic[k]['polygon'] for k in self._dic])
         self.footprint = shp_ops.unary_union(polys)
-        self.poly = polys
 
     @property
     def size(self):
@@ -750,6 +745,7 @@ class SurveyFields:
                         ticks = np.array([330, 300, 270, 240, 210, 180, 150, 120, 90, 60, 30])
                         ax.set_xticklabels(ticks)
                         ax.plot(x, y, c='k', lw=0.5)
+        plt.show()
 
 
 class SnHost:
