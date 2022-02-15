@@ -156,25 +156,41 @@ class BasicAstrObj(abc.ABC):
                                                zpsys=self.epochs['zpsys'])
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
-        fluxerr = pd.eval('sqrt(abs(fluxtrue) / self.epochs.gain \
-                          + self.epochs.skynoise**2 \
-                          + (log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)')
+        fluxerr = np.sqrt(np.abs(fluxtrue) / self.epochs.gain
+                          + self.epochs.skynoise**2
+                          + (np.log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
+
+        # Set magnitude
+        mag = np.zeros(len(flux))
+        magerr = np.zeros(len(flux))
+
+        positive_fmask = pd.eval('flux > 0')
+        flux_pos = flux[positive_fmask]
+
+        mag[positive_fmask] = -2.5 * np.log10(flux_pos) + self.epochs['zp'][positive_fmask]
+
+        magerr[positive_fmask] = 2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
+
+        mag[~positive_fmask] = np.nan
+        magerr[~positive_fmask] = np.nan
 
         # Create astropy Table lightcurve
         self._sim_lc = pd.DataFrame({'time': self.epochs['time'],
                                      'fluxtrue': fluxtrue,
                                      'flux': flux,
                                      'fluxerr': fluxerr,
+                                     'mag': mag,
+                                     'magerr': magerr,
                                      'zp': self.epochs['zp'],
                                      'zpsys': self.epochs['zpsys'],
                                      'gain': self.epochs['gain'],
                                      'skynoise': self.epochs['skynoise']})
 
-        self._sim_lc['mag'] = pd.eval('-2.5 * log10(self._sim_lc.flux) + self.epochs.zp')
-        self._sim_lc['magerr'] = pd.eval('2.5 / log(10) * 1 / self._sim_lc.flux * self._sim_lc.fluxerr')
+        #self._sim_lc['mag'] = pd.eval('-2.5 * log10(self._sim_lc.flux) + self.epochs.zp')
+        #self._sim_lc['magerr'] = pd.eval('2.5 / log(10) * 1 / self._sim_lc.flux * self._sim_lc.fluxerr')
 
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
