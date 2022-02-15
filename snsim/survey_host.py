@@ -726,6 +726,24 @@ class SurveyFields:
 
         plt.show()
 
+    def show_fields(self, Id=None, Idmax=None):
+        """Plot fields"""
+        fig, ax = plt.subplots(projection='mollweide')
+        if Id is not None:
+            for p in self._dic[Id]:
+                x, y = p.boundary.xy
+                x = np.array(x) - 2 * np.pi * (np.array(x) > np.pi)
+                plt.plot(x, y, c='k', lw=0.5)
+        else:
+            if Idmax is None:
+                Idmax = 1e12
+            for k in self._dic:
+                if k < Idmax:
+                    for p in self._dic[k]:
+                        x, y = p.boundary.xy
+                        x = np.array(x) - 2 * np.pi * (np.array(x) > np.pi)
+                        plt.plot(x, y, c='k', lw=0.5)
+
 
 class SnHost:
     """Class containing the SN Host parameters.
