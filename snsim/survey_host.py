@@ -394,9 +394,7 @@ class SurveyObs:
 
         """
         Obj_ra, Obj_dec = coords
-
-        if not (self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec))
-           or self.fields.footprint.contains(shp_geo.Point(Obj_ra + 2 * np.pi, Obj_dec))):
+        if not self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec)):
             return None
 
         is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
@@ -523,7 +521,10 @@ class SurveyFields:
                         np.sin(ra_edges) * np.cos(dec_edges),
                         np.sin(dec_edges)]).T
 
-        fvertices = []
+        # mollweide map edges
+        edges = np.array([np.ones(500) * 2 * np.pi, np.linspace(-np.pi/2, np.pi/2, 500)]).T
+        limit = shp_geo.LineString(edges)
+
         for k in self._dic:
             ra = self._dic[k]['ra']
             dec = self._dic[k]['dec']
@@ -536,6 +537,7 @@ class SurveyFields:
                 ra = p[0] + 2 * np.pi * (p[0] < 0)
                 vertices.append([ra, p[1]])
 
+            poly = shp_geo.Polygon(vertices)
             if (vertices[0][0] < vertices[3][0]) & (vertices[2][0] > np.pi):
                 vertices[0][0] += 2 * np.pi
 
@@ -552,9 +554,19 @@ class SurveyFields:
                 vertices[3][0] += 2 * np.pi
                 vertices[1][0] += 2 * np.pi
 
-            self._dic[k]['polygon'] = shp_geo.Polygon(vertices)
-            fvertices.append(self._dic[k]['polygon'])
-        self.footprint = shp_ops.unary_union(fvertices)
+            poly = shp_geo.Polygon(vertices)
+            # If poly intersect edges cut it into 2 polygons
+            if poly.intersects(limit):
+                unioned = poly.boundary.union(limit)
+                poly = [p for p in shp_ops.polygonize(unioned)
+                        if p.representative_point().within(poly)]
+                x, y = poly[0].boundary.xy
+                x = np.array(x) - 2 * np.pi
+                poly[0] = shp_geo.Polygon(np.array([x, y]).T)
+
+            self._dic[k]['polygon'] = np.atleast_1d(poly)
+        polys = np.concatenate([self._dic[k]['polygon'] for k in self._dic])
+        self.footprint = shp_ops.unary_union(polys)
 
     @property
     def size(self):
@@ -711,6 +723,28 @@ class SurveyFields:
         ax.set_xlim(-self._size[0] / 2 - 0.5, self._size[0] / 2 + 0.5)
         ax.set_ylim(-self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
 
+        plt.show()
+
+    def show_fields(self, Id=None, Idmax=None):
+        """Plot fields."""
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='mollweide')
+        if Id is not None:
+            for p in self._dic[Id]:
+                x, y = p.boundary.xy
+                x = np.array(x) - 2 * np.pi * (np.array(x) > np.pi)
+                ax.plot(x, y, c='k', lw=0.5)
+        else:
+            if Idmax is None:
+                Idmax = 1e12
+            for k in self._dic:
+                if k < Idmax:
+                    for p in self._dic[k]['polygon']:
+                        x, y = p.boundary.xy
+                        x = np.array(x) - np.pi
+                        ticks = np.array([330, 300, 270, 240, 210, 180, 150, 120, 90, 60, 30])
+                        ax.set_xticklabels(ticks)
+                        ax.plot(x, y, c='k', lw=0.5)
         plt.show()
 
 
