@@ -55,8 +55,8 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
         The fitted parameters and errors.
 
     """
-    par_dic = {'salt': [('t0', '.2f'), ('x0', '.2e'), ('mb', '.2f'), ('x1', '.2f'), ('c', '.3f')],
-               'mw_': [('Rv', '.2f'), ('E(B-V)', '.3f')]}
+    par_dic = {'salt': [('$t_0$', '.2f'), ('$x_0$', '.2e'), ('$m_b$', '.2f'), ('$x_1$', '.2f'), ('$c$', '.3f')],
+               'mw_': [('$R_v$', '.2f'), ('E(B-V)', '.3f')]}
     par = par_dic[model_name]
 
     str_list = [''] * (len(par) + 1)
@@ -103,8 +103,11 @@ def plot_lc(
         fit_cov=None,
         residuals=False,
         full_screen=False,
-        figsize=(35 / 2.54, 20 / 2.54),
-        dpi=120):
+        bandcol=None,
+        set_main=None,
+        set_res=None,
+        dpi=100,
+        savefig=False, saveformat='png'):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -132,9 +135,12 @@ def plot_lc(
         Just plot the lightcurve.
 
     """
-    plt.rcParams['font.family'] = 'monospace'
+    plt.style.use('seaborn-deep')
 
-    bands = np.unique(flux_table['band'])
+    figsize = (15, 8)
+
+    bands = flux_table['band'].unique()
+
     flux_norm, fluxerr_norm = ut.norm_flux(flux_table, zp)
 
     time = flux_table['time']
@@ -143,6 +149,7 @@ def plot_lc(
     z = meta['zobs']
 
     time_th = np.linspace(t0 - 19.8 * (1 + z), t0 + 49.8 * (1 + z), 200)
+
     fig = plt.figure(figsize=figsize, dpi=dpi)
 
     ###################
@@ -150,7 +157,7 @@ def plot_lc(
     ###################
 
     if residuals:
-        gs = gridspec.GridSpec(3, 1, height_ratios=[0.5, 2, 1])
+        gs = gridspec.GridSpec(3, 1, height_ratios=np.array([0.5, 2, 1]), figure=fig)
         text_ax = fig.add_subplot(gs[0])
         ax0 = fig.add_subplot(gs[1])
         ax1 = fig.add_subplot(gs[2], sharex=ax0)
@@ -159,13 +166,25 @@ def plot_lc(
         gs = gridspec.GridSpec(1, 1, height_ratios=[1])
         ax0 = fig.add_subplot(gs[0])
     else:
-        gs = gridspec.GridSpec(2, 1, height_ratios=[0.5, 2])
+        gs = gridspec.GridSpec(2, 1, height_ratios=np.array([0.3, 2]))
         text_ax = fig.add_subplot(gs[0])
         ax0 = fig.add_subplot(gs[1])
 
+    if bandcol is None:
+        bandcol = {}
+        ccycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        for i, b in enumerate(bands):
+            bandcol[b] = ccycle[i]
+
+    if set_main is None:
+        set_main = {}
+    if set_res is None:
+        set_res = {}
+
     fig.suptitle(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD',
                  fontsize='xx-large')
-    plt.xlabel('Time relative to peak', fontsize='x-large')
+
+    plt.xlim(np.min(time) - 1 - t0, np.max(time) + 1 - t0)
 
     ################
     # PLOT SECTION #
@@ -233,12 +252,13 @@ def plot_lc(
                     fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys='ab') * norm
                     rsd = plot - fit_pts
 
-        p = ax0.errorbar(time_b - t0, plot, yerr=err,
-                         label=b, fmt='o', markersize=2.5)
+        ax0.errorbar(time_b - t0, plot, yerr=err,
+                     label=b, fmt='o', ms=5, lw=2, color=bandcol[b])
+
         handles, labels = ax0.get_legend_handles_labels()
 
         if snc_sim_model is not None:
-            ax0.plot(time_th - t0, plot_th, color=p[0].get_color())
+            ax0.plot(time_th - t0, plot_th, color=bandcol[b])
             sim_line = Line2D([0], [0], color='k', linestyle='solid')
             sim_label = 'Sim'
             handles.append(sim_line)
@@ -249,22 +269,29 @@ def plot_lc(
             fit_label = 'Fit'
             handles.append(fit_line)
             labels.append(fit_label)
-            ax0.plot(time_th - t0, plot_fit, color=p[0].get_color(), ls='--')
+            ax0.plot(time_th - t0, plot_fit, color=bandcol[b], ls='--')
 
             if fit_cov is not None:
                 ax0.fill_between(
                     time_th - t0,
                     plot_fit - err_th,
                     plot_fit + err_th,
-                    alpha=0.5)
+                    alpha=0.3, lw=0.0,
+                    color=bandcol[b])
 
             if residuals:
                 ax1.set_ylabel('Data - Model', fontsize='x-large')
-                ax1.errorbar(time_b - t0, rsd, yerr=err, fmt='o')
+                ax1.errorbar(time_b - t0, rsd, yerr=err, fmt='o', color=bandcol[b])
                 ax1.axhline(0, ls='dashdot', c='black', lw=1.5)
                 ax1_y_lim.append(3 * np.std(rsd))
-                ax1.plot(time_th - t0, err_th, ls='--', color=p[0].get_color())
-                ax1.plot(time_th - t0, -err_th, ls='--', color=p[0].get_color())
+                ax1.plot(time_th - t0, err_th, ls='--', color=bandcol[b])
+                ax1.plot(time_th - t0, -err_th, ls='--', color=bandcol[b])
+                for axis in ['top', 'bottom', 'left', 'right']:
+                    ax1.spines[axis].set_linewidth(2)
+                ax1.xaxis.set_tick_params(width=2)
+                ax1.yaxis.set_tick_params(width=2)
+                ax1.set_xlabel('Phase [days]', fontsize='x-large')
+                ax1.set(**set_res)
 
     ax0.legend(handles=handles, labels=labels, fontsize='x-large')
 
@@ -273,7 +300,6 @@ def plot_lc(
     fit_par = None
     fit_mwd_par = None
     if snc_sim_model is not None:
-        plt.xlim(snc_sim_model.mintime() - t0, snc_sim_model.maxtime() - t0)
         sim_par = [meta['sim_t0'],
                    meta['sim_x0'],
                    meta['sim_mb'],
@@ -287,13 +313,6 @@ def plot_lc(
                 mod_index = np.where(np.array(snc_sim_model.effect_names) == 'mw_')[0][0]
                 sim_mwd_par.append(snc_sim_model.effects[mod_index]._r_v)
             sim_mwd_par.append(meta['mw_ebv'])
-
-    elif snc_fit_model is not None:
-        plt.xlim(snc_fit_model.mintime() - t0, snc_fit_model.maxtime() - t0)
-    else:
-        plt.xlim(np.min(time) - 1 - t0, np.max(time) + 1 - t0)
-    if residuals:
-        ax1.set_ylim(-np.nanmax(ax1_y_lim), np.nanmax(ax1_y_lim))
 
     if snc_fit_model is not None and fit_cov is not None:
         mb_fit = snc_fit_model.source_peakmag('bessellb', 'ab')
@@ -324,13 +343,24 @@ def plot_lc(
                        pos=[0.4, 0.25])
 
     plt.subplots_adjust(hspace=.0)
+    ax0.spines['right'].set_visible(False)
+    ax0.spines['top'].set_visible(False)
+    ax0.spines['bottom'].set_linewidth(2)
+    ax0.spines['left'].set_linewidth(2)
+    ax0.xaxis.set_tick_params(width=2)
+    ax0.yaxis.set_tick_params(width=2)
+    ax0.set_xlabel('Phase [days]', fontsize='x-large')
+    ax0.set(**set_main)
 
     if full_screen:
         try:
             plt_maximize()
         except Exception:
             pass
-    plt.show()
+    if savefig:
+        plt.savefig(f'LC.{saveformat}', dpi=dpi, format=saveformat)
+    else:
+        plt.show()
 
 
 def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg):
