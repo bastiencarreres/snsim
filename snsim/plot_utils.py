@@ -50,9 +50,9 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
                 else:
                     str += f"{par[k][0]} = {fit_par[k][0]:{par[k][1]}} $\pm$ {fit_par[k][1]:{par[k][1]}}  "
 
-    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.3)
+    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
     text_ax.axis('off')
-    text_ax.text(pos[0], pos[1], str, transform=text_ax.transAxes, fontsize=10, bbox=prop, fontfamily='stixsans')
+    text_ax.text(pos[0], pos[1], str, transform=text_ax.transAxes, fontsize=10, bbox=prop)
 
 
 def plot_lc(
@@ -69,7 +69,7 @@ def plot_lc(
         set_main=None,
         set_res=None,
         dpi=100,
-        savefig=False, savepath='LC', saveformat='png'):
+        savefig=False, savepath='', saveformat='png'):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -145,6 +145,14 @@ def plot_lc(
                  fontsize='xx-large')
 
     plt.xlim(-21 * (1 + z), 51 * (1 + z))
+
+    ax0.spines['right'].set_visible(False)
+    ax0.spines['top'].set_visible(False)
+    ax0.spines['bottom'].set_linewidth(2)
+    ax0.spines['left'].set_linewidth(2)
+    ax0.xaxis.set_tick_params(width=2)
+    ax0.yaxis.set_tick_params(width=2)
+    ax0.set_xlabel('Phase [days]', fontsize='x-large')
 
     ################
     # PLOT SECTION #
@@ -252,6 +260,9 @@ def plot_lc(
                 ax1.yaxis.set_tick_params(width=2)
                 ax1.set_xlabel('Phase [days]', fontsize='x-large')
                 ax1.set(**set_res)
+                plt.setp(ax0.get_xticklabels(), visible=False)
+                ax0.set_xlabel('')
+
 
     ax0.legend(handles=handles, labels=labels, fontsize='x-large')
 
@@ -284,16 +295,10 @@ def plot_lc(
         if 'mw_' in snc_sim_model.effect_names:
             model_name.append('mw_')
 
+    if model_name != []:
         param_text_box(text_ax, model_name=model_name, sim_par=sim_par, fit_par=fit_par)
 
-    plt.subplots_adjust(hspace=.0)
-    ax0.spines['right'].set_visible(False)
-    ax0.spines['top'].set_visible(False)
-    ax0.spines['bottom'].set_linewidth(2)
-    ax0.spines['left'].set_linewidth(2)
-    ax0.xaxis.set_tick_params(width=2)
-    ax0.yaxis.set_tick_params(width=2)
-    ax0.set_xlabel('Phase [days]', fontsize='x-large')
+    plt.subplots_adjust(hspace=.08)
     ax0.set(**set_main)
 
     if savefig:
