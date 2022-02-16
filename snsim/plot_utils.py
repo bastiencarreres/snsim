@@ -1,6 +1,5 @@
 """Contains plot functions."""
 
-from platform import system
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -11,36 +10,7 @@ from . import salt_utils as salt_ut
 from . import nb_fun as nbf
 
 
-def plt_maximize():
-    """Enable full screen.
-
-    Notes
-    -----
-    Come from
-    https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python/22418354#22418354
-    """
-    # See discussion on:
-    # https://stackoverflow.com/questions/12439588/how-to-maximize-a-plt-show-window-using-python
-    backend = plt.get_backend()
-    cfm = plt.get_current_fig_manager()
-    if backend == "wxAgg":
-        cfm.frame.Maximize(True)
-    elif backend == "TkAgg":
-        if system() == "win32":
-            cfm.window.state('zoomed')  # This is windows only
-        else:
-            cfm.resize(*cfm.window.maxsize())
-    elif backend in ('QT4Agg', 'QT5Agg'):
-        cfm.window.showMaximized()
-    elif callable(getattr(cfm, "full_screen_toggle", None)):
-        if not getattr(cfm, "flag_is_max", None):
-            cfm.full_screen_toggle()
-            cfm.flag_is_max = True
-    else:
-        raise RuntimeError("plt_maximize() is not implemented for current backend:", backend)
-
-
-def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0.25]):
+def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0.4]):
     """Add a text legend with model parameters to the plot.
 
     Parameters
@@ -55,41 +25,34 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
         The fitted parameters and errors.
 
     """
-    par_dic = {'salt': [('$t_0$', '.2f'), ('$x_0$', '.2e'), ('$m_b$', '.2f'), ('$x_1$', '.2f'), ('$c$', '.3f')],
-               'mw_': [('$R_v$', '.2f'), ('E(B-V)', '.3f')]}
-    par = par_dic[model_name]
+    par_dic = {'salt': {'t0': ('$t_0$', '.2f'), 'x0': ('$x_0$', '.2e'),
+                        'mb': ('$m_b$', '.2f'), 'x1': ('$x_1$', '.2f'), 'c': ('$c$', '.3f')},
+               'mw_': {'mw_r_v': ('$R_v$', '.2f'), 'mw_ebv': ('E(B-V)', '.3f')}}
 
-    str_list = [''] * (len(par) + 1)
+    par = {}
+    for model in model_name:
+        par = {**par, **par_dic[model]}
+
+    str = ''
     if sim_par is not None:
-        str_list[0] += 'SIMULATED PARAMETERS :@'
+        str += 'SIMULATED PARAMETERS : \n    '
+        for k in par.keys():
+            if k in sim_par:
+                str += f"{par[k][0]} = {sim_par[k]:{par[k][1]}}  "
+        str += '\n\n'
+
     if fit_par is not None:
-        str_list[0] += 'FITTED PARAMETERS :@'
-    for i, p in enumerate(par):
-        if sim_par is not None:
-            str_list[i + 1] += f"{p[0]} = {sim_par[i]:{p[1]}}@"
-        if fit_par is not None:
-            if isinstance(fit_par[i], (int, float)):
-                str_list[i + 1] += f"{p[0]} = {fit_par[i]:{p[1]}}"
-            else:
-                str_list[i + 1] += f"{p[0]} = {fit_par[i][0]:{p[1]}} $\pm$ {fit_par[i][1]:{p[1]}}@"
+        str += 'FITTED PARAMETERS : \n    '
+        for k in par.keys():
+            if k in fit_par:
+                if isinstance(fit_par[k], (int, float)):
+                    str += f"{par[k][0]} = {fit_par[k]:{par[k][1]}}  "
+                else:
+                    str += f"{par[k][0]} = {fit_par[k][0]:{par[k][1]}} $\pm$ {fit_par[k][1]:{par[k][1]}}  "
 
-    final_str = ""
-    if str_list[0].count('@') == 2:
-        len_str = []
-        for i, s in enumerate(str_list):
-            str_list[i] = s.split('@')
-            len_str.append(len(str_list[i][0]))
-        max_len = np.max(len_str)
-        for i in range(len(str_list)):
-            final_str += str_list[i][0] + " " * (max_len - len_str[i] + 2) + "|  "
-            final_str += str_list[i][1] + "\n"
-    elif str_list[0].count('@') == 1:
-        for i, s in enumerate(str_list):
-            final_str += str_list[i][:-1] + '\n'
-
-    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
+    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.3)
     text_ax.axis('off')
-    text_ax.text(pos[0], pos[1], final_str[:-1], transform=text_ax.transAxes, fontsize=9, bbox=prop)
+    text_ax.text(pos[0], pos[1], str, transform=text_ax.transAxes, fontsize=10, bbox=prop, fontfamily='stixsans')
 
 
 def plot_lc(
@@ -102,12 +65,11 @@ def plot_lc(
         snc_fit_model=None,
         fit_cov=None,
         residuals=False,
-        full_screen=False,
         bandcol=None,
         set_main=None,
         set_res=None,
         dpi=100,
-        savefig=False, saveformat='png'):
+        savefig=False, savepath='LC', saveformat='png'):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -126,8 +88,6 @@ def plot_lc(
         sncosmo t0, x0, x1, c covariance matrix from SALT fit.
     residuals : bool
         If True plot fit residuals.
-    full_screen : bool
-        Try to plot the figure in full screen.
 
     Returns
     -------
@@ -184,7 +144,7 @@ def plot_lc(
     fig.suptitle(f'SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD',
                  fontsize='xx-large')
 
-    plt.xlim(np.min(time) - 1 - t0, np.max(time) + 1 - t0)
+    plt.xlim(-21 * (1 + z), 51 * (1 + z))
 
     ################
     # PLOT SECTION #
@@ -253,7 +213,7 @@ def plot_lc(
                     rsd = plot - fit_pts
 
         ax0.errorbar(time_b - t0, plot, yerr=err,
-                     label=b, fmt='o', ms=5, lw=2, color=bandcol[b])
+                     label=b, fmt='o', ms=5, lw=1.5, color=bandcol[b])
 
         handles, labels = ax0.get_legend_handles_labels()
 
@@ -281,7 +241,7 @@ def plot_lc(
 
             if residuals:
                 ax1.set_ylabel('Data - Model', fontsize='x-large')
-                ax1.errorbar(time_b - t0, rsd, yerr=err, fmt='o', color=bandcol[b])
+                ax1.errorbar(time_b - t0, rsd, yerr=err, fmt='o', color=bandcol[b], ms=5)
                 ax1.axhline(0, ls='dashdot', c='black', lw=1.5)
                 ax1_y_lim.append(3 * np.std(rsd))
                 ax1.plot(time_th - t0, err_th, ls='--', color=bandcol[b])
@@ -296,51 +256,35 @@ def plot_lc(
     ax0.legend(handles=handles, labels=labels, fontsize='x-large')
 
     sim_par = None
-    sim_mwd_par = None
     fit_par = None
-    fit_mwd_par = None
+    model_name = []
+
     if snc_sim_model is not None:
-        sim_par = [meta['sim_t0'],
-                   meta['sim_x0'],
-                   meta['sim_mb'],
-                   meta['sim_x1'],
-                   meta['sim_c']]
+        model_name.append(snc_sim_model.source.name[:-1])
+        sim_par = {snc_sim_model.param_names[i]: snc_sim_model.parameters[i]
+                   for i in range(len(snc_sim_model.param_names))}
+        if snc_sim_model.source.name[:-1] == 'salt':
+            sim_par['mb'] = snc_sim_model.source_peakmag('bessellb', 'ab')
+
         if 'mw_' in snc_sim_model.effect_names:
-            sim_mwd_par = []
-            if 'mw_r_v' in meta:
-                sim_mwd_par.append(meta['mw_r_v'])
-            else:
-                mod_index = np.where(np.array(snc_sim_model.effect_names) == 'mw_')[0][0]
-                sim_mwd_par.append(snc_sim_model.effects[mod_index]._r_v)
-            sim_mwd_par.append(meta['mw_ebv'])
+            model_name.append('mw_')
 
     if snc_fit_model is not None and fit_cov is not None:
-        mb_fit = snc_fit_model.source_peakmag('bessellb', 'ab')
-        mb_err = np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0])
-        fit_par = [(snc_fit_model.parameters[1], np.sqrt(fit_cov[0, 0])),
-                   (snc_fit_model.parameters[2], np.sqrt(fit_cov[1, 1])),
-                   (mb_fit, mb_err),
-                   (snc_fit_model.parameters[3], np.sqrt(fit_cov[2, 2])),
-                   (snc_fit_model.parameters[4], np.sqrt(fit_cov[3, 3]))]
-
-        if 'mw_' in snc_fit_model.effect_names:
-            fit_mwd_par = []
-            if 'mw_r_v' not in snc_fit_model.param_names:
-                mod_index = np.where(np.array(snc_fit_model.effect_names) == 'mw_')[0][0]
-                fit_mwd_par.append(snc_fit_model.effects[mod_index]._r_v)
+        model_name.append(snc_fit_model.source.name[:-1])
+        fit_par = {}
+        for i in range(1, len(snc_fit_model.param_names)):
+            if 'mw_' not in snc_fit_model.param_names[i]:
+                fit_par[snc_fit_model.param_names[i]] = (snc_fit_model.parameters[i], np.sqrt(fit_cov[i-1, i-1]))
             else:
-                par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_r_v')[0][0]
-                fit_mwd_par.append(snc_fit_model.parameters[par_idx])
+                fit_par[snc_fit_model.param_names[i]] = snc_fit_model.parameters[i]
+        if snc_fit_model.source.name[:-1] == 'salt':
+            fit_par['mb'] = (snc_fit_model.source_peakmag('bessellb', 'ab'),
+                              np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0]))
 
-            par_idx = np.where(np.asarray(snc_fit_model.param_names) == 'mw_ebv')[0][0]
-            fit_mwd_par.append(snc_fit_model.parameters[par_idx])
+        if 'mw_' in snc_sim_model.effect_names:
+            model_name.append('mw_')
 
-    if fit_par is not None or sim_par is not None:
-        param_text_box(text_ax, model_name='salt', sim_par=sim_par, fit_par=fit_par)
-
-    if fit_mwd_par is not None or sim_mwd_par is not None:
-        param_text_box(text_ax, model_name='mw_', sim_par=sim_mwd_par, fit_par=fit_mwd_par,
-                       pos=[0.4, 0.25])
+        param_text_box(text_ax, model_name=model_name, sim_par=sim_par, fit_par=fit_par)
 
     plt.subplots_adjust(hspace=.0)
     ax0.spines['right'].set_visible(False)
@@ -352,11 +296,6 @@ def plot_lc(
     ax0.set_xlabel('Phase [days]', fontsize='x-large')
     ax0.set(**set_main)
 
-    if full_screen:
-        try:
-            plt_maximize()
-        except Exception:
-            pass
     if savefig:
         plt.savefig(f'LC.{saveformat}', dpi=dpi, format=saveformat)
     else:
