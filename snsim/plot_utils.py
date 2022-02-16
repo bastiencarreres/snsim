@@ -50,7 +50,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
                 else:
                     str += f"{par[k][0]} = {fit_par[k][0]:{par[k][1]}} $\pm$ {fit_par[k][1]:{par[k][1]}}  "
 
-    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.5)
+    prop = dict(boxstyle='round,pad=1', facecolor='navajowhite', alpha=0.3)
     text_ax.axis('off')
     text_ax.text(pos[0], pos[1], str, transform=text_ax.transAxes, fontsize=10, bbox=prop)
 
