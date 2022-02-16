@@ -88,7 +88,7 @@ class BasicAstrObj(abc.ABC):
         called during _reformat_sim_table.
         """
         pass
-
+        
     def pass_cut(self, nep_cut):
         """Check if the Transient pass the given cuts.
 
@@ -135,6 +135,9 @@ class BasicAstrObj(abc.ABC):
         Set the sim_lc attributes as an astropy Table
         """
         random_seeds = rand_gen.integers(1000, 100000, size=2)
+
+        # Re - set the parameters to take possible change (e.g dust)
+        self._set_model()
 
         if self._model_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
