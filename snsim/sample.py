@@ -425,7 +425,7 @@ class SimSample:
             s_model = None
 
         if plot_fit and not mod:
-            if self.fit_res is None or self.fit_res[obj_ID] is None:
+            if self.fit_res is None or obj_ID not in self.fit_res:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(obj_ID)
 
