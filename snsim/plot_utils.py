@@ -69,7 +69,7 @@ def plot_lc(
         set_main=None,
         set_res=None,
         dpi=100,
-        savefig=False, savepath='', saveformat='png'):
+        savefig=False, savepath='LC', saveformat='png'):
     """Ploting a lightcurve flux table.
 
     Parameters
@@ -302,7 +302,7 @@ def plot_lc(
     ax0.set(**set_main)
 
     if savefig:
-        plt.savefig(f'LC.{saveformat}', dpi=dpi, format=saveformat)
+        plt.savefig(f'{savepath}.{saveformat}', dpi=dpi, format=saveformat)
     else:
         plt.show()
 
