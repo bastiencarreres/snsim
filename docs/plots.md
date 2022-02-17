@@ -1,4 +1,4 @@
-# Plots 
+# Plots
 
 ## Light-curves
 
@@ -6,31 +6,31 @@ You can plot light-curves directly after simulation or using the **SNSimSample**
 
 ```python
 # From simulation
-sim.sn_sample.plot_lc(SN_ID, mag=False, zp=25. , plot_sim=True, plot_fit=False, Jy=False)
+Simulator.samples[sampleID].plot_lc(obj_ID, plot_sim=True, plot_fit=False, **kwargs)
 
-# From SNSimSample
-snsimsample.plot_lc(SN_ID, mag=False, zp=25. , plot_sim=True, plot_fit=False, Jy=False)
+# From SimSample
+SimSample.plot_lc(obj_ID, plot_sim=True, plot_fit=False, **kwargs)
 ```
+
+Kwargs are described in plot_utils.plot_lc API. 
+
+
 
 Plot sim :
 
-![](_static/lc_sim.png)
+<img title="" src="_static/lc_sim.png" alt="" width="835" data-align="center">
 
 Plot  fit :
 
-![](_static/lc_fit.png)
-
-
+<img src="_static/lc_fit.png" title="" alt="" data-align="center">
 
 The same plot can be show in magnitude :
 
-![lc_mag](_static/lc_mag.png)
+<img src="_static/lc_mag.png" title="" alt="lc_mag" data-align="left">
 
 Or in Jansky :
 
-![lc_jy](_static/lc_jy.png)
-
-
+<img src="_static/lc_jy.png" title="" alt="lc_jy" data-align="left">
 
 ## Mollweide map
 
