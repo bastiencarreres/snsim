@@ -382,7 +382,8 @@ class SimSample:
             plt.show()
 
     def plot_lc(self, obj_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
-                mod=False, figsize=(35 / 2.54, 20 / 2.54), dpi=120):
+                mod=False, dpi=120, bandcol=None, set_main=None, set_res=None,
+                savefig=False, savepath='LC', saveformat='png'):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -444,7 +445,6 @@ class SimSample:
             f_model = None
             cov_t0_x0_x1_c = None
             residuals = False
-
         plot_ut.plot_lc(lc,
                         meta,
                         mag=mag,
@@ -454,8 +454,13 @@ class SimSample:
                         zp=zp,
                         residuals=residuals,
                         Jy=Jy,
-                        figsize=figsize,
-                        dpi=dpi)
+                        dpi=dpi,
+                        set_main=set_main,
+                        set_res=set_res,
+                        bandcol=bandcol,
+                        savefig=savefig,
+                        saveformat=saveformat,
+                        savepath=savepath)
 
     def plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
         """Plot a mollweide map of ra, dec.
