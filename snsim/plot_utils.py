@@ -75,12 +75,16 @@ def plot_lc(
 
     Parameters
     ----------
-    flux_table : astropy.Table
+    flux_table : pandas.Series
         The lightcurve to plot.
+    meta : dict.
+        The lightcurve meta data.
     zp : float, default = 25.
         Zeropoint at which rescale the flux.
     mag : bool
         If True plot the magnitude.
+    Jy: bool
+        If True plot the flux in Jansky.
     snc_sim_model : sncosmo.Model
         Model used to simulate the lightcurve.
     snc_fit_model : sncosmo.Model
@@ -89,12 +93,22 @@ def plot_lc(
         sncosmo t0, x0, x1, c covariance matrix from SALT fit.
     residuals : bool
         If True plot fit residuals.
-
-    Returns
-    -------
-    None
-        Just plot the lightcurve.
-
+    bandcol : dict
+        Give the color to use for each band.
+    set_main : dict
+        Pass matplotlib options as ax.set(**set_main).
+    set_res : dict
+        Same as pass main but for the residuals axis.
+    mtpstyle : str
+        The matplotlib style to use.
+    dpi : int
+        The dpi to use.
+    savefig : bool
+        If true save the figure rather than plot.
+    savepath : str
+        The path to save the figure.
+    saveformat : str
+        Format to use ex : 'png', 'pdf', ...
     """
     plt.style.use(mtpstyle)
 
