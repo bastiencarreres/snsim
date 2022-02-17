@@ -381,9 +381,7 @@ class SimSample:
         if show:
             plt.show()
 
-    def plot_lc(self, obj_ID, mag=False, zp=25., plot_sim=True, plot_fit=False, Jy=False,
-                mod=False, dpi=120, bandcol=None, set_main=None, set_res=None,
-                savefig=False, savepath='LC', saveformat='png'):
+    def plot_lc(self, obj_ID, plot_sim=True, plot_fit=False, **kwargs):
         """Plot the given SN lightcurve.
 
         Parameters
@@ -413,19 +411,15 @@ class SimSample:
         Use plot_lc from utils.
 
         """
-        if mod:
-            lc = self.modified_lcs.loc[obj_ID]
-            meta = self.modified_lcs.attrs[obj_ID]
-        else:
-            lc = self.sim_lcs.loc[obj_ID]
-            meta = self.sim_lcs.attrs[obj_ID]
+        lc = self.sim_lcs.loc[obj_ID]
+        meta = self.sim_lcs.attrs[obj_ID]
 
         if plot_sim:
             s_model = self.get_obj_sim_model(obj_ID)
         else:
             s_model = None
 
-        if plot_fit and not mod:
+        if plot_fit:
             if self.fit_res is None or obj_ID not in self.fit_res:
                 print('This SN was not fitted, launch fit')
                 self.fit_lc(obj_ID)
@@ -438,29 +432,17 @@ class SimSample:
             cov_t0_x0_x1_c = self.fit_res[obj_ID]['snc_out']['covariance'][:, :]
             residuals = True
 
-        elif plot_fit and mod:
-            print("You can't fit mod sn, write the in a file and load them"
-                  "as SimSample class")
         else:
             f_model = None
             cov_t0_x0_x1_c = None
             residuals = False
         plot_ut.plot_lc(lc,
                         meta,
-                        mag=mag,
                         snc_sim_model=s_model,
                         snc_fit_model=f_model,
-                        fit_cov=cov_t0_x0_x1_c,
-                        zp=zp,
                         residuals=residuals,
-                        Jy=Jy,
-                        dpi=dpi,
-                        set_main=set_main,
-                        set_res=set_res,
-                        bandcol=bandcol,
-                        savefig=savefig,
-                        saveformat=saveformat,
-                        savepath=savepath)
+                        fit_cov=cov_t0_x0_x1_c,
+                        **kwargs)
 
     def plot_ra_dec(self, plot_vpec=False, field_dic=None, field_size=None, **kwarg):
         """Plot a mollweide map of ra, dec.

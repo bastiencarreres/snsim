@@ -68,6 +68,7 @@ def plot_lc(
         bandcol=None,
         set_main=None,
         set_res=None,
+        mtpstyle='seaborn-deep',
         dpi=100,
         savefig=False, savepath='LC', saveformat='png'):
     """Ploting a lightcurve flux table.
@@ -95,7 +96,7 @@ def plot_lc(
         Just plot the lightcurve.
 
     """
-    plt.style.use('seaborn-deep')
+    plt.style.use(mtpstyle)
 
     figsize = (15, 8)
 
