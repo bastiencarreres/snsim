@@ -47,7 +47,7 @@ extensions = ['myst_parser', 'sphinx.ext.napoleon', 'sphinx_markdown_tables', 's
               'sphinx.ext.linkcode', 'sphinx.ext.intersphinx']
 
 myst_enable_extensions = ["dollarmath"]
-
+myst_dmath_double_inline = True
 autosectionlabel_prefix_document = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
