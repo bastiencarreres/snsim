@@ -108,7 +108,8 @@ def plot_lc(
     savepath : str
         The path to save the figure.
     saveformat : str
-        Format to use ex : 'png', 'pdf', ...
+        Format to use ex : png, pdf.
+
     """
     plt.style.use(mtpstyle)
 

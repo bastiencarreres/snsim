@@ -43,9 +43,11 @@ intersphinx_mapping = {
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-extensions = ['myst_parser', 'numpydoc', 'sphinx_markdown_tables', 'sphinx.ext.autosectionlabel',
+extensions = ['myst_parser', 'sphinx.ext.napoleon', 'sphinx_markdown_tables', 'sphinx.ext.autosectionlabel',
               'sphinx.ext.linkcode', 'sphinx.ext.intersphinx']
 
+myst_enable_extensions = ["dollarmath"]
+myst_dmath_double_inline = True
 autosectionlabel_prefix_document = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
