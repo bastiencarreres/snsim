@@ -383,7 +383,10 @@ class BaseGen(abc.ABC):
         """
         z_min, z_max = z_range
 
-        z_shell = np.linspace(z_min, z_max, 1000)
+        #-- Set the precision to dz = 1e-5
+        dz = 1e-5
+
+        z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
         z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
         rate = self.rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
         co_dist = self.cosmology.comoving_distance(z_shell).value
