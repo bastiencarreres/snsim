@@ -89,7 +89,7 @@ class SurveyObs:
 
         print(f"Survey effective duration is {self.duration:.2f} days")
 
-        print(f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} squared degrees")
+        print(f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} squared degrees ({self.fields._tot_area / (4 * np.pi) * 100:.1f} % of the sky)")
 
 
         if 'survey_cut' in self.config:
