@@ -229,7 +229,8 @@ class Simulator:
             bin.
 
         """
-        return rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
+        nsn = rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
+        return nsn
 
     def _get_cosmo_header(self):
         if 'name' in self.config['cosmology']:
