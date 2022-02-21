@@ -8,6 +8,8 @@ from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
+from shapely import geometry as shp_geo
+
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
 
@@ -48,7 +50,7 @@ class BaseGen(abc.ABC):
     """
 
     def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 host=None, mw_dust=None, dipole=None):
+                 host=None, mw_dust=None, dipole=None, survey_footprint=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
@@ -60,6 +62,7 @@ class BaseGen(abc.ABC):
         self._host = host
         self._mw_dust = mw_dust
         self._dipole = dipole
+        self._footprint = survey_footprint
 
         self.rate_law = self._init_rate()
 
@@ -219,8 +222,7 @@ class BaseGen(abc.ABC):
         t0 = rand_gen.uniform(*self.time_range, size=n)
         return t0
 
-    @staticmethod
-    def gen_coord(n, rand_gen):
+    def gen_coord(self, n, rand_gen):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
@@ -236,9 +238,23 @@ class BaseGen(abc.ABC):
             2 numpy arrays containing generated coordinates.
 
         """
-        ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
-        dec_uni = rand_gen.random(size=n)
-        dec = np.arcsin(2 * dec_uni - 1)
+        if self._footprint is None:
+            ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
+            dec_uni = rand_gen.random(size=n)
+            dec = np.arcsin(2 * dec_uni - 1)
+        else:
+            seed = rand_gen.integers(1000, 1e6)
+            gen_tmp = np.random.default_rng(seed)
+            ra, dec = [], []
+            while len(ra) < n:
+                ra_tmp = gen_tmp.uniform(low=0, high=2 * np.pi)
+                dec_uni_tmp = rand_gen.random()
+                dec_tmp = np.arcsin(2 * dec_uni_tmp - 1)
+                if self._footprint.contains(shp_geo.Point(ra_tmp, dec_tmp)):
+                    ra.append(ra_tmp)
+                    dec.append(dec_tmp)
+            ra = np.array(ra)
+            dec = np.array(dec)
         return ra, dec
 
     def gen_zcos(self, n, rand_gen):
@@ -543,9 +559,10 @@ class SNIaGen(BaseGen):
     _available_models = ['salt2', 'salt3']
 
     def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 mw_dust=None, host=None, dipole=None):
+                 mw_dust=None, host=None, dipole=None, survey_footprint=None):
         super().__init__(params, cmb, cosmology, vpec_dist,
-                         host=host, mw_dust=mw_dust, dipole=dipole)
+                         host=host, mw_dust=mw_dust, dipole=dipole,
+                         survey_footprint=survey_footprint)
         if self.rate_law[0] is None:
             self.rate_law = self._init_register_rate()
 

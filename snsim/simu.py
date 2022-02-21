@@ -161,7 +161,8 @@ class Simulator:
                                                   vpec_dist=self.vpec_dist,
                                                   host=self.host,
                                                   mw_dust=mw_dust,
-                                                  dipole=dipole))
+                                                  dipole=dipole,
+                                                  survey_footprint=self.survey.fields.footprint))
                 # cadence sim or n fixed
                 if 'force_n' in self.config[object_name]:
                     self._use_rate.append(False)
@@ -214,7 +215,7 @@ class Simulator:
         max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
-    def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days):
+    def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
         """Generate the number of SN with Poisson law.
 
         Parameters
@@ -229,7 +230,7 @@ class Simulator:
             bin.
 
         """
-        return rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
+        return rand_gen.poisson(duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate))
 
     def _get_cosmo_header(self):
         if 'name' in self.config['cosmology']:
@@ -397,7 +398,8 @@ class Simulator:
             duration = self.config['sim_par']['duration_for_rate']
         else:
             duration = generator.time_range[1] - generator.time_range[0]
-        n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1], duration)
+        n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
+                              duration, area=self.survey.fields.footprint.area)
         list_tmp = generator(n_sn, rand_gen.integers(1000, 1e6))
 
         for obj in list_tmp:

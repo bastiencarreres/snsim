@@ -89,6 +89,8 @@ class SurveyObs:
 
         print(f"Survey effective duration is {self.duration:.2f} days")
 
+        print(f"Survey effective area is {self.fields.footprint.area * (180 / np.pi)**2:.2f} squared degrees")
+
         if 'survey_cut' in self.config:
             for k, v in self.config['survey_cut'].items():
                 conditions_str = ''
@@ -396,7 +398,7 @@ class SurveyObs:
         Obj_ra, Obj_dec = coords
         if not self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec)):
             return None
-
+            
         is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
                                               model_t_range[0], model_t_range[1])
 
