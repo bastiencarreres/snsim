@@ -230,9 +230,7 @@ class Simulator:
             bin.
 
         """
-        print('area', area/ (4 * np.pi))
-        nsn = rand_gen.poisson(duration_in_days / 365.25 * np.sum(z_shell_time_rate))
-        print(nsn)
+        nsn = rand_gen.poisson(duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate))
         return nsn
 
     def _get_cosmo_header(self):
