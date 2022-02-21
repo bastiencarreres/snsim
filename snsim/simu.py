@@ -400,7 +400,7 @@ class Simulator:
         else:
             duration = generator.time_range[1] - generator.time_range[0]
         n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
-                              duration, area=self.survey.fields.footprint.area)
+                              duration, area=self.survey.fields._tot_area)
         list_tmp = generator(n_sn, rand_gen.integers(1000, 1e6))
 
         for obj in list_tmp:

@@ -89,7 +89,8 @@ class SurveyObs:
 
         print(f"Survey effective duration is {self.duration:.2f} days")
 
-        print(f"Survey effective area is {self.fields.footprint.area * (180 / np.pi)**2:.2f} squared degrees")
+        print(f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} squared degrees")
+
 
         if 'survey_cut' in self.config:
             for k, v in self.config['survey_cut'].items():
@@ -398,7 +399,7 @@ class SurveyObs:
         Obj_ra, Obj_dec = coords
         if not self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec)):
             return None
-            
+
         is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
                                               model_t_range[0], model_t_range[1])
 
@@ -497,8 +498,13 @@ class SurveyFields:
         self._size = np.array([ra_size, dec_size])
         self._dic = fields_dic
         self._sub_field_map = None
+
+        # -- Init self.footprint and self._dic['polygon']
         self._compute_field_polygon()
         self._init_fields_map(field_map)
+
+        # -- Compute the survey area
+        self._compute_area()
 
     def _compute_field_polygon(self):
         """Create shapely polygon for each of the fields and init the survey footprint.
@@ -569,6 +575,16 @@ class SurveyFields:
             self._dic[k]['polygon'] = np.atleast_1d(poly)
         polys = np.concatenate([self._dic[k]['polygon'] for k in self._dic])
         self.footprint = shp_ops.unary_union(polys)
+
+    def _compute_area(self):
+        """Compute survey total area."""
+        area = 0
+        strip_dec = np.linspace(-np.pi/2, np.pi/2, 10000)
+        for da, db in zip(strip_dec[1:], strip_dec[:-1]):
+            line = shp_geo.LineString([[0, (da + db) * 0.5], [2 * np.pi, (da + db) * 0.5]])
+            dRA = line.intersection(self.footprint).length
+            area += dRA * (np.sin(da) - np.sin(db))
+        self._tot_area = area
 
     @property
     def size(self):
