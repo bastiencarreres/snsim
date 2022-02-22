@@ -149,11 +149,12 @@ class Simulator:
         # Init the cuts on lightcurves
         self._nep_cut = self._init_nep_cuts()
 
-        # -- Init generators
+        # -- Init generators for each transients
         self._use_rate = []
         self._generators = []
         for object_name in __GEN_DIC__:
             if object_name in self.config:
+                # -- Get which generator correspond to which transient in snsim.generators
                 gen_class = getattr(generators, __GEN_DIC__[object_name])
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
@@ -163,7 +164,7 @@ class Simulator:
                                                   mw_dust=mw_dust,
                                                   dipole=dipole,
                                                   survey_footprint=self.survey.fields.footprint))
-                # cadence sim or n fixed
+                # -- Cadence sim or n fixed
                 if 'force_n' in self.config[object_name]:
                     self._use_rate.append(False)
                 else:
@@ -173,15 +174,23 @@ class Simulator:
             print('PARAMETERS USED IN SIMULATION\n')
             ut.print_dic(self.config)
 
+        # -- Init samples attributes (to store simulated obj)
+        self._samples = None
+
     def _init_nep_cuts(self):
         """Init nep cut on transients.
 
         Returns
         -------
-        numpy.array()
+        numpy.ndarray(int, float, float, str)
             Numpy array containing cuts.
 
+        Notes
+        -----
+        Format of a cut is [# of ep, mintime, maxtime, filter]
+
         """
+        # -- Set default mintime, maxtime (restframe)
         snc_mintime = -20
         snc_maxtime = 50
         cut_list = []
@@ -204,19 +213,19 @@ class Simulator:
         return np.asarray(cut_list, dtype=dt)
 
     def peak_time_range(self, trange_model):
-        """Get the time range for simulate SN peak.
+        """Get the time range for simulate obj peak.
 
         Returns
         -------
         tuple(float, float)
-            Min and max time for SN peak generation.
+            Min and max time for obj peak generation.
         """
         min_peak_time = self.survey.start_end_days[0] - trange_model[1] * (1 + self.z_range[1])
         max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
     def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
-        """Generate the number of SN with Poisson law.
+        """Generate the number of obj with Poisson law.
 
         Parameters
         ----------
@@ -225,15 +234,15 @@ class Simulator:
 
         Returns
         -------
-        numpy.ndarray
-            Numpy array containing the simulated number of SN in each redshift
-            bin.
+        int
+            Number of obj to simulate.
 
         """
         return rand_gen.poisson(duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate))
 
 
     def _get_cosmo_header(self):
+        """Return the header for cosmology model used."""
         if 'name' in self.config['cosmology']:
             return {'cosmod_name': self.config['cosmology']['name']}
         else:
@@ -276,6 +285,7 @@ class Simulator:
 
         rate_str = "Rate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
 
+        # -- Compute time range, rate and zcdf for each of the selected obj.
         for use_rate, gen in zip(self._use_rate, self.generators):
             gen.print_config()
 
@@ -332,8 +342,11 @@ class Simulator:
         rand_gen = np.random.default_rng(self.randseed)
         seed_list = rand_gen.integers(1000, 1e6, size=len(self.generators))
 
+        # -- Change the samples attribute to store obj, init ID
         self._samples = []
         Obj_ID = 0
+
+        # -- Simulation for each of the selected obj.
         for use_rate, seed, gen in zip(self._use_rate, seed_list, self.generators):
             sim_time = time.time()
             if use_rate:
@@ -399,15 +412,20 @@ class Simulator:
             duration = self.config['sim_par']['duration_for_rate']
         else:
             duration = generator.time_range[1] - generator.time_range[0]
-        n_sn = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
-                              duration, area=self.survey.fields._tot_area)
-        list_tmp = generator(n_sn, rand_gen.integers(1000, 1e6))
 
+        n_obj = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
+                              duration, area=self.survey.fields._tot_area)
+
+        # -- Generate n obj
+        list_tmp = generator(n_obj, rand_gen.integers(1000, 1e6))
+
+        # -- Check the obj observed epochs and if they pass the cuts
         for obj in list_tmp:
             obj.epochs = self.survey.epochs_selection(obj.coord,
                                                       (obj.sim_model.mintime(),
                                                        obj.sim_model.maxtime()))
             if obj.pass_cut(self.nep_cut):
+                # -- Generate flux if obs pass cuts
                 obj.gen_flux(rand_gen)
                 obj.ID = Obj_ID
                 Obj_ID += 1

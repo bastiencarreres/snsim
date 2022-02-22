@@ -703,7 +703,7 @@ class SNIaGen(BaseGen):
         Returns
         -------
         dict
-            One dictionnary containing 'parameters names': numpy.ndaray(float).
+            One dictionnary containing 'parameters names': numpy.ndarray(float).
 
         """
 

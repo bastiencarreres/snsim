@@ -89,7 +89,7 @@ def plot_lc(
         Model used to simulate the lightcurve.
     snc_fit_model : sncosmo.Model
         Model used to fit the lightcurve.
-    fit_cov : numpy.ndaray(float, size=(4, 4))
+    fit_cov : numpy.ndarray(float, size=(4, 4))
         sncosmo t0, x0, x1, c covariance matrix from SALT fit.
     residuals : bool
         If True plot fit residuals.

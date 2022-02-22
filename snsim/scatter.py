@@ -125,7 +125,7 @@ class G10(snc.PropagationEffect):
 
         Returns
         -------
-        numpy.ndaray(float)
+        numpy.ndarray(float)
             Flux density with effect applied.
         """
         lam, scatter = self.lam_scatter
@@ -149,11 +149,11 @@ class C11(snc.PropagationEffect):
         The minimal wavelength of the effect.
     _maxwave : float
         The maximal wavelength of the effect.
-    _sigma_lam : numpy.ndaray(float, size = 6)
+    _sigma_lam : numpy.ndarray(float, size = 6)
         Value of the effective wavelengths of U'UBVRI bands.
-    _CORR_matrix : numpy.ndaray(float, sizee = (6,6))
+    _CORR_matrix : numpy.ndarray(float, sizee = (6,6))
         Correlation matrix of U'UBVRI bands scattering.
-    _sigma : numpy.ndaray(float, size = 6)
+    _sigma : numpy.ndarray(float, size = 6)
         Mean scattering in U'UBVRI bands.
     _param_names : list(str)
         Names of the parameters.
@@ -241,7 +241,7 @@ class C11(snc.PropagationEffect):
 
         Returns
         -------
-        numpy.ndaray(float)
+        numpy.ndarray(float)
             Flux density with effect applied.
         """
         if self._parameters[0] not in [0., 1., -1.]:

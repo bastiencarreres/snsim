@@ -38,6 +38,7 @@ class SurveyObs:
       | └── sub_field, SUBFIELD KEY -> str, opt
     """
 
+    # -- Basic keys needed in survey file (+ noise)
     _base_keys = ['expMJD',
                   'filter',
                   'fieldID',
@@ -67,7 +68,7 @@ class SurveyObs:
             dic[f] = {'ra': self.obs_table['fieldRA'][idx],
                       'dec': self.obs_table['fieldDec'][idx]}
 
-        # Check field shape
+        # -- Check field shape
         if 'field_map' in self.config:
             field_map = self.config['field_map']
         else:

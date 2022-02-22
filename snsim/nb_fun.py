@@ -100,7 +100,7 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
         Field Right Ascension.
     dec_frame : numpy.ndarray(float)
         Field Declinaison.
-    vec : numpy.ndaray(float, size = 3)
+    vec : numpy.ndarray(float, size = 3)
         The carthesian coordinates of the object.
 
     Returns
@@ -275,9 +275,9 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
         The boolean array of field selection.
     obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
-    ra_field_frame : numpy.ndaray(float)
+    ra_field_frame : numpy.ndarray(float)
         SN Right Ascension in fields frames.
-    dec_field_frame : numpy.ndaray(float)
+    dec_field_frame : numpy.ndarray(float)
         SN Declinaison in fields frames.
     field_size : list(float)
         ra and dec size.
