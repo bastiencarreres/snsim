@@ -79,17 +79,16 @@ class SurveyObs:
                             field_map)
 
 
-    def print_config(self):
-        print(f"SURVEY FILE : {self.config['survey_file']}")
+    def __str__(self):
+        str = f"SURVEY FILE : {self.config['survey_file']}\n\n"
 
-        print("First day in survey_file : "
-              f"{self.start_end_days[0].mjd:.2f} MJD / {self.start_end_days[0].iso}\n"
-              "Last day in survey_file : "
-              f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}")
+        str += ("First day in survey_file : "
+                f"{self.start_end_days[0].mjd:.2f} MJD / {self.start_end_days[0].iso}\n"
+                "Last day in survey_file : "
+                f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}\n\n"
+                f"Survey effective duration is {self.duration:.2f} days\n\n"
+                f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} squared degrees " f"({self.fields._tot_area / (4 * np.pi) * 100:.1f} % of the sky)\n\n")
 
-        print(f"Survey effective duration is {self.duration:.2f} days")
-
-        print(f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} squared degrees ({self.fields._tot_area / (4 * np.pi) * 100:.1f} % of the sky)")
 
 
         if 'survey_cut' in self.config:
@@ -98,9 +97,10 @@ class SurveyObs:
                 for cond in v:
                     conditions_str += str(cond) + ' OR '
                 conditions_str = conditions_str[:-4]
-                print(f'Select {k}: ' + conditions_str)
+                str += (f'Select {k}: ' + conditions_str + '\n')
         else:
-            print('No cut on survey file.')
+            str += 'No cut on survey file.'
+        return str
 
     @property
     def config(self):
@@ -578,6 +578,7 @@ class SurveyFields:
 
     def _compute_area(self):
         """Compute survey total area."""
+        # It's an integration by dec strip
         area = 0
         strip_dec = np.linspace(-np.pi/2, np.pi/2, 10000)
         for da, db in zip(strip_dec[1:], strip_dec[:-1]):
