@@ -416,16 +416,16 @@ class SurveyObs:
             mask = obs_subfields[i]
             fmask = obs_subfields[i] != -1
             fields = fieldsID[fmask]
-            epoch_selec = self.obs_table['fieldID'].isin(fields)
 
-            # -- Time range selection
-            is_obs, epochs_selec = nbf.time_selec(epoch_selec.to_numpy(),
-                                                  self.obs_table.expMJD.to_numpy(),
-                                                  MinT[i], MaxT[i])
-
+            epochs_selec = self.obs_table['fieldID'].isin(fields)
             obs_selec = self.obs_table[epochs_selec]
 
+            # -- Time range selection
+            is_obs, epochs_selec = nbf.time_selec(obs_selec['expMJD'].to_numpy(),
+                                                  MinT[i], MaxT[i])
+
             if is_obs and 'sub_field' in self.config:
+                obs_selec = obs_selec[epochs_selec]
                 # -- Subfield selection
                 dic_map = nbtyped.Dict.empty(nbtypes.int64, nbtypes.int64)
                 for f, c in zip(fields,  obs_subfields[i][fmask]):
@@ -433,9 +433,8 @@ class SurveyObs:
                 is_obs, epochs_selec = nbf.map_obs_subfields(obs_selec['fieldID'].to_numpy(),
                                                              obs_selec[self.config['sub_field']].to_numpy(),
                                                              dic_map)
-                obs_selec = obs_selec[epochs_selec]
-
             if is_obs:
+                obs_selec = obs_selec[epochs_selec]
                 phase = obs_selec['expMJD'] - par['sim_t0'][i]
                 for cut in nep_cut:
                     cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + zobs[i]), cut[2] * (1 + zobs[i])
