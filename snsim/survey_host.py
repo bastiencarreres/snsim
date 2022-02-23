@@ -392,13 +392,16 @@ class SurveyObs:
 
         Parameters
         ----------
-        SN : SN object
-            A class SN object.
+        par : pd.DataFrame(float)
+            The basic AstrObj par ra, dec, t0, redshifts.
+        model_t_range: (float, float)
+            The limits of sncosmo model.
+        nep_cut: np.ndarray(int, float, float, str)
 
         Returns
         -------
-        astropy.Table
-            astropy table containing the SN observations.
+        pandas.DataFrame()
+            pandas dataframe containing the observations.
 
         """
         # -- Set up obj parameters

@@ -341,11 +341,10 @@ def isin(a, b):
     """isin numba version from
     https://stackoverflow.com/questions/70865732/faster-numpy-isin-alternative-for-strings-using-numba
     """
-    bool_array = np.zeros(len(a), dtype=types.boolean)
-    b = set(b)
-    for i in prange(a.shape[0]):
-        if a[i] in b:
+    n = len(a)
+    bool_array = np.full(n, False)
+    set_b = set(b)
+    for i in prange(n):
+        if a[i] in set_b:
             bool_array[i]=True
-        else:
-            bool_array[i]=False
     return bool_array
