@@ -13,6 +13,10 @@ from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
 from . import utils as ut
 from . import nb_fun as nbf
+from .constants import C_LIGHT_KMS
+from numba import typed as nbtyped
+from numba import types as nbtypes
+
 
 
 class SurveyObs:
@@ -383,10 +387,7 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-    def is_obs(self, ra, dec):
-        self.field.is_obs()
-
-    def epochs_selection(self, par, model_t_range):
+    def epochs_selection(self, par, model_t_range, nep_cut, IDmin=0):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -400,33 +401,66 @@ class SurveyObs:
             astropy table containing the SN observations.
 
         """
+        # -- Set up obj parameters
+        zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS)  - 1.
+        MinT = par['sim_t0'] + model_t_range[0] * (1 + zobs)
+        MaxT = par['sim_t0'] + model_t_range[1] * (1 + zobs)
+        # -- Get observed fields and subfield for all obj
+        fieldsID, obs_subfields = self.fields.is_in_field(par['ra'], par['dec'])
+        epochs = []
+        parmask = np.zeros(len(par['ra']), dtype=np.bool)
 
-        fields_map = self.fields.is_in_field(par['ra'], par['dec'])
+        ID = IDmin
+        for i in range(len(obs_subfields)):
+            # -- Fields selection
+            mask = obs_subfields[i]
+            fmask = obs_subfields[i] != -1
+            fields = fieldsID[fmask]
+            epoch_selec = self.obs_table['fieldID'].isin(fields)
 
-        is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
-                                              model_t_range[0], model_t_range[1])
+            # -- Time range selection
+            is_obs, epochs_selec = nbf.time_selec(epoch_selec.to_numpy(),
+                                                  self.obs_table.expMJD.to_numpy(),
+                                                  MinT[i], MaxT[i])
 
-        if is_obs:
-            selected_fields = self.obs_table['fieldID'][epochs_selec]
-
-            # Create a dic[fields] = obs_subfield
-            dic_map = self.fields.is_in_field(Obj_ra, Obj_dec, selected_fields.unique())
-
-            # Update the epochs_selec mask and check if there is some observations
-            is_obs, epochs_selec = nbf.map_obs_fields(epochs_selec, selected_fields.to_numpy(),
-                                                      dic_map)
-
-        if is_obs and 'sub_field' in self.config:
             obs_selec = self.obs_table[epochs_selec]
-            is_obs, epochs_selec = nbf.map_obs_subfields(
-                obs_selec['fieldID'].to_numpy(),
-                obs_selec[self.config['sub_field']].to_numpy(),
-                dic_map)
-        else:
-            obs_selec = self.obs_table
-        if is_obs:
-            return self._make_obs_table(obs_selec[epochs_selec].copy())
-        return None
+
+            if is_obs and 'sub_field' in self.config:
+                # -- Subfield selection
+                dic_map = nbtyped.Dict.empty(nbtypes.int64, nbtypes.int64)
+                for f, c in zip(fields,  obs_subfields[i][fmask]):
+                    dic_map[f] = c
+                is_obs, epochs_selec = nbf.map_obs_subfields(obs_selec['fieldID'].to_numpy(),
+                                                             obs_selec[self.config['sub_field']].to_numpy(),
+                                                             dic_map)
+                obs_selec = obs_selec[epochs_selec]
+
+            if is_obs:
+                phase = obs_selec['expMJD'] - par['sim_t0'][i]
+                for cut in nep_cut:
+                    cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + zobs[i]), cut[2] * (1 + zobs[i])
+                    test = (phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)
+                    if cut[3] != 'any':
+                        test &= obs_selec['filter'] == cut[3]
+                    if test.sum() < int(cut[0]):
+                        is_obs = False
+                        break
+            if is_obs:
+                obs = obs_selec.copy()
+                obs['ID'] = ID
+                epochs.append(obs)
+                ID += 1
+
+            parmask[i] = is_obs
+
+        if len(epochs) == 0:
+            return None, None
+
+        obsdf = pd.concat(epochs)
+        obsdf.set_index('ID', inplace=True)
+
+        return self._make_obs_table(obsdf.copy()), parmask
+
 
     def _make_obs_table(self, obs_selec):
         """Create the astropy table from selection bool array.
@@ -693,7 +727,7 @@ class SurveyFields:
         else:
             self._sub_fields_corners = self.read_sub_field_map(field_map)
 
-    def is_in_field(self, ra, dec):
+    def is_in_field(self, obj_ra, obj_dec):
         """Check if a list of ra, dec is in a field and return the coordinates in the field frame.
 
         Parameters
@@ -712,19 +746,21 @@ class SurveyFields:
 
         """
 
-        ra_fields = [self._dic[k]['ra'] for k in self._dic]
-        dec_fields = [self._dic[k]['dec'] for k in self._dic]
-        fieldsID = [k for k in self._dic]
+        ra_fields = np.array([self._dic[k]['ra'] for k in self._dic])
+        dec_fields = np.array([self._dic[k]['dec'] for k in self._dic])
+        fieldsID = np.array([k for k in self._dic])
+        subfieldID = np.array([k for k in self._sub_fields_corners])
+        subfield_corner = np.array([self._sub_fields_corners[k] for k in self._sub_fields_corners])
 
         # Compute the coord of the SN in the rest frame of each field
-        obsfield_map = nbf.is_in_field(ra,
-                                       dec,
-                                       ra_fields,
-                                       dec_fields,
-                                       fieldsID,
-                                       np.array(list(self._sub_fields_corners)),
-                                       np.array(list(self._sub_fields_corners.values())))
-        return obsfield_map
+        obs_subfield = nbf.is_in_field(obj_ra,
+                                   obj_dec,
+                                   ra_fields,
+                                   dec_fields,
+                                   fieldsID,
+                                   subfieldID,
+                                   subfield_corner)
+        return fieldsID, obs_subfield
 
     def show_map(self):
         """Plot a representation of subfields."""

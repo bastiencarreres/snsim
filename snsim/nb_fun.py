@@ -127,7 +127,7 @@ def find_first(item, vec):
 
 
 @njit(cache=True, parallel=True)
-def time_selec(expMJD, ModelMinT, ModelMaxT):
+def time_selec(epochs_selec, expMJD, ModelMinT, ModelMaxT):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -158,8 +158,8 @@ def time_selec(expMJD, ModelMinT, ModelMaxT):
             bool_array[i] = True
     if True in bool_array:
         any = True
-    return any, bool_array
-
+    epochs_selec &= bool_array
+    return any, epochs_selec
 
 @njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
@@ -264,7 +264,7 @@ def radec_to_cart(ra, dec):
     return cart_vec
 
 
-@njit(cache=True, parallel=True)
+@njit(cache=True)
 def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
                 subfields_id, subfields_corners):
     """Chek if a SN is in fields.
@@ -290,25 +290,24 @@ def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
         The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
 
     """
-    ra_fields_array = np.atleast_1d(ra_fields)
-    dec_fields_array = np.atleast_1d(dec_fields)
-    vec = radec_to_cart(obj_ra, obj_dec)
-    obs_dic = {}
+    obs_dic = np.ones((len(fieldsID), len(obj_ra)), dtype=np.int32) * -1
+    vec =  np.vstack((np.cos(obj_ra) * np.cos(obj_dec),
+                      np.sin(obj_ra) * np.cos(obj_dec),
+                      np.sin(obj_dec)))
 
-    for fra, fdec, fID in zip(ra_fields, dec_fields, fieldsID):
-        x, y, z = R_base(fra, fdec, obj_ra, obj_dec)
-        ra_frame = np.arctan2(x, y)
+    for i in range(len(fieldsID)):
+        fra, fdec = ra_fields[i], dec_fields[i]
+        x, y, z = R_base(fra, -fdec, vec)
+        ra_frame = np.arctan2(y, x)
         dec_frame = np.arcsin(z)
-        obs_dic[fID] = -1 * np.ones(len(ra_frame), dtype=np.int32)
+
         for subf, subf_id in zip(subfields_corners, subfields_id):
             obs_condition = ra_frame > np.min(subf.T[0])
             obs_condition &= ra_frame < np.max(subf.T[0])
             obs_condition &= dec_frame > np.min(subf.T[1])
             obs_condition &= dec_frame < np.max(subf.T[1])
-            obs_dic[fID][obs_condition] = subf_id
-
-    return obs_dic
-
+            obs_dic[i][obs_condition] = subf_id
+    return obs_dic.T
 
 @njit(cache=True)
 def find_idx_nearest_elmt(val, array, treshold):
