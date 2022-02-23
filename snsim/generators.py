@@ -427,7 +427,7 @@ class BaseGen(abc.ABC):
         """Print config."""
         if 'model_dir' in self._params['model_config']:
             model_dir = self._params['model_config']['model_dir']
-            model_dir_str = f"from {model_dir}"
+            model_dir_str = f" from {model_dir}"
         else:
             model_dir = None
             model_dir_str = " from sncosmo"

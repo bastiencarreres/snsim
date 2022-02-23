@@ -190,7 +190,7 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
     if True in bool_array:
         any = True
     epochs_selec[epochs_selec] &= bool_array
-    return any, epochs_selec,
+    return any, epochs_selec
 
 
 @njit(cache=True)
