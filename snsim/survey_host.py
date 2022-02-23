@@ -417,7 +417,7 @@ class SurveyObs:
             fmask = obs_subfields[i] != -1
             fields = fieldsID[fmask]
 
-            epochs_selec = self.obs_table['fieldID'].isin(fields)
+            epochs_selec = nbf.isin(self.obs_table['fieldID'].to_numpy(), fields)
             obs_selec = self.obs_table[epochs_selec]
 
             # -- Time range selection

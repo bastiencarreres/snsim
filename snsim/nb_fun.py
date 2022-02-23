@@ -335,3 +335,17 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
+
+@njit(cache=True, parallel=True)
+def isin(a, b):
+    """isin numba version from
+    https://stackoverflow.com/questions/70865732/faster-numpy-isin-alternative-for-strings-using-numba
+    """
+    bool_array = np.zeros(len(a), dtype=types.boolean)
+    b = set(b)
+    for i in prange(a.shape[0]):
+        if a[i] in b:
+            bool_array[i]=True
+        else:
+            bool_array[i]=False
+    return bool_array
