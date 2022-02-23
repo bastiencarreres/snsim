@@ -127,7 +127,7 @@ def find_first(item, vec):
 
 
 @njit(cache=True, parallel=True)
-def time_selec(epochs_selec, expMJD, ModelMinT, ModelMaxT):
+def time_selec(expMJD, ModelMinT, ModelMaxT):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -158,8 +158,7 @@ def time_selec(epochs_selec, expMJD, ModelMinT, ModelMaxT):
             bool_array[i] = True
     if True in bool_array:
         any = True
-    epochs_selec &= bool_array
-    return any, epochs_selec
+    return any, bool_array
 
 @njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
