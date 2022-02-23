@@ -240,7 +240,6 @@ class Simulator:
         """
         return rand_gen.poisson(duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate))
 
-
     def _get_cosmo_header(self):
         """Return the header for cosmology model used."""
         if 'name' in self.config['cosmology']:
