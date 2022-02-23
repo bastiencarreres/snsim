@@ -89,7 +89,7 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
         sncosmo x0,x1,c covariance matrix from SALT fit.
     band : str
         The band in which the error is computed.
-    time_th : numpy.ndaray(float)
+    time_th : numpy.ndarray(float)
         Time for which compute the flux error.
     zp : float
         zeropoint to scale the error.

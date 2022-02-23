@@ -100,7 +100,7 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
         Field Right Ascension.
     dec_frame : numpy.ndarray(float)
         Field Declinaison.
-    vec : numpy.ndaray(float, size = 3)
+    vec : numpy.ndarray(float, size = 3)
         The carthesian coordinates of the object.
 
     Returns
@@ -160,7 +160,6 @@ def time_selec(expMJD, ModelMinT, ModelMaxT):
         any = True
     return any, bool_array
 
-
 @njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
     """Return the boolean array corresponding to observed fields.
@@ -190,7 +189,7 @@ def map_obs_fields(epochs_selec, fieldID, obsfield):
     if True in bool_array:
         any = True
     epochs_selec[epochs_selec] &= bool_array
-    return any, epochs_selec,
+    return any, epochs_selec
 
 
 @njit(cache=True)
@@ -264,9 +263,9 @@ def radec_to_cart(ra, dec):
     return cart_vec
 
 
-@njit(cache=True, parallel=True)
-def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
-                subfields_id, subfields_corners, type=types.float64[::1]):
+@njit(cache=True)
+def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
+                subfields_id, subfields_corners):
     """Chek if a SN is in fields.
 
     Parameters
@@ -275,9 +274,9 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
         The boolean array of field selection.
     obs_fieldID : numpy.ndarray(int)
         Field Id of each observation.
-    ra_field_frame : numpy.ndaray(float)
+    ra_field_frame : numpy.ndarray(float)
         SN Right Ascension in fields frames.
-    dec_field_frame : numpy.ndaray(float)
+    dec_field_frame : numpy.ndarray(float)
         SN Declinaison in fields frames.
     field_size : list(float)
         ra and dec size.
@@ -290,32 +289,24 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
         The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
 
     """
-    ra_fields_array = np.atleast_1d(ra_fields)
-    dec_fields_array = np.atleast_1d(dec_fields)
-    vec = radec_to_cart(SN_ra, SN_dec)
+    obs_dic = np.ones((len(fieldsID), len(obj_ra)), dtype=np.int32) * -1
+    vec =  np.vstack((np.cos(obj_ra) * np.cos(obj_dec),
+                      np.sin(obj_ra) * np.cos(obj_dec),
+                      np.sin(obj_dec)))
 
-    SN_ra_field_frame, SN_dec_field_frame = new_coord_on_fields(ra_fields_array,
-                                                                dec_fields_array,
-                                                                vec)
-    # Check if the SN is in the field
-    # in_field = np.abs(SN_ra_field_frame) < field_size[0] / 2
-    # in_field &= np.abs(SN_dec_field_frame) < field_size[1] / 2
+    for i in range(len(fieldsID)):
+        fra, fdec = ra_fields[i], dec_fields[i]
+        x, y, z = R_base(fra, -fdec, vec)
+        ra_frame = np.arctan2(y, x)
+        dec_frame = np.arcsin(z)
 
-    dic_map = Dict.empty(key_type=types.i8,
-                         value_type=types.i8)
-
-    for i in prange(len(obs_fieldID)):
-        fID = obs_fieldID[i]
         for subf, subf_id in zip(subfields_corners, subfields_id):
-            obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
-            obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
-            obs_condition &= SN_dec_field_frame[i] > np.min(subf.T[1])
-            obs_condition &= SN_dec_field_frame[i] < np.max(subf.T[1])
-            if obs_condition:
-                dic_map[fID] = subf_id
-                break
-    return dic_map
-
+            obs_condition = ra_frame > np.min(subf.T[0])
+            obs_condition &= ra_frame < np.max(subf.T[0])
+            obs_condition &= dec_frame > np.min(subf.T[1])
+            obs_condition &= dec_frame < np.max(subf.T[1])
+            obs_dic[i][obs_condition] = subf_id
+    return obs_dic.T
 
 @njit(cache=True)
 def find_idx_nearest_elmt(val, array, treshold):
@@ -344,3 +335,16 @@ def find_idx_nearest_elmt(val, array, treshold):
             raise RuntimeError('Difference above threshold')
         smallest_diff_idx.append(idx)
     return smallest_diff_idx
+
+@njit(cache=True, parallel=True)
+def isin(a, b):
+    """isin numba version from
+    https://stackoverflow.com/questions/70865732/faster-numpy-isin-alternative-for-strings-using-numba
+    """
+    n = len(a)
+    bool_array = np.full(n, False)
+    set_b = set(b)
+    for i in prange(n):
+        if a[i] in set_b:
+            bool_array[i]=True
+    return bool_array

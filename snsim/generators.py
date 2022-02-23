@@ -8,6 +8,9 @@ from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
+from shapely import geometry as shp_geo
+import pandas as pd
+
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
 
@@ -48,7 +51,7 @@ class BaseGen(abc.ABC):
     """
 
     def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 host=None, mw_dust=None, dipole=None):
+                 host=None, mw_dust=None, dipole=None, survey_footprint=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
@@ -60,6 +63,7 @@ class BaseGen(abc.ABC):
         self._host = host
         self._mw_dust = mw_dust
         self._dipole = dipole
+        self._footprint = survey_footprint
 
         self.rate_law = self._init_rate()
 
@@ -75,7 +79,7 @@ class BaseGen(abc.ABC):
         self._z_cdf = None
         self._z_time_rate = None
 
-    def __call__(self, n_obj, rand_seed):
+    def __call__(self, n_obj, rand_seed, astrobj_par=None):
         """Launch the simulation of obj.
 
         Parameters
@@ -91,16 +95,22 @@ class BaseGen(abc.ABC):
             A list containing Astro Object.
         """
         rand_gen = np.random.default_rng(rand_seed)
-        astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
+
+        if astrobj_par is None:
+            astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
 
         # -- Initialise 2 new random generators for inherited class function
-        update_seeds = rand_gen.integers(1000, 1e6, size=2)
+        update_seeds = rand_gen.integers(1000, 1e6, size=3)
         self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[0]))
         snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[1]))
 
+        if 'mw_' in self.sim_model.effect_names:
+            dust_par = self._compute_dust_par(astrobj_par['ra'], astrobj_par['dec'])
+        else:
+            dust_par = [{}] * len(astrobj_par['ra'])
+
         astrobj_list = ({**{k: astrobj_par[k][i] for k in astrobj_par},
-                         **{'sncosmo': sncp}}
-                        for i, sncp in enumerate(snc_par))
+                         **{'sncosmo': {**sncp, **dstp}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
 
         return [self._astrobj_class(snp, self.sim_model, self._general_par) for snp in astrobj_list]
 
@@ -219,8 +229,7 @@ class BaseGen(abc.ABC):
         t0 = rand_gen.uniform(*self.time_range, size=n)
         return t0
 
-    @staticmethod
-    def gen_coord(n, rand_gen):
+    def gen_coord(self, n, rand_gen):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
@@ -236,9 +245,23 @@ class BaseGen(abc.ABC):
             2 numpy arrays containing generated coordinates.
 
         """
-        ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
-        dec_uni = rand_gen.random(size=n)
-        dec = np.arcsin(2 * dec_uni - 1)
+        if self._footprint is None:
+            ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
+            dec_uni = rand_gen.random(size=n)
+            dec = np.arcsin(2 * dec_uni - 1)
+        else:
+            seed = rand_gen.integers(1000, 1e6)
+            gen_tmp = np.random.default_rng(seed)
+            ra, dec = [], []
+            while len(ra) < n:
+                ra_tmp = gen_tmp.uniform(low=0, high=2 * np.pi)
+                dec_uni_tmp = rand_gen.random()
+                dec_tmp = np.arcsin(2 * dec_uni_tmp - 1)
+                if self._footprint.contains(shp_geo.Point(ra_tmp, dec_tmp)):
+                    ra.append(ra_tmp)
+                    dec.append(dec_tmp)
+            ra = np.array(ra)
+            dec = np.array(dec)
         return ra, dec
 
     def gen_zcos(self, n, rand_gen):
@@ -282,7 +305,7 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def gen_astrobj_par(self, n_obj, rand_gen):
+    def gen_astrobj_par(self, n_obj, seed):
         """Generate basic obj properties.
 
         Parameters
@@ -305,6 +328,8 @@ class BaseGen(abc.ABC):
             * mw_ebv, opt : Milky way dust extinction
             * dip_dM, opt : Dipole magnitude modification
         """
+        rand_gen = np.random.default_rng(seed)
+
         # -- Generate peak magnitude
         t0 = self.gen_peak_time(n_obj, rand_gen)
 
@@ -348,7 +373,7 @@ class BaseGen(abc.ABC):
         if self.dipole is not None:
             astrobj_par['dip_dM'] = self._compute_dipole(ra, dec)
 
-        return astrobj_par
+        return pd.DataFrame(astrobj_par)
 
     def rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
@@ -383,7 +408,10 @@ class BaseGen(abc.ABC):
         """
         z_min, z_max = z_range
 
-        z_shell = np.linspace(z_min, z_max, 1000)
+        #-- Set the precision to dz = 1e-5
+        dz = 1e-5
+
+        z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
         z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
         rate = self.rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
         co_dist = self.cosmology.comoving_distance(z_shell).value
@@ -394,6 +422,31 @@ class BaseGen(abc.ABC):
 
         self._z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
         self._z_time_rate = z_shell, shell_time_rate
+
+    def _compute_dust_par(self, ra, dec):
+        """Compute dust parameters.
+        Parameters
+        ----------
+        ra : numpy.ndaray(float)
+            SN Right Ascension.
+        dec : numpy.ndarray(float)
+            SN Declinaison.
+        Returns
+        -------
+        list(dict)
+            List of Dictionnaries that contains Rv and E(B-V) for each SN.
+        """
+        ebv = dst_ut.compute_ebv(ra, dec)
+        mod_name = self.mw_dust['model']
+
+        if mod_name.lower() in ['ccm89', 'od94']:
+            r_v = np.ones(len(ra)) * self.mw_dust['rv']
+            dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
+        elif mod_name.lower() in ['f99']:
+            dust_par = [{'mw_ebv': e} for e in ebv]
+        else:
+            raise ValueError(f'{mod_name} is not implemented')
+        return dust_par
 
     def _compute_dipole(self, ra, dec):
         """Compute dipole."""
@@ -408,7 +461,7 @@ class BaseGen(abc.ABC):
         """Print config."""
         if 'model_dir' in self._params['model_config']:
             model_dir = self._params['model_config']['model_dir']
-            model_dir_str = f"from {model_dir}"
+            model_dir_str = f" from {model_dir}"
         else:
             model_dir = None
             model_dir_str = " from sncosmo"
@@ -540,9 +593,10 @@ class SNIaGen(BaseGen):
     _available_models = ['salt2', 'salt3']
 
     def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 mw_dust=None, host=None, dipole=None):
+                 mw_dust=None, host=None, dipole=None, survey_footprint=None):
         super().__init__(params, cmb, cosmology, vpec_dist,
-                         host=host, mw_dust=mw_dust, dipole=dipole)
+                         host=host, mw_dust=mw_dust, dipole=dipole,
+                         survey_footprint=survey_footprint)
         if self.rate_law[0] is None:
             self.rate_law = self._init_register_rate()
 
@@ -683,7 +737,7 @@ class SNIaGen(BaseGen):
         Returns
         -------
         dict
-            One dictionnary containing 'parameters names': numpy.ndaray(float).
+            One dictionnary containing 'parameters names': numpy.ndarray(float).
 
         """
 
