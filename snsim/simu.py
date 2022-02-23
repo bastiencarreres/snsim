@@ -415,9 +415,13 @@ class Simulator:
 
         n_obj = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
                               duration, area=self.survey.fields._tot_area)
+        # -- Generate n base param
+        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
 
         # -- Generate n obj
-        list_tmp = generator(n_obj, rand_gen.integers(1000, 1e6))
+        # list_tmp = generator(n_obj, rand_gen.integers(1000, 1e6))
+        epochs = self.survey.epochs_selection(param_tmp,(generator.sim_model.mintime(),
+                                                         generator.sim_model.maxtime())
 
         # -- Check the obj observed epochs and if they pass the cuts
         for obj in list_tmp:

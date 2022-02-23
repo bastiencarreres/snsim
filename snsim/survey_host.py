@@ -383,7 +383,10 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-    def epochs_selection(self, coords, model_t_range):
+    def is_obs(self, ra, dec):
+        self.field.is_obs()
+
+    def epochs_selection(self, par, model_t_range):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -397,9 +400,8 @@ class SurveyObs:
             astropy table containing the SN observations.
 
         """
-        Obj_ra, Obj_dec = coords
-        if not self.fields.footprint.contains(shp_geo.Point(Obj_ra, Obj_dec)):
-            return None
+
+        fields_map = self.fields.is_in_field(par['ra'], par['dec'])
 
         is_obs, epochs_selec = nbf.time_selec(self.obs_table.expMJD.to_numpy(),
                                               model_t_range[0], model_t_range[1])
@@ -691,8 +693,8 @@ class SurveyFields:
         else:
             self._sub_fields_corners = self.read_sub_field_map(field_map)
 
-    def is_in_field(self, SN_ra, SN_dec, fields_pre_selec=None):
-        """Check if a SN is in a field and return the coordinates in the field frame.
+    def is_in_field(self, ra, dec):
+        """Check if a list of ra, dec is in a field and return the coordinates in the field frame.
 
         Parameters
         ----------
@@ -709,21 +711,17 @@ class SurveyFields:
             The dictionnaries of boolena selection of obs fields and coordinates in observed fields.
 
         """
-        if fields_pre_selec is not None:
-            ra_fields, dec_fields = np.vectorize(
-                                        lambda x: (self._dic.get(x)['ra'],
-                                                   self._dic.get(x)['dec']))(fields_pre_selec)
-        else:
-            ra_fields = [self._dic[k]['ra'] for k in self._dic]
-            dec_fields = [self._dic[k]['dec'] for k in self._dic]
-            fields_pre_selec = [k for k in self._dic]
+
+        ra_fields = [self._dic[k]['ra'] for k in self._dic]
+        dec_fields = [self._dic[k]['dec'] for k in self._dic]
+        fieldsID = [k for k in self._dic]
 
         # Compute the coord of the SN in the rest frame of each field
-        obsfield_map = nbf.is_in_field(SN_ra,
-                                       SN_dec,
+        obsfield_map = nbf.is_in_field(ra,
+                                       dec,
                                        ra_fields,
                                        dec_fields,
-                                       fields_pre_selec,
+                                       fieldsID,
                                        np.array(list(self._sub_fields_corners)),
                                        np.array(list(self._sub_fields_corners.values())))
         return obsfield_map

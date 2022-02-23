@@ -78,7 +78,7 @@ class BaseGen(abc.ABC):
         self._z_cdf = None
         self._z_time_rate = None
 
-    def __call__(self, n_obj, rand_seed):
+    def __call__(self, n_obj, rand_seed, astrobj_par=None):
         """Launch the simulation of obj.
 
         Parameters
@@ -94,7 +94,9 @@ class BaseGen(abc.ABC):
             A list containing Astro Object.
         """
         rand_gen = np.random.default_rng(rand_seed)
-        astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
+
+        if astrobj_par is None:
+            astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
 
         # -- Initialise 2 new random generators for inherited class function
         update_seeds = rand_gen.integers(1000, 1e6, size=2)
@@ -321,6 +323,7 @@ class BaseGen(abc.ABC):
             * mw_ebv, opt : Milky way dust extinction
             * dip_dM, opt : Dipole magnitude modification
         """
+
         # -- Generate peak magnitude
         t0 = self.gen_peak_time(n_obj, rand_gen)
 

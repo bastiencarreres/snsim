@@ -265,8 +265,8 @@ def radec_to_cart(ra, dec):
 
 
 @njit(cache=True, parallel=True)
-def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
-                subfields_id, subfields_corners, type=types.float64[::1]):
+def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
+                subfields_id, subfields_corners):
     """Chek if a SN is in fields.
 
     Parameters
@@ -292,29 +292,22 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
     """
     ra_fields_array = np.atleast_1d(ra_fields)
     dec_fields_array = np.atleast_1d(dec_fields)
-    vec = radec_to_cart(SN_ra, SN_dec)
+    vec = radec_to_cart(obj_ra, obj_dec)
+    obs_dic = {}
 
-    SN_ra_field_frame, SN_dec_field_frame = new_coord_on_fields(ra_fields_array,
-                                                                dec_fields_array,
-                                                                vec)
-    # Check if the SN is in the field
-    # in_field = np.abs(SN_ra_field_frame) < field_size[0] / 2
-    # in_field &= np.abs(SN_dec_field_frame) < field_size[1] / 2
-
-    dic_map = Dict.empty(key_type=types.i8,
-                         value_type=types.i8)
-
-    for i in prange(len(obs_fieldID)):
-        fID = obs_fieldID[i]
+    for fra, fdec, fID in zip(ra_fields, dec_fields, fieldsID):
+        x, y, z = R_base(fra, fdec, obj_ra, obj_dec)
+        ra_frame = np.arctan2(x, y)
+        dec_frame = np.arcsin(z)
+        obs_dic[fID] = -1 * np.ones(len(ra_frame), dtype=np.int32)
         for subf, subf_id in zip(subfields_corners, subfields_id):
-            obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
-            obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
-            obs_condition &= SN_dec_field_frame[i] > np.min(subf.T[1])
-            obs_condition &= SN_dec_field_frame[i] < np.max(subf.T[1])
-            if obs_condition:
-                dic_map[fID] = subf_id
-                break
-    return dic_map
+            obs_condition = ra_frame > np.min(subf.T[0])
+            obs_condition &= ra_frame < np.max(subf.T[0])
+            obs_condition &= dec_frame > np.min(subf.T[1])
+            obs_condition &= dec_frame < np.max(subf.T[1])
+            obs_dic[fID][obs_condition] = subf_id
+
+    return obs_dic
 
 
 @njit(cache=True)
