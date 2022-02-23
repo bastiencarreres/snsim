@@ -127,7 +127,7 @@ def find_first(item, vec):
 
 
 @njit(cache=True, parallel=True)
-def time_selec(expMJD, ModelMinT, ModelMaxT):
+def time_selec(epochs_selec, expMJD, ModelMinT, ModelMaxT):
     """Select observations that are made in the good time to see a t0 peak SN.
 
     Parameters
@@ -158,8 +158,8 @@ def time_selec(expMJD, ModelMinT, ModelMaxT):
             bool_array[i] = True
     if True in bool_array:
         any = True
-    return any, bool_array
-
+    epochs_selec &= bool_array
+    return any, epochs_selec
 
 @njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
@@ -264,9 +264,9 @@ def radec_to_cart(ra, dec):
     return cart_vec
 
 
-@njit(cache=True, parallel=True)
-def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
-                subfields_id, subfields_corners, type=types.float64[::1]):
+@njit(cache=True)
+def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
+                subfields_id, subfields_corners):
     """Chek if a SN is in fields.
 
     Parameters
@@ -290,32 +290,24 @@ def is_in_field(SN_ra, SN_dec, ra_fields, dec_fields, obs_fieldID,
         The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
 
     """
-    ra_fields_array = np.atleast_1d(ra_fields)
-    dec_fields_array = np.atleast_1d(dec_fields)
-    vec = radec_to_cart(SN_ra, SN_dec)
+    obs_dic = np.ones((len(fieldsID), len(obj_ra)), dtype=np.int32) * -1
+    vec =  np.vstack((np.cos(obj_ra) * np.cos(obj_dec),
+                      np.sin(obj_ra) * np.cos(obj_dec),
+                      np.sin(obj_dec)))
 
-    SN_ra_field_frame, SN_dec_field_frame = new_coord_on_fields(ra_fields_array,
-                                                                dec_fields_array,
-                                                                vec)
-    # Check if the SN is in the field
-    # in_field = np.abs(SN_ra_field_frame) < field_size[0] / 2
-    # in_field &= np.abs(SN_dec_field_frame) < field_size[1] / 2
+    for i in range(len(fieldsID)):
+        fra, fdec = ra_fields[i], dec_fields[i]
+        x, y, z = R_base(fra, -fdec, vec)
+        ra_frame = np.arctan2(y, x)
+        dec_frame = np.arcsin(z)
 
-    dic_map = Dict.empty(key_type=types.i8,
-                         value_type=types.i8)
-
-    for i in prange(len(obs_fieldID)):
-        fID = obs_fieldID[i]
         for subf, subf_id in zip(subfields_corners, subfields_id):
-            obs_condition = SN_ra_field_frame[i] > np.min(subf.T[0])
-            obs_condition &= SN_ra_field_frame[i] < np.max(subf.T[0])
-            obs_condition &= SN_dec_field_frame[i] > np.min(subf.T[1])
-            obs_condition &= SN_dec_field_frame[i] < np.max(subf.T[1])
-            if obs_condition:
-                dic_map[fID] = subf_id
-                break
-    return dic_map
-
+            obs_condition = ra_frame > np.min(subf.T[0])
+            obs_condition &= ra_frame < np.max(subf.T[0])
+            obs_condition &= dec_frame > np.min(subf.T[1])
+            obs_condition &= dec_frame < np.max(subf.T[1])
+            obs_dic[i][obs_condition] = subf_id
+    return obs_dic.T
 
 @njit(cache=True)
 def find_idx_nearest_elmt(val, array, treshold):

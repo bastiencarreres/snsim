@@ -69,55 +69,11 @@ class BasicAstrObj(abc.ABC):
         """Abstract method to add general model parameters call during __init__."""
         pass
 
-    @abc.abstractmethod
-    def _compute_if_pass_cut(self):
-        """Abstract method to launch computation of parameters."""
-        pass
-
-    def _has_pass_cut(self):
-        """Action to made if the transient pass cut."""
-        if 'mw_dust' in self._model_par:
-            self.mw_ebv = dst_ut.compute_ebv(*self.coord)
-            self._params['sncosmo']['mw_ebv'] = self.mw_ebv
-            if self._model_par['mw_dust'].lower() in ['ccm89', 'od94']:
-                self._params['sncosmo']['mw_r_v'] = self._model_par['mw_rv']
-        self._compute_if_pass_cut()
-        pass
-
     def _add_meta_to_table(self):
         """Optional method to add metadata to sim_lc,
         called during _reformat_sim_table.
         """
         pass
-
-    def pass_cut(self, nep_cut):
-        """Check if the Transient pass the given cuts.
-
-        Parameters
-        ----------
-        nep_cut : list
-            nep_cut = [[nep_min1,Tmin,Tmax],[nep_min2,Tmin2,Tmax2,'filter1'],...]
-
-        Returns
-        -------
-        boolean
-            True or False.
-
-        """
-        if self.epochs is None:
-            return False
-        else:
-            phase = self.epochs['time'] - self.sim_t0
-            for cut in nep_cut:
-                expr = ''
-                cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + self.zobs), cut[2] * (1 + self.zobs)
-                expr += "(phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)"
-                if cut[3] != 'any':
-                    expr += f" & (self.epochs.band == '{cut[3]}')"
-                if pd.eval(expr).sum() < int(cut[0]):
-                    return False
-            self._has_pass_cut()
-            return True
 
     def gen_flux(self, rand_gen):
         """Generate the obj lightcurve.
@@ -350,7 +306,7 @@ class SNIa(BasicAstrObj):
         sncosmo Model to use.
     model_par : dict
         General model parameters.
-        
+
       | same as BasicAstrObj model_par
       | ├── M0, SNIa absolute magnitude
       | ├── sigM, sigma of coherent scattering
@@ -393,18 +349,17 @@ class SNIa(BasicAstrObj):
             self.sim_x1 = x1
             self.sim_c = c
 
-        if 'dip_dM' in self._params:
-            mb += self._params['dip_dM']
-        self.sim_mb = mb
+            if 'dip_dM' in self._params:
+                mb += self._params['dip_dM']
 
-    def _compute_if_pass_cut(self):
-        """Parameters to compute only if sn pass cuts."""
-        if self.sim_model.source.name in ['salt2', 'salt3']:
+            self.sim_mb = mb
+
             # Compute the x0 parameter
             self.sim_model.set(x1=self.sim_x1, c=self.sim_c)
             self.sim_model.set_source_peakmag(self.sim_mb, 'bessellb', 'ab')
             self.sim_x0 = self.sim_model.get('x0')
             self._params['sncosmo']['x0'] = self.sim_x0
+
 
     @property
     def mag_sct(self):

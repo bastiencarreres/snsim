@@ -414,22 +414,29 @@ class Simulator:
             duration = generator.time_range[1] - generator.time_range[0]
 
         n_obj = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
-                              duration, area=self.survey.fields._tot_area)
+                               duration, area=self.survey.fields._tot_area)
 
-        # -- Generate n obj
-        list_tmp = generator(n_obj, rand_gen.integers(1000, 1e6))
+        # -- Generate n base param
+        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
 
-        # -- Check the obj observed epochs and if they pass the cuts
-        for obj in list_tmp:
-            obj.epochs = self.survey.epochs_selection(obj.coord,
-                                                      (obj.sim_model.mintime(),
-                                                       obj.sim_model.maxtime()))
-            if obj.pass_cut(self.nep_cut):
-                # -- Generate flux if obs pass cuts
-                obj.gen_flux(rand_gen)
-                obj.ID = Obj_ID
-                Obj_ID += 1
-                lcs.append(obj.sim_lc)
+        # -- Select observations that pass all the cuts
+        epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
+                                                                  generator.sim_model.maxtime()),
+                                                       self.nep_cut)
+        # -- Keep the parameters of selected lcs
+        param_tmp = param_tmp[parmask]
+        param_tmp.reset_index(inplace=True)
+
+        # -- Generate the object
+        obj_list = generator(np.sum(parmask),
+                             rand_gen.integers(1000, 1e6),
+                             astrobj_par=param_tmp)
+
+        for ID, obj  in zip(epochs.index.unique('ID'), obj_list):
+            obj.epochs = epochs.loc[[ID]]
+            obj.gen_flux(rand_gen)
+            obj.ID = ID
+            lcs.append(obj.sim_lc)
         return lcs
 
     def _fix_nsn_sim(self, rand_gen, generator, Obj_ID=0):
@@ -453,21 +460,35 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
-            list_tmp = generator(n_to_sim, rand_gen.integers(1000, 1e6))
-            for obj in list_tmp:
-                obj.epochs = self.survey.epochs_selection(obj.coord,
-                                                          (obj.sim_model.mintime(),
-                                                           obj.sim_model.maxtime()))
-                if obj.pass_cut(self.nep_cut):
-                    obj.gen_flux(rand_gen)
-                    obj.ID = Obj_ID
-                    Obj_ID += 1
-                    lcs.append(obj.sim_lc)
 
-                elif raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
+            # -- Generate n base param
+            param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
+
+            # -- Select observations that pass all the cuts
+            epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
+                                                                      generator.sim_model.maxtime()),
+                                                           self.nep_cut, IDmin=len(lcs))
+            if epochs is None:
+                raise_trigger += 1
+                if raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
                     raise RuntimeError('Cuts are too stricts')
-                else:
-                    raise_trigger += 1
+                continue
+
+            # -- Keep the parameters of selected lcs
+            param_tmp = param_tmp[parmask]
+            param_tmp.reset_index(inplace=True)
+
+            # -- Generate the object
+            obj_list = generator(np.sum(parmask),
+                                 rand_gen.integers(1000, 1e6),
+                                 astrobj_par=param_tmp)
+
+            for ID, obj in zip(epochs.index.unique('ID'), obj_list):
+                obj.epochs = epochs.loc[[ID]]
+                obj.gen_flux(rand_gen)
+                obj.ID = ID
+                lcs.append(obj.sim_lc)
+
             n_to_sim = generator._params['force_n'] - len(lcs)
         return lcs
 

@@ -9,6 +9,7 @@ from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
 from shapely import geometry as shp_geo
+import pandas as pd
 
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
@@ -78,7 +79,7 @@ class BaseGen(abc.ABC):
         self._z_cdf = None
         self._z_time_rate = None
 
-    def __call__(self, n_obj, rand_seed):
+    def __call__(self, n_obj, rand_seed, astrobj_par=None):
         """Launch the simulation of obj.
 
         Parameters
@@ -94,16 +95,22 @@ class BaseGen(abc.ABC):
             A list containing Astro Object.
         """
         rand_gen = np.random.default_rng(rand_seed)
-        astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
+
+        if astrobj_par is None:
+            astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
 
         # -- Initialise 2 new random generators for inherited class function
-        update_seeds = rand_gen.integers(1000, 1e6, size=2)
+        update_seeds = rand_gen.integers(1000, 1e6, size=3)
         self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[0]))
         snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[1]))
 
+        if 'mw_' in self.sim_model.effect_names:
+            dust_par = self._compute_dust_par(astrobj_par['ra'], astrobj_par['dec'])
+        else:
+            dust_par = [{}] * len(astrobj_par['ra'])
+
         astrobj_list = ({**{k: astrobj_par[k][i] for k in astrobj_par},
-                         **{'sncosmo': sncp}}
-                        for i, sncp in enumerate(snc_par))
+                         **{'sncosmo': {**sncp, **dstp}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
 
         return [self._astrobj_class(snp, self.sim_model, self._general_par) for snp in astrobj_list]
 
@@ -298,7 +305,7 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def gen_astrobj_par(self, n_obj, rand_gen):
+    def gen_astrobj_par(self, n_obj, seed):
         """Generate basic obj properties.
 
         Parameters
@@ -321,6 +328,8 @@ class BaseGen(abc.ABC):
             * mw_ebv, opt : Milky way dust extinction
             * dip_dM, opt : Dipole magnitude modification
         """
+        rand_gen = np.random.default_rng(seed)
+
         # -- Generate peak magnitude
         t0 = self.gen_peak_time(n_obj, rand_gen)
 
@@ -364,7 +373,7 @@ class BaseGen(abc.ABC):
         if self.dipole is not None:
             astrobj_par['dip_dM'] = self._compute_dipole(ra, dec)
 
-        return astrobj_par
+        return pd.DataFrame(astrobj_par)
 
     def rate(self, z):
         """Give the rate SNs/Mpc^3/year at redshift z.
@@ -413,6 +422,31 @@ class BaseGen(abc.ABC):
 
         self._z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
         self._z_time_rate = z_shell, shell_time_rate
+
+    def _compute_dust_par(self, ra, dec):
+        """Compute dust parameters.
+        Parameters
+        ----------
+        ra : numpy.ndaray(float)
+            SN Right Ascension.
+        dec : numpy.ndarray(float)
+            SN Declinaison.
+        Returns
+        -------
+        list(dict)
+            List of Dictionnaries that contains Rv and E(B-V) for each SN.
+        """
+        ebv = dst_ut.compute_ebv(ra, dec)
+        mod_name = self.mw_dust['model']
+
+        if mod_name.lower() in ['ccm89', 'od94']:
+            r_v = np.ones(len(ra)) * self.mw_dust['rv']
+            dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
+        elif mod_name.lower() in ['f99']:
+            dust_par = [{'mw_ebv': e} for e in ebv]
+        else:
+            raise ValueError(f'{mod_name} is not implemented')
+        return dust_par
 
     def _compute_dipole(self, ra, dec):
         """Compute dipole."""
