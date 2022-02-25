@@ -484,7 +484,7 @@ class SurveyObs:
         # PSF selection
         if self.sig_psf == 'psf_in_obs':
             obs_selec['sig_psf'] = obs_selec['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
-            obs_selec.drop('FWHMeff', inplace=True)
+            obs_selec.drop(columns='FWHMeff', inplace=True)
 
         # Skynoise selection
         if ('fake_skynoise' not in self.config
