@@ -88,6 +88,8 @@ class BaseGen(abc.ABC):
             Number of obj to simulate.
         rand_seed : int
             The random seed of the simulation.
+        astrobj_par : np.records
+            An array that contains pre-generated parameters
 
         Returns
         -------
@@ -101,9 +103,13 @@ class BaseGen(abc.ABC):
 
         # -- Initialise 2 new random generators for inherited class function
         update_seeds = rand_gen.integers(1000, 1e6, size=3)
+
+        # -- Add astrobj par sepecific to the obj generated
         self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[0]))
+        # -- Add sncosmo par specific to the generated obj
         snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[1]))
 
+        # -- Check if there is dust
         if 'mw_' in self.sim_model.effect_names:
             dust_par = self._compute_dust_par(astrobj_par['ra'], astrobj_par['dec'])
         else:
@@ -253,6 +259,8 @@ class BaseGen(abc.ABC):
             seed = rand_gen.integers(1000, 1e6)
             gen_tmp = np.random.default_rng(seed)
             ra, dec = [], []
+
+            # -- Generate coord and accept if there are in footprint
             while len(ra) < n:
                 ra_tmp = gen_tmp.uniform(low=0, high=2 * np.pi)
                 dec_uni_tmp = rand_gen.random()
@@ -330,7 +338,7 @@ class BaseGen(abc.ABC):
         """
         rand_gen = np.random.default_rng(seed)
 
-        # -- Generate peak magnitude
+        # -- Generate peak time
         t0 = self.gen_peak_time(n_obj, rand_gen)
 
         # -- Generate cosmological redshifts

@@ -90,7 +90,7 @@ class Simulator:
     |     B: B_parameter
     """
 
-    def __init__(self, param_dic, plot_config=False):
+    def __init__(self, param_dic, print_config=False):
         """Initialise Simulator class."""
         # Load param dict from a yaml or by using launch_script.py
         if isinstance(param_dic, dict):
@@ -170,7 +170,7 @@ class Simulator:
                 else:
                     self._use_rate.append(True)
 
-        if plot_config:
+        if print_config:
             print('PARAMETERS USED IN SIMULATION\n')
             ut.print_dic(self.config)
 

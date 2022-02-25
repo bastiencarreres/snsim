@@ -89,11 +89,11 @@ class BasicAstrObj(abc.ABC):
 
         Notes
         -----
-        Set the sim_lc attributes as an astropy Table
+        Set the sim_lc attributes as a pandas.DataFrame
         """
         random_seeds = rand_gen.integers(1000, 100000, size=2)
 
-        # Re - set the parameters to take possible change (e.g dust)
+        # Re - set the parameters
         self._set_model()
 
         if self._model_par['mod_fcov']:
@@ -196,13 +196,13 @@ class BasicAstrObj(abc.ABC):
         self.sim_lc.attrs['zCMB'] = self.zCMB
         self.sim_lc.attrs['ra'] = self.coord[0]
         self.sim_lc.attrs['dec'] = self.coord[1]
-        self.sim_lc.attrs['sim_mb'] = self.sim_mb
         self.sim_lc.attrs['sim_mu'] = self.sim_mu
         self.sim_lc.attrs['com_dist'] = self.como_dist
 
         if 'dip_dM' in self._params:
             self.sim_lc.attrs['dip_dM'] = self.dip_dM
 
+        # -- Add meta data specific to the ob
         self._add_meta_to_table()
 
     @property
@@ -320,6 +320,7 @@ class SNIa(BasicAstrObj):
 
     def _add_meta_to_table(self):
         """Add metadata to sim_lc."""
+        self.sim_lc.attrs['sim_mb'] = self.sim_mb
         self.sim_lc.attrs['m_sct'] = self.mag_sct
 
     def _update_model_par(self):

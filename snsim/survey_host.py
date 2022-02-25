@@ -437,6 +437,7 @@ class SurveyObs:
                                                              obs_selec[self.config['sub_field']].to_numpy(),
                                                              dic_map)
             if is_obs:
+                # -- Check if the observation pass cuts
                 obs_selec = obs_selec[epochs_selec]
                 phase = obs_selec['expMJD'] - par['sim_t0'][i]
                 for cut in nep_cut:
@@ -448,6 +449,7 @@ class SurveyObs:
                         is_obs = False
                         break
             if is_obs:
+                # Save the epochs if observed
                 obs = obs_selec.copy()
                 obs['ID'] = ID
                 epochs.append(obs)
@@ -455,9 +457,11 @@ class SurveyObs:
 
             parmask[i] = is_obs
 
+        # -- In case of no obs
         if len(epochs) == 0:
             return None, None
 
+        # -- pd Dataframe of all obs
         obsdf = pd.concat(epochs)
         obsdf.set_index('ID', inplace=True)
 
