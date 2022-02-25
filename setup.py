@@ -21,13 +21,14 @@ setup(
     url=URL,
     python_requires='>=3.7',
     install_requires=[
+        "pandas >= 1.2.0",
         "sncosmo >= 2.5.0",
         "numpy >= 1.13.3",
-        "scipy >= 0.9.0",
         "astropy >= 1.0.0",
         "shapely >= 1.8.0",
         "numba",
         "pyyaml",
-        "sfdmap"
+        "sfdmap",
+        "requests"
     ]
 )
