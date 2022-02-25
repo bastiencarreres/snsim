@@ -22,6 +22,7 @@ class BaseGen(abc.ABC):
     ----------
     params : dict
         Basic generator configuration.
+
       | params
       | ├── z_range, redshift range (min, max)
       | ├── General obj parameters
@@ -29,6 +30,7 @@ class BaseGen(abc.ABC):
       |     └── General sncosmo model parameters
     cmb : dict
         The CMB dipole configuration.
+
       | cmb
       | ├── vcmb
       | ├── l_cmb
@@ -37,6 +39,7 @@ class BaseGen(abc.ABC):
         The astropy cosmological model to use.
     vpec_dist : dict
         The parameters of the peculiar velocity distribution.
+
       | vpec_dist
       | ├── mean_vpec
       | └── sig_vpec
@@ -44,6 +47,7 @@ class BaseGen(abc.ABC):
         The host class to introduce sn host.
     dipole : dict, opt
         The alpha dipole parameters.
+
       | dipole
       | ├── coord  list(ra, dec) dipole vector coordinates in ra, dec
       | ├── A  parameter of the A + B * cos(theta) dipole
@@ -570,12 +574,14 @@ class SNIaGen(BaseGen):
     ----------
     params : dict
         Basic params + SNIa specific parameters.
+
       | params
       | ├── M0, SNIa absolute magnitude
       | ├── mag_sct, SNIa coherent scattering
       | └── sct_model, opt, SNIa wavelenght dependant scattering
     cmb : dict
         The CMB dipole configuration.
+
       | cmb
       | ├── vcmb
       | ├── l_cmb
@@ -584,6 +590,7 @@ class SNIaGen(BaseGen):
         The astropy cosmological model to use.
     vpec_dist : dict
         The parameters of the peculiar velocity distribution.
+
       | vpec_dist
       | ├── mean_vpec
       | └── sig_vpec
@@ -591,6 +598,7 @@ class SNIaGen(BaseGen):
         The host class to introduce sn host.
     dipole : dict, opt
         The alpha dipole parameters.
+
       | dipole
       | ├── coord  list(ra, dec) dipole vector coordinates in ra, dec
       | ├── A  parameter of the A + B * cos(theta) dipole

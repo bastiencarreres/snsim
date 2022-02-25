@@ -16,6 +16,7 @@ class BasicAstrObj(abc.ABC):
     ----------
     parameters : dict
         Parameters of the obj.
+
       | parameters
       | ├── zcos, cosmological redshift
       | ├── z2cmb, CMB dipole redshift contribution
@@ -298,12 +299,14 @@ class SNIa(BasicAstrObj):
     ----------
     sn_par : dict
         Parameters of the SN.
+
       | same as BasicAstrObj parameters
       | └── mag_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
     model_par : dict
         General model parameters.
+
       | same as BasicAstrObj model_par
       | ├── M0, SNIa absolute magnitude
       | ├── sigM, sigma of coherent scattering
