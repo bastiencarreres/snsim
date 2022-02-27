@@ -418,8 +418,9 @@ class Simulator:
         param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
 
         # -- Select observations that pass all the cuts
-        epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
-                                                                  generator.sim_model.maxtime()),
+        epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),
+                                                       (generator.sim_model.mintime(),
+                                                        generator.sim_model.maxtime()),
                                                        self.nep_cut)
         # -- Keep the parameters of selected lcs
         param_tmp = param_tmp[parmask]
