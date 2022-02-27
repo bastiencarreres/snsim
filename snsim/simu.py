@@ -463,8 +463,9 @@ class Simulator:
             param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
 
             # -- Select observations that pass all the cuts
-            epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
-                                                                                              generator.sim_model.maxtime()),
+            epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),
+                                                           (generator.sim_model.mintime(),
+                                                            generator.sim_model.maxtime()),
                                                            self.nep_cut, IDmin=len(lcs))
             if epochs is None:
                 raise_trigger += 1
