@@ -442,7 +442,6 @@ class SurveyObs:
                 phase = (obs_selec['expMJD'] - par['sim_t0'][i]) / (1. + zobs[i])
                 for cut in nep_cut:
                     test = (phase > cut[1]) & (phase <  cut[2])
-                    print(test)
                     if cut[3] != 'any':
                         test &= obs_selec['filter'] == cut[3]
                     if test.sum() < int(cut[0]):
