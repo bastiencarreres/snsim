@@ -295,7 +295,6 @@ class Simulator:
             if use_rate:
                 rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1]) + "\n"
                 compute_z_cdf = True
-                gen.compute_zcdf(self.z_range)
             else:
                 print(f"\nGenerate {gen._params['force_n']} SN Ia")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
@@ -465,7 +464,7 @@ class Simulator:
 
             # -- Select observations that pass all the cuts
             epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
-                                                                      generator.sim_model.maxtime()),
+                                                                                              generator.sim_model.maxtime()),
                                                            self.nep_cut, IDmin=len(lcs))
             if epochs is None:
                 raise_trigger += 1

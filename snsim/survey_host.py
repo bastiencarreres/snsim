@@ -406,8 +406,9 @@ class SurveyObs:
         """
         # -- Set up obj parameters
         zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS)  - 1.
-        MinT = par['sim_t0'] + model_t_range[0] * (1 + zobs)
-        MaxT = par['sim_t0'] + model_t_range[1] * (1 + zobs)
+        MinT = par['sim_t0'] + model_t_range[0] * (1. + zobs)
+        MaxT = par['sim_t0'] + model_t_range[1] * (1. + zobs)
+
         # -- Get observed fields and subfield for all obj
         fieldsID, obs_subfields = self.fields.is_in_field(par['ra'], par['dec'])
         epochs = []
@@ -416,7 +417,6 @@ class SurveyObs:
         ID = IDmin
         for i in range(len(obs_subfields)):
             # -- Fields selection
-            mask = obs_subfields[i]
             fmask = obs_subfields[i] != -1
             fields = fieldsID[fmask]
 
@@ -439,10 +439,10 @@ class SurveyObs:
             if is_obs:
                 # -- Check if the observation pass cuts
                 obs_selec = obs_selec[epochs_selec]
-                phase = obs_selec['expMJD'] - par['sim_t0'][i]
+                phase = (obs_selec['expMJD'] - par['sim_t0'][i]) / (1. + zobs[i])
                 for cut in nep_cut:
-                    cutMin_obsfrm, cutMax_obsfrm = cut[1] * (1 + zobs[i]), cut[2] * (1 + zobs[i])
-                    test = (phase > cutMin_obsfrm) & (phase < cutMax_obsfrm)
+                    test = (phase > cut[1]) & (phase <  cut[2])
+                    print(test)
                     if cut[3] != 'any':
                         test &= obs_selec['filter'] == cut[3]
                     if test.sum() < int(cut[0]):
