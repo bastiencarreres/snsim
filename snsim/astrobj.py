@@ -10,7 +10,7 @@ from . import dust_utils as dst_ut
 
 
 class BasicAstrObj(abc.ABC):
-    """Short summary.
+    """Basic class for transients.
 
     Parameters
     ----------
@@ -293,7 +293,7 @@ class BasicAstrObj(abc.ABC):
 
 
 class SNIa(BasicAstrObj):
-    """SNIa object class.
+    """SNIa class.
 
     Parameters
     ----------
@@ -361,8 +361,7 @@ class SNIa(BasicAstrObj):
             self.sim_x0 = self.sim_model.get('x0')
             self._params['sncosmo']['x0'] = self.sim_x0
 
-
     @property
     def mag_sct(self):
-        """Get SN coherent scattering term."""
+        """SN coherent scattering term."""
         return self._params['mag_sct']
