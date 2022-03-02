@@ -238,7 +238,9 @@ class Simulator:
             Number of obj to simulate.
 
         """
-        return rand_gen.poisson(duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate))
+        nsn = duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate)
+        nsn = int(np.round(nsn))
+        return rand_gen.poisson(nsn)
 
     def _get_cosmo_header(self):
         """Return the header for cosmology model used."""
