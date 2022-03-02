@@ -83,7 +83,6 @@ class SurveyObs:
                             self.config['dec_size'],
                             field_map)
 
-
     def __str__(self):
         str = f"SURVEY FILE : {self.config['survey_file']}\n\n"
 
@@ -92,9 +91,9 @@ class SurveyObs:
                 "Last day in survey_file : "
                 f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}\n\n"
                 f"Survey effective duration is {self.duration:.2f} days\n\n"
-                f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} squared degrees " f"({self.fields._tot_area / (4 * np.pi) * 100:.1f} % of the sky)\n\n")
-
-
+                f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f}"
+                "squared degrees "
+                f"({self.fields._tot_area / (4 * np.pi) * 100:.1f} % of the sky)\n\n")
 
         if 'survey_cut' in self.config:
             for k, v in self.config['survey_cut'].items():
@@ -405,12 +404,14 @@ class SurveyObs:
 
         """
         # -- Set up obj parameters
-        zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS)  - 1.
+        zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
         MinT = par['sim_t0'] + model_t_range[0] * (1. + zobs)
         MaxT = par['sim_t0'] + model_t_range[1] * (1. + zobs)
 
         # -- Get observed fields and subfield for all obj
         fieldsID, obs_subfields = self.fields.is_in_field(par['ra'], par['dec'])
+
+        # -- Init epochs list to store observations
         epochs = []
         parmask = np.zeros(len(par['ra']), dtype=np.bool)
 
@@ -433,15 +434,16 @@ class SurveyObs:
                 dic_map = nbtyped.Dict.empty(nbtypes.int64, nbtypes.int64)
                 for f, c in zip(fields,  obs_subfields[i][fmask]):
                     dic_map[f] = c
-                is_obs, epochs_selec = nbf.map_obs_subfields(obs_selec['fieldID'].to_numpy(),
-                                                             obs_selec[self.config['sub_field']].to_numpy(),
-                                                             dic_map)
+                is_obs, epochs_selec = nbf.map_obs_subfields(
+                                                obs_selec['fieldID'].to_numpy(),
+                                                obs_selec[self.config['sub_field']].to_numpy(),
+                                                dic_map)
             if is_obs:
                 # -- Check if the observation pass cuts
                 obs_selec = obs_selec[epochs_selec]
                 phase = (obs_selec['expMJD'] - par['sim_t0'][i]) / (1. + zobs[i])
                 for cut in nep_cut:
-                    test = (phase > cut[1]) & (phase <  cut[2])
+                    test = (phase > cut[1]) & (phase < cut[2])
                     if cut[3] != 'any':
                         test &= obs_selec['filter'] == cut[3]
                     if test.sum() < int(cut[0]):
@@ -465,7 +467,6 @@ class SurveyObs:
         obsdf.set_index('ID', inplace=True)
 
         return self._make_obs_table(obsdf.copy()), parmask
-
 
     def _make_obs_table(self, obs_selec):
         """Create the astropy table from selection bool array.
@@ -759,12 +760,12 @@ class SurveyFields:
 
         # Compute the coord of the SN in the rest frame of each field
         obs_subfield = nbf.is_in_field(obj_ra,
-                                   obj_dec,
-                                   ra_fields,
-                                   dec_fields,
-                                   fieldsID,
-                                   subfieldID,
-                                   subfield_corner)
+                                       obj_dec,
+                                       ra_fields,
+                                       dec_fields,
+                                       fieldsID,
+                                       subfieldID,
+                                       subfield_corner)
         return fieldsID, obs_subfield
 
     def show_map(self):
