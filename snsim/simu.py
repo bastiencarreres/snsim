@@ -238,7 +238,9 @@ class Simulator:
             Number of obj to simulate.
 
         """
-        return rand_gen.poisson(duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate))
+        nsn = duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate)
+        nsn = int(np.round(nsn))
+        return rand_gen.poisson(nsn)
 
     def _get_cosmo_header(self):
         """Return the header for cosmology model used."""
@@ -295,7 +297,6 @@ class Simulator:
             if use_rate:
                 rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1]) + "\n"
                 compute_z_cdf = True
-                gen.compute_zcdf(self.z_range)
             else:
                 print(f"\nGenerate {gen._params['force_n']} SN Ia")
                 if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
@@ -419,8 +420,9 @@ class Simulator:
         param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
 
         # -- Select observations that pass all the cuts
-        epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
-                                                                  generator.sim_model.maxtime()),
+        epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),
+                                                       (generator.sim_model.mintime(),
+                                                        generator.sim_model.maxtime()),
                                                        self.nep_cut)
         # -- Keep the parameters of selected lcs
         param_tmp = param_tmp[parmask]
@@ -464,8 +466,9 @@ class Simulator:
             param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
 
             # -- Select observations that pass all the cuts
-            epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),(generator.sim_model.mintime(),
-                                                                      generator.sim_model.maxtime()),
+            epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),
+                                                           (generator.sim_model.mintime(),
+                                                            generator.sim_model.maxtime()),
                                                            self.nep_cut, IDmin=len(lcs))
             if epochs is None:
                 raise_trigger += 1

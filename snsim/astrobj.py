@@ -10,7 +10,7 @@ from . import dust_utils as dst_ut
 
 
 class BasicAstrObj(abc.ABC):
-    """Short summary.
+    """Basic class for transients.
 
     Parameters
     ----------
@@ -37,6 +37,8 @@ class BasicAstrObj(abc.ABC):
     """
 
     _type = ''
+    _base_attrs = ['ID', 'coord', 'zcos', 'zpec',
+                   'vpec', 'z2cmb', 'sim_mu', 'como_dist']
 
     def __init__(self, parameters, sim_model, model_par):
         # -- sncosmo model
@@ -67,12 +69,6 @@ class BasicAstrObj(abc.ABC):
     @abc.abstractmethod
     def _update_model_par(self):
         """Abstract method to add general model parameters call during __init__."""
-        pass
-
-    def _add_meta_to_table(self):
-        """Optional method to add metadata to sim_lc,
-        called during _reformat_sim_table.
-        """
         pass
 
     def gen_flux(self, rand_gen):
@@ -149,9 +145,6 @@ class BasicAstrObj(abc.ABC):
                                      'gain': self.epochs['gain'],
                                      'skynoise': self.epochs['skynoise']})
 
-        #self._sim_lc['mag'] = pd.eval('-2.5 * log10(self._sim_lc.flux) + self.epochs.zp')
-        #self._sim_lc['magerr'] = pd.eval('2.5 / log(10) * 1 / self._sim_lc.flux * self._sim_lc.fluxerr')
-
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
                               **self._params['sncosmo']}
@@ -186,24 +179,17 @@ class BasicAstrObj(abc.ABC):
 
         self.sim_lc.attrs['type'] = self._type
 
-        if self.ID is not None:
-            self.sim_lc.attrs['ID'] = self.ID
-
-        self.sim_lc.attrs['vpec'] = self.vpec
-        self.sim_lc.attrs['zcos'] = self.zcos
-        self.sim_lc.attrs['zpec'] = self.zpec
-        self.sim_lc.attrs['z2cmb'] = self.z2cmb
-        self.sim_lc.attrs['zCMB'] = self.zCMB
-        self.sim_lc.attrs['ra'] = self.coord[0]
-        self.sim_lc.attrs['dec'] = self.coord[1]
-        self.sim_lc.attrs['sim_mu'] = self.sim_mu
-        self.sim_lc.attrs['com_dist'] = self.como_dist
+        for meta in self._base_attrs:
+            if meta == 'coord':
+                self.sim_lc.attrs['ra'] = self.coord[0]
+                self.sim_lc.attrs['dec'] = self.coord[1]
+            else:
+                attrs = getattr(self, meta)
+                if attrs is not None:
+                    self.sim_lc.attrs[meta] = getattr(self, meta)
 
         if 'dip_dM' in self._params:
             self.sim_lc.attrs['dip_dM'] = self.dip_dM
-
-        # -- Add meta data specific to the ob
-        self._add_meta_to_table()
 
     @property
     def ID(self):
@@ -293,7 +279,7 @@ class BasicAstrObj(abc.ABC):
 
 
 class SNIa(BasicAstrObj):
-    """SNIa object class.
+    """SNIa class.
 
     Parameters
     ----------
@@ -314,14 +300,11 @@ class SNIa(BasicAstrObj):
     """
     _type = 'snIa'
     _available_models = ['salt2', 'salt3']
+    _attrs = ['sim_mb', 'mag_sct']
 
     def __init__(self, sn_par, sim_model, model_par):
         super().__init__(sn_par, sim_model, model_par)
-
-    def _add_meta_to_table(self):
-        """Add metadata to sim_lc."""
-        self.sim_lc.attrs['sim_mb'] = self.sim_mb
-        self.sim_lc.attrs['m_sct'] = self.mag_sct
+        self._base_attrs = super()._base_attrs + self._attrs
 
     def _update_model_par(self):
         """Extract and compute SN parameters that depends on used model.
@@ -361,8 +344,7 @@ class SNIa(BasicAstrObj):
             self.sim_x0 = self.sim_model.get('x0')
             self._params['sncosmo']['x0'] = self.sim_x0
 
-
     @property
     def mag_sct(self):
-        """Get SN coherent scattering term."""
+        """SN coherent scattering term."""
         return self._params['mag_sct']
