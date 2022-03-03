@@ -130,7 +130,8 @@ class Simulator:
 
         # -- Init host object
         if 'host' in self.config:
-            self._host = sh.SnHost(self.config['host'], self.z_range)
+            self._host = sh.SnHost(self.config['host'], self.z_range,
+                                   footprint=self.survey.fields.footprint)    
         else:
             self._host = None
 
