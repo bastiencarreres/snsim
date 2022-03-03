@@ -937,7 +937,7 @@ class SnHost:
             idx = []
             while len(idx) < n:
                 idx_tmp = rand_gen.choice(self.table.index, p=p)
-                pt = shp_geo.Point(self.table[idx]['ra'], self.table[idx]['dec'])
+                pt = shp_geo.Point(self.table.loc[idx]['ra'], self.table.loc[idx]['dec'])
                 if footprint.contains(pt):
                     idx.append(idx_tmp)
         return self.table.loc[idx]
