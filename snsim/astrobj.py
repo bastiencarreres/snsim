@@ -38,7 +38,7 @@ class BasicAstrObj(abc.ABC):
 
     _type = ''
     _base_attrs = ['ID', 'coord', 'zcos', 'zpec',
-                   'vpec', 'z2cmb', 'sim_mu', 'com_dist']
+                   'vpec', 'z2cmb', 'sim_mu', 'como_dist']
 
     def __init__(self, parameters, sim_model, model_par):
         # -- sncosmo model
@@ -182,15 +182,14 @@ class BasicAstrObj(abc.ABC):
 
         self.sim_lc.attrs['type'] = self._type
 
-        if self.ID is not None:
-            self.sim_lc.attrs['ID'] = self.ID
-
         for meta in self._base_attrs:
             if meta == 'coord':
                 self.sim_lc.attrs['ra'] = self.coord[0]
                 self.sim_lc.attrs['dec'] = self.coord[1]
             else:
-                self.sim_lc.attrs[meta] = getattr(self, meta)
+                attrs = getattr(self, meta)
+                if attrs is not None:
+                    self.sim_lc.attrs[meta] = getattr(self, meta)
 
         if 'dip_dM' in self._params:
             self.sim_lc.attrs['dip_dM'] = self.dip_dM
@@ -304,7 +303,7 @@ class SNIa(BasicAstrObj):
     """
     _type = 'snIa'
     _available_models = ['salt2', 'salt3']
-    _attrs = ['sim_mb', 'm_sct']
+    _attrs = ['sim_mb', 'mag_sct']
 
     def __init__(self, sn_par, sim_model, model_par):
         super().__init__(sn_par, sim_model, model_par)
