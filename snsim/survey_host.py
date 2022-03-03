@@ -818,10 +818,11 @@ class SnHost:
         The redshift range.
     """
 
-    def __init__(self, config, z_range=None):
+    def __init__(self, config, z_range=None, footprint=None):
         """Initialize SnHost class."""
         self._z_range = z_range
         self._config = config
+        self._footprint = footprint
         self._table = self._read_host_file()
         self._max_dz = None
 
@@ -885,7 +886,12 @@ class SnHost:
                 warnings.warn('Simulation redshift range does not match host file redshift range',
                               UserWarning)
             host_list.query(f'redshift >= {z_min} & redshift <= {z_max}', inplace=True)
-            host_list.reset_index(drop=True, inplace=True)
+        if self._footprint is not None:
+            ra_min, dec_min, ra_max, dec_max = self._footprint.bounds
+            host_list.query(f'{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}',
+                            inplace=True)
+
+        host_list.reset_index(drop=True, inplace=True)
         return host_list
 
     def host_near_z(self, z_list, treshold=1e-4):
@@ -907,7 +913,7 @@ class SnHost:
         idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
         return self.table.iloc[idx]
 
-    def random_choice(self, n, rand_seed, footprint=None):
+    def random_choice(self, n, rand_seed):
         """Randomly select hosts.
 
         Parameters
@@ -931,13 +937,13 @@ class SnHost:
         else:
             raise ValueError(f"{self.config['distrib']} is not an available option")
 
-        if footprint is None:
+        if self._footprint is None:
             idx = rand_gen.choice(self.table.index, p=p, size=n)
         else:
             idx = []
             while len(idx) < n:
                 idx_tmp = rand_gen.choice(self.table.index, p=p)
-                pt = shp_geo.Point(self.table.loc[idx]['ra'], self.table.loc[idx]['dec'])
-                if footprint.contains(pt):
+                pt = shp_geo.Point(self.table.loc[idx_tmp]['ra'], self.table.loc[idx_tmp]['dec'])
+                if self._footprint.contains(pt):
                     idx.append(idx_tmp)
         return self.table.loc[idx]
