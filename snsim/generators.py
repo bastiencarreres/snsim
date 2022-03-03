@@ -353,7 +353,7 @@ class BaseGen(abc.ABC):
                 host = self.host.host_near_z(zcos, treshold)
         else:
             hseed = rand_gen.integers(1000, 1e6)
-            host = self.host.random_choice(n_obj, hseed)
+            host = self.host.random_choice(n_obj, hseed, footprint=self._footprint)
             zcos = host['redshift'].values
 
         # -- Generate 2 randseeds for optionnal parameters randomization
