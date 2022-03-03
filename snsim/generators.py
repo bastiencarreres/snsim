@@ -420,7 +420,7 @@ class BaseGen(abc.ABC):
         """
         z_min, z_max = z_range
 
-        #-- Set the precision to dz = 1e-5
+        # -- Set the precision to dz = 1e-5
         dz = 1e-5
 
         z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))

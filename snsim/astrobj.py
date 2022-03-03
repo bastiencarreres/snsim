@@ -145,9 +145,6 @@ class BasicAstrObj(abc.ABC):
                                      'gain': self.epochs['gain'],
                                      'skynoise': self.epochs['skynoise']})
 
-        # self._sim_lc['mag'] = pd.eval('-2.5 * log10(self._sim_lc.flux) + self.epochs.zp')
-        # self._sim_lc['magerr'] = pd.eval('2.5 / log(10) * 1 / self._sim_lc.flux * self._sim_lc.fluxerr')
-
         self._sim_lc.attrs = {**self.sim_lc.attrs,
                               **{'zobs': self.zobs, 't0': self.sim_t0},
                               **self._params['sncosmo']}

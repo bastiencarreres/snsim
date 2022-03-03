@@ -279,7 +279,6 @@ def plot_lc(
                 plt.setp(ax0.get_xticklabels(), visible=False)
                 ax0.set_xlabel('')
 
-
     ax0.legend(handles=handles, labels=labels, fontsize='x-large')
 
     sim_par = None

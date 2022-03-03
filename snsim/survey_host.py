@@ -18,7 +18,6 @@ from numba import typed as nbtyped
 from numba import types as nbtypes
 
 
-
 class SurveyObs:
     """This class deals with the observations of the survey.
 
