@@ -907,7 +907,7 @@ class SnHost:
         idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
         return self.table.iloc[idx]
 
-    def random_choice(self, n, rand_seed):
+    def random_choice(self, n, rand_seed, footprint=None):
         """Randomly select hosts.
 
         Parameters
@@ -930,5 +930,14 @@ class SnHost:
             p = self.table['mass'] / self.table['mass'].sum()
         else:
             raise ValueError(f"{self.config['distrib']} is not an available option")
-        idx = rand_gen.choice(self.table.index, p=p, size=n)
+
+        if footprint is None:
+            idx = rand_gen.choice(self.table.index, p=p, size=n)
+        else:
+            idx = []
+            while len(idx) < n:
+                idx_tmp = rand_gen.choice(self.table.index, p=p)
+                pt = shp_geo.Point(self.table[idx]['ra'], self.table[idx]['dec'])
+                if footprint.contains(pt):
+                    idx.append(idx_tmp)
         return self.table.loc[idx]
