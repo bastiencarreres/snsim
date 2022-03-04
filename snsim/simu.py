@@ -131,7 +131,7 @@ class Simulator:
         # -- Init host object
         if 'host' in self.config:
             self._host = sh.SnHost(self.config['host'], self.z_range,
-                                   footprint=self.survey.fields.footprint)    
+                                   footprint=self.survey.fields.footprint)
         else:
             self._host = None
 
@@ -207,7 +207,6 @@ class Simulator:
                         cut_list.append((cut[0], cut[1], cut[2], 'any'))
                     else:
                         cut_list.append((cut[0], cut[1], cut[2], cut[3]))
-
         else:
             cut_list = [(1, snc_mintime, snc_maxtime, 'any')]
         dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.str_, 8)]
