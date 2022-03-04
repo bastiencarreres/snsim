@@ -346,14 +346,11 @@ class BaseGen(abc.ABC):
         t0 = self.gen_peak_time(n_obj, rand_gen)
 
         # -- Generate cosmological redshifts
-        if self.host is None or self.host.config['distrib'].lower() == 'as_sn':
+        if self.host is None:
             zcos = self.gen_zcos(n_obj, rand_gen)
-            if self.host is not None:
-                treshold = (self.z_cdf[0][-1] - self.z_cdf[0][0]) / 100
-                host = self.host.host_near_z(zcos, treshold)
         else:
             hseed = rand_gen.integers(1000, 1e6)
-            host = self.host.random_choice(n_obj, hseed)
+            host = self.host.random_choice(n_obj, hseed, z_cdf=self.z_cdf)
             zcos = host['redshift'].values
 
         # -- Generate 2 randseeds for optionnal parameters randomization

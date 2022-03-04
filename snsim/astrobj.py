@@ -37,7 +37,7 @@ class BasicAstrObj(abc.ABC):
     """
 
     _type = ''
-    _base_attrs = ['ID', 'coord', 'zcos', 'zpec',
+    _base_attrs = ['ID', 'coord', 'zcos', 'zCMB', 'zpec',
                    'vpec', 'z2cmb', 'sim_mu', 'como_dist']
 
     def __init__(self, parameters, sim_model, model_par):
