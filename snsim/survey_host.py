@@ -913,7 +913,17 @@ class SnHost:
         idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
         return self.table.iloc[idx]
 
-    def random_choice(self, n, rand_seed):
+    def _normalize_distrib(self):
+        count, egdes = np.histogram(self.table['redshift'], bins=1000,
+                                    range=[self.table['redshift'].min(), self.table['redshift'].max()])
+        count = count / np.sum(count)
+        zcenter = (egdes[:-1] + egdes[1:]) * 0.5
+        p = np.interp(self.table['redshift'], zcenter, count)
+        p_inv = 1 / p
+        p_inv /= np.sum(p_inv)
+        return p_inv
+
+    def random_choice(self, n, rand_seed, z_cdf=None):
         """Randomly select hosts.
 
         Parameters
@@ -931,14 +941,20 @@ class SnHost:
         """
         rand_gen = np.random.default_rng(rand_seed)
         if self.config['distrib'].lower() == 'as_host':
-            p = None
+            choice_weights = None
         elif self.config['distrib'].lower() == 'mass_weight':
-            p = self.table['mass'] / self.table['mass'].sum()
+            choice_weights = self.table['mass'] / self.table['mass'].sum()
+        elif self.config['distrib'].lower() == 'as_sn':
+            norm = self._normalize_distrib()
+            prob_z = np.gradient(z_cdf[1], z_cdf[0])
+            Pz = np.interp(host.table['redshift'], generator.z_cdf[0], prob_z)
+            choice_weights = norm * Pz
+            choice_weights /= choice_weights.sum()
         else:
             raise ValueError(f"{self.config['distrib']} is not an available option")
 
         if self._footprint is None:
-            idx = rand_gen.choice(self.table.index, p=p, size=n)
+            idx = rand_gen.choice(self.table.index, p=choice_weights, size=n)
         else:
             idx = []
             while len(idx) < n:
