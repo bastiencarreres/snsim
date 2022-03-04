@@ -463,8 +463,7 @@ class SurveyObs:
 
         # -- pd Dataframe of all obs
         obsdf = pd.concat(epochs)
-        obsdf.set_index('ID', inplace=True)
-
+        obsdf.set_index('ID', inplace=True, drop=True)
         return self._make_obs_table(obsdf.copy()), parmask
 
     def _make_obs_table(self, obs_selec):

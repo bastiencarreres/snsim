@@ -353,7 +353,7 @@ class Simulator:
                 lcs_list = self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
             else:
                 lcs_list = self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
-
+            
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
                                                       {**gen._get_header(),
@@ -437,6 +437,7 @@ class Simulator:
             obj.epochs = epochs.loc[[ID]]
             obj.gen_flux(rand_gen)
             obj.ID = ID
+
             lcs.append(obj.sim_lc)
         return lcs
 

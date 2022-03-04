@@ -77,9 +77,9 @@ class SimSample:
             A SimSample class with the simulated lcs.
 
         """
-        lcs = pd.concat(sim_lcs,
-                        keys=(lc.attrs['ID'] for lc in sim_lcs),
-                        names=['ID'])
+        lcs = pd.concat(sim_lcs)
+        lcs.set_index(['ID'], append=True, inplace=True)
+        lcs = lcs.swaplevel()
         lcs.attrs = {lc.attrs['ID']: lc.attrs for lc in sim_lcs}
         return cls(sample_name, lcs, header, model_dir=model_dir,
                    dir_path=dir_path)
@@ -337,21 +337,12 @@ class SimSample:
                 if id not in self.fit_res:
                     self.fit_lc(id)
 
-        meta_keys = ['ID', 'ra', 'dec', 'vpec', 'zpec', 'z2cmb', 'zcos', 'zCMB',
-                     'zobs', 'sim_mu', 'com_dist', 'sim_t0', 'm_sct']
+        sim_lc_meta = {}
+        for key in self.meta[self.get('ID')[0]]:
+            if key not in ['type']:
+                sim_lc_meta[key] = self.get(key)
 
         model_name = self.header['model_name']
-
-        if model_name[:4] == 'salt':
-            meta_keys += ['sim_x0', 'sim_mb', 'sim_x1', 'sim_c']
-
-        if 'mw_dust' in self.header:
-            meta_keys.append('mw_ebv')
-
-        sim_lc_meta = {key: self.get(key) for key in meta_keys}
-
-        if 'sct_mod' in self.header:
-            sim_lc_meta['SM_seed'] = self.get(self.header['sct_mod'][:3] + '_RndS')
 
         io_ut.write_fit(sim_lc_meta, self.fit_res, write_path, sim_meta=self.header)
 
