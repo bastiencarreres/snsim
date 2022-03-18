@@ -7,11 +7,22 @@ import pandas as pd
 import numpy as np
 try:
     import json
+    imp_json = True
+except ImportError:
+    imp_json = False
+try:
     import pyarrow as pa
     import pyarrow.parquet as pq
-    json_pyarrow = True
+    imp_pyarrow = True
 except ImportError:
-    json_pyarrow = False
+    imp_pyarrow = False
+try:
+    import fastparquet as fq
+    imp_fq = True
+except ImportError:
+    imp_fq = False
+
+
 from . import salt_utils as salt_ut
 
 
@@ -59,7 +70,7 @@ def write_sim(wpath, name, formats, header, data):
 
             pickle.dump(pkl_dic, file)
 
-    if 'parquet' in formats and json_pyarrow:
+    if 'parquet' in formats and imp_pyarrow and imp_json:
         lcs = pa.Table.from_pandas(data)
         lcmeta = json.dumps(data.attrs, cls=NpEncoder)
         header = json.dumps(header, cls=NpEncoder)
@@ -69,11 +80,11 @@ def write_sim(wpath, name, formats, header, data):
         lcs = lcs.replace_schema_metadata(meta)
         pq.write_table(lcs, wpath + name + '.parquet')
 
-    elif 'parquet' in formats and not json_pyarrow:
+    elif 'parquet' in formats and not imp_pyarrow and not imp_json:
         warnings.warn('You need pyarrow and json modules to use .parquet format', UserWarning)
 
 
-def read_sim_file(file_path):
+def read_sim_file(file_path, engine='pyarrow'):
     """Read a sim file.
 
     Parameters
@@ -99,16 +110,22 @@ def read_sim_file(file_path):
             header = pkl_dic['header']
 
     elif file_ext == '.parquet':
-        if json_pyarrow:
+        if not imp_json:
+            warnings.warn("You need json module to read parquet formats", UserWarning)
+        if engine=='pyarrow' and imp_pyarrow:
             table = pq.read_table(file_path + file_ext)
-            lcs = table.to_pandas()
-            lcs.set_index(['ID', 'epochs'], inplace=True)
-            lcs.attrs = {int(k): val
-                         for k, val in json.loads(table.schema.metadata['attrs'.encode()]).items()}
-            name = table.schema.metadata['name'.encode()].decode()
-            header = json.loads(table.schema.metadata['header'.encode()])
-        else:
-            warnings.warn("You need pyarrow and json module to write parquet formats", UserWarning)
+            hdic = table.schema.metadata
+        elif engine=='fastparquet' and imp_fq:
+            table = fq.ParquetFile(file_path + file_ext)
+            hdic = table.key_value_metadata
+        elif not imp_pyarrow and not imp_fq:
+            warnings.warn("You need pyarrow or fastparquet and json module to read parquet formats", UserWarning)
+        lcs = table.to_pandas()
+        lcs.set_index(['ID', 'epochs'], inplace=True)
+        lcs.attrs = {int(k): val
+                     for k, val in json.loads(hdic['attrs'.encode()]).items()}
+        name = hdic['name'.encode()].decode()
+        header = json.loads(hdic['header'.encode()])
     return name, header, lcs
 
 
