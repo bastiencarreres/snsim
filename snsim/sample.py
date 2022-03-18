@@ -85,7 +85,7 @@ class SimSample:
                    dir_path=dir_path)
 
     @classmethod
-    def fromFile(cls, sim_file, model_dir=None):
+    def fromFile(cls, sim_file, model_dir=None, engine='pyarrow'):
         """Initialize the class from a fits or pickle file.
 
         Parameters
@@ -96,6 +96,8 @@ class SimSample:
             The file to load.
         model_dir : str, opt
             The directory of the configuration files of the sim model.
+        engine : str
+            Engine to use to open the file pyarrow or fastparquet.
 
         Returns
         -------
@@ -103,7 +105,7 @@ class SimSample:
             A SimSample class with the simulated lcs.
 
         """
-        name, header, lcs = io_ut.read_sim_file(sim_file)
+        name, header, lcs = io_ut.read_sim_file(sim_file, engine=engine)
 
         return cls(name, lcs, header,
                    model_dir=model_dir, dir_path=os.path.dirname(sim_file) + '/')
