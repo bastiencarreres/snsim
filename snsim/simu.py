@@ -353,7 +353,7 @@ class Simulator:
                 lcs_list = self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
             else:
                 lcs_list = self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
-            
+
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
                                                       {**gen._get_header(),
@@ -419,10 +419,17 @@ class Simulator:
         # -- Generate n base param
         param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
 
+        # -- Set up obj parameters
+        model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
+        zobs, MinT, MaxT = ut.zobs_MinT_MaxT(param_tmp, model_t_range)
+
         # -- Select observations that pass all the cuts
-        epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),
-                                                       (generator.sim_model.mintime(),
-                                                        generator.sim_model.maxtime()),
+        epochs, parmask = self.survey.epochs_selection(param_tmp['ra'].to_numpy(),
+                                                       param_tmp['dec'].to_numpy(),
+                                                       param_tmp['sim_t0'].to_numpy(),
+                                                       zobs.to_numpy(),
+                                                       MinT.to_numpy(),
+                                                       MaxT.to_numpy(),
                                                        self.nep_cut)
         # -- Keep the parameters of selected lcs
         param_tmp = param_tmp[parmask]
@@ -466,11 +473,20 @@ class Simulator:
             # -- Generate n base param
             param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
 
+            # -- Set up obj parameters
+            model_t_range =  (generator.sim_model.mintime(), generator.sim_model.maxtime())
+
+            zobs, MinT, MaxT = ut.zobs_MinT_MaxT(param_tmp, model_t_range)
+
             # -- Select observations that pass all the cuts
-            epochs, parmask = self.survey.epochs_selection(param_tmp.to_records(index=False),
-                                                           (generator.sim_model.mintime(),
-                                                            generator.sim_model.maxtime()),
-                                                           self.nep_cut, IDmin=len(lcs))
+            epochs, parmask = self.survey.epochs_selection(param_tmp['ra'].to_numpy(),
+                                                           param_tmp['dec'].to_numpy(),
+                                                           param_tmp['sim_t0'].to_numpy(),
+                                                           zobs.to_numpy(),
+                                                           MinT.to_numpy(),
+                                                           MaxT.to_numpy(),
+                                                           self.nep_cut,
+                                                           IDmin=len(lcs))
             if epochs is None:
                 raise_trigger += 1
                 if raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
