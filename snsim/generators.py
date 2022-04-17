@@ -24,7 +24,6 @@ class BaseGen(abc.ABC):
         Basic generator configuration.
 
       | params
-      | ├── z_range, redshift range (min, max)
       | ├── General obj parameters
       | └── model_config
       |     └── General sncosmo model parameters
