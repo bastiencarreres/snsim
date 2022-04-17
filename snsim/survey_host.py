@@ -385,16 +385,25 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-    def epochs_selection(self, par, model_t_range, nep_cut, IDmin=0):
+    def epochs_selection(self, ra, dec, sim_t0, zobs, MinT, MaxT, nep_cut=None, IDmin=0):
         """Give the epochs of observations of a given SN.
 
         Parameters
         ----------
-        par : pd.DataFrame(float)
-            The basic AstrObj par ra, dec, t0, redshifts.
-        model_t_range: (float, float)
-            The limits of sncosmo model.
-        nep_cut: np.ndarray(int, float, float, str)
+        ra : numpy.ndarray(float) or float
+            Obj ra coord [rad].
+        dec : numpy.ndarray(float) or float
+            Obj dec coord [rad].
+        sim_t0 : numpy.ndarray(float) or float
+            Obj sncosmo model peak time.
+        MinT : numpy.ndarray(float) or float
+            Obj sncosmo model mintime.
+        MaxT : numpy.ndarray(float) or float
+            Obj sncosmo model maxtime.
+        nep_cut : list(list(int, float, float, str)), opt
+            The cut [nep, mintime, maxtime, band].
+        IDmin : int, opt
+            ID of the first object.
 
         Returns
         -------
@@ -402,17 +411,16 @@ class SurveyObs:
             pandas dataframe containing the observations.
 
         """
-        # -- Set up obj parameters
-        zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
-        MinT = par['sim_t0'] + model_t_range[0] * (1. + zobs)
-        MaxT = par['sim_t0'] + model_t_range[1] * (1. + zobs)
+        ra, dec, sim_t0, zobs = np.atleast_1d(ra), np.atleast_1d(dec), np.atleast_1d(sim_t0), np.atleast_1d(zobs)
+        MinT, MaxT = np.atleast_1d(MinT), np.atleast_1d(MaxT)
+
 
         # -- Get observed fields and subfield for all obj
-        fieldsID, obs_subfields = self.fields.is_in_field(par['ra'], par['dec'])
+        fieldsID, obs_subfields = self.fields.is_in_field(ra, dec)
 
         # -- Init epochs list to store observations
         epochs = []
-        parmask = np.zeros(len(par['ra']), dtype=np.bool)
+        parmask = np.zeros(len(ra), dtype=np.bool)
 
         ID = IDmin
         for i in range(len(obs_subfields)):
@@ -437,10 +445,10 @@ class SurveyObs:
                                                 obs_selec['fieldID'].to_numpy(),
                                                 obs_selec[self.config['sub_field']].to_numpy(),
                                                 dic_map)
-            if is_obs:
+            if is_obs & (nep_cut is not None):
                 # -- Check if the observation pass cuts
                 obs_selec = obs_selec[epochs_selec]
-                phase = (obs_selec['expMJD'] - par['sim_t0'][i]) / (1. + zobs[i])
+                phase = (obs_selec['expMJD'] - sim_t0[i]) / (1. + zobs[i])
                 for cut in nep_cut:
                     test = (phase > cut[1]) & (phase < cut[2])
                     if cut[3] != 'any':
@@ -448,6 +456,9 @@ class SurveyObs:
                     if test.sum() < int(cut[0]):
                         is_obs = False
                         break
+            elif is_obs:
+                obs_selec = obs_selec[epochs_selec]
+
             if is_obs:
                 # Save the epochs if observed
                 obs = obs_selec.copy()

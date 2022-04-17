@@ -302,6 +302,11 @@ def flux_to_Jansky(zp, band):
     norm = 10**(-0.4 * zp) * magsys.zpbandflux(b) / trans_int * 10**23 * 10**6
     return norm
 
+def zobs_MinT_MaxT(par, model_t_range):
+    zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
+    MinT = par['sim_t0'] + model_t_range[0] * (1. + zobs)
+    MaxT = par['sim_t0'] + model_t_range[1] * (1. + zobs)
+    return zobs, MinT, MaxT
 
 def print_dic(dic, prefix=''):
     indent = '    '
