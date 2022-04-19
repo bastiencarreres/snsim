@@ -787,11 +787,11 @@ class SurveyFields:
             x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
             y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
             ax.text(x_text, y_text, k, ha='center', va='center')
-        ax.set_xlabel('RA')
-        ax.set_ylabel('Dec')
+        ax.set_xlabel('RA [Deg]')
+        ax.set_ylabel('Dec [Deg]')
         ax.set_xlim(-self._size[0] / 2 - 0.5, self._size[0] / 2 + 0.5)
         ax.set_ylim(-self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
-
+        ax.set_aspect('equal')
         plt.show()
 
     def show_fields(self, Id=None, Idmax=None):
