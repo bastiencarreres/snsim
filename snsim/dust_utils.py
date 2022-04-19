@@ -9,7 +9,7 @@ import requests
 import tarfile
 
 
-def check_files_and_dowload():
+def check_files_and_download():
     """Check if sdfmap files are here and download if not.
 
     Returns
