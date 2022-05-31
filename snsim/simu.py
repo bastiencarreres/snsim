@@ -111,7 +111,7 @@ class Simulator:
 
         # Check if the sfdmap need to be download
         if 'mw_dust' in self.config:
-            dst_ut.check_files_and_dowload()
+            dst_ut.check_files_and_download()
 
         self._sample = None
         self._random_seed = None

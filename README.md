@@ -3,7 +3,7 @@
 ## Installation
 In the setup.py directory use:
 ```
->python -m pip setup .
+>python -m pip install .
 ```
 
 ## Documentation

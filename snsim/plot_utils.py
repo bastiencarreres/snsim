@@ -305,7 +305,7 @@ def plot_lc(
                 fit_par[snc_fit_model.param_names[i]] = snc_fit_model.parameters[i]
         if snc_fit_model.source.name[:-1] == 'salt':
             fit_par['mb'] = (snc_fit_model.source_peakmag('bessellb', 'ab'),
-                              np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0]))
+                             np.sqrt(salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0]))
 
         if 'mw_' in snc_sim_model.effect_names:
             model_name.append('mw_')

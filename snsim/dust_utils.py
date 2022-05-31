@@ -9,13 +9,17 @@ import requests
 import tarfile
 
 
-def check_files_and_dowload():
+def check_files_and_download():
     """Check if sdfmap files are here and download if not.
 
     Returns
     -------
     None
         No return, just download files.
+    
+    Notes
+    -----
+    TODO : Change that for environement variable or cleaner solution
 
     """
     files_in_dust_data = glob.glob(__snsim_dir_path__ + '/dust_data/*.fits')
