@@ -60,7 +60,7 @@ def scale_M0_jla(H0):
     Returns
     -------
     float
-        Scaled SN absolute magnitude.
+        Scaled SN Absolute Magnitude.
 
     """
     # mb = 5 * log10(c/H0_jla * Dl(z)) + 25 + MB_jla
