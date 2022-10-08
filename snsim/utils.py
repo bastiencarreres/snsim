@@ -44,8 +44,13 @@ def set_cosmo(cosmo_dic):
         else:
             raise ValueError(f'Available model are {astropy_mod}')
     else:
-        if 'Ode0' not in cosmo_dic.keys():
-            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0']
+        if 'Ode0' not in cosmo.keys():
+            if 'Ok0' in cosmo.keys():
+                Ok0 = cosmo['Ok0']
+                cosmo.pop('Ok0')
+            else:
+                Ok0 = 0.
+            cosmo['Ode0'] = 1 - cosmo['Om0'] - Ok0    
         return acosmo.w0waCDM(**cosmo_dic)
 
 
