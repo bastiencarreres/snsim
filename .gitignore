@@ -8,3 +8,20 @@ sim/*
 *.yml
 *.yaml
 *.db
+Files/ZTF_CCD.dat
+Filters/ZTF/ztfr_eff.txt
+Filters/ZTF/ztfi_eff.txt
+Filters/ZTF/ztfg_eff.txt
+Files/CCD_test.dat
+Files/CCD.dat
+Files/DEMUNNii_full_box062_v2.csv
+Files/tfit.parquet
+Files/Untitled.ipynb
+Files/year1_public_plan_reformat.csv
+Files/.ipynb_checkpoints/Untitled-checkpoint.ipynb
+Filters/ZTF/boom 2.jpg
+Filters/ZTF/plan_sim_paper.csv
+Examples/.ipynb_checkpoints/GenSNIaParameters-checkpoint.ipynb
+Notebook_examples/.ipynb_checkpoints/SNSim_one_snia_simulation-checkpoint.ipynb
+docs/make.bat
+docs/Makefile

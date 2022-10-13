@@ -99,7 +99,6 @@ def read_sim_file(file_path, engine='pyarrow'):
 
     """
     file_path, file_ext = os.path.splitext(file_path)
-
     if file_ext == '.pkl':
         with open(file_path + file_ext, 'rb') as f:
             pkl_dic = pickle.load(f)
@@ -115,17 +114,22 @@ def read_sim_file(file_path, engine='pyarrow'):
         if engine=='pyarrow' and imp_pyarrow:
             table = pq.read_table(file_path + file_ext)
             hdic = table.schema.metadata
+            name = hdic['name'.encode()].decode()
+            attrs_key = 'attrs'.encode()
+            header_key = 'header'.encode()
         elif engine=='fastparquet' and imp_fq:
             table = fq.ParquetFile(file_path + file_ext)
             hdic = table.key_value_metadata
+            name = hdic['name']
+            attrs_key = 'attrs'
+            header_key = 'header'
         elif not imp_pyarrow and not imp_fq:
             warnings.warn("You need pyarrow or fastparquet and json module to read parquet formats", UserWarning)
         lcs = table.to_pandas()
         lcs.set_index(['ID', 'epochs'], inplace=True)
         lcs.attrs = {int(k): val
-                     for k, val in json.loads(hdic['attrs'.encode()]).items()}
-        name = hdic['name'.encode()].decode()
-        header = json.loads(hdic['header'.encode()])
+                     for k, val in json.loads(hdic[attrs_key]).items()}
+        header = json.loads(hdic[header_key])
     return name, header, lcs
 
 
