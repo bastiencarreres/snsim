@@ -6,6 +6,7 @@ numba
 sfdmap
 matplotlib
 pandas
+furo
 myst-parser>=0.15
 sphinx==4.2.0
 sphinx-markdown-tables==0.0.15
