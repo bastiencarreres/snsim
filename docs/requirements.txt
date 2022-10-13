@@ -7,6 +7,7 @@ sfdmap
 matplotlib
 pandas
 furo
+markdown<3.4.0
 myst-parser>=0.15
 sphinx==4.2.0
 sphinx-markdown-tables==0.0.15
