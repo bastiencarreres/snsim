@@ -8,7 +8,6 @@ matplotlib
 pandas
 
 markdown<3.4.0
-myst-parser>=0.15
 sphinx==5.2.3
 sphinx-markdown-tables==0.0.15
 markdown<3.4.0
