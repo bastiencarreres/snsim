@@ -24,7 +24,7 @@ help(sim.sn_sample)
 ```
 The basic list of ligth-curves metadata is given in the following table :
 
-|       zobs        |  sim_t0  |    vpec (km/s)    |         zcos          |            zpec            |                       z2cmb                       |        zCMB        |      ra (rad)      |   dec (rad)    |          sn id           |           sim_mu           |          m_sct           |
+|       zobs        |  sim_t0  |    vpec (km/s)    |         zcos          |            zpec            |                       z2cmb                       |        zCMB        |      ra (rad)      |   dec (rad)    |          sn id           |           sim_mu           |          mag_sct           |
 | :---------------: | :------: | :---------------: | :-------------------: | :------------------------: | :-----------------------------------------------: | :----------------: | :----------------: | :------------: | :----------------------: | :------------------------: | :----------------------: |
 | Observed redshift | Peaktime | Peculiar velocity | Cosmological redshift | Peculiar velocity redshift | Contribution from our peculiar motion to redshift | CMB frame redshift | SN right ascension | SN declinaison | SN identification number | Simulated distance modulli | Coherent scattering term |
 
