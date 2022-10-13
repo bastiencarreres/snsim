@@ -10,14 +10,14 @@ Welcome to snsim's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   installation.md
+   installation.rst
    basicusage.rst
-   configfile.md
-   obsfile.md
-   hostfile.md
-   snsample.md
-   simmath.md
-   plots.md
+   configfile.rst
+   obsfile.rst
+   hostfile.rst
+   snsample.rst
+   simmath.rst
+   plots.rst
 
 .. toctree::
    :hidden:
