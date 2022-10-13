@@ -82,7 +82,7 @@ detection probability:
 
 where :math:`SNR_\text{mean}` is the SNR for which
 :math:`P_\text{det} = 0.5` and n is given by a probability of detection
-**p** for a given **:math:`SNR_p`** :
+**p** for a given :math:`\mathbf{SNR_p}` :
 
 .. math::
 

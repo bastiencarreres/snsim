@@ -39,11 +39,11 @@ In the simulation **:math:`\mu`** is computed as:
 
 with :
 
--  **:math:`z_{cos}`** the cosmological redshift
--  **:math:`z_{vp}`** the redshift due to the peculiar velocity of the
+-  :math:`\mathbf{z_{cos}}` the cosmological redshift
+-  :math:`\mathbf{z_{vp}}` the redshift due to the peculiar velocity of the
    SN / CMB
--  **:math:`z_{2cmb}`** the redshift due to our peculiar motion / CMB
--  **:math:`r(z)`** the comoving distance
+-  :math:`\mathbf{z_{2cmb}}` the redshift due to our peculiar motion / CMB
+-  :math:`\mathbf{r(z)}` the comoving distance
 
 Noise formula
 -------------
