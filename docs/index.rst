@@ -11,7 +11,7 @@ Welcome to snsim's documentation!
    :caption: Contents:
 
    installation.md
-   basicusage.md
+   basicusage.rst
    configfile.md
    obsfile.md
    hostfile.md
