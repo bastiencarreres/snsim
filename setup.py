@@ -24,7 +24,7 @@ setup(
         "pandas >= 1.2.0",
         "sncosmo >= 2.5.0",
         "numpy >= 1.13.3",
-        "astropy >= 1.0.0",
+        "astropy >= 5.1.0",
         "shapely >= 1.8.0",
         "numba",
         "pyyaml",

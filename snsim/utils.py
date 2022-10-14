@@ -23,7 +23,7 @@ def set_cosmo(cosmo_dic):
         An astropy cosmological model.
 
     """
-    astropy_mod = list(map(lambda x: x.lower(), acosmo.parameters.available))
+    astropy_mod = list(map(lambda x: x.lower(), acosmo.available))
     if 'name' in cosmo_dic.keys():
         name = cosmo_dic['name'].lower()
         if name in astropy_mod:

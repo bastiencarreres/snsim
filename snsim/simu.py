@@ -474,7 +474,7 @@ class Simulator:
             param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
 
             # -- Set up obj parameters
-            model_t_range =  (generator.sim_model.mintime(), generator.sim_model.maxtime())
+            model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
 
             zobs, MinT, MaxT = ut.zobs_MinT_MaxT(param_tmp, model_t_range)
 

@@ -187,14 +187,13 @@ class BaseGen(abc.ABC):
         """
         pass
 
-    def _init_registered_rate(self, rate):
-        """Method to add information in header,
-        called in _get_header
+    def _init_registered_rate(self):
+        """Method to give a rate to object.
 
-        Parameters
-        ----------
-        rate: str
-            An str that correspond to a registered rate.
+        Return
+        ------
+        (float, float)
+            Rate and rate_pw.
         """
         pass
 
@@ -205,15 +204,14 @@ class BaseGen(abc.ABC):
     def _init_rate(self):
         """Initialise rate in obj/Mpc^-3/year"""
         if 'rate' in self._params:
-            rate = self._params['rate']
-            if isinstance(rate, str):
+            if isinstance(self._params['rate'], str):
                 # Check registered rate
-                if rate.lower() in self._available_rates:
-                    return self._init_registered_rate(rate)
+                if self._params['rate'].lower() in self._available_rates:
+                    return self._init_registered_rate()
 
                 # Check for the yaml bad conversion of '1e-5'
                 else:
-                    rate = float(rate)
+                    rate = float(self._params['rate'])
         else:
             # Default rate
             rate = 3e-5
