@@ -90,7 +90,7 @@ class SurveyObs:
                 "Last day in survey_file : "
                 f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}\n\n"
                 f"Survey effective duration is {self.duration:.2f} days\n\n"
-                f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f}"
+                f"Survey effective area is {self.fields._tot_area * (180 / np.pi)**2:.2f} "
                 "squared degrees "
                 f"({self.fields._tot_area / (4 * np.pi) * 100:.1f} % of the sky)\n\n")
 
