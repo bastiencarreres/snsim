@@ -44,23 +44,23 @@ def set_cosmo(cosmo_dic):
         else:
             raise ValueError(f'Available model are {astropy_mod}')
     else:
-        if 'Ode0' not in cosmo.keys():
-            if 'Ok0' in cosmo.keys():
-                Ok0 = cosmo['Ok0']
-                cosmo.pop('Ok0')
+        if 'Ode0' not in cosmo_dic.keys():
+            if 'Ok0' in cosmo_dic.keys():
+                Ok0 = cosmo_dic['Ok0']
+                cosmo_dic.pop('Ok0')
             else:
                 Ok0 = 0.
-            cosmo['Ode0'] = 1 - cosmo['Om0'] - Ok0    
+            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0    
         return acosmo.w0waCDM(**cosmo_dic)
 
 
-def scale_M0_jla(H0):
+def scale_M0_jla(h):
     """Compute a value of M0 corresponding to JLA results.
 
     Parameters
     ----------
-    H0 : float
-        The H0 constant to scale M0.
+    h : float
+        The H0 / 100 constant to scale M0.
 
     Returns
     -------
@@ -74,11 +74,11 @@ def scale_M0_jla(H0):
     # MB_True = MB_jla - 5 * log10(1 + dH0)
 
     # Scale the H0 value of JLA to the H0 value of sim
-    H0_jla = 70  # km/s/Mpc
+    h_jla = 0.7  # H0 = 70 Mpc / km / s
     M0_jla = -19.05
-    dH0 = (H0_jla - H0) / H0
+    dh = (h_jla - h) / h
 
-    return M0_jla - 5 * np.log10(1 + dH0)
+    return M0_jla - 5 * np.log10(1 + dh)
 
 
 def init_astropy_time(date):

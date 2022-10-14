@@ -60,7 +60,7 @@ class Simulator:
     |     rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
     |     rate_pw: rate = rate*(1+z)^rate_pw  # Optional, default=0
     |     M0: SN ABSOLUT MAGNITUDE
-    |     mag_sct: SN INTRINSIC COHERENT SCATTERING
+    |     sigM: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
     |     model_config:
     |         model_name: 'THE MODEL NAME'  Example : 'salt2'
@@ -153,10 +153,10 @@ class Simulator:
         # -- Init generators for each transients
         self._use_rate = []
         self._generators = []
-        for object_name in __GEN_DIC__:
+        for object_name, object_genclass in __GEN_DIC__.items():
             if object_name in self.config:
                 # -- Get which generator correspond to which transient in snsim.generators
-                gen_class = getattr(generators, __GEN_DIC__[object_name])
+                gen_class = getattr(generators,object_genclass)
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,

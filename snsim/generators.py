@@ -53,6 +53,11 @@ class BaseGen(abc.ABC):
       | └── B  B parameter of the A + B * cos(theta) dipole
     """
 
+    # General attributes
+    _object_type = ''
+    _available_models = []  # Flux models
+    _available_rates = []   # Rate models
+
     def __init__(self, params, cmb, cosmology, vpec_dist=None,
                  host=None, mw_dust=None, dipole=None, survey_footprint=None):
 
@@ -81,6 +86,9 @@ class BaseGen(abc.ABC):
         self._time_range = None
         self._z_cdf = None
         self._z_time_rate = None
+
+        # -- Get the astrobj class
+        self._astrobj_class = getattr(astr, self._object_type)
 
     def __call__(self, n_obj, rand_seed, astrobj_par=None):
         """Launch the simulation of obj.
@@ -130,7 +138,7 @@ class BaseGen(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _update_general_par(self, astrobj_par, rand_gen):
+    def _update_general_par(self):
         """Abstract method to add parameters to _general_par,
         called in _init_general_par"""
         pass
@@ -149,12 +157,14 @@ class BaseGen(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def gen_snc_par(self, astrobj_par, rand_gen):
+    def gen_snc_par(self, n_obj, astrobj_par, rand_gen):
         """Abstract method to add random generated parameters
         specific to the sncosmo model used, called in __call__
 
         Parameters
         ----------
+        n_obj: int
+            Number of parameters to generate.
         astrobj_par: dict(key: np.ndarray())
             Contains basic random generated properties.
         rand_gen: numpy.random.default_rng
@@ -177,6 +187,17 @@ class BaseGen(abc.ABC):
         """
         pass
 
+    def _init_registered_rate(self, rate):
+        """Method to add information in header,
+        called in _get_header
+
+        Parameters
+        ----------
+        rate: str
+            An str that correspond to a registered rate.
+        """
+        pass
+
     def _add_print(self):
         """Method to print something in print_config."""
         pass
@@ -186,16 +207,21 @@ class BaseGen(abc.ABC):
         if 'rate' in self._params:
             rate = self._params['rate']
             if isinstance(rate, str):
-                try:
+                # Check registered rate
+                if rate.lower() in self._available_rates:
+                    return self._init_registered_rate(rate)
+
+                # Check for the yaml bad conversion of '1e-5'
+                else:
                     rate = float(rate)
-                except ValueError:
-                    rate = None
         else:
+            # Default rate
             rate = 3e-5
 
         if 'rate_pw' in self._params:
             rate_pw = self._params['rate_pw']
         else:
+            # Default rate powerlaw
             rate_pw = 0
         return rate, rate_pw
 
@@ -573,7 +599,7 @@ class SNIaGen(BaseGen):
 
       | params
       | ├── M0, SNIa absolute magnitude
-      | ├── mag_sct, SNIa coherent scattering
+      | ├── sigM, SNIa coherent scattering
       | └── sct_model, opt, SNIa wavelenght dependant scattering
     cmb : dict
         The CMB dipole configuration.
@@ -601,21 +627,18 @@ class SNIaGen(BaseGen):
       | └── B  B parameter of the A + B * cos(theta) dipole
     """
     _object_type = 'SNIa'
-    _astrobj_class = getattr(astr, 'SNIa')
     _available_models = ['salt2', 'salt3']
+    _available_rates = ['ptf19', 'ztf20']
 
-    def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 mw_dust=None, host=None, dipole=None, survey_footprint=None):
-        super().__init__(params, cmb, cosmology, vpec_dist,
-                         host=host, mw_dust=mw_dust, dipole=dipole,
-                         survey_footprint=survey_footprint)
-        if self.rate_law[0] is None:
-            self.rate_law = self._init_register_rate()
-
-    def _init_register_rate(self):
-        """SNIa rate registry."""
+    def _init_registered_rate(self):
+        """SNIa rates registry."""
         if self._params['rate'].lower() == 'ptf19':
-            rate = 2.43e-5 * (70 / self.cosmology.H0.value)**3
+            # Rate from https://arxiv.org/abs/1903.08580
+            rate = 2.43e-5 * (0.70 / self.cosmology.h)**3
+            return (rate, 0)
+        elif self._params['rate'].lower() == 'ztf':
+            # Rate from https://arxiv.org/abs/2009.01242
+            rate = 2.35e-5 * (0.70 / self.cosmology.h)**3
             return (rate, 0)
 
     def _init_M0(self):
@@ -624,7 +647,7 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
-            return ut.scale_M0_jla(self.cosmology.H0.value)
+            return ut.scale_M0_jla(self.cosmology.h)
 
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
@@ -663,15 +686,15 @@ class SNIaGen(BaseGen):
             model_keys = ['alpha', 'beta']
 
         self._general_par['M0'] = self._init_M0()
-        self._general_par['sigM'] = self._params['mag_sct']
+        self._general_par['sigM'] = self._params['sigM']
 
         for k in model_keys:
             self._general_par[k] = self._params['model_config'][k]
         return
 
-    def _update_astrobj_par(self, n_sn, astrobj_par, rand_gen):
+    def _update_astrobj_par(self, n_obj, astrobj_par, rand_gen):
         # -- Generate coherent mag scattering
-        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_sn, rand_gen)
+        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, rand_gen)
 
     def _add_print(self):
         if 'sct_model' in self._params:
@@ -733,15 +756,15 @@ class SNIaGen(BaseGen):
             numpy array containing scattering terms generated.
 
         """
-        mag_sct = rand_gen.normal(loc=0, scale=self._params['mag_sct'], size=n_sn)
+        mag_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
         return mag_sct
 
-    def gen_snc_par(self, n_sn, astrobj_par, rand_gen):
+    def gen_snc_par(self, n_obj, astrobj_par, rand_gen):
         """Generate sncosmo model dependant parameters (others than redshift and t0).
 
         Parameters
         ----------
-        n_sn : int
+        n_obj : int
             Number of parameters to generate.
         rand_gen : numpy.random.default_rng
             Numpy random generator.
@@ -761,17 +784,17 @@ class SNIaGen(BaseGen):
             else:
                 z_for_dist = None
 
-            sim_x1, sim_c = self.gen_salt_par(n_sn, np.random.default_rng(model_seed),
+            sim_x1, sim_c = self.gen_salt_par(n_obj, np.random.default_rng(model_seed),
                                               z=z_for_dist)
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         if 'G10_' in self.sim_model.effect_names:
-            seeds = rand_gen.integers(low=1000, high=100000, size=n_sn)
+            seeds = rand_gen.integers(low=1000, high=100000, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['G10_RndS'] = s
 
         elif 'C11_' in self.sim_model.effect_names:
-            seeds = rand_gen.integers(low=1000, high=100000, size=n_sn)
+            seeds = rand_gen.integers(low=1000, high=100000, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['C11_RndS'] = s
 
