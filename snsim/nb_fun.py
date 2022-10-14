@@ -90,6 +90,7 @@ def R_base(a, t, vec, to_field_frame=True):
     else:
         return R @ vec
 
+
 @njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
@@ -213,12 +214,12 @@ def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
         Is there an observation and the selection of observations.
 
     """
-    any = False
+    is_any = False
     epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
-                                             obs_fieldID], type=types.i8))
+                                             obs_fieldID], dtype=types.i8))
     if True in epochs_selec:
-        any = True
-    return any, epochs_selec
+        is_any = True
+    return is_any, epochs_selec
 
 
 @njit(cache=True)
@@ -346,5 +347,5 @@ def isin(a, b):
     set_b = set(b)
     for i in prange(n):
         if a[i] in set_b:
-            bool_array[i]=True
+            bool_array[i] = True
     return bool_array

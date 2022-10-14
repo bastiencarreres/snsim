@@ -50,7 +50,7 @@ def set_cosmo(cosmo_dic):
                 cosmo_dic.pop('Ok0')
             else:
                 Ok0 = 0.
-            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0    
+            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0  
         return acosmo.w0waCDM(**cosmo_dic)
 
 
