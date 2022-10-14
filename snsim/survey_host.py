@@ -777,9 +777,10 @@ class SurveyFields:
                                        subfield_corner)
         return fieldsID, obs_subfield
 
-    def show_map(self):
+    def show_map(self, ax=None):
         """Plot a representation of subfields."""
-        fig, ax = plt.subplots()
+        if ax is None:
+            fig, ax = plt.subplots()
         for k, corners in self._sub_fields_corners.items():
             corners_deg = np.degrees(corners)
             p = Polygon(corners_deg, color='r', fill=False)
@@ -787,12 +788,13 @@ class SurveyFields:
             x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
             y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
             ax.text(x_text, y_text, k, ha='center', va='center')
-        ax.set_xlabel('RA [Deg]')
-        ax.set_ylabel('Dec [Deg]')
+        ax.set_xlabel('RA [deg]')
+        ax.set_ylabel('Dec [deg]')
         ax.set_xlim(-self._size[0] / 2 - 0.5, self._size[0] / 2 + 0.5)
         ax.set_ylim(-self._size[1] / 2 - 0.5, self._size[1] / 2 + 0.5)
         ax.set_aspect('equal')
-        plt.show()
+        if ax is None:
+            plt.show()
 
     def show_fields(self, Id=None, Idmax=None):
         """Plot fields."""
