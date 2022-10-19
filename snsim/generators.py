@@ -242,34 +242,36 @@ class BaseGen(abc.ABC):
                 self.mw_dust['rv'] = 3.1
                 dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
 
-    def gen_peak_time(self, n, rand_gen):
+    def gen_peak_time(self, n, seed):
         """Generate uniformly n peak time in the survey time range.
 
         Parameters
         ----------
         n : int
             Number of time to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
-
+        seed : int
+            Random seed.
+            
         Returns
         -------
         numpy.ndarray(float)
             A numpy array which contains generated peak time.
 
         """
+        rand_gen = np.random.default_rng(seed)
+
         t0 = rand_gen.uniform(*self.time_range, size=n)
         return t0
 
-    def gen_coord(self, n, rand_gen):
+    def gen_coord(self, n, seed):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
         ----------
         n : int
             Number of coord to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : int
+            Random seed.
 
         Returns
         -------
@@ -277,6 +279,8 @@ class BaseGen(abc.ABC):
             2 numpy arrays containing generated coordinates.
 
         """
+        rand_gen = np.random.default_rng(seed)
+
         if self._footprint is None:
             ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
             dec_uni = rand_gen.random(size=n)
@@ -298,34 +302,36 @@ class BaseGen(abc.ABC):
             dec = np.array(dec)
         return ra, dec
 
-    def gen_zcos(self, n, rand_gen):
+    def gen_zcos(self, n, seed):
         """Generate n cosmological redshift in a range.
 
         Parameters
         ----------
         n : int
             Number of redshift to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : int 
+            Random seed.
 
         Returns
         -------
         numpy.ndarray(float)
             A numpy array which contains generated cosmological redshift.
         """
+        rand_gen = np.random.default_rng(seed)
+
         uni_var = rand_gen.random(size=n)
         zcos = np.interp(uni_var, self.z_cdf[1], self.z_cdf[0])
         return zcos
 
-    def gen_vpec(self, n, rand_gen):
+    def gen_vpec(self, n, seed):
         """Generate n peculiar velocities.
 
         Parameters
         ----------
         n : int
             Number of vpec to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : int 
+            Random seed.
 
         Returns
         -------
@@ -333,6 +339,8 @@ class BaseGen(abc.ABC):
             numpy array containing vpec (km/s) generated.
 
         """
+        rand_gen = np.random.default_rng(seed)
+
         vpec = rand_gen.normal(
             loc=self.vpec_dist['mean_vpec'],
             scale=self.vpec_dist['sig_vpec'],
@@ -362,32 +370,30 @@ class BaseGen(abc.ABC):
             * mw_ebv, opt : Milky way dust extinction
             * dip_dM, opt : Dipole magnitude modification
         """
-        rand_gen = np.random.default_rng(seed)
+        # -- Generate seeds for random calls
+        seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=4)
 
         # -- Generate peak time
-        t0 = self.gen_peak_time(n_obj, rand_gen)
+        t0 = self.gen_peak_time(n_obj, seeds[0])
 
         # -- Generate cosmological redshifts
         if self.host is None:
-            zcos = self.gen_zcos(n_obj, rand_gen)
+            zcos = self.gen_zcos(n_obj, seeds[1])
         else:
             hseed = rand_gen.integers(1000, 1e6)
-            host = self.host.random_choice(n_obj, hseed, z_cdf=self.z_cdf)
+            host = self.host.random_choice(n_obj, seeds[1], z_cdf=self.z_cdf)
             zcos = host['redshift'].values
-
-        # -- Generate 2 randseeds for optionnal parameters randomization
-        opt_seeds = rand_gen.integers(1000, 1e6, size=2)
 
         # -- Generate ra, dec
         if self.host is not None:
             ra = host['ra'].values
             dec = host['dec'].values
         else:
-            ra, dec = self.gen_coord(n_obj, np.random.default_rng(opt_seeds[0]))
+            ra, dec = self.gen_coord(n_obj, np.random.default_rng(seeds[2]))
 
         # -- Generate vpec
         if self.vpec_dist is not None:
-            vpec = self.gen_vpec(n_obj, np.random.default_rng(opt_seeds[1]))
+            vpec = self.gen_vpec(n_obj, np.random.default_rng(seeds[3]))
         elif self.host is not None:
             vpec = host['v_radial'].values
         else:
