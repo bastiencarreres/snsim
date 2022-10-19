@@ -50,7 +50,7 @@ def set_cosmo(cosmo_dic):
                 cosmo_dic.pop('Ok0')
             else:
                 Ok0 = 0.
-            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0  
+            cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0
         return acosmo.w0waCDM(**cosmo_dic)
 
 
@@ -123,7 +123,7 @@ def compute_z_cdf(z_shell, shell_time_rate):
     return [z_shell, dist / norm]
 
 
-def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None, size=1):
+def asym_gauss(mean, sig_low, sig_high=None, seed=None, size=1):
     """Generate random parameters using an asymetric Gaussian distribution.
 
     Parameters
@@ -134,8 +134,8 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None, size=1):
         The low sigma.
     sig_high : float
         The high sigma.
-    rand_gen : numpy.random.default_rng, optional
-        Numpy random generator.
+    seed : int, optional
+        Random seed.
     size: int
         Number of numbers to generate
 
@@ -145,14 +145,12 @@ def asym_gauss(mean, sig_low, sig_high=None, rand_gen=None, size=1):
         Random(s) variable(s).
 
     """
+    rand_gen = np.random.default_rng(seed)
+
     if sig_high is None:
-        sig_high = sig_low
-    if rand_gen is None:
-        low_or_high = np.random.random(size=size)
-        nbr = abs(np.random.normal(size=size))
-    else:
-        low_or_high = rand_gen.random(size)
-        nbr = abs(rand_gen.normal(size=size))
+        sig_high = sig_low  
+    low_or_high = rand_gen.random(size)
+    nbr = np.abs(rand_gen.normal(size=size))
     cond = low_or_high < sig_low / (sig_high + sig_low)
     nbr *= -sig_low * cond + sig_high * ~cond
     return mean + nbr

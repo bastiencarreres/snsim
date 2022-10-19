@@ -111,13 +111,13 @@ class BaseGen(abc.ABC):
         seeds = np.random.default_rng(rand_seed).integers(1e3, 1e6, size=4)
 
         if astrobj_par is None:
-            astrobj_par = self.gen_astrobj_par(n_obj, seeds[0])
+            astrobj_par = self.gen_astrobj_par(n_obj, seed=seeds[0])
 
         # -- Add astrobj par sepecific to the obj generated
-        self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(seeds[1]))
+        self._update_astrobj_par(n_obj, astrobj_par, seed=seeds[1])
 
         # -- Add sncosmo par specific to the generated obj
-        snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(seeds[2]))
+        snc_par = self.gen_snc_par(n_obj, astrobj_par, seed=seeds[2])
 
         # -- Check if there is dust
         if 'mw_' in self.sim_model.effect_names:
@@ -143,20 +143,22 @@ class BaseGen(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _update_astrobj_par(self, n_obj, astrobj_par, rand_gen):
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
         """Abstract method to add random generated parameters
         specific to the astro object used, called in __call__
 
         Parameters
         ----------
-        astrobj_par: dict(key: np.ndarray())
+        astrobj_par : dict(key: np.ndarray())
             Contains basic random generated properties.
-        rand_gen: numpy.random.default_rng
+        seed : int, optional
+            Random seed.
         """
+        rand_gen = np.random.default_rng(seed)
         pass
 
     @abc.abstractmethod
-    def gen_snc_par(self, n_obj, astrobj_par, rand_gen):
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
         """Abstract method to add random generated parameters
         specific to the sncosmo model used, called in __call__
 
@@ -166,13 +168,15 @@ class BaseGen(abc.ABC):
             Number of parameters to generate.
         astrobj_par: dict(key: np.ndarray())
             Contains basic random generated properties.
-        rand_gen: numpy.random.default_rng
+        seed : int, optional
+            Random seed.
 
         Return
         ------
         dict
             A dictionnary of the sncosmo parameters (not t0 or z).
         """
+        rand_gen = np.random.default_rng(seed)
         pass
 
     def _update_header(self, header):
@@ -242,7 +246,7 @@ class BaseGen(abc.ABC):
                 self.mw_dust['rv'] = 3.1
                 dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
 
-    def gen_peak_time(self, n, seed):
+    def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
 
         Parameters
@@ -263,7 +267,7 @@ class BaseGen(abc.ABC):
         t0 = rand_gen.uniform(*self.time_range, size=n)
         return t0
 
-    def gen_coord(self, n, seed):
+    def gen_coord(self, n, seed=None):
         """Generate n coords (ra,dec) uniformly on the sky sphere.
 
         Parameters
@@ -286,8 +290,8 @@ class BaseGen(abc.ABC):
             dec_uni = rand_gen.random(size=n)
             dec = np.arcsin(2 * dec_uni - 1)
         else:
-            seed = rand_gen.integers(1000, 1e6)
-            gen_tmp = np.random.default_rng(seed)
+            # -- Init a random generator to generate multiple time
+            gen_tmp = np.random.default_rng(rand_gen.integers(1e3, 1e6))
             ra, dec = [], []
 
             # -- Generate coord and accept if there are in footprint
@@ -302,7 +306,7 @@ class BaseGen(abc.ABC):
             dec = np.array(dec)
         return ra, dec
 
-    def gen_zcos(self, n, seed):
+    def gen_zcos(self, n, seed=None):
         """Generate n cosmological redshift in a range.
 
         Parameters
@@ -323,7 +327,7 @@ class BaseGen(abc.ABC):
         zcos = np.interp(uni_var, self.z_cdf[1], self.z_cdf[0])
         return zcos
 
-    def gen_vpec(self, n, seed):
+    def gen_vpec(self, n, seed=None):
         """Generate n peculiar velocities.
 
         Parameters
@@ -347,15 +351,15 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def gen_astrobj_par(self, n_obj, seed):
+    def gen_astrobj_par(self, n_obj, seed=None):
         """Generate basic obj properties.
 
         Parameters
         ----------
         n_obj: int
             Number of obj.
-        rand_gen: numpy.random.default_rng
-            Numpy random generator.
+        seed: int
+            Random seed.
 
         Notes
         -----
@@ -374,14 +378,14 @@ class BaseGen(abc.ABC):
         seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=4)
 
         # -- Generate peak time
-        t0 = self.gen_peak_time(n_obj, seeds[0])
+        t0 = self.gen_peak_time(n_obj, seed=seeds[0])
 
         # -- Generate cosmological redshifts
         if self.host is None:
-            zcos = self.gen_zcos(n_obj, seeds[1])
+            zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            hseed = rand_gen.integers(1000, 1e6)
-            host = self.host.random_choice(n_obj, seeds[1], z_cdf=self.z_cdf)
+            hseed = rand_gen.integers(1e3, 1e6)
+            host = self.host.random_choice(n_obj, seed=seeds[1], z_cdf=self.z_cdf)
             zcos = host['redshift'].values
 
         # -- Generate ra, dec
@@ -389,11 +393,11 @@ class BaseGen(abc.ABC):
             ra = host['ra'].values
             dec = host['dec'].values
         else:
-            ra, dec = self.gen_coord(n_obj, np.random.default_rng(seeds[2]))
+            ra, dec = self.gen_coord(n_obj, seed=seeds[2])
 
         # -- Generate vpec
         if self.vpec_dist is not None:
-            vpec = self.gen_vpec(n_obj, np.random.default_rng(seeds[3]))
+            vpec = self.gen_vpec(n_obj, seed=seeds[3])
         elif self.host is not None:
             vpec = host['v_radial'].values
         else:
@@ -695,9 +699,9 @@ class SNIaGen(BaseGen):
             self._general_par[k] = self._params['model_config'][k]
         return
 
-    def _update_astrobj_par(self, n_obj, astrobj_par, rand_gen):
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
         # -- Generate coherent mag scattering
-        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, rand_gen)
+        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
 
     def _add_print(self):
         if 'sct_model' in self._params:
@@ -743,15 +747,15 @@ class SNIaGen(BaseGen):
                     pos = np.where(np.array(self.sim_model.param_names) == par)[0]
                     header[par] = self.sim_model.parameters[pos][0]
 
-    def gen_coh_scatter(self, n_sn, rand_gen):
+    def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
 
         Parameters
         ----------
         n : int
             Number of mag scattering terms to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : int, optional
+            Random seed.
 
         Returns
         -------
@@ -759,18 +763,21 @@ class SNIaGen(BaseGen):
             numpy array containing scattering terms generated.
 
         """
+        rand_gen = np.random.default_rng(seed)
+
         mag_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
         return mag_sct
 
-    def gen_snc_par(self, n_obj, astrobj_par, rand_gen):
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
         """Generate sncosmo model dependant parameters (others than redshift and t0).
 
         Parameters
         ----------
         n_obj : int
             Number of parameters to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : int, optional
+            Random seed
+            .
 
         Returns
         -------
@@ -778,40 +785,42 @@ class SNIaGen(BaseGen):
             One dictionnary containing 'parameters names': numpy.ndarray(float).
 
         """
+        rand_gen = np.random.default_rng(seed)
 
+        # -- Spectra model parameters
         model_name = self._params['model_config']['model_name']
-        model_seed = rand_gen.integers(1000, 1e6)
+
         if model_name in ('salt2', 'salt3'):
             if self._params['model_config']['dist_x1'] in ['N21']:
                 z_for_dist = astrobj_par['zcos']
             else:
                 z_for_dist = None
-
-            sim_x1, sim_c = self.gen_salt_par(n_obj, np.random.default_rng(model_seed),
+            sim_x1, sim_c = self.gen_salt_par(n_obj, rand_gen.integers(1000, 1e6),
                                               z=z_for_dist)
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
+        # -- Non-coherent scattering effects
         if 'G10_' in self.sim_model.effect_names:
-            seeds = rand_gen.integers(low=1000, high=100000, size=n_obj)
+            seeds = rand_gen.integers(low=1e3, high=1e6, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['G10_RndS'] = s
 
         elif 'C11_' in self.sim_model.effect_names:
-            seeds = rand_gen.integers(low=1000, high=100000, size=n_obj)
+            seeds = rand_gen.integers(low=1e3, high=1e6, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['C11_RndS'] = s
 
         return snc_par
 
-    def gen_salt_par(self, n_sn, rand_gen, z=None):
+    def gen_salt_par(self, n_sn, seed=None, z=None):
         """Generate n SALT parameters.
 
         Parameters
         ----------
         n : int
             Number of parameters to generate.
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : int
+            Random seed.
 
         Returns
         -------
@@ -819,18 +828,17 @@ class SNIaGen(BaseGen):
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        salt2_seeds = rand_gen.integers(1000, 1e6, size=2)
-        x1_gen = np.random.default_rng(salt2_seeds[0])
-        c_gen = np.random.default_rng(salt2_seeds[1])
+        seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=2)
+
         if isinstance(self._params['model_config']['dist_x1'], str):
             if self._params['model_config']['dist_x1'].lower() == 'n21':
-                sim_x1 = salt_ut.n21_x1_model(z, rand_gen=x1_gen)
+                sim_x1 = salt_ut.n21_x1_model(z, seed=seeds[0])
         else:
             sim_x1 = ut.asym_gauss(*self._params['model_config']['dist_x1'],
-                                   rand_gen=x1_gen,
+                                   seed=seeds[0],
                                    size=n_sn)
 
         sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
-                              rand_gen=c_gen,
+                              seed=seeds[1],
                               size=n_sn)
         return sim_x1, sim_c

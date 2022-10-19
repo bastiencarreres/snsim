@@ -935,15 +935,15 @@ class SnHost:
         p_inv /= np.sum(p_inv)
         return p_inv
 
-    def random_choice(self, n, rand_seed, z_cdf=None):
+    def random_choice(self, n, seed=None, z_cdf=None):
         """Randomly select hosts.
 
         Parameters
         ----------
         n : int
             Number of hosts to select.
-        rand_gen : numpy.random.generator
-            A numpy random generator.
+        seed : int, opt
+            Random seed.
 
         Returns
         -------
@@ -951,7 +951,8 @@ class SnHost:
             Table with selected hosts properties.
 
         """
-        rand_gen = np.random.default_rng(rand_seed)
+        rand_gen = np.random.default_rng(seed)
+        
         if self.config['distrib'].lower() == 'as_host':
             choice_weights = None
         elif self.config['distrib'].lower() == 'mass_weight':
