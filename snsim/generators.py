@@ -107,18 +107,17 @@ class BaseGen(abc.ABC):
         list(AstrObj)
             A list containing Astro Object.
         """
-        rand_gen = np.random.default_rng(rand_seed)
+        # -- Initialise 4 seeds for differents generation calls
+        seeds = np.random.default_rng(rand_seed).integers(1e3, 1e6, size=4)
 
         if astrobj_par is None:
-            astrobj_par = self.gen_astrobj_par(n_obj, rand_gen)
-
-        # -- Initialise 2 new random generators for inherited class function
-        update_seeds = rand_gen.integers(1000, 1e6, size=3)
+            astrobj_par = self.gen_astrobj_par(n_obj, seeds[0])
 
         # -- Add astrobj par sepecific to the obj generated
-        self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[0]))
+        self._update_astrobj_par(n_obj, astrobj_par, np.random.default_rng(seeds[1]))
+
         # -- Add sncosmo par specific to the generated obj
-        snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(update_seeds[1]))
+        snc_par = self.gen_snc_par(n_obj, astrobj_par, np.random.default_rng(seeds[2]))
 
         # -- Check if there is dust
         if 'mw_' in self.sim_model.effect_names:
