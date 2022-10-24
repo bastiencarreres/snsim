@@ -34,7 +34,7 @@ def n21_x1_model(z, seed=None):
 
     # Compute the distribution for old galaxies
     pdf_old = lambda x: a * ut.gauss(mu1, sig1, x) + (1 - a) * ut.gauss(mu2, sig2, x)
-    dist_old = ut.CustomRandom(pdf_old, mu2 - 10 * sig2, mu1 + 10 * sig1)
+    dist_old = ut.CustomRandom(pdf_old, mu2 - 10 * sig2, mu1 + 10 * sig1, dx=1e-4)
 
     young_or_old = rand_gen.random(size=len(z))
 

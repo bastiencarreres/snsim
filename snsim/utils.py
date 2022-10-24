@@ -8,15 +8,57 @@ from astropy import cosmology as acosmo
 import astropy.units as astu
 from .constants import C_LIGHT_KMS
 
+
 def gauss(mu, sig, x):
+    """Gaussian function.
+
+    Parameters
+    ----------
+    mu : float
+        Mean.
+    sig : float
+        Sigma.
+    x : float or numpy.array(float)
+        Variables.
+
+    Returns
+    -------
+    numpy.array(float)
+        G(x).
+    """    
     return np.exp(-0.5 * ((x - mu) / sig)**2) / np.sqrt(2 * np.pi * sig**2)
 
+
 class CustomRandom:
-        """Class to generate random variable on custom dist.
-        """    
-    
-    def __init__(self, pdf, xmin, xmax, dx=1e-3):
-        self.x = np.linspace(xmin, xmax, int((xmax - xmin) / dx))
+    """Class to generate random variable on custom dist.
+
+    Parameters
+    ----------
+    pdf: lambda function
+        Function that return the pdf of the vairable x.
+    xmin: float
+        Inferior bound of the distribution.
+    xmax: float
+        Superior bound of the distribution.
+    ndiv: float, optional
+        Number of division used to integrate the pdf.
+    dx: float, optional
+        Precision used to integrate the pdf.
+
+    Notes
+    -----
+    If dx and ndiv are set, only dx will be used. 
+    If none of the 2 is set, the default will be ndiv=1e4
+    """    
+
+    def __init__(self, pdf, xmin, xmax, ndiv=1e4, dx=None):
+        """Init the CustomRandom class."""
+        if dx is not None:
+            n = int((xmax - xmin) / dx)
+        else:
+            n = ndiv
+        
+        self.x = np.linspace(xmin, xmax, n)
         self.dx = self.x[1] - self.x[0]
         
         # Compute pdf and renormalize
@@ -31,18 +73,47 @@ class CustomRandom:
         self.cdf /= self.cdf[-1]
     
     def plot_pdf(self, ax=None):
+        """Plot the pdf function.
+
+        Parameters
+        ----------
+        ax : matplotlib axes, optional
+            Figure axis, by default None
+        """        
+
         if ax is None:
             fig, ax = plt.subplots()
             
         ax.plot(self.x, self.pdfx)
         
     def plot_cdf(self, ax=None):
+        """Plot the cdf function.
+
+        Parameters
+        ----------
+        ax : matplotlib axes, optional
+            Figure axis, by default None
+        """        
         if ax is None:
             fig, ax = plt.subplots()
             
         ax.plot(self.x, self.pdfx)
     
     def draw(self, n, seed=None):
+        """Draw n parameters from the distribution.
+
+        Parameters
+        ----------
+        n : int
+            Number of parameters to draw.
+        seed : int, optional
+            Random seed, by default None
+
+        Returns
+        -------
+        numpy.array
+            Random parameters following the custom distribution.
+        """        
         rand_gen = np.random.default_rng(seed)
         return np.interp(rand_gen.random(n), self.cdf, self.x)
 
@@ -193,7 +264,8 @@ def asym_gauss(mu, sig_low, sig_high=None, seed=None, size=1):
         norm = np.sqrt(np.pi / 2) * (sig_high + sig_low)
         return pdf / norm
 
-    asym_dist = CustomRandom(asym_pdf, mu - 10 * sig_low, mu + 10 * sig_high)
+    asym_dist = CustomRandom(asym_pdf, mu - 10 * sig_low, mu + 10 * sig_high,
+                             dx=np.min([sig_low, sig_high])/100)
     return asym_dist.draw(size, seed=seed)
 
 

@@ -459,7 +459,7 @@ class BaseGen(abc.ABC):
 
         z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
 
-        self._z_dist = ut.CustomRandom(z_pdf, z_min, z_max)
+        self._z_dist = ut.CustomRandom(z_pdf, z_min, z_max, dx=1e-5)
         self._z_time_rate = z_shell, shell_time_rate
 
     def _compute_dust_par(self, ra, dec):
