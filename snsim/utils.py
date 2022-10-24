@@ -5,8 +5,46 @@ import sncosmo as snc
 import astropy.time as atime
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
-import astropy.units as u
+import astropy.units as astu
 from .constants import C_LIGHT_KMS
+
+def gauss(mu, sig, x):
+    return np.exp(-0.5 * ((x - mu) / sig)**2) / np.sqrt(2 * np.pi * sig**2)
+
+class CustomRandom:
+        """Class to generate random variable on custom dist.
+        """    
+    
+    def __init__(self, pdf, xmin, xmax, dx=1e-3):
+        self.x = np.linspace(xmin, xmax, int((xmax - xmin) / dx))
+        self.dx = self.x[1] - self.x[0]
+        
+        # Compute pdf and renormalize
+        self.pdfx = pdf(self.x)
+
+        self.norm = np.trapz(self.pdfx, x=self.x)
+        self.pdfx /= self.norm
+        
+        # Compute cdf and renormalize to be sure
+        self.cdf = np.cumsum(self.pdfx) * self.dx
+        
+        self.cdf /= self.cdf[-1]
+    
+    def plot_pdf(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots()
+            
+        ax.plot(self.x, self.pdfx)
+        
+    def plot_cdf(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots()
+            
+        ax.plot(self.x, self.pdfx)
+    
+    def draw(self, n, seed=None):
+        rand_gen = np.random.default_rng(seed)
+        return np.interp(rand_gen.random(n), self.cdf, self.x)
 
 
 def set_cosmo(cosmo_dic):
@@ -123,7 +161,7 @@ def compute_z_cdf(z_shell, shell_time_rate):
     return [z_shell, dist / norm]
 
 
-def asym_gauss(mean, sig_low, sig_high=None, seed=None, size=1):
+def asym_gauss(mu, sig_low, sig_high=None, seed=None, size=1):
     """Generate random parameters using an asymetric Gaussian distribution.
 
     Parameters
@@ -145,15 +183,18 @@ def asym_gauss(mean, sig_low, sig_high=None, seed=None, size=1):
         Random(s) variable(s).
 
     """
-    rand_gen = np.random.default_rng(seed)
+    def asym_pdf(x):
+        x = np.atleast_1d(x)
+        pos = x > mu
+        pdf = np.zeros(len(x))
 
-    if sig_high is None:
-        sig_high = sig_low  
-    low_or_high = rand_gen.random(size)
-    nbr = np.abs(rand_gen.normal(size=size))
-    cond = low_or_high < sig_low / (sig_high + sig_low)
-    nbr *= -sig_low * cond + sig_high * ~cond
-    return mean + nbr
+        pdf[pos] = gauss(mu, sig_high, x[pos]) * np.sqrt(2 * np.pi) * sig_high
+        pdf[~pos] = gauss(mu, sig_low, x[~pos]) * np.sqrt(2 * np.pi) * sig_low
+        norm = np.sqrt(np.pi / 2) * (sig_high + sig_low)
+        return pdf / norm
+
+    asym_dist = CustomRandom(asym_pdf, mu - 10 * sig_low, mu + 10 * sig_high)
+    return asym_dist.draw(size, seed=seed)
 
 
 def compute_z2cmb(ra, dec, cmb):
@@ -179,8 +220,8 @@ def compute_z2cmb(ra, dec, cmb):
     v_cmb = cmb['v_cmb']
 
     # use ra dec to simulate the effect of our motion
-    coordfk5 = SkyCoord(ra * u.rad,
-                        dec * u.rad,
+    coordfk5 = SkyCoord(ra * astu.rad,
+                        dec * astu.rad,
                         frame='fk5')  # coord in fk5 frame
 
     galac_coord = coordfk5.transform_to('galactic')

@@ -84,7 +84,7 @@ class BaseGen(abc.ABC):
         self._init_general_par()
 
         self._time_range = None
-        self._z_cdf = None
+        self._z_dist = None
         self._z_time_rate = None
 
         # -- Get the astrobj class
@@ -321,11 +321,7 @@ class BaseGen(abc.ABC):
         numpy.ndarray(float)
             A numpy array which contains generated cosmological redshift.
         """
-        rand_gen = np.random.default_rng(seed)
-
-        uni_var = rand_gen.random(size=n)
-        zcos = np.interp(uni_var, self.z_cdf[1], self.z_cdf[0])
-        return zcos
+        return self._z_dist.draw(n, seed=seed)
 
     def gen_vpec(self, n, seed=None):
         """Generate n peculiar velocities.
@@ -461,7 +457,9 @@ class BaseGen(abc.ABC):
         # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = rate * shell_vol / (1 + z_shell_center)
 
-        self._z_cdf = ut.compute_z_cdf(z_shell, shell_time_rate)
+        z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
+
+        self._z_dist = ut.CustomRandom(z_pdf, z_min, z_max)
         self._z_time_rate = z_shell, shell_time_rate
 
     def _compute_dust_par(self, ra, dec):
@@ -593,7 +591,7 @@ class BaseGen(abc.ABC):
     @property
     def z_cdf(self):
         """Get the redshift cumulative distribution."""
-        return self._z_cdf
+        return self._z_dist.cdf
 
 
 class SNIaGen(BaseGen):
