@@ -203,7 +203,7 @@ def init_astropy_time(date):
         An astropy.time Time object of the given date.
 
     """
-    if isinstance(date, (np.integer, np.floating)):
+    if isinstance(date, (int, np.integer, float, np.floating)):
         date_format = 'mjd'
     elif isinstance(date, str):
         date_format = 'iso'

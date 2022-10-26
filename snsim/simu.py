@@ -197,7 +197,7 @@ class Simulator:
         cut_list = []
         if 'nep_cut' in self.config['sim_par']:
             nep_cut = self.config['sim_par']['nep_cut']
-            if isinstance(nep_cut, (np.integer)):
+            if isinstance(nep_cut, (int, np.integer)):
                 cut_list.append((nep_cut, snc_mintime, snc_maxtime, 'any'))
             elif isinstance(nep_cut, (list)):
                 for i, cut in enumerate(nep_cut):

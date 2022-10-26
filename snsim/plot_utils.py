@@ -45,7 +45,7 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
         str += 'FITTED PARAMETERS : \n    '
         for k in par.keys():
             if k in fit_par:
-                if isinstance(fit_par[k], (np.integer, np.floating)):
+                if isinstance(fit_par[k], (int, np.integer, float, np.floating)):
                     str += f"{par[k][0]} = {fit_par[k]:{par[k][1]}}  "
                 else:
                     str += f"{par[k][0]} = {fit_par[k][0]:{par[k][1]}} $\pm$ {fit_par[k][1]:{par[k][1]}}  "
