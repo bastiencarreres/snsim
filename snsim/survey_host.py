@@ -267,7 +267,7 @@ class SurveyObs:
 
         for k in keys:
             if k not in obs_dic.keys().to_list():
-                raise KeyError(f'{k} is needed in csv file')
+                raise KeyError(f'{k} is needed in obs file')
 
         if 'survey_cut' in self.config:
             query = ''

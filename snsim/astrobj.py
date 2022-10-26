@@ -199,7 +199,7 @@ class BasicAstrObj(abc.ABC):
     @ID.setter
     def ID(self, ID):
         """Set ID."""
-        if isinstance(ID, int):
+        if isinstance(ID, np.integer):
             self._ID = ID
         else:
             print('SN ID must be an integer')

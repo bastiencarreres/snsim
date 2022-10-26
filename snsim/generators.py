@@ -648,7 +648,7 @@ class SNIaGen(BaseGen):
 
     def _init_M0(self):
         """Initialise absolute magnitude."""
-        if isinstance(self._params['M0'], (float, int)):
+        if isinstance(self._params['M0'], (np.floating, np.integer)):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
