@@ -505,13 +505,13 @@ class SurveyObs:
             if self.config['noise_key'][1] == 'mlim5':
                 # Convert maglim to flux noise (ADU)
                 mlim5 = obs_selec[self.config['noise_key'][0]]
-                skynoise = pd.eval("10.**(0.4 * (obs_selec.zp - mlim5)) / 5")
+                skynoise = 10.**(0.4 * (obs_selec.zp - mlim5)) / 5
             elif self.config['noise_key'][1] == 'skysigADU':
                 skynoise = obs_selec[self.config['noise_key'][0]].copy()
             else:
                 raise ValueError('Noise type should be mlim5 or skysigADU')
             if 'fake_skynoise' in self.config:
-                skynoise = pd.eval(f"sqrt(skynoise**2 + {self.config['fake_skynoise'][0]}")
+                skynoise = np.sqrt(skynoise**2 + self.config['fake_skynoise'][0]**2)
         elif self.config['fake_skynoise'][1].lower() == 'replace':
             skynoise = np.ones(len(obs_selec)) * self.config['fake_skynoise'][0]
         else:

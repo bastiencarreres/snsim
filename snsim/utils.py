@@ -25,7 +25,7 @@ def gauss(mu, sig, x):
     -------
     numpy.array(float)
         G(x).
-    """    
+    """
     return np.exp(-0.5 * ((x - mu) / sig)**2) / np.sqrt(2 * np.pi * sig**2)
 
 
@@ -50,17 +50,16 @@ class CustomRandom:
     If dx and ndiv are set, only dx will be used. 
     If none of the 2 is set, the default will be ndiv=1e4
     """    
-
     def __init__(self, pdf, xmin, xmax, ndiv=1e4, dx=None):
         """Init the CustomRandom class."""
         if dx is not None:
             n = int((xmax - xmin) / dx)
         else:
             n = ndiv
-        
+       
         self.x = np.linspace(xmin, xmax, n)
         self.dx = self.x[1] - self.x[0]
-        
+       
         # Compute pdf and renormalize
         self.pdfx = pdf(self.x)
 
