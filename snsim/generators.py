@@ -590,6 +590,8 @@ class BaseGen(abc.ABC):
     @property
     def z_cdf(self):
         """Get the redshift cumulative distribution."""
+        if self._z_dist is None:
+            return None
         return self._z_dist.cdf
 
 
