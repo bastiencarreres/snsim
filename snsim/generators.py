@@ -380,7 +380,6 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            hseed = rand_gen.integers(1e3, 1e6)
             host = self.host.random_choice(n_obj, seed=seeds[1], z_cdf=self.z_cdf)
             zcos = host['redshift'].values
 
