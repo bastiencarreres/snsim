@@ -440,7 +440,7 @@ class Simulator:
                              rand_gen.integers(1000, 1e6),
                              astrobj_par=param_tmp)
 
-        for ID, obj  in zip(epochs.index.unique('ID'), obj_list):
+        for ID, obj in zip(epochs.index.unique('ID'), obj_list):
             obj.epochs = epochs.loc[[ID]]
             obj.gen_flux(rand_gen)
             obj.ID = ID
