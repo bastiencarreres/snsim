@@ -3,7 +3,6 @@
 import time
 import yaml
 import numpy as np
-import astropy.units as aunits
 from . import utils as ut
 from . import generators
 from . import survey_host as sh
@@ -198,7 +197,7 @@ class Simulator:
         cut_list = []
         if 'nep_cut' in self.config['sim_par']:
             nep_cut = self.config['sim_par']['nep_cut']
-            if isinstance(nep_cut, (int, np.integer)):
+            if isinstance(nep_cut, (np.integer)):
                 cut_list.append((nep_cut, snc_mintime, snc_maxtime, 'any'))
             elif isinstance(nep_cut, (list)):
                 for i, cut in enumerate(nep_cut):
@@ -221,8 +220,8 @@ class Simulator:
         tuple(float, float)
             Min and max time for obj peak generation.
         """
-        min_peak_time = self.survey.start_end_days[0] - trange_model[1] * (1 + self.z_range[1]) * aunits.day
-        max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1]) * aunits.day
+        min_peak_time = self.survey.start_end_days[0] - trange_model[1] * (1 + self.z_range[1])
+        max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1])
         return min_peak_time, max_peak_time
 
     def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
@@ -432,10 +431,6 @@ class Simulator:
                                                        MinT.to_numpy(),
                                                        MaxT.to_numpy(),
                                                        self.nep_cut)
-        
-        if parmask is None:
-            raise RuntimeError('None of the object pass the cuts...')
-
         # -- Keep the parameters of selected lcs
         param_tmp = param_tmp[parmask]
         param_tmp.reset_index(inplace=True)
