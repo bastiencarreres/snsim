@@ -229,8 +229,8 @@ class BaseGen(abc.ABC):
     def _init_general_par(self):
         """Init general parameters."""
         if self.mw_dust is not None:
-            self._general_par['mw_dust'] = self.mw_dust['model']
-            self._general_par['mw_rv'] = self.mw_dust['rv']
+            self._general_par['mw_dust'] = {'model' : self.mw_dust['model'], 
+                                            'rv': self.mw_dust['rv']}
         if not hasattr(self.sim_model, 'bandfluxcov'):
             raise ValueError('This sncosmo model has no flux covariance available')
         if 'mod_fcov' in self._params:
@@ -528,10 +528,7 @@ class BaseGen(abc.ABC):
                   'model_name': self.sim_model.source.name}
 
         header = {**header, **self._general_par}
-        if self.mw_dust is not None:
-            header['mw_mod'] = self.mw_dust['model']
-            header['mw_rv'] = self.mw_dust['rv']
-
+    
         if self.vpec_dist is not None:
             header['m_vp'] = self.vpec_dist['mean_vpec']
             header['s_vp'] = self.vpec_dist['sig_vpec']

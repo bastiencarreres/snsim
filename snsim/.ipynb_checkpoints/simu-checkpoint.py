@@ -357,10 +357,11 @@ class Simulator:
 
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
-                                                      {**gen._get_header(),
-                                                       **self._get_cosmo_header()},
-                                                      model_dir=None,
-                                                      dir_path=self.config['data']['write_path']))
+                                                      {'seed': seed,
+                                                       **gen._get_header(),
+                                                       'cosmo': self._get_cosmo_header()},
+                                                       model_dir=None,
+                                                       dir_path=self.config['data']['write_path']))
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated'
                   f' in {time.time() - sim_time:.1f} seconds')
@@ -445,7 +446,7 @@ class Simulator:
                              rand_gen.integers(1000, 1e6),
                              astrobj_par=param_tmp)
 
-        for ID, obj  in zip(epochs.index.unique('ID'), obj_list):
+        for ID, obj in zip(epochs.index.unique('ID'), obj_list):
             obj.epochs = epochs.loc[[ID]]
             obj.gen_flux(rand_gen)
             obj.ID = ID
