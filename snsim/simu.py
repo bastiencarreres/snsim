@@ -357,10 +357,11 @@ class Simulator:
 
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
-                                                      {**gen._get_header(),
+                                                      {'seed': seed,
+                                                       **gen._get_header(),
                                                        **self._get_cosmo_header()},
-                                                      model_dir=None,
-                                                      dir_path=self.config['data']['write_path']))
+                                                       model_dir=None,
+                                                       dir_path=self.config['data']['write_path']))
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated'
                   f' in {time.time() - sim_time:.1f} seconds')
