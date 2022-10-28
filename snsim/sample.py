@@ -126,9 +126,8 @@ class SimSample:
         if 'sct_mod' in self.header:
             sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
 
-        if 'mw_mod' in self.header:
-            dst_ut.init_mw_dust(sim_model, {'model': self.header['mw_mod'],
-                                            'rv': self.header['mw_rv']})
+        if 'mw_dust' in self.header:
+            dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
         return sim_model
 
     def _set_obj_effects_model(self, model, ID):

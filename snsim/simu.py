@@ -359,7 +359,7 @@ class Simulator:
                                                       lcs_list,
                                                       {'seed': seed,
                                                        **gen._get_header(),
-                                                       **self._get_cosmo_header()},
+                                                       'cosmo': self._get_cosmo_header()},
                                                        model_dir=None,
                                                        dir_path=self.config['data']['write_path']))
 
