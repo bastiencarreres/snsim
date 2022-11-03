@@ -133,7 +133,7 @@ def read_sim_file(file_path, engine='pyarrow'):
     return name, header, lcs
 
 
-def write_fit(sim_lcs_meta, fit_res, directory, sim_meta={}):
+def write_fit(sim_lcs_meta, fit_res, sim_header, directory):
     """Write fit into a fits file.
 
     Parameters
@@ -153,56 +153,51 @@ def write_fit(sim_lcs_meta, fit_res, directory, sim_meta={}):
         Just write a file.
 
     """
-    data = sim_lcs_meta.copy()
-
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
-    MName = sim_meta['model_name']
+    
+    MName = sim_header['model_name']
 
     if MName[:5] in ('salt2', 'salt3'):
         fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
                      'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
                      'cov_mb_x1', 'cov_mb_c', 'cov_x1_c']
-
-    for k in fit_keys:
-        data[k] = []
-
+    
+    data = {}
     for obj_ID in fit_res:
-        fd = fit_res[obj_ID]['params']
         snc_out = fit_res[obj_ID]['snc_out']
+        data[obj_ID] = {**sim_lcs_meta[obj_ID]}
+        data[obj_ID].pop('type')
         if snc_out != 'NaN':
-            data['t0'].append(fd['t0'])
-            data['e_t0'].append(np.sqrt(snc_out['covariance'][0, 0]))
-
+            data[obj_ID] = {**data[obj_ID], **fit_res[obj_ID]['params']}
+            data[obj_ID].pop('z')
+            
+            data[obj_ID]['e_t0'] = np.sqrt(snc_out['covariance'][0, 0])
+        
             if MName[:5] in ('salt2', 'salt3'):
                 par_cov = snc_out['covariance'][1:, 1:]
-                mb_cov = salt_ut.cov_x0_to_mb(fd['x0'], par_cov)
-                data['x0'].append(fd['x0'])
-                data['e_x0'].append(np.sqrt(par_cov[0, 0]))
-                data['mb'].append(fd['mb'])
-                data['e_mb'].append(np.sqrt(mb_cov[0, 0]))
-                data['x1'].append(fd['x1'])
-                data['e_x1'].append(np.sqrt(par_cov[1, 1]))
-                data['c'].append(fd['c'])
-                data['e_c'].append(np.sqrt(par_cov[2, 2]))
-                data['cov_x0_x1'].append(par_cov[0, 1])
-                data['cov_x0_c'].append(par_cov[0, 2])
-                data['cov_x1_c'].append(par_cov[1, 2])
-                data['cov_mb_x1'].append(mb_cov[0, 1])
-                data['cov_mb_c'].append(mb_cov[0, 2])
+                mb_cov = salt_ut.cov_x0_to_mb(data[obj_ID]['x0'], par_cov)
+                data[obj_ID]['e_x0'] = np.sqrt(par_cov[0, 0])
+                data[obj_ID]['e_mb'] = np.sqrt(mb_cov[0, 0])
+                data[obj_ID]['e_x1'] = np.sqrt(par_cov[1, 1])
+                data[obj_ID]['e_c'] = np.sqrt(par_cov[2, 2])
+                data[obj_ID]['cov_x0_x1'] = par_cov[0, 1]
+                data[obj_ID]['cov_x0_c'] = par_cov[0, 2]
+                data[obj_ID]['cov_x1_c'] = par_cov[1, 2]
+                data[obj_ID]['cov_mb_x1'] = mb_cov[0, 1]
+                data[obj_ID]['cov_mb_c'] = mb_cov[0, 2]
 
-            data['chi2'].append(snc_out['chisq'])
-            data['ndof'].append(snc_out['ndof'])
+            data[obj_ID]['chi2'] = snc_out['chisq']
+            data[obj_ID]['ndof'] = snc_out['ndof']
         else:
             for k in fit_keys:
-                data[k].append(np.nan)
+                data[obj_ID][k] = np.nan
+    df = pd.DataFrame.from_dict(data, orient='index')
 
-    for k, v in sim_lcs_meta.items():
-        data[k] = v
-
-    df = pd.DataFrame(data)
-    table = pa.Table.from_pandas(df)
-    header = json.dumps(sim_meta, cls=NpEncoder)
+    df.sort_values('ID', inplace=True)
+    
+    table = pa.Table.from_pandas(df, preserve_index=False)
+    header = json.dumps(sim_header, cls=NpEncoder)
     table = table.replace_schema_metadata({'header'.encode(): header.encode()})
     pq.write_table(table, directory + '.parquet')
     print(f"Fit result output file : {directory}.parquet")
