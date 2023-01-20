@@ -189,6 +189,7 @@ def write_fit(sim_lcs_meta, fit_res, sim_header, directory):
 
             data[obj_ID]['chi2'] = snc_out['chisq']
             data[obj_ID]['ndof'] = snc_out['ndof']
+            data[obj_ID]['status'] = snc_out['success']
         else:
             for k in fit_keys:
                 data[obj_ID][k] = np.nan

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from astropy.io import fits
 import pandas as pd
+import geopandas as gpd
 from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
 from . import utils as ut
@@ -935,7 +936,7 @@ class SnHost:
         p_inv /= np.sum(p_inv)
         return p_inv
 
-    def random_choice(self, n, seed=None, z_cdf=None):
+    def random_choice(self, n, seed=None, z_dist=None):
         """Randomly select hosts.
 
         Parameters
@@ -954,13 +955,15 @@ class SnHost:
         rand_gen = np.random.default_rng(seed)
         
         if self.config['distrib'].lower() == 'as_host':
-            choice_weights = None
+            # Take into account rate is divide by (1 + z)
+            choice_weights = 1 / (1 + self.table['redshift'])
+            choice_weights /= choice_weights.sum()
         elif self.config['distrib'].lower() == 'mass_weight':
             choice_weights = self.table['mass'] / self.table['mass'].sum()
         elif self.config['distrib'].lower() == 'as_sn':
             norm = self._normalize_distrib()
-            prob_z = np.gradient(z_cdf[1], z_cdf[0])
-            Pz = np.interp(host.table['redshift'], generator.z_cdf[0], prob_z)
+            prob_z = np.gradient(z_dist.cdf, z_dist.x)
+            Pz = np.interp(self.table['redshift'],  z_dist.x, prob_z)
             choice_weights = norm * Pz
             choice_weights /= choice_weights.sum()
         else:
@@ -970,9 +973,13 @@ class SnHost:
             idx = rand_gen.choice(self.table.index, p=choice_weights, size=n)
         else:
             idx = []
+            n_to_sim = n
             while len(idx) < n:
-                idx_tmp = rand_gen.choice(self.table.index, p=choice_weights)
-                pt = shp_geo.Point(self.table.loc[idx_tmp]['ra'], self.table.loc[idx_tmp]['dec'])
-                if self._footprint.contains(pt):
-                    idx.append(idx_tmp)
+                idx_tmp = np.random.choice(self.table.index, p=choice_weights, size=n_to_sim)
+                samples = np.array([self.table.loc[idx_tmp]['ra'], self.table.loc[idx_tmp]['dec']]).T
+                multipoint = shp_geo.MultiPoint(samples)
+                sbool = gpd.GeoSeries(multipoint).explode(index_parts=False)
+                idx.extend(idx_tmp[sbool.within(self._footprint)])
+                n_to_sim = n - len(idx)
+
         return self.table.loc[idx]
