@@ -264,7 +264,7 @@ def radec_to_cart(ra, dec):
     return cart_vec
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
                 subfields_id, subfields_corners):
     """Chek if a SN is in fields.
@@ -295,7 +295,7 @@ def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
                       np.sin(obj_ra) * np.cos(obj_dec),
                       np.sin(obj_dec)))
 
-    for i in range(len(fieldsID)):
+    for i in prange(len(fieldsID)):
         fra, fdec = ra_fields[i], dec_fields[i]
         x, y, z = R_base(fra, -fdec, vec)
         ra_frame = np.arctan2(y, x)

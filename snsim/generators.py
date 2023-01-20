@@ -637,11 +637,11 @@ class SNIaGen(BaseGen):
         """SNIa rates registry."""
         if self._params['rate'].lower() == 'ptf19':
             # Rate from https://arxiv.org/abs/1903.08580
-            rate = 2.43e-5 * (0.70 / self.cosmology.h)**3
+            rate = 2.43e-5 * (self.cosmology.h / 0.70)**3
             return (rate, 0)
         elif self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242
-            rate = 2.35e-5 * (0.70 / self.cosmology.h)**3
+            rate = 2.35e-5 * (self.cosmology.h / 0.70)**3
             return (rate, 0)
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
