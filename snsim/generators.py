@@ -215,6 +215,8 @@ class BaseGen(abc.ABC):
                 # Check for the yaml bad conversion of '1e-5'
                 else:
                     rate = float(self._params['rate'])
+            else:
+                rate = self._params['rate']
         else:
             # Default rate
             rate = 3e-5
@@ -380,7 +382,7 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            host = self.host.random_choice(n_obj, seed=seeds[1], z_cdf=self.z_cdf)
+            host = self.host.random_choice(n_obj, seed=seeds[1], z_dist=self._z_dist)
             zcos = host['redshift'].values
 
         # -- Generate ra, dec
