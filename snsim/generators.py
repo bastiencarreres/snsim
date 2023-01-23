@@ -246,7 +246,7 @@ class BaseGen(abc.ABC):
         if self.mw_dust is not None:
             if 'rv' not in self.mw_dust:
                 self.mw_dust['rv'] = 3.1
-                dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
+            dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
 
     def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
