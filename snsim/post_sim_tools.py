@@ -75,7 +75,7 @@ def SNR_select(selec_function,
     SNR_proba = {}
     bands = lcs['band'].unique()
     if selec_function == 'approx':
-        if isinstance(SNR_limit, (list, np.ndarray)) and isinstance(SNR_mean, (int, float)):
+        if isinstance(SNR_limit, (list, np.ndarray)) and isinstance(SNR_mean, (int, np.integer, float, np.floating)):
             for b in bands:
                 SNR_proba[b] = lambda SNR: SNR_pdet(SNR,
                                                     SNR_mean,

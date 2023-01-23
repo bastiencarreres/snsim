@@ -126,9 +126,8 @@ class SimSample:
         if 'sct_mod' in self.header:
             sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
 
-        if 'mw_mod' in self.header:
-            dst_ut.init_mw_dust(sim_model, {'model': self.header['mw_mod'],
-                                            'rv': self.header['mw_rv']})
+        if 'mw_dust' in self.header:
+            dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
         return sim_model
 
     def _set_obj_effects_model(self, model, ID):
@@ -206,7 +205,7 @@ class SimSample:
         if isinstance(model, type(ut.init_sn_model('salt2'))):
             self._fit_model = copy.copy(model)
         elif isinstance(model, str):
-            self._fit_model = ut.init_sn_model(self.header['model_name'], model_dir)
+            self._fit_model = ut.init_sn_model(model, model_dir)
         else:
             raise ValueError('Input can be a sncosmo model or a string')
         if mw_dust is not None:
@@ -339,14 +338,7 @@ class SimSample:
                 if id not in self.fit_res:
                     self.fit_lc(id)
 
-        sim_lc_meta = {}
-        for key in self.meta[self.get('ID')[0]]:
-            if key not in ['type']:
-                sim_lc_meta[key] = self.get(key)
-
-        model_name = self.header['model_name']
-
-        io_ut.write_fit(sim_lc_meta, self.fit_res, write_path, sim_meta=self.header)
+        io_ut.write_fit(self.meta, self.fit_res, self.header, write_path)
 
     def plot_hist(self, key, ax=None, **kwargs):
         """Plot the histogram of the key metadata.

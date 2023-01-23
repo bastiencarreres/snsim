@@ -12,8 +12,8 @@ simulate by *sncosmo* with the following formula :
 
    F_b(p) = \frac{1}{1+z}\frac{1}{4\pi d_L^2}\int_0^{+\infty} \phi_b\left(\frac{\lambda}{1+z}, \frac{p}{1+z}\right)T_b\left(\lambda\right)\frac{\lambda}{hc} d\lambda
 
-where **:math:`\phi_b`** is the restframe flux density and
-**:math:`\lambda`** the obs-frame wavelength.
+where :math:`\mathbf{\phi_b}` is the restframe flux density and
+:math:`\mathbf{\lambda}` the obs-frame wavelength.
 
 The flux is re-scaled in **ADU** units by applying the following factor:
 
@@ -23,7 +23,7 @@ The flux is re-scaled in **ADU** units by applying the following factor:
    F_b^{ADU} = 10^{-0.4 m_B} 10^{\left(ZP_{obs} - ZP_{AB}\right)}
 
 The observed magnitude is given by the absolute magnitude
-**:math:`M_B`** and the distance moduli **:math:`\mu`** :
+:math:`\mathbf{M_B}` and the distance moduli :math:`\mathbf{\mu}` :
 
 .. math::
 

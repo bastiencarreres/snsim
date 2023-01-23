@@ -3,6 +3,7 @@
 import time
 import yaml
 import numpy as np
+import astropy.units as aunits
 from . import utils as ut
 from . import generators
 from . import survey_host as sh
@@ -60,7 +61,7 @@ class Simulator:
     |     rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
     |     rate_pw: rate = rate*(1+z)^rate_pw  # Optional, default=0
     |     M0: SN ABSOLUT MAGNITUDE
-    |     mag_sct: SN INTRINSIC COHERENT SCATTERING
+    |     sigM: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
     |     model_config:
     |         model_name: 'THE MODEL NAME'  Example : 'salt2'
@@ -153,10 +154,10 @@ class Simulator:
         # -- Init generators for each transients
         self._use_rate = []
         self._generators = []
-        for object_name in __GEN_DIC__:
+        for object_name, object_genclass in __GEN_DIC__.items():
             if object_name in self.config:
                 # -- Get which generator correspond to which transient in snsim.generators
-                gen_class = getattr(generators, __GEN_DIC__[object_name])
+                gen_class = getattr(generators,object_genclass)
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
@@ -197,7 +198,7 @@ class Simulator:
         cut_list = []
         if 'nep_cut' in self.config['sim_par']:
             nep_cut = self.config['sim_par']['nep_cut']
-            if isinstance(nep_cut, (int)):
+            if isinstance(nep_cut, (int, np.integer)):
                 cut_list.append((nep_cut, snc_mintime, snc_maxtime, 'any'))
             elif isinstance(nep_cut, (list)):
                 for i, cut in enumerate(nep_cut):
@@ -220,8 +221,8 @@ class Simulator:
         tuple(float, float)
             Min and max time for obj peak generation.
         """
-        min_peak_time = self.survey.start_end_days[0] - trange_model[1] * (1 + self.z_range[1])
-        max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1])
+        min_peak_time = self.survey.start_end_days[0] - trange_model[1] * (1 + self.z_range[1]) * aunits.day
+        max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1]) * aunits.day
         return min_peak_time, max_peak_time
 
     def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
@@ -356,10 +357,11 @@ class Simulator:
 
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
-                                                      {**gen._get_header(),
-                                                       **self._get_cosmo_header()},
-                                                      model_dir=None,
-                                                      dir_path=self.config['data']['write_path']))
+                                                      {'seed': seed,
+                                                       **gen._get_header(),
+                                                       'cosmo': self._get_cosmo_header()},
+                                                       model_dir=None,
+                                                       dir_path=self.config['data']['write_path']))
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated'
                   f' in {time.time() - sim_time:.1f} seconds')
@@ -431,6 +433,10 @@ class Simulator:
                                                        MinT.to_numpy(),
                                                        MaxT.to_numpy(),
                                                        self.nep_cut)
+        
+        if parmask is None:
+            raise RuntimeError('None of the object pass the cuts...')
+
         # -- Keep the parameters of selected lcs
         param_tmp = param_tmp[parmask]
         param_tmp.reset_index(inplace=True)
@@ -440,7 +446,7 @@ class Simulator:
                              rand_gen.integers(1000, 1e6),
                              astrobj_par=param_tmp)
 
-        for ID, obj  in zip(epochs.index.unique('ID'), obj_list):
+        for ID, obj in zip(epochs.index.unique('ID'), obj_list):
             obj.epochs = epochs.loc[[ID]]
             obj.gen_flux(rand_gen)
             obj.ID = ID
@@ -474,7 +480,7 @@ class Simulator:
             param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
 
             # -- Set up obj parameters
-            model_t_range =  (generator.sim_model.mintime(), generator.sim_model.maxtime())
+            model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
 
             zobs, MinT, MaxT = ut.zobs_MinT_MaxT(param_tmp, model_t_range)
 

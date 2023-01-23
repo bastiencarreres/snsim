@@ -35,7 +35,7 @@ The input file is a .yml with the following structure:
        duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
    snia_gen:
        force_n: NUMBER OF OBJ TO GENERATE  # Optional
-       sn_rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
+       sn_rate: rate of SN/Mpc^3/year or registered rate  # Optional, default=3e-5
        rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
        M0: SN ABSOLUT MAGNITUDE
        mag_sct: SN INTRINSIC COHERENT SCATTERING
@@ -231,7 +231,11 @@ This section concern the type Ia supernovae properties.
       :math:`r_v = 2.43 \times10^{-5} \ SN.Mpc^{-3}.year^{-1}` for
       :math:`H_0 = 70` km/s/Mpc. :math:`r_v` is rescale in function of
       the :math:`H_0` set in cosmology.
-
+   - Give ‘ztf20’ : use the
+     `PTF20 <https://arxiv.org/abs/2009.012420>`__ SN Ia rate
+     :math:`r_v = 2.35 \times10^{-5} \ SN.Mpc^{-3}.year^{-1}` for
+     :math:`H_0 = 70` km/s/Mpc. :math:`r_v` is rescale in function of
+     the :math:`H_0` set in cosmology.
    Note that the rate is used to generate the redshift distribution.
 
 -  **sct_mod** a model of wavelength dependant scattering. Follow

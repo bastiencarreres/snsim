@@ -90,6 +90,7 @@ def R_base(a, t, vec, to_field_frame=True):
     else:
         return R @ vec
 
+
 @njit(cache=True, parallel=True)
 def new_coord_on_fields(ra_frame, dec_frame, vec):
     """Compute new coordinates of an object in a list of fields frames.
@@ -213,12 +214,12 @@ def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
         Is there an observation and the selection of observations.
 
     """
-    any = False
+    is_any = False
     epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
-                                             obs_fieldID], type=types.i8))
+                                             obs_fieldID], dtype=types.i8))
     if True in epochs_selec:
-        any = True
-    return any, epochs_selec
+        is_any = True
+    return is_any, epochs_selec
 
 
 @njit(cache=True)
@@ -263,7 +264,7 @@ def radec_to_cart(ra, dec):
     return cart_vec
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
                 subfields_id, subfields_corners):
     """Chek if a SN is in fields.
@@ -294,7 +295,7 @@ def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
                       np.sin(obj_ra) * np.cos(obj_dec),
                       np.sin(obj_dec)))
 
-    for i in range(len(fieldsID)):
+    for i in prange(len(fieldsID)):
         fra, fdec = ra_fields[i], dec_fields[i]
         x, y, z = R_base(fra, -fdec, vec)
         ra_frame = np.arctan2(y, x)
@@ -346,5 +347,5 @@ def isin(a, b):
     set_b = set(b)
     for i in prange(n):
         if a[i] in set_b:
-            bool_array[i]=True
+            bool_array[i] = True
     return bool_array
