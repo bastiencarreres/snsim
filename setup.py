@@ -29,6 +29,7 @@ setup(
         "numba",
         "pyyaml",
         "sfdmap",
-        "requests"
+        "requests",
+        "geopandas"
     ]
 )
