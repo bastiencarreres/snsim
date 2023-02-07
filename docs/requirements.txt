@@ -1,18 +1,8 @@
-sncosmo
-numpy
-astropy
-pyyaml
-numba
-sfdmap
-matplotlib
-pandas
-
 markdown<3.4.0
 sphinx==5.2.3
 sphinx-markdown-tables==0.0.15
 markdown<3.4.0
 numpydoc==1.1.0
-shapely>=1.8.0
 
 furo
 myst-parser
