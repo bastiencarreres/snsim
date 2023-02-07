@@ -2,14 +2,17 @@
 
 import abc
 import numpy as np
+import pandas as pd
+import geopandas as gpd
+from shapely import geometry as shp_geo
 from . import utils as ut
 from . import nb_fun as nbf
 from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
-from shapely import geometry as shp_geo
-import pandas as pd
+
+
 
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
@@ -307,9 +310,9 @@ class BaseGen(abc.ABC):
             n_to_sim = n
             ra = []
             dec = []
-            while len(idx) < n:
-                ra_tmp = gen_tmp.uniform(low=0, high=2 * np.pi)
-                dec_uni_tmp = rand_gen.random()
+            while len(ra) < n:
+                ra_tmp = gen_tmp.uniform(low=0, high=2 * np.pi, size=n_to_sim)
+                dec_uni_tmp = rand_gen.random(size=n_to_sim)
                 dec_tmp = np.arcsin(2 * dec_uni_tmp - 1)
 
                 multipoint = gpd.points_from_xy(ra_tmp, 
