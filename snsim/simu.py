@@ -3,6 +3,7 @@
 import time
 import yaml
 import numpy as np
+import dask
 import astropy.units as aunits
 from . import utils as ut
 from . import generators
@@ -77,7 +78,6 @@ class Simulator:
     |     v_cmb: OUR PECULIAR VELOCITY  # Optional, default = 620 km/s
     |     l_cmb: GAL L OF CMB DIPOLE  # Optional, default = 271.0
     |     b_cmb: GAL B OF CMB DIPOLE  # Optional, default = 29.6
-    |
     | vpec_dist:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY
     |     sig_vpec: SIGMA VPEC
@@ -89,6 +89,9 @@ class Simulator:
     |     coord: [RA, Dec]  # Direction of the dipole
     |     A: A_parameter
     |     B: B_parameter
+    | dask: # Optional for using dask parallelization
+    |     use: True or False
+    |     nworkers: NUMBER OF WORKERS # used to adjust work distribution
     """
 
     def __init__(self, param_dic, print_config=False):
@@ -105,6 +108,12 @@ class Simulator:
             self._yml_path = param_dic
             with open(self._yml_path, "r") as f:
                 self._config = yaml.safe_load(f)
+
+        if 'dask' in self.config:
+            if 'nworkers' not in self.config['dask']:
+                self.config['dask']['nworkers'] = 10
+        else:
+            self.config['dask']['use'] = False
 
         # Check if there is a db_file
         if 'survey_config' not in self.config:
@@ -132,7 +141,7 @@ class Simulator:
         # -- Init host object
         if 'host' in self.config:
             self._host = sh.SnHost(self.config['host'], self.z_range,
-                                   footprint=self.survey.fields.footprint)
+                                   geometry=self.survey._envelope)
         else:
             self._host = None
 
@@ -157,7 +166,7 @@ class Simulator:
         for object_name, object_genclass in __GEN_DIC__.items():
             if object_name in self.config:
                 # -- Get which generator correspond to which transient in snsim.generators
-                gen_class = getattr(generators,object_genclass)
+                gen_class = getattr(generators, object_genclass)
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
@@ -165,7 +174,7 @@ class Simulator:
                                                   host=self.host,
                                                   mw_dust=mw_dust,
                                                   dipole=dipole,
-                                                  survey_footprint=self.survey.fields.footprint))
+                                                  geometry=self.survey._envelope))
                 # -- Cadence sim or n fixed
                 if 'force_n' in self.config[object_name]:
                     self._use_rate.append(False)
@@ -264,7 +273,7 @@ class Simulator:
         to run the simulation
         2- Gen all SN parameters inside SNGen class or/and SnHost class
         3- Check if SN pass cuts and then generate the lightcurves.
-        4- Write LC to fits/pkl file(s)
+        4- Write LCs to parquet/pkl file(s)
 
         """
         print(SN_SIM_PRINT)
@@ -360,8 +369,8 @@ class Simulator:
                                                       {'seed': seed,
                                                        **gen._get_header(),
                                                        'cosmo': self._get_cosmo_header()},
-                                                       model_dir=None,
-                                                       dir_path=self.config['data']['write_path']))
+                                                      model_dir=None,
+                                                      dir_path=self.config['data']['write_path']))
 
             print(f'{len(lcs_list)} {gen._object_type} lcs generated'
                   f' in {time.time() - sim_time:.1f} seconds')
@@ -382,8 +391,69 @@ class Simulator:
                   + '.'
                   + f)
 
+    def _sim_lcs(self, generator, n_obj, Obj_ID=0, seed=None):
+        """Simulate AstrObj lcs.
+
+        Parameters
+        ----------
+        generator : snsim.generator
+            The parameter generator class
+        n_obj : int
+            The nummber of object to generate
+        Obj_ID : int, optional
+           The first ID of AstrObj, by default 0
+        seed : int, optional
+            The random seed to generate parameters, by default None
+
+        Returns
+        -------
+        list(pandas.Dataframe)
+            List of the AstrObj LCs
+
+        """
+        if seed is None:
+            seed = np.random.randint(1e3, 1e6)
+
+        rand_gen = np.random.default_rng(seed)
+
+        # -- Init lcs list
+        lcs = []
+
+        # -- Generate n base param
+        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
+
+        # -- Set up obj parameters
+        model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
+
+        # -- Select observations that pass all the cuts
+        epochs, params = self.survey.get_observations(param_tmp,
+                                                      phase_cut=model_t_range,
+                                                      nep_cut=self.nep_cut,
+                                                      IDmin=Obj_ID,
+                                                      use_dask=self.config['dask']['use'],
+                                                      npartitions=self.config['dask']['nworkers'])
+        if params is None:
+            raise RuntimeError('None of the object pass the cuts...')
+
+        # -- Generate the object
+        obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),
+                             astrobj_par=params)
+
+        if self.config['dask']['use']:
+            it_edges = np.linspace(0, len(obj_list),
+                                   len(obj_list) // (100 * self.config['dask']['nworkers']) + 1,
+                                   dtype=int)
+
+            for imin, imax in zip(it_edges[:-1], it_edges[1:]):
+                lcs += dask.compute([dask.delayed(obj.gen_flux)(epochs.loc[obj.ID])
+                                     for obj in obj_list[imin:imax]])[0]
+        else:
+            lcs = [obj.gen_flux(epochs.loc[obj.ID]) for obj in obj_list]
+
+        return lcs
+
     def _cadence_sim(self, rand_gen, generator, Obj_ID=0):
-        """Simulate a number of SN according to poisson law.
+        """Simulate a number of AstrObj according to poisson law.
 
         Parameters
         ----------
@@ -394,68 +464,37 @@ class Simulator:
 
         Returns
         -------
-        None
+        list(pandas.Dataframe)
+            List of the AstrObj LCs
 
         Notes
         -----
         Simulation routine:
-            1- Cut the zrange into shell (z,z+dz)
-            2- Compute time rate for the shell r = r_v(z) * V SN/year where r_v is the volume rate
+            1- Cut the zrange into shell (z, z + dz)
+            2- Compute time rate for the shell r = r_v(z) * V(z) AstrObj / year where r_v is the volume rate
             3- Generate the number of SN Ia in each shell with a Poisson's law
             4- Generate ra, dec for all the SN uniform on the sphere
             5- Generate t0 uniform between mintime and maxtime
-            5- Generate z for in each shell uniform in the interval [z,z+dz]
-            6- Apply observation and selection cuts to SN
-
+            6- Generate z following the rate distribution
+            7- Apply observation and selection cuts to SN
+            8- Genertate fluxes
         """
         # -- Generate the number of SN
-        lcs = []
         if 'duration_for_rate' in self.config['sim_par']:
             duration = self.config['sim_par']['duration_for_rate']
         else:
             duration = generator.time_range[1] - generator.time_range[0]
 
         n_obj = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
-                               duration, area=self.survey.fields._tot_area)
+                               duration, area=self.survey._envelope_area)
 
-        # -- Generate n base param
-        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
+        lcs = self._sim_lcs(generator, n_obj,
+                            Obj_ID=Obj_ID, seed=rand_gen.integers(1e3, 1e6))
 
-        # -- Set up obj parameters
-        model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
-        zobs, MinT, MaxT = ut.zobs_MinT_MaxT(param_tmp, model_t_range)
-
-        # -- Select observations that pass all the cuts
-        epochs, parmask = self.survey.epochs_selection(param_tmp['ra'].to_numpy(),
-                                                       param_tmp['dec'].to_numpy(),
-                                                       param_tmp['sim_t0'].to_numpy(),
-                                                       zobs.to_numpy(),
-                                                       MinT.to_numpy(),
-                                                       MaxT.to_numpy(),
-                                                       self.nep_cut)
-        
-        if parmask is None:
-            raise RuntimeError('None of the object pass the cuts...')
-
-        # -- Keep the parameters of selected lcs
-        param_tmp = param_tmp[parmask]
-        param_tmp.reset_index(inplace=True)
-
-        # -- Generate the object
-        obj_list = generator(np.sum(parmask),
-                             rand_gen.integers(1000, 1e6),
-                             astrobj_par=param_tmp)
-
-        for ID, obj in zip(epochs.index.unique('ID'), obj_list):
-            obj.epochs = epochs.loc[[ID]]
-            obj.gen_flux(rand_gen)
-            obj.ID = ID
-
-            lcs.append(obj.sim_lc)
         return lcs
 
     def _fix_nsn_sim(self, rand_gen, generator, Obj_ID=0):
-        """Simulate a fixed number of SN.
+        """Simulate a fixed number of AstrObj.
 
         Parameters
         ----------
@@ -475,46 +514,18 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
+            lcs += self._sim_lcs(generator, n_to_sim,
+                                 Obj_ID=len(lcs), seed=rand_gen.integers(1e3, 1e6))
 
-            # -- Generate n base param
-            param_tmp = generator.gen_astrobj_par(n_to_sim, rand_gen.integers(1000, 1e6))
-
-            # -- Set up obj parameters
-            model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
-
-            zobs, MinT, MaxT = ut.zobs_MinT_MaxT(param_tmp, model_t_range)
-
-            # -- Select observations that pass all the cuts
-            epochs, parmask = self.survey.epochs_selection(param_tmp['ra'].to_numpy(),
-                                                           param_tmp['dec'].to_numpy(),
-                                                           param_tmp['sim_t0'].to_numpy(),
-                                                           zobs.to_numpy(),
-                                                           MinT.to_numpy(),
-                                                           MaxT.to_numpy(),
-                                                           self.nep_cut,
-                                                           IDmin=len(lcs))
-            if epochs is None:
+            # -- Arbitrary cut to stop the simulation if no SN are geenrated
+            if n_to_sim == generator._params['force_n'] - len(lcs):
                 raise_trigger += 1
                 if raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
                     raise RuntimeError('Cuts are too stricts')
                 continue
 
-            # -- Keep the parameters of selected lcs
-            param_tmp = param_tmp[parmask]
-            param_tmp.reset_index(inplace=True)
-
-            # -- Generate the object
-            obj_list = generator(np.sum(parmask),
-                                 rand_gen.integers(1000, 1e6),
-                                 astrobj_par=param_tmp)
-
-            for ID, obj in zip(epochs.index.unique('ID'), obj_list):
-                obj.epochs = epochs.loc[[ID]]
-                obj.gen_flux(rand_gen)
-                obj.ID = ID
-                lcs.append(obj.sim_lc)
-
             n_to_sim = generator._params['force_n'] - len(lcs)
+
         return lcs
 
     def plot_ra_dec(self, idx, plot_vpec=False, plot_fields=False, **kwarg):

@@ -24,5 +24,6 @@ if args.nb_threads is not None:
 
 print(f'Numba is configured to use {numba.get_num_threads()} threads')
 
-sim = snsim.Simulator(args.config_file, print_config=args.print_config)
-sim.simulate()
+if __name__ == '__main__':
+    sim = snsim.Simulator(args.config_file, print_config=args.print_config)
+    sim.simulate()

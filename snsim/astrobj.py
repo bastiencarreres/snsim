@@ -5,8 +5,6 @@ import abc
 import numpy as np
 import pandas as pd
 from .constants import C_LIGHT_KMS
-from . import nb_fun as nbf
-from . import dust_utils as dst_ut
 
 
 class BasicAstrObj(abc.ABC):
@@ -54,12 +52,7 @@ class BasicAstrObj(abc.ABC):
 
         # -- set parameters of the sncosmo model
         self._set_model()
-
-        # -- Define attributes to be set
-        self._epochs = None
-        self._sim_lc = None
-        self._ID = None
-
+        
     def _set_model(self):
         # Set sncosmo model parameters
         params = {**{'z': self.zobs, 't0': self.sim_t0},
@@ -71,7 +64,7 @@ class BasicAstrObj(abc.ABC):
         """Abstract method to add general model parameters call during __init__."""
         pass
 
-    def gen_flux(self, rand_gen):
+    def gen_flux(self, obs, seed=None):
         """Generate the obj lightcurve.
 
         Parameters
@@ -87,7 +80,10 @@ class BasicAstrObj(abc.ABC):
         -----
         Set the sim_lc attributes as a pandas.DataFrame
         """
-        random_seeds = rand_gen.integers(1000, 100000, size=2)
+        if seed is None:
+            random_seeds = np.random.randint(1e3, 1e6, size=2)
+        else:
+            random_seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=2)
 
         # Re - set the parameters
         self._set_model()
@@ -95,10 +91,10 @@ class BasicAstrObj(abc.ABC):
         if self._model_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
-            fluxtrue, fluxcov = self.sim_model.bandfluxcov(self.epochs['band'],
-                                                           self.epochs['time'],
-                                                           zp=self.epochs['zp'],
-                                                           zpsys=self.epochs['zpsys'])
+            fluxtrue, fluxcov = self.sim_model.bandfluxcov(obs['band'],
+                                                           obs['time'],
+                                                           zp=obs['zp'],
+                                                           zpsys=obs['zpsys'])
 
             fluxtrue += gen.multivariate_normal(np.zeros(len(fluxcov)),
                                                 fluxcov,
@@ -106,15 +102,15 @@ class BasicAstrObj(abc.ABC):
                                                 method='eigh')
 
         else:
-            fluxtrue = self.sim_model.bandflux(self.epochs['band'],
-                                               self.epochs['time'],
-                                               zp=self.epochs['zp'],
-                                               zpsys=self.epochs['zpsys'])
+            fluxtrue = self.sim_model.bandflux(obs['band'],
+                                               obs['time'],
+                                               zp=obs['zp'],
+                                               zpsys=obs['zpsys'])
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
-        fluxerr = np.sqrt(np.abs(fluxtrue) / self.epochs.gain
-                          + self.epochs.skynoise**2
-                          + (np.log(10) / 2.5 * fluxtrue * self.epochs.sig_zp)**2)
+        fluxerr = np.sqrt(np.abs(fluxtrue) / obs.gain
+                          + obs.skynoise**2
+                          + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp)**2)
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
@@ -126,7 +122,7 @@ class BasicAstrObj(abc.ABC):
         positive_fmask = pd.eval('flux > 0')
         flux_pos = flux[positive_fmask]
 
-        mag[positive_fmask] = -2.5 * np.log10(flux_pos) + self.epochs['zp'][positive_fmask]
+        mag[positive_fmask] = -2.5 * np.log10(flux_pos) + obs['zp'][positive_fmask]
 
         magerr[positive_fmask] = 2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
 
@@ -134,26 +130,30 @@ class BasicAstrObj(abc.ABC):
         magerr[~positive_fmask] = np.nan
 
         # Create astropy Table lightcurve
-        self._sim_lc = pd.DataFrame({'time': self.epochs['time'],
-                                     'fluxtrue': fluxtrue,
-                                     'flux': flux,
-                                     'fluxerr': fluxerr,
-                                     'mag': mag,
-                                     'magerr': magerr,
-                                     'zp': self.epochs['zp'],
-                                     'zpsys': self.epochs['zpsys'],
-                                     'gain': self.epochs['gain'],
-                                     'skynoise': self.epochs['skynoise']})
+        sim_lc = pd.DataFrame({'time': obs['time'],
+                               'fluxtrue': fluxtrue,
+                               'flux': flux,
+                               'fluxerr': fluxerr,
+                               'mag': mag,
+                               'magerr': magerr,
+                               'zp': obs['zp'],
+                               'zpsys': obs['zpsys'],
+                               'gain': obs['gain'],
+                               'skynoise': obs['skynoise']})
 
-        self._sim_lc.attrs = {**self.sim_lc.attrs,
-                              **{'zobs': self.zobs, 't0': self.sim_t0},
-                              **self._params['sncosmo']}
+        for k in obs.columns:
+            if k not in sim_lc.columns:
+                sim_lc[k] = obs[k].values
 
-        self._sim_lc.reset_index(inplace=True)
-        self._sim_lc.index.set_names('epochs', inplace=True)
-        return self._reformat_sim_table()
+        sim_lc.attrs = {**sim_lc.attrs,
+                        **{'zobs': self.zobs, 't0': self.sim_t0},
+                        **self._params['sncosmo']}
 
-    def _reformat_sim_table(self):
+        sim_lc.reset_index(inplace=True)
+        sim_lc.index.set_names('epochs', inplace=True)
+        return self._reformat_sim_table(sim_lc)
+
+    def _reformat_sim_table(self, sim_lc):
         """Give the good format to the sncosmo output Table.
 
         Returns
@@ -169,42 +169,32 @@ class BasicAstrObj(abc.ABC):
         not_to_change = ['G10', 'C11', 'mw_']
         dont_touch = ['zobs', 'mw_r_v', 'fcov_seed']
 
-        for k in self.epochs.columns:
-            if k not in self.sim_lc.columns:
-                self._sim_lc[k] = self.epochs[k].to_numpy()
 
-        for k in self.sim_lc.attrs.copy():
+        for k in sim_lc.attrs.copy():
             if k not in dont_touch and k[:3] not in not_to_change:
-                self.sim_lc.attrs['sim_' + k] = self.sim_lc.attrs.pop(k)
+                sim_lc.attrs['sim_' + k] = sim_lc.attrs.pop(k)
 
-        self.sim_lc.attrs['type'] = self._type
+        sim_lc.attrs['type'] = self._type
 
         for meta in self._base_attrs:
             if meta == 'coord':
-                self.sim_lc.attrs['ra'] = self.coord[0]
-                self.sim_lc.attrs['dec'] = self.coord[1]
+                sim_lc.attrs['ra'] = self.coord[0]
+                sim_lc.attrs['dec'] = self.coord[1]
             else:
                 attrs = getattr(self, meta)
                 if attrs is not None:
-                    self.sim_lc.attrs[meta] = getattr(self, meta)
+                    sim_lc.attrs[meta] = getattr(self, meta)
 
         if 'dip_dM' in self._params:
-            self.sim_lc.attrs['dip_dM'] = self.dip_dM
+            sim_lc.attrs['dip_dM'] = self.dip_dM
+
+        return sim_lc
 
     @property
     def ID(self):
         """Get ID."""
-        return self._ID
-
-    @ID.setter
-    def ID(self, ID):
-        """Set ID."""
-        if isinstance(ID, (int, np.integer)):
-            self._ID = ID
-        else:
-            print('SN ID must be an integer')
-        if self.sim_lc is not None:
-            self.sim_lc.attrs['ID'] = self._ID
+        if 'ID' in self._params:
+            return self._params['ID']
 
     @property
     def sim_t0(self):
@@ -257,26 +247,10 @@ class BasicAstrObj(abc.ABC):
         return (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
 
     @property
-    def epochs(self):
-        """Get observed redshift."""
-        return self._epochs
-
-    @epochs.setter
-    def epochs(self, ep_dic):
-        """Get observed epochs."""
-        self._epochs = ep_dic
-
-    @property
     def sim_mu(self):
         """Get distance moduli."""
         return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) *
                             (1 + self.zpec)**2 * self.como_dist) + 25
-
-    @property
-    def sim_lc(self):
-        """Get sim_lc."""
-        return self._sim_lc
-
 
 class SNIa(BasicAstrObj):
     """SNIa class.
