@@ -72,7 +72,8 @@ def write_sim(wpath, name, formats, header, data):
 
     if 'parquet' in formats and imp_pyarrow and imp_json:
         lcs = pa.Table.from_pandas(data)
-        lcmeta = json.dumps(data.attrs, cls=NpEncoder)
+        lcmeta = json.dumps({int(data.attrs[k]['ID']): data.attrs[k] for k in data.attrs}, 
+                             cls=NpEncoder)
         header = json.dumps(header, cls=NpEncoder)
         meta = {'name'.encode(): name.encode(),
                 'attrs'.encode(): lcmeta.encode(),
@@ -223,3 +224,77 @@ def open_fit(file):
     fit.set_index(['ID'], inplace=True)
 
     return fit
+
+
+def _read_sub_field_map(size, field_config):
+    """Read the sub-field map file.
+
+    Parameters
+    ----------
+    field_config : str
+        Path to the field map config file.
+
+    Returns
+    -------
+    dict
+        A dict containing the corner postion of the field.
+
+    """
+    file = open(field_config)
+    # Header symbol
+    dic_symbol = {}
+    nbr_id = -2
+    lines = file.readlines()
+    for i, l in enumerate(lines):
+        if l[0] == '%':
+            key_val = l[1:].strip().split(':')
+            dic_symbol[key_val[0]] = {'nbr': nbr_id}
+            dic_symbol[key_val[0]]['size'] = np.radians(float(key_val[2]))
+            dic_symbol[key_val[0]]['type'] = key_val[1].lower()
+            if key_val[1].lower() not in ['ra', 'dec']:
+                raise ValueError('Espacement type is ra or dec')
+            nbr_id -= 1
+        else:
+            break
+
+    # Compute void region
+    # For the moment only work with regular grid
+    subfield_map = [string.strip().split(':') for string in lines[i:] if string != '\n']
+    used_ra = len(subfield_map[0])
+    used_dec = len(subfield_map)
+    ra_space = 0
+    for k in dic_symbol.keys():
+        if dic_symbol[k]['type'] == 'ra':
+            ra_space += subfield_map[0].count(k) * dic_symbol[k]['size']
+            used_ra -= subfield_map[0].count(k)
+    dec_space = 0
+    for lines in subfield_map:
+        if lines[0] in dic_symbol.keys() and dic_symbol[lines[0]]['type'] == 'dec':
+            dec_space += dic_symbol[lines[0]]['size']
+            used_dec -= 1
+
+    subfield_ra_size = (size[0] - ra_space) / used_ra
+    subfield_dec_size = (size[1] - dec_space) / used_dec
+
+    # Compute all ccd corner
+    corner_dic = {}
+    dec_metric = size[1] / 2
+    for i, l in enumerate(subfield_map):
+        if l[0] in dic_symbol and dic_symbol[l[0]]['type'] == 'dec':
+            dec_metric -= dic_symbol[l[0]]['size']
+        else:
+            ra_metric = - size[0] / 2
+            for j, elmt in enumerate(l):
+                if elmt in dic_symbol.keys() and dic_symbol[elmt]['type'] == 'ra':
+                    ra_metric += dic_symbol[elmt]['size']
+                elif int(elmt) == -1:
+                    ra_metric += subfield_ra_size
+                else:
+                    corner_dic[int(elmt)] = np.array([
+                        [ra_metric, dec_metric],
+                        [ra_metric + subfield_ra_size, dec_metric],
+                        [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
+                        [ra_metric, dec_metric - subfield_dec_size]])
+                    ra_metric += subfield_ra_size
+            dec_metric -= subfield_dec_size
+    return corner_dic

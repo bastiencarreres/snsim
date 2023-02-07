@@ -2,6 +2,8 @@
 import re
 from pathlib import Path
 from astropy import constants as cst
+import numpy as np
+import shapely.geometry as shp_geo
 
 path_location = Path(__file__).absolute().parent
 init_location = path_location / '__init__.py'
@@ -24,3 +26,7 @@ L_CMB = 264.021  # deg
 B_CMB = 48.253  # deg
 
 SEP = '###############################################'
+
+
+_SPHERE_LIMIT_ = shp_geo.LineString([[2 * np.pi, -np.pi/2],
+                                     [2 * np.pi,  np.pi/2]])

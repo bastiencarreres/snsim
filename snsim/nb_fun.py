@@ -1,5 +1,5 @@
 """This module contains functions with numba decorator to speed up the simulation."""
-from numba import njit, prange
+from numba import njit, prange, guvectorize
 import numpy as np
 from numba.core import types
 from numba.typed import Dict
@@ -91,10 +91,10 @@ def R_base(a, t, vec, to_field_frame=True):
         return R @ vec
 
 
-@njit(cache=True, parallel=True)
-def new_coord_on_fields(ra_frame, dec_frame, vec):
+@guvectorize(["void(float64[:, :], float64[:, :], float64[:,:])"],
+              "(m, n),(m, n)->(m, n)", nopython=True)
+def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
     """Compute new coordinates of an object in a list of fields frames.
-
     Parameters
     ----------
     ra_frame : numpy.ndarray(float)
@@ -103,19 +103,20 @@ def new_coord_on_fields(ra_frame, dec_frame, vec):
         Field Declinaison.
     vec : numpy.ndarray(float, size = 3)
         The carthesian coordinates of the object.
-
     Returns
     -------
     numpy.ndarray(float, size = (2, ?))
     The new coordinates of the obect in each field frame.
-
     """
-    new_radec = np.zeros((2, len(ra_frame)))
-    for i in prange(len(ra_frame)):
-        x, y, z = R_base(ra_frame[i], -dec_frame[i], vec)
+   
+    for i in range(len(ra_dec_frame[0])):
+        vec = np.array([np.cos(ra_dec[0][i]) * np.cos(ra_dec[1][i]),
+                        np.sin(ra_dec[0][i]) * np.cos(ra_dec[1][i]),
+                        np.sin(ra_dec[1][i])])
+        x, y, z = R_base(ra_dec_frame[0][i], -ra_dec_frame[1][i], vec, to_field_frame=False)
         new_radec[0][i] = np.arctan2(y, x)
+        if  new_radec[0][i] <0: new_radec[0][i] +=  2 * np.pi
         new_radec[1][i] = np.arcsin(z)
-    return new_radec
 
 
 @njit(cache=True)

@@ -59,7 +59,7 @@ class BaseGen(abc.ABC):
     _available_rates = []   # Rate models
 
     def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 host=None, mw_dust=None, dipole=None, survey_footprint=None):
+                 host=None, mw_dust=None, dipole=None, geometry=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
@@ -71,7 +71,7 @@ class BaseGen(abc.ABC):
         self._host = host
         self._mw_dust = mw_dust
         self._dipole = dipole
-        self._footprint = survey_footprint
+        self._geometry = geometry
 
         self.rate_law = self._init_rate()
 
@@ -90,7 +90,7 @@ class BaseGen(abc.ABC):
         # -- Get the astrobj class
         self._astrobj_class = getattr(astr, self._object_type)
 
-    def __call__(self, n_obj, rand_seed, astrobj_par=None):
+    def __call__(self, n_obj=None, rand_seed=None, astrobj_par=None):
         """Launch the simulation of obj.
 
         Parameters
@@ -107,11 +107,18 @@ class BaseGen(abc.ABC):
         list(AstrObj)
             A list containing Astro Object.
         """
+        if rand_seed is None:
+            rand_seed = np.random.integer(1e3, 1e6)
+
+        if astrobj_par is not None:
+            n_obj = len(astrobj_par)
+        elif n_obj is not None:
+            astrobj_par = self.gen_astrobj_par(n_obj, seed=seeds[0])
+        else:
+            raise ValueError('n_obj and astrobj_par cannot be None at the same time')
+
         # -- Initialise 4 seeds for differents generation calls
         seeds = np.random.default_rng(rand_seed).integers(1e3, 1e6, size=4)
-
-        if astrobj_par is None:
-            astrobj_par = self.gen_astrobj_par(n_obj, seed=seeds[0])
 
         # -- Add astrobj par sepecific to the obj generated
         self._update_astrobj_par(n_obj, astrobj_par, seed=seeds[1])
@@ -125,9 +132,9 @@ class BaseGen(abc.ABC):
         else:
             dust_par = [{}] * len(astrobj_par['ra'])
 
-        astrobj_list = ({**{k: astrobj_par[k][i] for k in astrobj_par},
+        astrobj_list = ({**{'ID': astrobj_par.index.values[i]},
+                         **{k: astrobj_par[k][i] for k in astrobj_par},
                          **{'sncosmo': {**sncp, **dstp}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
-
         return [self._astrobj_class(snp, self.sim_model, self._general_par) for snp in astrobj_list]
 
     @abc.abstractmethod
@@ -287,7 +294,7 @@ class BaseGen(abc.ABC):
         """
         rand_gen = np.random.default_rng(seed)
 
-        if self._footprint is None:
+        if self._geometry is None:
             ra = rand_gen.uniform(low=0, high=2 * np.pi, size=n)
             dec_uni = rand_gen.random(size=n)
             dec = np.arcsin(2 * dec_uni - 1)
@@ -296,16 +303,22 @@ class BaseGen(abc.ABC):
             gen_tmp = np.random.default_rng(rand_gen.integers(1e3, 1e6))
             ra, dec = [], []
 
-            # -- Generate coord and accept if there are in footprint
-            while len(ra) < n:
+            # -- Generate coord and accept if there are in the given geometry
+            n_to_sim = n
+            ra = []
+            dec = []
+            while len(idx) < n:
                 ra_tmp = gen_tmp.uniform(low=0, high=2 * np.pi)
                 dec_uni_tmp = rand_gen.random()
                 dec_tmp = np.arcsin(2 * dec_uni_tmp - 1)
-                if self._footprint.contains(shp_geo.Point(ra_tmp, dec_tmp)):
-                    ra.append(ra_tmp)
-                    dec.append(dec_tmp)
-            ra = np.array(ra)
-            dec = np.array(dec)
+
+                multipoint = gpd.points_from_xy(ra_tmp, 
+                                                dec_tmp)
+                intersects = multipoint.intersects(self._geometry)
+                ra.extend(ra_tmp[intersects])
+                dec.extend(dec_tmp[intersects])
+                n_to_sim = n - len(ra)
+    
         return ra, dec
 
     def gen_zcos(self, n, seed=None):

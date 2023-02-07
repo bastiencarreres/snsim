@@ -6,7 +6,9 @@ import astropy.time as atime
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as astu
-from .constants import C_LIGHT_KMS
+from shapely import geometry as shp_geo
+from shapely import ops as shp_ops
+from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
 
 
 def gauss(mu, sig, x):
@@ -431,3 +433,65 @@ def print_dic(dic, prefix=''):
             print_dic(dic[K], prefix=prefix + indent)
         else:
             print(prefix + f'{K}: {dic[K]}')
+
+
+def _format_corner(corner, RA):
+    # -- Replace corners that cross sphere edges
+    #    
+    #     0 ---- 1
+    #     |      |
+    #     3 ---- 2
+    # 
+    #   conditions : 
+    #       - RA_0 < RA_1
+    #       - RA_3 < RA_2
+    #       - RA_0 and RA_3 on the same side of the field center
+    
+    sign = (corner[3][0] - RA) * (corner[0][0] - RA) < 0
+    comp = corner[0][0] < corner[3][0]
+
+    corner[1][0][corner[1][0] < corner[0][0]] += 2 * np.pi
+    corner[2][0][corner[2][0] < corner[3][0]] += 2 * np.pi
+
+
+    corner[0][0][sign & comp] += 2 * np.pi
+    corner[1][0][sign & comp] += 2 * np.pi
+
+    corner[2][0][sign & ~comp] += 2 * np.pi
+    corner[3][0][sign & ~comp] += 2 * np.pi
+    return corner
+
+
+def _compute_area(polygon):
+    """Compute survey total area."""
+    # It's an integration by dec strip
+    area = 0
+    strip_dec = np.linspace(-np.pi/2, np.pi/2, 10_000)
+    for da, db in zip(strip_dec[:-1], strip_dec[1:]):
+        line = shp_geo.LineString([[0, (da + db) * 0.5], [2 * np.pi, (da + db) * 0.5]])
+        if line.intersects(polygon):
+            dRA = line.intersection(polygon).length
+            area += dRA * (np.sin(db) - np.sin(da))
+    return area
+
+
+def _compute_polygon(corners):
+    """Create polygon on a sphere, check for edges conditions."""
+    polygon = shp_geo.Polygon(corners)
+    # -- Cut into 2 polygon if cross the edges
+    if polygon.intersects(_SPHERE_LIMIT_):
+        unioned = polygon.boundary.union(_SPHERE_LIMIT_)
+        polygon = [p for p in shp_ops.polygonize(unioned)
+                    if p.representative_point().within(polygon)]
+
+        x0, y0 = polygon[0].boundary.xy
+        x1, y1 = polygon[1].boundary.xy
+
+        if x1 > x0: 
+            x1 = np.array(x1) - 2 * np.pi
+            polygon[1] = shp_geo.Polygon(np.array([x1, y1]).T)
+        else:
+            x0 = np.array(x0) - 2 * np.pi
+            polygon[0] = shp_geo.Polygon(np.array([x0, y0]).T)
+        polygon =  shp_geo.MultiPolygon(polygon)
+    return polygon
