@@ -11,3 +11,4 @@ requests>=2.28.2
 sfdmap==0.1.1
 shapely>=2.0.0
 sncosmo>=2.9.0
+dask>=2023
