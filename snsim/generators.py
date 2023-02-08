@@ -2,6 +2,7 @@
 
 import abc
 import numpy as np
+import sncosmo as snc
 import pandas as pd
 import geopandas as gpd
 from shapely import geometry as shp_geo
@@ -11,11 +12,16 @@ from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
+from . import constants as cst
 
 
 
 
-__GEN_DIC__ = {'snia_gen': 'SNIaGen'}
+_GEN_DIC__ = {'snia_gen': 'SNIaGen',
+               'timeseries_gen':'TimeSeriesGen',
+               'sniipl_gen': 'SNIIplGen',
+               'sniib_gen': 'SNIIbGen',
+               'sniin_gen': 'SNIInGen'}
 
 
 class BaseGen(abc.ABC):
@@ -129,16 +135,33 @@ class BaseGen(abc.ABC):
         # -- Add sncosmo par specific to the generated obj
         snc_par = self.gen_snc_par(n_obj, astrobj_par, seed=seeds[2])
 
+        # -- randomly chose the number of object for each model
+        rand_gen = np.random.default_rng(seeds[3])
+        random_models = rand_gen.choice(list(self.sim_model.keys()), n_obj)
+
         # -- Check if there is dust
-        if 'mw_' in self.sim_model.effect_names:
+        if 'mw_' in self.sim_model.values()[0].effect_names:
             dust_par = self._compute_dust_par(astrobj_par['ra'], astrobj_par['dec'])
         else:
             dust_par = [{}] * len(astrobj_par['ra'])
+        
+        if snc_par is not None:
+            par_list = ({**{'ID': astrobj_par.index.values[i]},
+                            {**{k: astrobj_par[k][i] for k in astrobj_par},
+                             **{'sncosmo': {**sncp, **dstp}}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
+        else:
+            par_list = ({**{'ID': astrobj_par.index.values[i]}
+                            {**{k: astrobj_par[k][i] for k in astrobj_par},
+                             **{'sncosmo': { **dstp}}}} for i, dstp in enumerate(dust_par))
+        astrobj_list = [self._astrobj_class(snp,
+                                            self.sim_model[k], 
+                                            self._general_par)
+                                            for k, snp in zip(random_models, 
+                                                              par_list)
+                        ]
 
-        astrobj_list = ({**{'ID': astrobj_par.index.values[i]},
-                         **{k: astrobj_par[k][i] for k in astrobj_par},
-                         **{'sncosmo': {**sncp, **dstp}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
-        return [self._astrobj_class(snp, self.sim_model, self._general_par) for snp in astrobj_list]
+        return astrobj_list
+
 
     @abc.abstractmethod
     def _init_sim_model(self):
@@ -243,8 +266,10 @@ class BaseGen(abc.ABC):
         if self.mw_dust is not None:
             self._general_par['mw_dust'] = {'model' : self.mw_dust['model'], 
                                             'rv': self.mw_dust['rv']}
-        if not hasattr(self.sim_model, 'bandfluxcov'):
-            raise ValueError('This sncosmo model has no flux covariance available')
+        for model in self.sim_model.values():
+            if not hasattr(model, 'bandfluxcov'):
+                raise ValueError('This sncosmo model has no flux covariance available')
+                
         if 'mod_fcov' in self._params:
             self._general_par['mod_fcov'] = self._params['mod_fcov']
         else:
@@ -256,7 +281,8 @@ class BaseGen(abc.ABC):
         if self.mw_dust is not None:
             if 'rv' not in self.mw_dust:
                 self.mw_dust['rv'] = 3.1
-                dst_ut.init_mw_dust(self.sim_model, self.mw_dust)
+            for model in self.sim_model.values():
+                dst_ut.init_mw_dust(model, self.mw_dust)
 
     def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
@@ -540,10 +566,13 @@ class BaseGen(abc.ABC):
         None
 
         """
-        header = {'obj_type': self._object_type,
+        header = {
+                  'obj_type': self._object_type,
                   'rate': self.rate_law[0],
                   'rate_pw': self.rate_law[1],
-                  'model_name': self.sim_model.source.name}
+                  'model_name': [model.source.name 
+                                 for model in self.sim_model.values()]
+                 }
 
         header = {**header, **self._general_par}
     
@@ -557,7 +586,8 @@ class BaseGen(abc.ABC):
     @property
     def snc_model_time(self):
         """Get the sncosmo model mintime and maxtime."""
-        return self.sim_model.mintime(), self.sim_model.maxtime()
+        for model in self.sim_model.values():
+            return model.mintime(), model.maxtime()
 
     @property
     def host(self):
@@ -670,7 +700,7 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
-            return ut.scale_M0_jla(self.cosmology.h)
+            return ut.scale_M0_cosmology(self.cosmology.h,cst.SNIA_M0['jla'],cst.h_article['jla'])  
 
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
@@ -694,7 +724,7 @@ class SNIaGen(BaseGen):
 
         if 'sct_model' in self._params:
             sct.init_sn_sct_model(model, self._params['sct_model'])
-        return model
+        return {0: model}
 
     def _update_general_par(self):
         """Initialise the general parameters, depends on the SN simulation model.
@@ -756,12 +786,12 @@ class SNIaGen(BaseGen):
                 params = ['G10_L0', 'G10_F0', 'G10_F1', 'G10_dL']
                 for par in params:
                     pos = np.where(np.array(self.sim_model.param_names) == par)[0]
-                    header[par] = self.sim_model.parameters[pos][0]
+                    header[par] = self.sim_model[0].parameters[pos][0]
             elif self._params['sct_model'].lower() == 'c11':
                 params = ['C11_Cuu', 'C11_Sc']
                 for par in params:
-                    pos = np.where(np.array(self.sim_model.param_names) == par)[0]
-                    header[par] = self.sim_model.parameters[pos][0]
+                    pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
+                    header[par] = self.sim_model[0].parameters[pos][0]
 
     def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
@@ -816,12 +846,12 @@ class SNIaGen(BaseGen):
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         # -- Non-coherent scattering effects
-        if 'G10_' in self.sim_model.effect_names:
+        if 'G10_' in self.sim_model[0].effect_names:
             seeds = rand_gen.integers(low=1e3, high=1e6, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['G10_RndS'] = s
 
-        elif 'C11_' in self.sim_model.effect_names:
+        elif 'C11_' in self.sim_model[0].effect_names:
             seeds = rand_gen.integers(low=1e3, high=1e6, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['C11_RndS'] = s
@@ -858,3 +888,338 @@ class SNIaGen(BaseGen):
                               seed=seeds[1],
                               size=n_sn)
         return sim_x1, sim_c
+
+
+
+class TimeSeriesGen(BaseGen):
+    """TimeSeries parameters generator.
+
+    Parameters
+    ----------
+    params : dict
+        Basic params + TimeSeries specific parameters.
+
+      | params
+      | ├── M0, absolute magnitude
+      | ├── sigM, coherent scattering
+      |
+    cmb : dict
+        The CMB dipole configuration.
+
+      | cmb
+      | ├── vcmb
+      | ├── l_cmb
+      | └── b_cmb
+    cosmology : astropy.cosmology
+        The astropy cosmological model to use.
+    vpec_dist : dict
+        The parameters of the peculiar velocity distribution.
+
+      | vpec_dist
+      | ├── mean_vpec
+      | └── sig_vpec
+    host : class SnHost, opt
+        The host class to introduce sn host.
+    dipole : dict, opt
+        The alpha dipole parameters.
+
+      | dipole
+      | ├── coord  list(ra, dec) dipole vector coordinates in ra, dec
+      | ├── A  parameter of the A + B * cos(theta) dipole
+      | └── B  B parameter of the A + B * cos(theta) dipole
+    """
+    _object_type = 'TimeSeries'
+    _available_models = ut.Templatelist_fromsncosmo('timeseries')
+        
+    def _init_M0(self):
+        """Initialise absolute magnitude."""
+        if isinstance(self._params['M0'], (float, np.floating, int, np.integer)):
+            return self._params['M0']
+
+        elif self._object_type=='SNIIpl':
+            if self._params['M0'].lower() == 'li11_gaussian':
+                return ut.scale_M0_cosmology(self.cosmology.h,
+                                             cst.SNII_M0['sniipl']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+            elif self._params['M0'].lower() == 'li11_skewed':
+                return ut.scale_M0_cosmology(self.cosmology.h,
+                                            cst.SNII_M0['sniipl']['li11_skewed'],
+                                            cst.h_article['li11'])
+
+        elif self._object_type=='SNIIb':
+            if self._params['M0'].lower() == 'li11_gaussian':
+                return ut.scale_M0_cosmology(self.cosmology.h,
+                                            cst.SNII_M0['sniib']['li11_gaussian'],
+                                            cst.h_article['li11'])
+
+            elif self._params['M0'].lower() == 'li11_skewed':
+                return ut.scale_M0_cosmology(self.cosmology.h,cst.SNII_M0['sniib']['li11_skewed'],
+                                             cst.h_article['li11'])
+
+        elif self._object_type=='SNIIn':
+            if self._params['M0'].lower() == 'li11_gaussian':
+                return ut.scale_M0_cosmology(self.cosmology.h,
+                                             cst.SNII_M0['sniin']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+            elif self._params['M0'].lower() == 'li11_skewed':
+                return ut.scale_M0_cosmology(self.cosmology.h,cst.SNII_M0['sniin']['li11_skewed'],
+                                             cst.h_article['li11'])
+        
+    
+               
+
+    def _init_sim_model(self):
+        """Initialise sncosmo model using the good source.
+
+        Returns
+        -------
+        sncosmo.Model
+            sncosmo.Model(source) object where source depends on the
+            SN simulation model.
+        """
+
+        if isinstance(self._params['model_config']['model_name'], str):
+            if self._params['model_config']['model_name'].lower() == 'all':
+                selected_models = self._available_models
+            elif self._params['model_config']['model_name'].lower() == 'vinc_nocorr':
+                selected_models = ut.select_Vincenzi_template(self._available_models,corr=False)
+            elif self._params['model_config']['model_name'].lower() == 'vinc_corr':
+                selected_models = ut.select_Vincenzi_template(self._available_models,corr=True)
+            else:
+                selected_models = [self._params['model_config']['model_name']]
+
+            model= [ut.init_sn_model(m) 
+                    for m in selected_models]
+        else:            
+            model = [ut.init_sn_model(m) 
+                      for m in self._params['model_config']['model_name']]
+            
+        model = {i :m for i, m in enumerate(model)}
+        
+        return model
+
+
+    def _update_general_par(self):
+        """Initialise the general parameters, depends on the SN simulation model.
+
+        Returns
+        -------
+        list
+            A dict containing all the usefull keys of the SN model.
+        """
+
+        self._general_par['M0'] = self._init_M0()
+        self._general_par['sigM'] = self._params['sigM']
+       
+        return
+
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+        # -- Generate coherent mag scattering
+        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
+
+   
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Generate n coherent mag scattering term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag scattering terms to generate.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array containing scattering terms generated.
+
+        """
+        if seed is None:
+            seed = np.random.random_integers(1e3, 1e6)
+        rand_gen = np.random.default_rng(seed)
+        
+        if isinstance(self._params['sigM'], (float, np.floating, int, np.integer)):
+            return rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
+
+        elif self._object_type=='SNIIpl':
+            if self._params['sigM'].lower() == 'li11_gaussian':
+                return rand_gen.normal(loc=0, 
+                                       scale=cst.SNII_mgscatter['sniipl']['li11_gaussian'],
+                                       size=n_sn)
+            elif self._params['sigM'].lower() == 'li11_skewed':
+                return ut.asym_gauss(mu=0,
+                    sig_low=cst.SNII_mgscatter['sniipl']['li11_skewed'][0],
+                    sig_high=cst.SNII_mgscatter['li11_skewed'][1], seed=seed, size=n_sn)
+
+        elif self._object_type=='SNIIb':
+            if self._params['sigM'].lower() == 'li11_gaussian':
+                return rand_gen.normal(loc=0, 
+                                       scale=cst.SNII_mgscatter['sniib']['li11_gaussian'],
+                                       size=n_sn)
+            elif self._params['sigM'].lower() == 'li11_skewed':
+                return  ut.asym_gauss(mu=0,sig_low=cst.SNII_mgscatter['sniib']['li11_skewed'][0],sig_high=cst.SNII_mgscatter['li11_skewed'][1], seed=seed, size=n_sn)
+
+        elif self._object_type=='SNIIn':
+            if self._params['sigM'].lower() == 'li11_gaussian':
+                return rand_gen.normal(loc=0, scale=cst.SNII_mgscatter['sniin']['li11_gaussian'], size=n_sn)
+            elif self._params['sigM'].lower() == 'li11_skewed':
+                return ut.asym_gauss(mu=0,
+                                     sig_low=cst.SNII_mgscatter['sniin']['li11_skewed'][0],
+                                     sig_high=cst.SNII_mgscatter['li11_skewed'][1], seed=seed, size=n_sn)
+
+
+class SNIIplGen(TimeSeriesGen):
+    """SNIIPL parameters generator.
+
+    Parameters
+    ----------
+    same as TimeSeriesGen
+    """
+    _object_type = 'SNIIpl'
+    _available_models = ut.Templatelist_fromsncosmo('sniipl')
+    _available_rates = ['ztf20']
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * 0.546554 * ( self.cosmology.h/0.70)**3
+            return (rate, 0)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+             
+    def _init_M0(self):
+        """Initialise absolute magnitude."""
+        return super()._init_M0()
+        
+    
+    def _init_sim_model(self):
+        """Same as TimeSeriesGen """
+        return super()._init_sim_model()
+
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+        # -- Generate coherent mag scattering
+        super()._update_astrobj_par(n_obj, astrobj_par, seed)
+  
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Same as TimeSeriesGen """
+        return super().gen_coh_scatter(n_sn,seed)
+    
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
+        """Same as TimeSeriesGen """       
+        return None
+
+
+
+class SNIIbGen(TimeSeriesGen):
+    """SNIIb parameters generator.
+
+    Parameters
+    ----------
+    same as TimeSeriesGen
+    """
+    _object_type = 'SNIIb'
+    _available_models = ut.Templatelist_fromsncosmo('sniib')
+    _available_rates = ['ztf20']
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * 0.047652 * ( self.cosmology.h/0.70)**3
+            return (rate, 0)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+               
+    def _init_M0(self):
+        """Initialise absolute magnitude."""
+        return super()._init_M0()
+        
+    
+    def _init_sim_model(self):
+        """Same as TimeSeriesGen """
+        return super()._init_sim_model()
+
+   
+
+    def _update_general_par(self):
+         """Same as TimeSeriesGen """
+        super()._update_general_par()
+       
+        return
+
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+        # -- Generate coherent mag scattering
+        super()._update_astrobj_par(n_obj, astrobj_par, seed)
+  
+
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Same as TimeSeriesGen """
+        return super().gen_coh_scatter(n_sn,seed)
+    
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
+        """Same as TimeSeriesGen """       
+        return None
+
+
+
+class SNIInGen(TimeSeriesGen):
+    """SNIIn parameters generator.
+
+    Parameters
+    ----------
+    same as TimeSeriesGen
+    """
+    _object_type = 'SNIIn'
+    _available_models = ut.Templatelist_fromsncosmo('sniin')
+    _available_rates = ['ztf20']
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * 0.102524 * ( self.cosmology.h/0.70)**3
+            return (rate, 0)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+               
+    def _init_M0(self):
+        """Initialise absolute magnitude."""
+        return super()._init_M0()
+        
+    
+    def _init_sim_model(self):
+        """Same as TimeSeriesGen """
+        return super()._init_sim_model()
+
+   
+
+    def _update_general_par(self):
+        """Same as TimeSeriesGen """
+        super()._update_general_par()
+       
+        return
+
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+        # -- Generate coherent mag scattering
+        super()._update_astrobj_par(n_obj, astrobj_par, seed)
+  
+
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Same as TimeSeriesGen """
+        return super().gen_coh_scatter(n_sn,seed)
+    
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
+        """Same as TimeSeriesGen """       
+        return None
+        
+        
+
+   
+ 
+       
