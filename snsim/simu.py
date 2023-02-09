@@ -440,8 +440,8 @@ class Simulator:
                              astrobj_par=params)
 
         if self.config['dask']['use']:
-            it_edges = np.linspace(0, len(obj_list),
-                                   len(obj_list) // (100 * self.config['dask']['nworkers']) + 1,
+            it_edges = np.linspace(0, len(obj_list) + 1,
+                                   np.max((len(obj_list) // (100 * 56), 2)) ,
                                    dtype=int)
 
             for imin, imax in zip(it_edges[:-1], it_edges[1:]):

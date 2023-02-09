@@ -333,9 +333,9 @@ class SurveyObs:
 
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
-            obs_dic['filter'] = obs_dic['filter'].map(self.band_dic).to_numpy(dtype='str')
+            obs_dic['filter'] = obs_dic['filter'].map(self.band_dic).astype('string')
         else:
-            obs_dic['filter'] = obs_dic['filter'].astype('U27').to_numpy(dtype='str')
+            obs_dic['filter'] = obs_dic['filter'].astype('string')
 
         # Effective start and end days
         start_day = ut.init_astropy_time(minMJDinObs)
@@ -448,6 +448,7 @@ class SurveyObs:
                                         self._sub_field_corners,
                                         align_dataframes=False,
                                         meta=ddf).compute()
+            self.test = ObsObj
         else:
             ObsObj = self._match_radec_to_obs(self.obs_table, ObjPoints,
                                               self.config, self._sub_field_corners)
