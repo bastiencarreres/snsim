@@ -553,7 +553,7 @@ class BaseGen(abc.ABC):
             model_dir = None
             model_dir_str = " from sncosmo"
 
-        print('OBJECT TYPE : ' + '')
+        print('OBJECT TYPE : ' + self._object_type)
         print(f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str)
 
         self._add_print()
