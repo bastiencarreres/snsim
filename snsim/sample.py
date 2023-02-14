@@ -120,15 +120,18 @@ class SimSample:
 
         """
         model_name = self.header['model_name']
+        model_sim=[]
+        for model in model_name:
+            sim_model = ut.init_sn_model(model, self._model_dir) 
 
-        sim_model = ut.init_sn_model(model_name, self._model_dir)
+            if 'sct_mod' in self.header:
+                sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
 
-        if 'sct_mod' in self.header:
-            sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
+            if 'mw_dust' in self.header:
+                dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
 
-        if 'mw_dust' in self.header:
-            dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
-        return sim_model
+            model_sim.extend([sim_model])
+        return model_sim
 
     def _set_obj_effects_model(self, model, ID):
         """Set the model parameters of one obj.
@@ -171,15 +174,20 @@ class SimSample:
             sncosmo sim model of the obj.
 
         """
-        simmod = copy.copy(self._sim_model)
-        par = {'z': self.meta[obj_ID]['zobs'],
-               't0': self.meta[obj_ID]['sim_t0']}
+        for model in self._sim_model:
+            if model.source.name == self.meta[obj_ID]['template']:
+                simmod = copy.copy(model)
+                par = {'z': self.meta[obj_ID]['zobs'],
+                       't0': self.meta[obj_ID]['sim_t0']}
 
-        if self.header['obj_type'].lower() == 'snia':
-            par = {**par, **self._get_snia_simsncpar(obj_ID)}
+                if self.header['obj_type'].lower() == 'snia':
+                    par = {**par, **self._get_snia_simsncpar(obj_ID)}
 
-        simmod.set(**par)
-        self._set_obj_effects_model(simmod, obj_ID)
+                else:
+                    par= {**par,**self._get_sn_simsncpar(obj_ID)}
+
+                simmod.set(**par)
+                self._set_obj_effects_model(simmod, obj_ID)
 
         return simmod
 
@@ -476,23 +484,37 @@ class SimSample:
 
     def _get_snia_simsncpar(self, ID):
         """Get sncosmo par of one obj for a SNIa model.
-
         Parameters
         ----------
         ID : int
             Obj ID.
-
         Returns
         -------
         dict
             Dict containing model parameters values.
-
         """
         dic_par = {}
-        if self._sim_model.source.name[:4] == 'salt':
-            dic_par['x0'] = self.meta[ID]['sim_x0']
-            dic_par['x1'] = self.meta[ID]['sim_x1']
-            dic_par['c'] = self.meta[ID]['sim_c']
+        for model in  self._sim_model:
+            if model.source.name[:4] == 'salt':
+                dic_par['x0'] = self.meta[ID]['sim_x0']
+                dic_par['x1'] = self.meta[ID]['sim_x1']
+                dic_par['c'] = self.meta[ID]['sim_c']
+             
+        return dic_par
+
+    def _get_sn_simsncpar(self, ID):
+        """Get sncosmo par of one obj for a SN model.
+        Parameters
+        ----------
+        ID : int
+            Obj ID.
+        Returns
+        -------
+        dict
+            Dict containing model parameters values.
+        """
+        dic_par = {}
+        dic_par['amplitude'] = self.meta[ID]['sim_amplitude']             
         return dic_par
 
     def get(self, key, mod=False):

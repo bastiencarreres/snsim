@@ -498,7 +498,7 @@ def Templatelist_fromsncosmo(source_type=None):
     Parameters
     -----------
     source_type : str
-                 type of sources could be sniipl,sniib,sniin or timeseries
+                 type of sources could be sniipl,sniib,sniin,snic,snib or snic-bl
     Return
     ----------
     list on names of sources with the given source_type from snscomo catalogue """
@@ -517,8 +517,14 @@ def Templatelist_fromsncosmo(source_type=None):
     elif source_type=='sniin':
         return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and s['type'].endswith('n'))
 
-    elif source_type=='timeseries':
-        return list(s['name'] for s in sources if s['subclass']=='`~sncosmo.TimeSeriesSource`') 
+    elif source_type=='snic':
+        return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and not s['type'].endswith('BL'))
+    
+    elif source_type=='snib':
+        return list(s['name'] for s in sources if 'sn ib' in s['type'].lower())
+
+    elif source_type=='snic-bl':
+        return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and  s['type'].endswith('BL'))
         
 
 def select_Vincenzi_template(model_list,corr=None):

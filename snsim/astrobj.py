@@ -190,6 +190,8 @@ class BasicAstrObj(abc.ABC):
 
         if 'dip_dM' in self._params:
             sim_lc.attrs['dip_dM'] = self.dip_dM
+        if 'template' in self._params:
+            sim_lc.attrs['template']= self._params['template']
 
         return sim_lc
 
@@ -350,8 +352,6 @@ class TimeSeries(BasicAstrObj):
       | ├── sigM, sigma of coherent scattering
       | └── used model parameters
     """
-    _type = 'sncosmo.TimeSeries'
-    _available_models =ut.Templatelist_fromsncosmo('timeseries')
     _attrs = ['sim_mb', 'mag_sct']
 
     def __init__(self, sn_par, sim_model, model_par):
@@ -411,14 +411,6 @@ class SNIIpl(TimeSeries):
     _type = 'snIIpl'
     _available_models =ut.Templatelist_fromsncosmo('sniipl')
 
-    def __init__(self, sn_par, sim_model, model_par):
-        super().__init__(sn_par, sim_model, model_par)
-        self._base_attrs = super()._base_attrs + self._attrs
-
-    def _update_model_par(self):
-        """Extract and compute SN parameters that depends on used model."""
-        super()._update_model_par()
-
 
 class SNIIb(TimeSeries):
     """SNIIb class.
@@ -429,16 +421,6 @@ class SNIIb(TimeSeries):
     _type = 'snIIb'
     _available_models = ut.Templatelist_fromsncosmo('sniib')
 
-    def __init__(self, sn_par, sim_model, model_par):
-        super().__init__(sn_par, sim_model, model_par)
-        self._base_attrs = super()._base_attrs + self._attrs
-
-    def _update_model_par(self):
-        """Extract and compute SN parameters that depends on used model    
-        """
-        super()._update_model_par()
-
-
 class SNIIn(TimeSeries):
     """SNIIn class.
 
@@ -448,13 +430,31 @@ class SNIIn(TimeSeries):
     _type = 'snIIn'
     _available_models =ut.Templatelist_fromsncosmo('sniin')
 
-    def __init__(self, sn_par, sim_model, model_par):
-        super().__init__(sn_par, sim_model, model_par)
-        self._base_attrs = super()._base_attrs + self._attrs
-    
+class SNIc(TimeSeries):
+    """SNIIn class.
 
-    def _update_model_par(self):
-        """Extract and compute SN parameters that depends on used model    
-        """
-        super()._update_model_par()
-        
+    Parameters
+    ----------
+   same as TimeSeries class   """
+    _type = 'snIc'
+    _available_models =ut.Templatelist_fromsncosmo('snic')
+
+
+class SNIb(TimeSeries):
+    """SNIIn class.
+
+    Parameters
+    ----------
+   same as TimeSeries class   """
+    _type = 'snIb'
+    _available_models =ut.Templatelist_fromsncosmo('snib')
+
+
+class SNIc_BL(TimeSeries):
+    """SNIIn class.
+
+    Parameters
+    ----------
+   same as TimeSeries class   """
+    _type = 'snIc-BL'
+    _available_models =ut.Templatelist_fromsncosmo('snic-bl')
