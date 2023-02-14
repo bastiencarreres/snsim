@@ -1,10 +1,8 @@
 """This module contain generators class."""
 import abc
 import numpy as np
-import sncosmo as snc
 import pandas as pd
 import geopandas as gpd
-from shapely import geometry as shp_geo
 from .constants import C_LIGHT_KMS
 from . import utils as ut
 from . import nb_fun as nbf
@@ -148,17 +146,18 @@ class BaseGen(abc.ABC):
         if snc_par is not None:
             par_list = ({**{'ID': astrobj_par.index.values[i]},
                             **{k: astrobj_par[k][i+astrobj_par.index.values[0]] for k in astrobj_par},
-                             **{'sncosmo': {**sncp, **dstp}}} for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
+                             **{'sncosmo': {**sncp, **dstp}}} 
+                             for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
         else:
             par_list = ({**{'ID': astrobj_par.index.values[i]},
                             **{k: astrobj_par[k][i+astrobj_par.index.values[0]] for k in astrobj_par},
-                            **{'sncosmo': { **dstp}}} for i, dstp in enumerate(dust_par))
+                            **{'sncosmo': { **dstp}}} 
+                            for i, dstp in enumerate(dust_par))
         
         return [self._astrobj_class(snp,
                                     self.sim_model[k], 
                                     self._general_par)
-                                    for k, snp in zip(random_models, 
-                                                     par_list)]
+                for k, snp in zip(random_models, par_list)]
 
     @abc.abstractmethod
     def _init_sim_model(self):
@@ -544,8 +543,10 @@ class BaseGen(abc.ABC):
         delta_M = self.dipole['A'] + self.dipole['B'] * sn_vec @ cart_vec
         return delta_M
 
-    def print_config(self):
+    def __str__(self):
         """Print config."""
+        str = ''
+        
         if 'model_dir' in self._params['model_config']:
             model_dir = self._params['model_config']['model_dir']
             model_dir_str = f" from {model_dir}"
@@ -553,15 +554,16 @@ class BaseGen(abc.ABC):
             model_dir = None
             model_dir_str = " from sncosmo"
 
-        print('OBJECT TYPE : ' + self._object_type)
-        print(f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str)
+        str += 'OBJECT TYPE : ' + self._object_type + '\n'
+        str += f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str + '\n'
 
-        self._add_print()
+        str += self._add_print() + '\n'
 
         if self._general_par['mod_fcov']:
-            print("\nModel COV ON")
+            str += "Model COV ON"
         else:
-            print("\nModel COV OFF")
+            str += "Model COV OFF"
+        return str
 
     def _get_header(self):
         """Generate header of sim file..
@@ -592,9 +594,9 @@ class BaseGen(abc.ABC):
     @property
     def snc_model_time(self):
         """Get the sncosmo model mintime and maxtime."""
-        maxtime= [model.maxtime() for model in self.sim_model.values()]
-        mintime= [model.mintime() for model in self.sim_model.values()]
-        return [min(mintime), max(maxtime)]
+        maxtime = np.max([model.maxtime() for model in self.sim_model.values()])
+        mintime = np.min([model.mintime() for model in self.sim_model.values()])
+        return mintime, maxtime
 
     @property
     def host(self):
@@ -757,9 +759,11 @@ class SNIaGen(BaseGen):
         astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
 
     def _add_print(self):
+        str = ''
         if 'sct_model' in self._params:
-            print("\nUse intrinsic scattering model : "
-                  f"{self._params['sct_model']}")
+            str += ("\nUse intrinsic scattering model : "
+                    f"{self._params['sct_model']}")
+        return str
 
     def _update_header(self, header):
         model_name = self._params['model_config']['model_name']

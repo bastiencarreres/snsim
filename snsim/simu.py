@@ -298,7 +298,7 @@ class Simulator:
 
         # -- Compute time range, rate and zcdf for each of the selected obj.
         for use_rate, gen in zip(self._use_rate, self.generators):
-            gen.print_config()
+            print(gen)
 
             print('\n-----------------------------------------------------------\n')
 
@@ -326,7 +326,7 @@ class Simulator:
             if compute_z_cdf:
                 gen.compute_zcdf(self.z_range)
 
-            print('\n' + rate_str +
+            print(rate_str +
                   "Peak mintime : "
                   f"{peak_time_range[0].mjd:.2f} MJD / {peak_time_range[0].iso}\n"
                   "Peak maxtime : "
@@ -439,7 +439,6 @@ class Simulator:
                                                       npartitions=self.config['dask']['nworkers'])
         if params is None:
             raise RuntimeError('None of the object pass the cuts...')
-
         
         # -- Generate the object
         obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),

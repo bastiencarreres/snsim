@@ -5,8 +5,6 @@ import abc
 import numpy as np
 import pandas as pd
 from .constants import C_LIGHT_KMS
-from . import nb_fun as nbf
-from . import dust_utils as dst_ut
 from . import utils as ut
 
 
@@ -119,10 +117,10 @@ class BasicAstrObj(abc.ABC):
         flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
 
         # Set magnitude
-        mag = np.zeros(len(flux))
-        magerr = np.zeros(len(flux))
+        mag = np.zeros_like(flux)
+        magerr = np.zeros_like(flux)
 
-        positive_fmask = pd.eval('flux > 0')
+        positive_fmask = flux > 0
         flux_pos = flux[positive_fmask]
 
         mag[positive_fmask] = -2.5 * np.log10(flux_pos) + obs['zp'][positive_fmask]
@@ -171,7 +169,6 @@ class BasicAstrObj(abc.ABC):
         # Keys that don't need renaming
         not_to_change = ['G10', 'C11', 'mw_']
         dont_touch = ['zobs', 'mw_r_v', 'fcov_seed']
-
 
         for k in sim_lc.attrs.copy():
             if k not in dont_touch and k[:3] not in not_to_change:
@@ -331,7 +328,6 @@ class SNIa(BasicAstrObj):
         return self._params['mag_sct']
 
 
-
 class TimeSeries(BasicAstrObj):
     """TimeSeries class.
 
@@ -409,7 +405,7 @@ class SNIIpl(TimeSeries):
     ----------
     same as TimeSeries class"""
     _type = 'snIIpl'
-    _available_models =ut.Templatelist_fromsncosmo('sniipl')
+    _available_models = ut.Templatelist_fromsncosmo('sniipl')
 
 
 class SNIIb(TimeSeries):
@@ -428,7 +424,7 @@ class SNIIn(TimeSeries):
     ----------
    same as TimeSeries class   """
     _type = 'snIIn'
-    _available_models =ut.Templatelist_fromsncosmo('sniin')
+    _available_models = ut.Templatelist_fromsncosmo('sniin')
 
 class SNIc(TimeSeries):
     """SNIIn class.
@@ -437,7 +433,7 @@ class SNIc(TimeSeries):
     ----------
    same as TimeSeries class   """
     _type = 'snIc'
-    _available_models =ut.Templatelist_fromsncosmo('snic')
+    _available_models = ut.Templatelist_fromsncosmo('snic')
 
 
 class SNIb(TimeSeries):
@@ -447,7 +443,7 @@ class SNIb(TimeSeries):
     ----------
    same as TimeSeries class   """
     _type = 'snIb'
-    _available_models =ut.Templatelist_fromsncosmo('snib')
+    _available_models = ut.Templatelist_fromsncosmo('snib')
 
 
 class SNIc_BL(TimeSeries):
@@ -457,4 +453,4 @@ class SNIc_BL(TimeSeries):
     ----------
    same as TimeSeries class   """
     _type = 'snIc-BL'
-    _available_models =ut.Templatelist_fromsncosmo('snic-bl')
+    _available_models = ut.Templatelist_fromsncosmo('snic-bl')

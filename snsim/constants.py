@@ -37,32 +37,39 @@ SNIA_M0 = {'jla': -19.05}
 
 
 # SNII mean and scattering of luminosity function values from Vincenzi et al. 2021 Table 5 (https://arxiv.org/abs/2111.10382)
-SNCC_M0 = {'SNIIpl': {'li11_gaussian': -15.97, 'li11_skewed': -17.51},
-         'SNIIb': {'li11_gaussian': -16.69, 'li11_skewed': -18.30},
-         'SNIIn': {'li11_gaussian': -17.90, 'li11_skewed': -19.13},
-         'SNIc': {'li11_gaussian': -16.75, 'li11_skewed': -17.51},
-         'SNIb': {'li11_gaussian': -16.07, 'li11_skewed': -17.71},
-         'SNIc_BL': {'li11_gaussian': -16.79, 'li11_skewed': -17.74}
-        }
+SNCC_M0 = {
+           'SNIIpl': {'li11_gaussian': -15.97, 'li11_skewed': -17.51},
+           'SNIIb': {'li11_gaussian': -16.69, 'li11_skewed': -18.30},
+           'SNIIn': {'li11_gaussian': -17.90, 'li11_skewed': -19.13},
+           'SNIc': {'li11_gaussian': -16.75, 'li11_skewed': -17.51},
+           'SNIb': {'li11_gaussian': -16.07, 'li11_skewed': -17.71},
+           'SNIc_BL': {'li11_gaussian': -16.79, 'li11_skewed': -17.74}
+          }
 
-SNCC_mgscatter = {'SNIIpl': {'li11_gaussian': [1.31,1.31], 'li11_skewed': [2.01,3.18]},
-                 'SNIIb': {'li11_gaussian': [1.38,1.38], 'li11_skewed': [2.03,7.40]},
-                 'SNIIn': {'li11_gaussian': [0.95,0.95], 'li11_skewed' :[1.53,6.83]},
-                 'SNIc': {'li11_gaussian': [0.97,0.97], 'li11_skewed': [1.24,1.22]},
-                 'SNIb': {'li11_gaussian': [1.34,1.34], 'li11_skewed': [2.11,7.15]},
-                 'SNIc_BL': {'li11_gaussian': [0.95,0.95], 'li11_skewed': [1.35,2.06]}
+SNCC_mgscatter = { 
+                  'SNIIpl': {'li11_gaussian': [1.31, 1.31], 'li11_skewed': [2.01, 3.18]},
+                  'SNIIb': {'li11_gaussian': [1.38, 1.38], 'li11_skewed': [2.03, 7.40]},
+                  'SNIIn': {'li11_gaussian': [0.95, 0.95], 'li11_skewed' :[1.53, 6.83]},
+                  'SNIc': {'li11_gaussian': [0.97, 0.97], 'li11_skewed': [1.24, 1.22]},
+                  'SNIb': {'li11_gaussian': [1.34, 1.34], 'li11_skewed': [2.11, 7.15]},
+                  'SNIc_BL': {'li11_gaussian': [0.95, 0.95], 'li11_skewed': [1.35, 2.06]}
                  }
 
 # relative fraction of SNe subtypes from https://arxiv.org/abs/2009.01242 figure 6 
 #relative fraction between SNe Ic and SNe Ib from https://iopscience.iop.org/article/10.3847/1538-4357/aa5eb7/meta
-SNCC_fraction = {'ztf20': {'SNIIpl': 0.546554,
+SNCC_fraction = {
+                 'ztf20': {
+                           'SNIIpl': 0.546554,
                            'SNIIb': 0.047652,
                            'SNIIn': 0.102524,
                            'SNIc': 0.110357,
                            'SNIb': 0.052551,
-                           'SNIc_BL': 0.05421}
+                           'SNIc_BL': 0.05421
+                           }
                 }
 
 #Value of h used in the various articles
-h_article = {'jla': 0.7,
-             'li11': 0.73}
+h_article = {
+             'jla' : 0.70,
+             'li11': 0.73
+             }
