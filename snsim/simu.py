@@ -300,6 +300,8 @@ class Simulator:
         for use_rate, gen in zip(self._use_rate, self.generators):
             gen.print_config()
 
+            print('\n-----------------------------------------------------------\n')
+
             # -- Set the time range with time edges effects
             peak_time_range = self.peak_time_range(gen.snc_model_time)
             gen.time_range = (peak_time_range[0].mjd, peak_time_range[1].mjd)
@@ -363,7 +365,7 @@ class Simulator:
                 lcs_list = self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
             else:
                 lcs_list = self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
-
+            
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
                                                       {'seed': seed,
@@ -390,6 +392,8 @@ class Simulator:
                   + self.sim_name + '_' + gen._object_type
                   + '.'
                   + f)
+
+
 
     def _sim_lcs(self, generator, n_obj, Obj_ID=0, seed=None):
         """Simulate AstrObj lcs.
@@ -424,7 +428,7 @@ class Simulator:
                                               min_max_t=True)
 
         # -- Set up obj parameters
-        model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
+        model_t_range = (generator.snc_model_time[0], generator.snc_model_time[1])
 
         # -- Select observations that pass all the cuts
         epochs, params = self.survey.get_observations(param_tmp,
@@ -436,6 +440,7 @@ class Simulator:
         if params is None:
             raise RuntimeError('None of the object pass the cuts...')
 
+        
         # -- Generate the object
         obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),
                              astrobj_par=params)
@@ -525,7 +530,7 @@ class Simulator:
                 if raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
                     raise RuntimeError('Cuts are too stricts')
                 continue
-
+           
             n_to_sim = generator._params['force_n'] - len(lcs)
 
         return lcs

@@ -164,13 +164,17 @@ def set_cosmo(cosmo_dic):
         return acosmo.w0waCDM(**cosmo_dic)
 
 
-def scale_M0_jla(h):
-    """Compute a value of M0 corresponding to JLA results.
+def scale_M0_cosmology(h, M0_art, h_art):
+    """Compute a value of M0 corresponding the cosmology used in the simulation.
 
     Parameters
     ----------
     h : float
         The H0 / 100 constant to scale M0.
+    M0_art: float
+            M0 value to be scaled
+    h_art: float
+          the H0/100 constant used in the article to retrive M0_art
 
     Returns
     -------
@@ -178,17 +182,9 @@ def scale_M0_jla(h):
         Scaled SN Absolute Magnitude.
 
     """
-    # mb = 5 * log10(c/H0_jla * Dl(z)) + 25 + MB_jla
-    # mb = 5 * log10(c/HO_True * Dl(z)) + 25 + MB_jla - 5 * log10(1 + dH0)
-    # with dH0 = (H0_jla - H0_True)/ H0_True
-    # MB_True = MB_jla - 5 * log10(1 + dH0)
 
-    # Scale the H0 value of JLA to the H0 value of sim
-    h_jla = 0.7  # H0 = 70 Mpc / km / s
-    M0_jla = -19.05
-    dh = (h_jla - h) / h
-
-    return M0_jla - 5 * np.log10(1 + dh)
+    dh = (h_art - h) / h
+    return M0_art - 5 * np.log10(1 + dh)
 
 
 def init_astropy_time(date):
@@ -495,3 +491,61 @@ def _compute_polygon(corners):
             polygon[0] = shp_geo.Polygon(np.array([x0, y0]).T)
         polygon =  shp_geo.MultiPolygon(polygon)
     return polygon
+
+
+def Templatelist_fromsncosmo(source_type=None):
+    """ list names of templates in sncosmo built-in sources catalogue  
+    Parameters
+    -----------
+    source_type : str
+                 type of sources could be sniipl,sniib,sniin,snic,snib or snic-bl
+    Return
+    ----------
+    list on names of sources with the given source_type from snscomo catalogue """
+
+    if source_type is None:
+        raise ValueError("select the source type")
+    
+    sources = snc.builtins._SOURCES.get_loaders_metadata()
+    
+    if source_type=='sniipl':
+        return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and not s['type'].endswith('n'))
+
+    elif source_type=='sniib':
+        return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and s['type'].endswith('b') and not s['type'].endswith('n'))
+
+    elif source_type=='sniin':
+        return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and s['type'].endswith('n'))
+
+    elif source_type=='snic':
+        return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and not s['type'].endswith('BL'))
+    
+    elif source_type=='snib':
+        return list(s['name'] for s in sources if 'sn ib' in s['type'].lower())
+
+    elif source_type=='snic-bl':
+        return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and  s['type'].endswith('BL'))
+        
+
+def select_Vincenzi_template(model_list,corr=None):
+    """from a given list of sncosmo Template select the ones from Vincenzi et al. 2019
+    Parameters
+    -----------
+    model_list : list 
+               starting list of templates
+    corr : bool
+          If True select templates that have been corrected for the host galaxy dust
+    Returns
+    ---------
+   list of template names"""
+    
+    if corr is None:
+        raise ValueError("select corrected or not corrected templates")
+
+    else:
+        if corr:
+    	    return [sn for sn in model_list if sn.startswith('v19') and sn.endswith('corr')]
+        else:
+            return [sn for sn in model_list if sn.startswith('v19') and not sn.endswith('corr')]
+        
+	
