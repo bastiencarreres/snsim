@@ -440,7 +440,7 @@ class Simulator:
         if params is None:
             raise RuntimeError('None of the object pass the cuts...')
 
-        epochs.sort_values('time', inplace=True)
+        
         # -- Generate the object
         obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),
                              astrobj_par=params)
