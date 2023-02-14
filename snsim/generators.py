@@ -1,5 +1,4 @@
 """This module contain generators class."""
-import pprint
 import abc
 import numpy as np
 import sncosmo as snc
