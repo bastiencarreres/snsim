@@ -420,7 +420,8 @@ class Simulator:
         lcs = []
 
         # -- Generate n base param
-        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6))
+        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6), 
+                                              min_max_t=True)
 
         # -- Set up obj parameters
         model_t_range = (generator.sim_model.mintime(), generator.sim_model.maxtime())
@@ -439,17 +440,18 @@ class Simulator:
         obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),
                              astrobj_par=params)
 
-        if self.config['dask']['use']:
-            it_edges = np.linspace(0, len(obj_list) + 1,
-                                   np.max((len(obj_list) // (100 * 56), 2)) ,
-                                   dtype=int)
+        # -- TO DO: dask it when understanding the random pickel-sncosmo error
 
-            for imin, imax in zip(it_edges[:-1], it_edges[1:]):
-                lcs += dask.compute([dask.delayed(obj.gen_flux)(epochs.loc[obj.ID])
-                                     for obj in obj_list[imin:imax]])[0]
-        else:
-            lcs = [obj.gen_flux(epochs.loc[obj.ID]) for obj in obj_list]
+        # if self.config['dask']['use']:
+        #     it_edges = np.linspace(0, len(obj_list) + 1,
+        #                            int(np.ceil(len(obj_list) / (10 * self.config['dask']['nworkers']) + 1)),
+        #                            dtype=int)
 
+        #     for imin, imax in zip(it_edges[:-1], it_edges[1:]):
+        #         lcs += dask.compute([dask.delayed(obj).gen_flux(epochs.loc[[obj.ID]])
+        #                              for obj in obj_list[imin:imax]])[0]
+        # else:
+        lcs = [obj.gen_flux(epochs.loc[[obj.ID]]) for obj in obj_list]
         return lcs
 
     def _cadence_sim(self, rand_gen, generator, Obj_ID=0):

@@ -5,14 +5,13 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 from shapely import geometry as shp_geo
+from .constants import C_LIGHT_KMS
 from . import utils as ut
 from . import nb_fun as nbf
 from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
-
-
 
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen'}
@@ -365,7 +364,7 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def gen_astrobj_par(self, n_obj, seed=None):
+    def gen_astrobj_par(self, n_obj, seed=None, min_max_t=False):
         """Generate basic obj properties.
 
         Parameters
@@ -423,6 +422,14 @@ class BaseGen(abc.ABC):
                        'ra': ra,
                        'dec': dec,
                        'vpec': vpec}
+
+        if min_max_t:
+            _1_zobs_ = (1 + astrobj_par['zcos']) 
+            _1_zobs_ *= (1 + astrobj_par['z2cmb']) 
+            _1_zobs_ *= (1 + astrobj_par['vpec'] / C_LIGHT_KMS)    
+            astrobj_par['min_t'] = astrobj_par['sim_t0'] + self.snc_model_time[0] * _1_zobs_
+            astrobj_par['max_t'] = astrobj_par['sim_t0'] + self.snc_model_time[1] * _1_zobs_
+            astrobj_par['1_zobs'] = _1_zobs_
 
         if self.dipole is not None:
             astrobj_par['dip_dM'] = self._compute_dipole(ra, dec)

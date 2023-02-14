@@ -145,6 +145,7 @@ class SurveyObs:
         """
         min_mjd = obs_dic['expMJD'].min()
         max_mjd = obs_dic['expMJD'].max()
+        
         if 'start_day' in self.config:
             start_day = self.config['start_day']
         else:
@@ -377,35 +378,43 @@ class SurveyObs:
             Observations.
         ObjPoints : geopandas.DataFrame
             Position of object.
-        
+
         Return
         ------
         pandas.DataFrame
             Observations of objects.
-        """        
+        """ 
+        # -- Compute max and min of table section       
+        minMJD = df.expMJD.min()
+        maxMJD = df.expMJD.max()
+     
+        ObjPoints = ObjPoints[(maxMJD >= ObjPoints.min_t) & (ObjPoints.max_t >= minMJD)]
+                            
         # -- Map field and rcid corners to their coordinates
         if 'sub_field' in config:
             field_corners = np.stack(df[config['sub_field']].map(sub_fields_corners).values)
         else:
             field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), 4, 2))
-        
+
         corner = {}
         for i in range(4):
             corner[i] = nbf.new_coord_on_fields(field_corners[:, i].T, 
                                                 [df.fieldRA.values, df.fieldDec.values])
-        
+
         corner = ut._format_corner(corner, df.fieldRA.values)
 
         # -- Create shapely polygon
         geometry = [ut._compute_polygon([[corner[i][0][j], corner[i][1][j]] for i in range(4)]) 
-                                         for j in range(len(df))]
-        
+                                        for j in range(len(df))]
+
         GeoS = gpd.GeoDataFrame(data=df, 
                                 geometry=geometry)
-        
+
         join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
 
-        return join.drop(columns=['geometry', 'index_right'])
+        join['phase'] = (join['expMJD'] - join['sim_t0']) / join['1_zobs']
+
+        return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 'sim_t0'])
 
     def get_observations(self, params, phase_cut=None, nep_cut=None, IDmin=0, 
                          use_dask=False, npartitions=None):
@@ -435,7 +444,8 @@ class SurveyObs:
 
         """
         params = params.copy()
-        ObjPoints = gpd.GeoDataFrame(geometry=gpd.points_from_xy(params['ra'], params['dec']),
+        ObjPoints = gpd.GeoDataFrame(data=params[['sim_t0', 'min_t', 'max_t', '1_zobs']], 
+                                     geometry=gpd.points_from_xy(params['ra'], params['dec']),
                                      index=params.index)
         
         if use_dask:
@@ -443,33 +453,28 @@ class SurveyObs:
                 # -- Arbitrary should be change
                 npartitions = len(self.obs_table) // 10
             ddf = daskdf.from_pandas(self.obs_table, npartitions=npartitions)
+            meta = daskdf.utils.make_meta({**{k: t for k, t in zip(ddf.columns, ddf.dtypes)}, 
+                                           'phase': 'float64'})
             ObsObj = ddf.map_partitions(self._match_radec_to_obs,
                                         ObjPoints, self.config,
                                         self._sub_field_corners,
                                         align_dataframes=False,
-                                        meta=ddf).compute()
-            self.test = ObsObj
+                                        meta=meta).compute()
         else:
             ObsObj = self._match_radec_to_obs(self.obs_table, ObjPoints,
                                               self.config, self._sub_field_corners)
-        # -- Phase mask
-        _1_zobs_ = ((1 + params.zcos[ObsObj.index]) * (1 + params.vpec[ObsObj.index] / C_LIGHT_KMS))
-        phase = (ObsObj.expMJD - params.sim_t0[ObsObj.index]) / _1_zobs_
-            
+        # -- Phase cut
         if phase_cut is not None:
-            phase_mask = (phase >= phase_cut[0]) & (phase <= phase_cut[1])
-            ObsObj = ObsObj[phase_mask]
+            ObsObj = ObsObj[(ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])]
 
         if nep_cut is not None:
-            phase = phase[phase_mask]
             for cut in nep_cut:
-                test = (phase > cut[1]) & (phase < cut[2])
+                test = (ObsObj.phase > cut[1]) & (ObsObj.phase < cut[2])
                 if cut[3] != 'any':
                     test &= ObsObj['filter'] == cut[3]
-                test = test.groupby(level=0).sum() > int(cut[0])
+                test = test.groupby(level=0).sum() >= int(cut[0])
 
                 ObsObj = ObsObj[ObsObj.index.map(test)]
-                phase = phase[phase.index.map(test)]
 
         params = params.loc[ObsObj.index.unique()]
 
@@ -477,11 +482,15 @@ class SurveyObs:
         new_idx = {k:IDmin + i for i, k in enumerate(ObsObj.index.unique())}
         ObsObj['ID'] = ObsObj.index.map(new_idx)
         params['ID'] = params.index.map(new_idx)
+
+        ObsObj.drop(columns='phase', inplace=True)
         ObsObj.set_index('ID', drop=True, inplace=True)
         params.set_index('ID', drop=True, inplace=True)
 
-        ObsObj.sort_index(inplace=True)
+        # -- Sort the results
+        ObsObj.sort_values(['ID', 'expMJD'], inplace=True)
         params.sort_index(inplace=True)
+
         if len(params) == 0:
             return None, None
         return self._make_obs_table(ObsObj), params
