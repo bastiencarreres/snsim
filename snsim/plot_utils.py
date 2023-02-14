@@ -129,7 +129,7 @@ def plot_lc(
     t0 = meta['sim_t0']
     z = meta['zobs']
 
-    time_th = np.linspace(t0 - ((phase_limit[0]+1.2) * (1 + z)), t0 + ((phase_limit[1]-1.2) * (1 + z)), 200)
+    time_th = np.linspace(t0 + ((phase_limit[0]+1.2) * (1 + z)), t0 + ((phase_limit[1]-1.2) * (1 + z)), 200)
     with plt.style.context(mtpstyle):
 
         fig = plt.figure(figsize=figsize, dpi=dpi)
