@@ -594,6 +594,7 @@ class BaseGen(abc.ABC):
         else:
             str += ' using rate\n'
 
+        
         str += self._add_print() + '\n'
 
         if self._general_par['mod_fcov']:
@@ -1108,6 +1109,10 @@ class TimeSeriesGen(BaseGen):
         """
        
         return None
+
+    def _add_print(self):
+        str = ''
+        return str
 
 
 class SNIIplGen(TimeSeriesGen):
