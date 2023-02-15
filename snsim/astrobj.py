@@ -40,8 +40,12 @@ class BasicAstrObj(abc.ABC):
                    'vpec', 'z2cmb', 'sim_mu', 'como_dist']
 
     def __init__(self, parameters, sim_model, model_par):
+
+        # -- Update attrs
+        self._base_attrs = self._base_attrs + self._attrs
+
         # -- sncosmo model
-        self.sim_model = copy.copy(sim_model)
+        self.sim_model = copy.deepcopy(sim_model)
 
         # -- Intrinsic parameters of the astrobj
         self._params = parameters
@@ -279,10 +283,6 @@ class SNIa(BasicAstrObj):
     _available_models = ['salt2', 'salt3']
     _attrs = ['sim_mb', 'mag_sct']
 
-    def __init__(self, sn_par, sim_model, model_par):
-        super().__init__(sn_par, sim_model, model_par)
-        self._base_attrs = super()._base_attrs + self._attrs
-
     def _update_model_par(self):
         """Extract and compute SN parameters that depends on used model.
 
@@ -349,10 +349,6 @@ class TimeSeries(BasicAstrObj):
       | └── used model parameters
     """
     _attrs = ['sim_mb', 'mag_sct']
-
-    def __init__(self, sn_par, sim_model, model_par):
-        super().__init__(sn_par, sim_model, model_par)
-        self._base_attrs = super()._base_attrs + self._attrs
 
     def _update_model_par(self):
         """Extract and compute SN parameters that depends on used model.

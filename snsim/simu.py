@@ -163,6 +163,9 @@ class Simulator:
         # -- Init generators for each transients
         self._use_rate = []
         self._generators = []
+
+        time_range = (self.survey.start_end_days[0].mjd, self.survey.start_end_days[1].mjd)
+
         for object_name, object_genclass in __GEN_DIC__.items():
             if object_name in self.config:
                 # -- Get which generator correspond to which transient in snsim.generators
@@ -170,6 +173,9 @@ class Simulator:
                 self._generators.append(gen_class(self.config[object_name],
                                                   self.cmb,
                                                   self.cosmology,
+                                                  time_range,
+                                                  z_range=self.z_range,
+                                                  peak_out_trange=True,
                                                   vpec_dist=self.vpec_dist,
                                                   host=self.host,
                                                   mw_dust=mw_dust,
@@ -221,18 +227,6 @@ class Simulator:
             cut_list = [(1, snc_mintime, snc_maxtime, 'any')]
         dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.str_, 8)]
         return np.asarray(cut_list, dtype=dt)
-
-    def peak_time_range(self, trange_model):
-        """Get the time range for simulate obj peak.
-
-        Returns
-        -------
-        tuple(float, float)
-            Min and max time for obj peak generation.
-        """
-        min_peak_time = self.survey.start_end_days[0] - trange_model[1] * (1 + self.z_range[1]) * aunits.day
-        max_peak_time = self.survey.start_end_days[1] + abs(trange_model[0]) * (1 + self.z_range[1]) * aunits.day
-        return min_peak_time, max_peak_time
 
     def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
         """Generate the number of obj with Poisson law.
@@ -294,43 +288,20 @@ class Simulator:
 
         print('\n-----------------------------------------------------------\n')
 
-        rate_str = "Rate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
+        rate_str = "\nRate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
 
         # -- Compute time range, rate and zcdf for each of the selected obj.
         for use_rate, gen in zip(self._use_rate, self.generators):
+
             print(gen)
 
-            print('\n-----------------------------------------------------------\n')
-
-            # -- Set the time range with time edges effects
-            peak_time_range = self.peak_time_range(gen.snc_model_time)
-            gen.time_range = (peak_time_range[0].mjd, peak_time_range[1].mjd)
-
             if use_rate:
-                rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1]) + "\n"
-                compute_z_cdf = True
+                rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
             else:
-                print(f"\nGenerate {gen._params['force_n']} SN Ia")
-                if self.host is not None and self.host.config['distrib'].lower() != 'as_sn':
-                    rate_str = 'Redshift distribution computed '
-                    if self.host.config['distrib'] == 'as_host':
-                        rate_str += 'as host redshift distribution\n\n'
-                    elif self.host.config['distrib'] == 'mass_weight':
-                        rate_str += 'as mass weighted host redshift distribution\n\n'
-                    compute_z_cdf = False
-                else:
-                    rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
-                    rate_str += ' (only for redshifts simulation)\n\n'
-                    compute_z_cdf = True
-
-            if compute_z_cdf:
-                gen.compute_zcdf(self.z_range)
-
-            print(rate_str +
-                  "Peak mintime : "
-                  f"{peak_time_range[0].mjd:.2f} MJD / {peak_time_range[0].iso}\n"
-                  "Peak maxtime : "
-                  f"{peak_time_range[1].mjd:.2f} MJD / {peak_time_range[1].iso} ")
+                rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
+                rate_str += ' (only for redshifts simulation)\n'
+        
+            print(rate_str)
 
         print('\n-----------------------------------------------------------\n')
 
@@ -392,8 +363,6 @@ class Simulator:
                   + self.sim_name + '_' + gen._object_type
                   + '.'
                   + f)
-
-
 
     def _sim_lcs(self, generator, n_obj, Obj_ID=0, seed=None):
         """Simulate AstrObj lcs.

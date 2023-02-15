@@ -65,17 +65,34 @@ class BaseGen(abc.ABC):
     _available_models = []  # Flux models
     _available_rates = []   # Rate models
 
-    def __init__(self, params, cmb, cosmology, vpec_dist=None,
-                 host=None, mw_dust=None, dipole=None, geometry=None):
+    def __init__(self, params, cmb, cosmology, time_range, z_range=None, peak_out_trange=False,
+                 vpec_dist=None, host=None, mw_dust=None, dipole=None, geometry=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
 
+        # -- Mandatory parameters
         self._params = params
         self._cmb = cmb
         self._cosmology = cosmology
-        self._vpec_dist = vpec_dist
-        self._host = host
+        self._time_range = time_range
+
+        # -- At least one mandatory
+        if vpec_dist is not None and host is None:
+            self._vpec_dist = vpec_dist
+            self._host = None
+        elif host is not None and vpec_dist is None:
+            self._host = host
+            self._vpec_dist = None
+        else:
+            raise ValueError('Set vpec_dist xor host')
+        
+        # -- If no host need to define a z_range
+        if host is None:
+            self._z_range = z_range
+        else:
+            self._z_range = self.host._z_range
+
         self._mw_dust = mw_dust
         self._dipole = dipole
         self._geometry = geometry
@@ -90,12 +107,16 @@ class BaseGen(abc.ABC):
         self._general_par = {}
         self._init_general_par()
 
-        self._time_range = None
-        self._z_dist = None
-        self._z_time_rate = None
+        # -- Init redshift distribution
+        self._z_dist, self._z_time_rate = self._compute_zcdf()
 
         # -- Get the astrobj class
         self._astrobj_class = getattr(astr, self._object_type)
+
+        if peak_out_trange:
+            t0 = self.time_range[0] - self.snc_model_time[1] * (1 + self.z_range[1])
+            t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
+            self._time_range = (t0, t1)
 
     def __call__(self, n_obj=None, rand_seed=None, astrobj_par=None):
         """Launch the simulation of obj.
@@ -117,15 +138,15 @@ class BaseGen(abc.ABC):
         if rand_seed is None:
             rand_seed = np.random.integer(1e3, 1e6)
 
+        # -- Initialise 4 seeds for differents generation calls
+        seeds = np.random.default_rng(rand_seed).integers(1e3, 1e6, size=4)
+
         if astrobj_par is not None:
             n_obj = len(astrobj_par)
         elif n_obj is not None:
             astrobj_par = self.gen_astrobj_par(n_obj, seed=seeds[0])
         else:
             raise ValueError('n_obj and astrobj_par cannot be None at the same time')
-
-        # -- Initialise 4 seeds for differents generation calls
-        seeds = np.random.default_rng(rand_seed).integers(1e3, 1e6, size=4)
 
         # -- Add astrobj par sepecific to the obj generated
         self._update_astrobj_par(n_obj, astrobj_par, seed=seeds[1])
@@ -476,7 +497,7 @@ class BaseGen(abc.ABC):
         rate_z0, rpw = self.rate_law
         return rate_z0 * (1 + z)**rpw
 
-    def compute_zcdf(self, z_range):
+    def _compute_zcdf(self):
         """Give the time rate SN/years in redshift shell.
 
         Parameters
@@ -490,7 +511,7 @@ class BaseGen(abc.ABC):
             Numpy array containing the time rate in each redshift bin.
 
         """
-        z_min, z_max = z_range
+        z_min, z_max = self.z_range
 
         # -- Set the precision to dz = 1e-5
         dz = 1e-5
@@ -506,8 +527,7 @@ class BaseGen(abc.ABC):
 
         z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
 
-        self._z_dist = ut.CustomRandom(z_pdf, z_min, z_max, dx=1e-5)
-        self._z_time_rate = z_shell, shell_time_rate
+        return ut.CustomRandom(z_pdf, z_min, z_max, dx=1e-5), (z_shell, shell_time_rate)
 
     def _compute_dust_par(self, ra, dec):
         """Compute dust parameters.
@@ -555,7 +575,24 @@ class BaseGen(abc.ABC):
             model_dir_str = " from sncosmo"
 
         str += 'OBJECT TYPE : ' + self._object_type + '\n'
-        str += f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str + '\n'
+        str += f"SIM MODEL : {self._params['model_config']['model_name']}" + model_dir_str + '\n\n'
+
+        str += ("Peak mintime : "
+                f"{self.time_range[0]:.2f} MJD\n\n"
+                "Peak maxtime : "
+                f"{self.time_range[1]:.2f} MJD\n\n")
+        
+        str += 'Redshift distribution computed'
+
+        if self.host is not None:
+            if self.host.config['distrib'] == 'as_host':
+                str += ' using host redshift distribution\n'
+            elif self.host.config['distrib'] == 'mass_weight':
+                str += ' using mass weighted host redshift distribution\n'
+            elif  self.host.config['distrib'] == 'as_sn':
+                str += ' using rate\n\n'
+        else:
+            str += ' using rate\n'
 
         str += self._add_print() + '\n'
 
@@ -633,14 +670,11 @@ class BaseGen(abc.ABC):
         """Get time range."""
         return self._time_range
 
-    @time_range.setter
-    def time_range(self, time_range):
-        """Set the time range."""
-        if time_range[0] > time_range[1]:
-            print('Time range should be [Tmin,Tmax]')
-        else:
-            self._time_range = time_range
-
+    @property
+    def z_range(self):
+        """Get redshift range."""
+        return self._z_range
+    
     @property
     def z_cdf(self):
         """Get the redshift cumulative distribution."""

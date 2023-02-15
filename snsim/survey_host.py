@@ -383,6 +383,11 @@ class SurveyObs:
         ------
         pandas.DataFrame
             Observations of objects.
+
+        Notes
+        -----
+        Inspired from  https://github.com/MickaelRigault/ztffields :
+            ztffields.projection.spatialjoin_radec_to_fields
         """ 
         # -- Compute max and min of table section       
         minMJD = df.expMJD.min()
