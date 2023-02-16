@@ -98,7 +98,7 @@ class BaseGen(abc.ABC):
         self._geometry = geometry
 
         self.rate_law = self._init_rate()
-
+        
         # -- Init sncosmo model
         self.sim_model = self._init_sim_model()
         self._init_dust()
@@ -979,7 +979,7 @@ class TimeSeriesGen(BaseGen):
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * cst.SNCC_fraction['ztf20'][self._object_type] * ( self.cosmology.h/0.70)**3
-            return (rate, 0)
+            return (rate,0)
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
