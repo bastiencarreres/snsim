@@ -615,8 +615,7 @@ class BaseGen(abc.ABC):
                   'obj_type': self._object_type,
                   'rate': self.rate_law[0],
                   'rate_pw': self.rate_law[1],
-                  'model_name': [model.source.name 
-                                 for model in self.sim_model.values()]
+                  'model_name': [model.source.name for model in self.sim_model.values()]
                  }
 
         header = {**header, **self._general_par}

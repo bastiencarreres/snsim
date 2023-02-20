@@ -131,7 +131,9 @@ class SimSample:
                 dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
 
             model_sim.extend([sim_model])
-        return model_sim
+        
+        simmod={model.source.name: model for model in model_sim}
+        return simmod
 
     def _set_obj_effects_model(self, model, ID):
         """Set the model parameters of one obj.
@@ -174,20 +176,20 @@ class SimSample:
             sncosmo sim model of the obj.
 
         """
-        for model in self._sim_model:
-            if model.source.name == self.meta[obj_ID]['template']:
-                simmod = copy.copy(model)
-                par = {'z': self.meta[obj_ID]['zobs'],
-                       't0': self.meta[obj_ID]['sim_t0']}
+        name=self.meta[obj_ID]['template']
+        model = self._sim_model[name]
+        simmod = copy.copy(model)
+        par = {'z': self.meta[obj_ID]['zobs'],
+                't0': self.meta[obj_ID]['sim_t0']}
 
-                if self.header['obj_type'].lower() == 'snia':
-                    par = {**par, **self._get_snia_simsncpar(obj_ID)}
+        if self.header['obj_type'].lower() == 'snia':
+            par = {**par, **self._get_snia_simsncpar(obj_ID)}
 
-                else:
-                    par= {**par,**self._get_sn_simsncpar(obj_ID)}
+        else:
+            par= {**par,**self._get_sn_simsncpar(obj_ID)}
 
-                simmod.set(**par)
-                self._set_obj_effects_model(simmod, obj_ID)
+        simmod.set(**par)
+        self._set_obj_effects_model(simmod, obj_ID)
 
         return simmod
 
