@@ -176,8 +176,7 @@ class SimSample:
             sncosmo sim model of the obj.
 
         """
-        name=self.meta[obj_ID]['template']
-        model = self._sim_model[name]
+        model = self._sim_model[self.meta[obj_ID]['template']]
         simmod = copy.copy(model)
         par = {'z': self.meta[obj_ID]['zobs'],
                 't0': self.meta[obj_ID]['sim_t0']}
