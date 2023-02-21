@@ -366,13 +366,13 @@ class TimeSeries(BasicAstrObj):
         self._params['M0'] = M0
         if self.sim_model.source.name in self._available_models:
             self._params['template']=self.sim_model.source.name
-            mr= self.sim_mu + M0
+            m_r= self.sim_mu + M0
     
             if 'dip_dM' in self._params:
-                mr += self._params['dip_dM']
+                m_r += self._params['dip_dM']
 
             # Compute the amplitude  parameter
-            self.sim_model.set_source_peakmag(mr, 'bessellr', 'ab')
+            self.sim_model.set_source_peakmag(m_r, 'bessellr', 'ab')
             self.sim_mb = self.sim_model.source_peakmag( 'bessellb', 'ab')
             self.sim_amplitude = self.sim_model.get('amplitude')
             self._params['sncosmo']['amplitude'] = self.sim_amplitude
