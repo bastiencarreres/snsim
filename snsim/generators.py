@@ -802,7 +802,7 @@ class SNIaGen(BaseGen):
     def _update_header(self, header):
         model_name = self._params['model_config']['model_name']
         if model_name.lower()[:4] == 'salt':
-
+            header['M0_band'] = 'bessellB'
             if isinstance(self._params['model_config']['dist_x1'], str):
                 header['dist_x1'] = self._params['model_config']['dist_x1']
             else:
@@ -1112,6 +1112,10 @@ class TimeSeriesGen(BaseGen):
     def _add_print(self):
         str = ''
         return str
+
+    def _update_header(self, header):
+        if self._params['M0'].lower() == 'li11_gaussian' or self._params['M0'].lower() == 'li11_skewed':
+            header['M0_band']='bessellR'
 
 
 class SNIIplGen(TimeSeriesGen):
