@@ -77,6 +77,10 @@ html_static_path = ['_static']
 
 html_logo = "_static/first_logo.png"
 
+html_theme_options = {
+                        "sidebar_hide_name": True,
+                     }
+
 import inspect
 from os.path import relpath
 
