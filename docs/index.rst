@@ -6,6 +6,10 @@
 Welcome to snsim's documentation!
 =================================
 
+.. image:: _static/first_logo.png
+    :width: 350px
+    :height: 182px
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
