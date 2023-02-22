@@ -75,6 +75,7 @@ html_theme = "furo"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_logo = "_static/first_logo.png"
 
 import inspect
 from os.path import relpath
