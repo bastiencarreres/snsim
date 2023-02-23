@@ -1,3 +1,8 @@
+
+![]()
+
+<img src="docs/_static/first_logo.png" width=350>
+
 # Code for simulation of transient surveys
 [![Documentation Status](https://readthedocs.org/projects/snsim/badge/?version=dev)](https://snsim.readthedocs.io/en/main/?badge=dev)
 ## Installation
