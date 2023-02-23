@@ -347,7 +347,7 @@ class SimSample:
                 if id not in self.fit_res:
                     self.fit_lc(id)
 
-        io_ut.write_fit(self.meta, self.fit_res, fit_model_name=fir_model_name, self.header, write_path)
+        io_ut.write_fit(self.meta, self.fit_res, fit_model_name, self.header, write_path)
 
     def plot_hist(self, key, ax=None, **kwargs):
         """Plot the histogram of the key metadata.
