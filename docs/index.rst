@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 
-.. image:: _static/first_logo.png
+.. image:: _static/first_logo.svg
     :width: 350px
     :height: 182px
 
