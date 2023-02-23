@@ -173,7 +173,7 @@ def write_fit(sim_lcs_meta, fit_res, fit_model_name, sim_header, directory):
             
             data[obj_ID]['e_t0'] = np.sqrt(snc_out['covariance'][0, 0])
         
-            if MName[:5] in ('salt2', 'salt3'):
+            if fit_model_name in ('salt2', 'salt3'):
                 par_cov = snc_out['covariance'][1:, 1:]
                 mb_cov = salt_ut.cov_x0_to_mb(data[obj_ID]['x0'], par_cov)
                 data[obj_ID]['e_x0'] = np.sqrt(par_cov[0, 0])
