@@ -134,7 +134,7 @@ def read_sim_file(file_path, engine='pyarrow'):
     return name, header, lcs
 
 
-def write_fit(sim_lcs_meta, fit_res, sim_header, directory):
+def write_fit(sim_lcs_meta, fit_res, fit_model_name, sim_header, directory):
     """Write fit into a fits file.
 
     Parameters
@@ -156,10 +156,8 @@ def write_fit(sim_lcs_meta, fit_res, sim_header, directory):
     """
     fit_keys = ['t0', 'e_t0',
                 'chi2', 'ndof']
-    
-    MName = sim_header['model_name']
 
-    if MName[:5] in ('salt2', 'salt3'):
+    if fit_model_name in ('salt2', 'salt3'):
         fit_keys += ['x0', 'e_x0', 'mb', 'e_mb', 'x1',
                      'e_x1', 'c', 'e_c', 'cov_x0_x1', 'cov_x0_c',
                      'cov_mb_x1', 'cov_mb_c', 'cov_x1_c']
