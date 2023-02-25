@@ -3,8 +3,8 @@
 
 <svg
    width="85.170601mm"
-   height="39.292595mm"
-   viewBox="0 0 85.170601 39.292595"
+   height="38.763428mm"
+   viewBox="0 0 85.170601 38.763428"
    version="1.1"
    id="svg5"
    xml:space="preserve"
@@ -77,7 +77,7 @@
        fy="142.36679"
        r="45.881519" /></defs><g
      id="layer1"
-     transform="translate(-72.986673,-109.62792)"><image
+     transform="translate(-72.986673,-110.15709)"><image
        width="114.4614"
        height="114.4614"
        preserveAspectRatio="none"
@@ -140,7 +140,7 @@
        style="fill:#ff8711;fill-opacity:1;stroke:#080101;stroke-width:0.5;stroke-dasharray:none;stroke-opacity:1"
        id="path3908-5"
        d="m 55.479308,65.35918 -2.787907,0.813114 -0.910683,2.757578 -1.634828,-2.400191 -2.904029,-0.01397 1.777528,-2.296514 -0.884106,-2.766213 2.733401,0.980868 2.357622,-1.695642 -0.08819,2.902724 z"
-       transform="rotate(-16.279676,262.88894,-171.98618)" /><text
+       transform="rotate(-16.279676,263.94504,-166.17208)" /><text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.10922px;line-height:1.25;font-family:Consolas;-inkscape-font-specification:Consolas;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.10312;stroke-dasharray:none;stroke-opacity:1"
        x="118.96786"
