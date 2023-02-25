@@ -6,7 +6,6 @@
 
 .. image:: _static/snsimlogo.webp
     :width: 350px
-    :height: 182px
 
 Welcome to snsim's documentation!
 =================================
