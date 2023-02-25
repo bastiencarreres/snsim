@@ -1,7 +1,7 @@
 
 ![]()
 
-<img src="docs/_static/snsimlogo.webp" width=350>
+<img src="docs/_static/snsimlogo.svg" width=350>
 
 # Code for simulation of transient surveys
 [![Documentation Status](https://readthedocs.org/projects/snsim/badge/?version=dev)](https://snsim.readthedocs.io/en/main/?badge=dev)
