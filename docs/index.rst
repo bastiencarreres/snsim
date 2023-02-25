@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 
-.. image:: _static/snsimlogo.webp
+.. image:: _static/snsimlogo.svg
     :width: 350px
 
 Welcome to snsim's documentation!
