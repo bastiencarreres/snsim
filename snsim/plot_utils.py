@@ -170,7 +170,7 @@ def plot_lc(
         plt.xlim(phase_limit[0] * (1 + z), phase_limit[1] * (1 + z))
 
         if flux_limit is not None:
-            plt.ylim(flux_limit[0], flux_limit[1])
+            ax0.set_ylim(flux_limit[0], flux_limit[1])
 
         ax0.spines['right'].set_visible(False)
         ax0.spines['top'].set_visible(False)
