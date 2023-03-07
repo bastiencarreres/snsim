@@ -537,6 +537,12 @@ class SimSample:
         else:
             meta_list = self.sim_lcs.attrs.values()
         return np.array([meta[key] for meta in meta_list])
+        
+    def get_peakmags(self, band, magsys='ab'):
+        model_list=[self.get_obj_sim_model(ID).set_source_peakmag(self.meta[ID]['sim_mb'], 'bessellb', 'ab') for ID in self.get('ID')]
+        return np.array([m.source_peakmag(band, magsys) for m in model_list])
+
+    
 
     @property
     def name(self):
