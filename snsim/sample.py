@@ -495,11 +495,9 @@ class SimSample:
             Dict containing model parameters values.
         """
         dic_par = {}
-        for model in  self._sim_model:
-            if model.source.name[:4] == 'salt':
-                dic_par['x0'] = self.meta[ID]['sim_x0']
-                dic_par['x1'] = self.meta[ID]['sim_x1']
-                dic_par['c'] = self.meta[ID]['sim_c']
+        dic_par['x0'] = self.meta[ID]['sim_x0']
+        dic_par['x1'] = self.meta[ID]['sim_x1']
+        dic_par['c'] = self.meta[ID]['sim_c']
              
         return dic_par
 
@@ -539,6 +537,21 @@ class SimSample:
         return np.array([meta[key] for meta in meta_list])
         
     def get_peakmags(self, band, magsys='ab'):
+        """Get peak apparent magnitude in any band.
+
+        Parameters
+        ----------
+        band: str
+            The band, the name has to be in sncosmo registry
+        magsys: str
+            The magnitude system, default: ab.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the peak apparent magnitude for all SN.
+
+        """
         model_list=[self.get_obj_sim_model(ID).set_source_peakmag(self.meta[ID]['sim_mb'], 'bessellb', 'ab') for ID in self.get('ID')]
         return np.array([m.source_peakmag(band, magsys) for m in model_list])
 
