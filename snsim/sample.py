@@ -189,7 +189,7 @@ class SimSample:
 
         simmod.set(**par)
         self._set_obj_effects_model(simmod, obj_ID)
-        simmod.set_source_peakmag(self.meta[ID]['sim_mb'],'beselb','ab')
+        simmod.set_source_peakmag(self.meta[obj_ID]['sim_mb'],'beselb','ab')
         return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
