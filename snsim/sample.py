@@ -189,7 +189,7 @@ class SimSample:
 
         simmod.set(**par)
         self._set_obj_effects_model(simmod, obj_ID)
-
+        simmod.set_source_peakmag(self.meta[ID]['sim_mb'],'beselb','ab')
         return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
@@ -552,7 +552,7 @@ class SimSample:
             The array of the peak apparent magnitude for all SN.
 
         """
-        model_list=[self.get_obj_sim_model(ID).set_source_peakmag(self.meta[ID]['sim_mb'], 'bessellb', 'ab') for ID in self.get('ID')]
+        model_list=[self.get_obj_sim_model(ID) for ID in self.get('ID')]
         return np.array([m.source_peakmag(band, magsys) for m in model_list])
 
     
