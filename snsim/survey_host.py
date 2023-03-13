@@ -723,6 +723,18 @@ class SnHost:
         return z_range, host_list
 
     def compute_weights(self, rate=None):
+        """Compute the weights for random choice.
+
+        Parameters
+        ----------
+        rate : function, optional
+            rate function of z, by default None.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            weigths for the random draw.
+        """        
         if self.config['distrib'].lower() == 'random':
             weights = None
         elif self.config['distrib'].lower() == 'rate':
@@ -730,28 +742,9 @@ class SnHost:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
             weights = rate(self.table['redshift']) / (1 + self.table['redshift'])
+            # Normalize the weights
             weights /= weights.sum()
-            
         return weights
-
-    def host_near_z(self, z_list, treshold=1e-4):
-        """Take the nearest host from a redshift list.
-
-        Parameters
-        ----------
-        z_list : numpy.ndarray(float)
-            The redshifts.
-        treshold : float, optional
-            The maximum difference tolerance.
-
-        Returns
-        -------
-        astropy.Table
-            astropy Table containing the selected host.
-
-        """
-        idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
-        return self.table.iloc[idx]
 
     def random_choice(self, n, seed=None, rate=None):
         """Randomly select hosts.

@@ -106,7 +106,7 @@ def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
     Returns
     -------
     numpy.ndarray(float, size = (2, ?))
-    The new coordinates of the obect in each field frame.
+        The new coordinates of the obect in each field frame.
     """
    
     for i in range(len(ra_dec_frame[0])):
@@ -161,6 +161,7 @@ def time_selec(expMJD, ModelMinT, ModelMaxT):
     if True in bool_array:
         any = True
     return any, bool_array
+
 
 @njit(cache=True, parallel=True)
 def map_obs_fields(epochs_selec, fieldID, obsfield):
@@ -310,33 +311,6 @@ def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
             obs_dic[i][obs_condition] = subf_id
     return obs_dic.T
 
-@njit(cache=True)
-def find_idx_nearest_elmt(val, array, treshold):
-    """Find the index of the nearest element of array relative to val.
-
-    Parameters
-    ----------
-    val : float
-        A float number.
-    array : numpy.ndarray(float)
-        An array of float.
-    treshold : float
-        The maximum gap between val and the nearest element.
-
-    Returns
-    -------
-    int
-        The index of the nearest element.
-
-    """
-    smallest_diff_idx = []
-    for v in val:
-        diff_array = np.abs(array - v)
-        idx = diff_array.argmin()
-        if diff_array[idx] > treshold:
-            raise RuntimeError('Difference above threshold')
-        smallest_diff_idx.append(idx)
-    return smallest_diff_idx
 
 @njit(cache=True, parallel=True)
 def isin(a, b):
