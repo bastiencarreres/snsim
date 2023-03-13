@@ -3,6 +3,7 @@ import abc
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+from inspect import getsource
 from .constants import C_LIGHT_KMS
 from . import utils as ut
 from . import nb_fun as nbf
@@ -97,7 +98,7 @@ class BaseGen(abc.ABC):
         self._dipole = dipole
         self._geometry = geometry
 
-        self.rate_law = self._init_rate()
+        self.rate, self._rate_expr = self._init_rate()
 
         # -- Init sncosmo model
         self.sim_model = self._init_sim_model()
@@ -255,28 +256,38 @@ class BaseGen(abc.ABC):
         pass
 
     def _init_rate(self):
-        """Initialise rate in obj/Mpc^-3/year"""
+        """Initialise rate in obj/Mpc^-3/year
+        
+        Returns
+        -------
+            lambda funtion, str
+            
+            The funtion and it's expression as a string
+        """
         if 'rate' in self._params:
-            if isinstance(self._params['rate'], str):
-                # Check registered rate
-                if self._params['rate'].lower() in self._available_rates:
-                    return self._init_registered_rate()
-
-                # Check for the yaml bad conversion of '1e-5'
-                else:
-                    rate = float(self._params['rate'])
-            else:
+            if isinstance(self._params['rate'], type(lambda: 0)):
                 rate = self._params['rate']
+                expr = ''.join(getsource(self._params['rate']).partition('lambda')[1:]).replace(',', '')
+            elif isinstance(self._params['rate'], str):
+                # Check for lambda function in str
+                if 'lambda' in self._params['rate'].lower():
+                    return eval(self._params['rate']), self._params['rate']
+                # Check registered rate
+                elif self._params['rate'].lower() in self._available_rates:
+                    rate = self._init_registered_rate()
+                    expr = ''.join(getsource(rate).partition('lambda')[1:])
+                # Check for yaml bad conversion of '1e-5'
+                else:
+                    rate = lambda z: float(self._params['rate'])
+                    expr = f"lambda z: {float(self._params['rate'])}"
+            else:
+                rate = lambda z: self._params['rate']
+                expr = f"lambda z: {self._params['rate']}"
+        # Default
         else:
-            # Default rate
-            rate = 3e-5
-
-        if 'rate_pw' in self._params:
-            rate_pw = self._params['rate_pw']
-        else:
-            # Default rate powerlaw
-            rate_pw = 0
-        return rate, rate_pw
+            rate = lambda z: 3e-5
+            expr = 'lambda z: 3e-5'
+        return rate, expr.replace(',', '').replace('self.','').strip()
 
     def _init_general_par(self):
         """Init general parameters."""
@@ -441,7 +452,7 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            host = self.host.random_choice(n_obj, seed=seeds[1], z_dist=self._z_dist)
+            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate)
             zcos = host['redshift'].values
 
         # -- Generate ra, dec
@@ -480,23 +491,6 @@ class BaseGen(abc.ABC):
 
         return pd.DataFrame(astrobj_par)
 
-    def rate(self, z):
-        """Give the rate SNs/Mpc^3/year at redshift z.
-
-        Parameters
-        ----------
-        z : float, numpy.ndarray(float)
-            One of a list of cosmological redshift(s).
-
-        Returns
-        -------
-        float, numpy.ndarray(float)
-            One or a list of sn rate(s) corresponding to input redshift(s).
-
-        """
-        rate_z0, rpw = self.rate_law
-        return rate_z0 * (1 + z)**rpw
-
     def _compute_zcdf(self):
         """Give the time rate SN/years in redshift shell.
 
@@ -518,12 +512,11 @@ class BaseGen(abc.ABC):
 
         z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
         z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
-        rate = self.rate(z_shell_center)  # Rate in Nsn/Mpc^3/year
         co_dist = self.cosmology.comoving_distance(z_shell).value
         shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
 
         # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
-        shell_time_rate = rate * shell_vol / (1 + z_shell_center)
+        shell_time_rate = self.rate(z_shell_center) * shell_vol / (1 + z_shell_center)
 
         z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
 
@@ -585,11 +578,9 @@ class BaseGen(abc.ABC):
         str += 'Redshift distribution computed'
 
         if self.host is not None:
-            if self.host.config['distrib'] == 'as_host':
+            if self.host.config['distrib'] == 'random':
                 str += ' using host redshift distribution\n'
-            elif self.host.config['distrib'] == 'mass_weight':
-                str += ' using mass weighted host redshift distribution\n'
-            elif  self.host.config['distrib'] == 'as_sn':
+            elif  self.host.config['distrib'] == 'survey_rate':
                 str += ' using rate\n\n'
         else:
             str += ' using rate\n'
@@ -612,8 +603,7 @@ class BaseGen(abc.ABC):
         """
         header = {
                   'obj_type': self._object_type,
-                  'rate': self.rate_law[0],
-                  'rate_pw': self.rate_law[1],
+                  'rate': self._rate_expr,
                   'model_name': [model.source.name 
                                  for model in self.sim_model.values()]
                  }
@@ -728,14 +718,13 @@ class SNIaGen(BaseGen):
         """SNIa rates registry."""
         if self._params['rate'].lower() == 'ptf19':
             # Rate from https://arxiv.org/abs/1903.08580
-            rate = 2.43e-5 * (self.cosmology.h / 0.70)**3
-            return (rate, 0)
+            return lambda z: 2.43e-5 * (self.cosmology.h / 0.70)**3 
         elif self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242
-            rate = 2.35e-5 * (self.cosmology.h / 0.70)**3
-            return (rate, 0)
+            return lambda z: 2.35e-5 * (self.cosmology.h / 0.70)**3
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
 
     def _init_M0(self):
         """Initialise absolute magnitude."""
@@ -977,8 +966,8 @@ class TimeSeriesGen(BaseGen):
         """SNII rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-            rate = 1.01e-4 * cst.SNCC_fraction['ztf20'][self._object_type] * ( self.cosmology.h/0.70)**3
-            return (rate, 0)
+            rate = 1.01e-4 * cst.SNCC_fraction['ztf20'][self._object_type] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 

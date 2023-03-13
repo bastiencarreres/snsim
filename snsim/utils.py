@@ -548,4 +548,3 @@ def select_Vincenzi_template(model_list,corr=None):
         else:
             return [sn for sn in model_list if sn.startswith('v19') and not sn.endswith('corr')]
         
-	

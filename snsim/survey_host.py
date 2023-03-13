@@ -640,19 +640,21 @@ class SnHost:
     z_range : list(float), opt
         The redshift range.
     """
+    _dist_options = ['rate', 'random']
 
     def __init__(self, config, z_range=None, geometry=None):
         """Initialize SnHost class."""
-        self._z_range = z_range
         self._config = config
         self._geometry = geometry
-        self._table = self._read_host_file()
+        self._z_range, self._table = self._read_host_file(z_range)
         self._max_dz = None
 
         # Default parameter
         if 'distrib' not in self.config:
-            self._config['distrib'] = 'as_sn'
-
+            self._config['distrib'] = 'rate'
+        elif self.config['distrib'].lower() not in self._dist_options:
+            raise ValueError(f"{self.config['distrib']} is not an available option," 
+                             f"distributions are {self._dist_options}")
     @property
     def config(self):
         """Get the configuration dic of host."""
@@ -672,7 +674,7 @@ class SnHost:
         """Get astropy Table of host."""
         return self._table
 
-    def _read_host_file(self):
+    def _read_host_file(self, z_range):
         """Extract host from host file.
 
         Returns
@@ -702,20 +704,35 @@ class SnHost:
         host_list.rename(columns=key_dic, inplace=True)
         ra_mask = host_list['ra'] < 0
         host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
-        if self._z_range is not None:
-            z_min, z_max = self._z_range
+        if z_range is not None:
+            z_min, z_max = z_range
             if (z_max > host_list['redshift'].max()
                or z_min < host_list['redshift'].min()):
                 warnings.warn('Simulation redshift range does not match host file redshift range',
                               UserWarning)
             host_list.query(f'redshift >= {z_min} & redshift <= {z_max}', inplace=True)
+        else:
+            # By default give z range as hsot z range
+            z_range = host_list.redshift.min(), host_list.redshift.max()
         if self._geometry is not None:
             ra_min, dec_min, ra_max, dec_max = self._geometry.bounds
             host_list.query(f'{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}',
                             inplace=True)
 
         host_list.reset_index(drop=True, inplace=True)
-        return host_list
+        return z_range, host_list
+
+    def compute_weights(self, rate=None):
+        if self.config['distrib'].lower() == 'random':
+            weights = None
+        elif self.config['distrib'].lower() == 'rate':
+            if rate is None:
+                raise ValueError("rate should be set to use 'rate' distribution")
+            # Take into account rate is divide by (1 + z)
+            weights = rate(self.table['redshift']) / (1 + self.table['redshift'])
+            weights /= weights.sum()
+            
+        return weights
 
     def host_near_z(self, z_list, treshold=1e-4):
         """Take the nearest host from a redshift list.
@@ -736,17 +753,7 @@ class SnHost:
         idx = nbf.find_idx_nearest_elmt(z_list, self.table['redshift'].values, treshold)
         return self.table.iloc[idx]
 
-    def _normalize_distrib(self):
-        count, egdes = np.histogram(self.table['redshift'], bins=1000,
-                                    range=[self.table['redshift'].min(), self.table['redshift'].max()])
-        count = count / np.sum(count)
-        zcenter = (egdes[:-1] + egdes[1:]) * 0.5
-        p = np.interp(self.table['redshift'], zcenter, count)
-        p_inv = 1 / p
-        p_inv /= np.sum(p_inv)
-        return p_inv
-
-    def random_choice(self, n, seed=None, z_dist=None):
+    def random_choice(self, n, seed=None, rate=None):
         """Randomly select hosts.
 
         Parameters
@@ -763,29 +770,16 @@ class SnHost:
 
         """
         rand_gen = np.random.default_rng(seed)
-        
-        if self.config['distrib'].lower() == 'as_host':
-            # Take into account rate is divide by (1 + z)
-            choice_weights = 1 / (1 + self.table['redshift'])
-            choice_weights /= choice_weights.sum()
-        elif self.config['distrib'].lower() == 'mass_weight':
-            choice_weights = self.table['mass'] / self.table['mass'].sum()
-        elif self.config['distrib'].lower() == 'as_sn':
-            norm = self._normalize_distrib()
-            prob_z = np.gradient(z_dist.cdf, z_dist.x)
-            Pz = np.interp(self.table['redshift'],  z_dist.x, prob_z)
-            choice_weights = norm * Pz
-            choice_weights /= choice_weights.sum()
-        else:
-            raise ValueError(f"{self.config['distrib']} is not an available option")
 
+        weights = self.compute_weights(rate=rate)
+        
         if self._geometry is None:
-            idx = rand_gen.choice(self.table.index, p=choice_weights, size=n)
+            idx = rand_gen.choice(self.table.index, p=weights, size=n)
         else:
             idx = []
             n_to_sim = n
             while len(idx) < n:
-                idx_tmp = np.random.choice(self.table.index, p=choice_weights, size=n_to_sim)
+                idx_tmp = np.random.choice(self.table.index, p=weights, size=n_to_sim)
                 multipoint = gpd.points_from_xy(self.table.loc[idx_tmp]['ra'], 
                                                 self.table.loc[idx_tmp]['dec'])
                 idx.extend(idx_tmp[multipoint.intersects(self._geometry)])
