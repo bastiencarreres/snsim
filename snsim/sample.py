@@ -552,8 +552,8 @@ class SimSample:
             The array of the peak apparent magnitude for all SN.
 
         """
-        model_list=[self.get_obj_sim_model(ID) for ID in self.get('ID')]
-        return np.array([m.source_peakmag(band, magsys) for m in model_list])
+        mag_list=[self.get_obj_sim_model(ID).source_peakmag(band, magsys) for ID in self.get('ID')]
+        return np.array(mag_list)
 
     
 

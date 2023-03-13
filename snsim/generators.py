@@ -790,6 +790,7 @@ class SNIaGen(BaseGen):
 
         for k in model_keys:
             self._general_par[k] = self._params['model_config'][k]
+        
         return
 
     def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):

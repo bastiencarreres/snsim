@@ -55,9 +55,9 @@ SNCC_mgscatter = {
                   'SNIc_BL': {'li11_gaussian': [0.95, 0.95], 'li11_skewed': [1.35, 2.06]}
                  }
 
-# ztf20 relative fraction of SNe subtypes from https://arxiv.org/abs/2009.01242 figure 6 +
-#relative fraction between SNe Ic and SNe Ib from https://iopscience.iop.org/article/10.3847/1538-4357/aa5eb7/meta
-#shiver17 fraction from https://arxiv.org/abs/1609.02922
+# ztf20 relative fraction of SNe subtypes from https://arxiv.org/abs/2009.01242 figure 6 + 
+# ztf20 relative fraction between SNe Ic and SNe Ib from https://iopscience.iop.org/article/10.3847/1538-4357/aa5eb7/meta
+#shiver17 fraction from https://arxiv.org/abs/1609.02922 Table 3
 SNCC_fraction = {
                  'shivers17': {
                            'SNIIpl': 0.620136,
