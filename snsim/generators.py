@@ -988,7 +988,6 @@ class TimeSeriesGen(BaseGen):
                                             cst.SNCC_M0[self._object_type]['li11_skewed'],
                                             cst.h_article['li11'])
          
-
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
 
