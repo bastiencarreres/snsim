@@ -119,7 +119,7 @@ class SimSample:
             sncosmo sim model.
 
         """
-        model_name = self.header['model_name']
+        model_name = np.atleast_1d(self.header['model_name'])
         model_sim=[]
         for model in model_name:
             sim_model = ut.init_sn_model(model, self._model_dir) 

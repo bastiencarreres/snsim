@@ -59,8 +59,7 @@ class Simulator:
     |     rv: Rv # Optional, default Rv = 3.1
     | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
-    |     rate: rate of SN/Mpc^3/year or 'ptf19'  # Optional, default=3e-5
-    |     rate_pw: rate = rate*(1+z)^rate_pw  # Optional, default=0
+    |     rate: rate of SN/Mpc^3/year # Optional, default=3e-5
     |     M0: SN ABSOLUT MAGNITUDE
     |     sigM: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
@@ -83,7 +82,7 @@ class Simulator:
     |     sig_vpec: SIGMA VPEC
     | host: (Optional)
     |     host_file: 'PATH/TO/HOSTFILE'
-    |     distrib: 'as_sn', 'as_host' or 'mass_weight'  # Optional, default = 'as_sn'
+    |     distrib: 'rate' or 'random'  # Optional, default = 'rate'
     |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
     | dipole:  # Optional, add a dipole as dM = A + B * cos(theta)
     |     coord: [RA, Dec]  # Direction of the dipole
@@ -140,7 +139,7 @@ class Simulator:
 
         # -- Init host object
         if 'host' in self.config:
-            self._host = sh.SnHost(self.config['host'], self.z_range,
+            self._host = sh.SnHost(self.config['host'], z_range=self.z_range,
                                    geometry=self.survey._envelope)
         else:
             self._host = None
@@ -290,11 +289,18 @@ class Simulator:
 
         # -- Compute time range, rate and zcdf for each of the selected obj.
         for use_rate, gen in zip(self._use_rate, self.generators):
+            
+            rate_str = f"\nRate {gen._rate_expr} /Mpc^3/year "
 
             print(gen)
             ut.print_rate(use_rate, gen)           
 
-            print('\n-----------------------------------------------------------\n')
+            if not use_rate:
+                rate_str += ' (only for redshifts simulation)\n'
+        
+            print(rate_str)
+            
+        print('\n-----------------------------------------------------------\n')
 
         if 'mw_dust' in self.config:
             print("Use mw dust model : "

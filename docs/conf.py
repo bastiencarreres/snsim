@@ -75,6 +75,11 @@ html_theme = "furo"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_logo = "_static/snsimlogo.svg"
+
+html_theme_options = {
+                        "sidebar_hide_name": True,
+                     }
 
 import inspect
 from os.path import relpath

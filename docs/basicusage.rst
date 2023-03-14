@@ -11,8 +11,11 @@ object :
 
    from snsim import Simulator
 
-   # Initialisation
+   # Initialisation with yaml file
    sim = Simulator('yaml_cfg_file.yml')
+
+   # or with dic
+   sim = Simulator(cfg_dic)
 
    # Simulation
    sim.simulate()
