@@ -113,8 +113,8 @@ class BasicAstrObj(abc.ABC):
                                                zpsys=obs['zpsys'])
 
         # set flux=0 outside model time range
-        time_diff = obs['time'] - self.sim_model.get('t0')
-        mask_flux = time_diff < self.sim_model.mintime() or time_diff > self.sim_model.maxtime()
+        time_diff = np.asarray(obs['time'] - self.sim_model.get('t0'))
+        mask_flux = np.where((time_diff < self.sim_model.mintime()) | (time_diff > self.sim_model.maxtime()))
         fluxtrue[mask_flux] = 0.
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise

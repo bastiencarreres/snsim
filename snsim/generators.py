@@ -737,7 +737,9 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
-            return ut.scale_M0_cosmology(self.cosmology.h,cst.SNIA_M0['jla'],cst.h_article['jla'])  
+            return ut.scale_M0_cosmology(self.cosmology.h,cst.SNIA_M0['jla'],cst.h_article['jla'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 is 'jla' ")  
 
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
@@ -750,7 +752,7 @@ class SNIaGen(BaseGen):
 
         """
         if self._params['model_config']['model_name'].lower() not in self._available_models:
-            raise ValueError('Model not available')
+            raise ValueError(f"Model {self._params['model_config']['model_name']} not available! Avaliable Models are {self._available_models}")
 
         model_dir = None
         if 'model_dir' in self._params['model_config']:
@@ -1001,6 +1003,8 @@ class TimeSeriesGen(BaseGen):
                 return ut.scale_M0_cosmology(self.cosmology.h,
                                             cst.SNCC_M0[self._object_type]['li11_skewed'],
                                             cst.h_article['li11'])
+            else:
+                raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
          
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
@@ -1092,6 +1096,9 @@ class TimeSeriesGen(BaseGen):
                     sig_low=cst.SNCC_mgscatter[self._object_type]['li11_skewed'][0],
                     sig_high=cst.SNCC_mgscatter[self._object_type]['li11_skewed'][1],
                     seed=seed, size=n_sn)
+            else:
+                raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            
 
     
     def gen_snc_par(self, n_obj, astrobj_par, seed=None):
