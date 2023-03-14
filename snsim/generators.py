@@ -585,6 +585,7 @@ class BaseGen(abc.ABC):
         else:
             str += ' using rate\n'
 
+        
         str += self._add_print() + '\n'
 
         if self._general_par['mod_fcov']:
@@ -712,13 +713,13 @@ class SNIaGen(BaseGen):
     """
     _object_type = 'SNIa'
     _available_models = ['salt2', 'salt3']
-    _available_rates = ['ptf19', 'ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
     def _init_registered_rate(self):
         """SNIa rates registry."""
         if self._params['rate'].lower() == 'ptf19':
             # Rate from https://arxiv.org/abs/1903.08580
-            return lambda z: 2.43e-5 * (self.cosmology.h / 0.70)**3 
+            return lambda z: 2.43e-5 * (self.cosmology.h / 0.70)**3
         elif self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242
             return lambda z: 2.35e-5 * (self.cosmology.h / 0.70)**3
@@ -775,6 +776,7 @@ class SNIaGen(BaseGen):
 
         for k in model_keys:
             self._general_par[k] = self._params['model_config'][k]
+        
         return
 
     def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
@@ -790,8 +792,8 @@ class SNIaGen(BaseGen):
 
     def _update_header(self, header):
         model_name = self._params['model_config']['model_name']
+        header['M0_band'] = 'bessell_b'
         if model_name.lower()[:4] == 'salt':
-
             if isinstance(self._params['model_config']['dist_x1'], str):
                 header['dist_x1'] = self._params['model_config']['dist_x1']
             else:
@@ -968,6 +970,14 @@ class TimeSeriesGen(BaseGen):
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * cst.SNCC_fraction['ztf20'][self._object_type] * (self.cosmology.h/0.70)**3
             return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * cst.SNCC_fraction['shivers17'][self._object_type] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * cst.SNCC_fraction['shivers17'][self._object_type] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * (1 + z)**2.7
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
@@ -1097,6 +1107,13 @@ class TimeSeriesGen(BaseGen):
        
         return None
 
+    def _add_print(self):
+        str = ''
+        return str
+
+    def _update_header(self, header):
+        header['M0_band']='bessell_r'
+
 
 class SNIIplGen(TimeSeriesGen):
     """SNIIPL parameters generator.
@@ -1107,7 +1124,7 @@ class SNIIplGen(TimeSeriesGen):
     """
     _object_type = 'SNIIpl'
     _available_models = ut.Templatelist_fromsncosmo('sniipl')
-    _available_rates = ['ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
 class SNIIbGen(TimeSeriesGen):
     """SNIIb parameters generator.
@@ -1118,7 +1135,7 @@ class SNIIbGen(TimeSeriesGen):
     """
     _object_type = 'SNIIb'
     _available_models = ut.Templatelist_fromsncosmo('sniib')
-    _available_rates = ['ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
 class SNIInGen(TimeSeriesGen):
     """SNIIn parameters generator.
@@ -1129,7 +1146,7 @@ class SNIInGen(TimeSeriesGen):
     """
     _object_type = 'SNIIn'
     _available_models = ut.Templatelist_fromsncosmo('sniin')
-    _available_rates = ['ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
 
 class SNIcGen(TimeSeriesGen):
@@ -1140,7 +1157,7 @@ class SNIcGen(TimeSeriesGen):
    same as TimeSeriesGen class   """
     _object_type = 'SNIc'
     _available_models =ut.Templatelist_fromsncosmo('snic')
-    _available_rates = ['ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
 class SNIbGen(TimeSeriesGen):
     """SNIIn class.
@@ -1150,7 +1167,7 @@ class SNIbGen(TimeSeriesGen):
    same as TimeSeriesGen class   """
     _object_type = 'SNIb'
     _available_models =ut.Templatelist_fromsncosmo('snib')
-    _available_rates = ['ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
 class SNIc_BLGen(TimeSeriesGen):
     """SNIIn class.
@@ -1160,7 +1177,7 @@ class SNIc_BLGen(TimeSeriesGen):
    same as TimeSeriesGen class   """
     _object_type = 'SNIc_BL'
     _available_models =ut.Templatelist_fromsncosmo('snic-bl')
-    _available_rates = ['ztf20']
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
     
         

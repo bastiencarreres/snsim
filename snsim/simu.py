@@ -293,12 +293,13 @@ class Simulator:
             rate_str = f"\nRate {gen._rate_expr} /Mpc^3/year "
 
             print(gen)
+            ut.print_rate(use_rate, gen)           
 
             if not use_rate:
                 rate_str += ' (only for redshifts simulation)\n'
         
             print(rate_str)
-
+            
         print('\n-----------------------------------------------------------\n')
 
         if 'mw_dust' in self.config:
@@ -324,6 +325,7 @@ class Simulator:
         # -- Change the samples attribute to store obj, init ID
         self._samples = []
         Obj_ID = 0
+        file_str=''
 
         # -- Simulation for each of the selected obj.
         for use_rate, seed, gen in zip(self._use_rate, seed_list, self.generators):
@@ -349,16 +351,14 @@ class Simulator:
 
             print(f'Sim file write in {time.time() - write_time:.1f} seconds')
 
+            formats = np.atleast_1d(self.config['data']['write_format'])
+            for f in formats:
+                file_str += '- '+ self.config['data']['write_path']+ self.sim_name + '_' + gen._object_type + '.'+ f + '\n'
+
         print('\n-----------------------------------------------------------\n')
 
         print('OUTPUT FILE(S) : ')
-        formats = np.atleast_1d(self.config['data']['write_format'])
-        for f in formats:
-            print('- '
-                  + self.config['data']['write_path']
-                  + self.sim_name + '_' + gen._object_type
-                  + '.'
-                  + f)
+        print(file_str)
 
     def _sim_lcs(self, generator, n_obj, Obj_ID=0, seed=None):
         """Simulate AstrObj lcs.

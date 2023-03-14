@@ -112,6 +112,11 @@ class BasicAstrObj(abc.ABC):
                                                zp=obs['zp'],
                                                zpsys=obs['zpsys'])
 
+        # set flux=0 outside model time range
+        time_diff = obs['time'] - self.sim_model.get('t0')
+        mask_flux = time_diff < self.sim_model.mintime() | time_diff > self.sim_model.maxtime()
+        fluxtrue[mask_flux] = 0.
+
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerr = np.sqrt(np.abs(fluxtrue) / obs.gain
                           + obs.skynoise**2
@@ -322,6 +327,7 @@ class SNIa(BasicAstrObj):
             self.sim_x0 = self.sim_model.get('x0')
             self._params['sncosmo']['x0'] = self.sim_x0
 
+
     @property
     def mag_sct(self):
         """SN coherent scattering term."""
@@ -366,17 +372,17 @@ class TimeSeries(BasicAstrObj):
         self._params['M0'] = M0
         if self.sim_model.source.name in self._available_models:
             self._params['template']=self.sim_model.source.name
-            mb = self.sim_mu + M0
+            m_r= self.sim_mu + M0
     
             if 'dip_dM' in self._params:
-                mb += self._params['dip_dM']
-
-            self.sim_mb = mb
+                m_r += self._params['dip_dM']
 
             # Compute the amplitude  parameter
-            self.sim_model.set_source_peakmag(self.sim_mb, 'bessellr', 'ab')
+            self.sim_model.set_source_peakmag(m_r, 'bessellr', 'ab')
+            self.sim_mb = self.sim_model.source_peakmag( 'bessellb', 'ab')
             self.sim_amplitude = self.sim_model.get('amplitude')
             self._params['sncosmo']['amplitude'] = self.sim_amplitude
+
 
     @property
     def mag_sct(self):

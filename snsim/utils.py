@@ -547,4 +547,27 @@ def select_Vincenzi_template(model_list,corr=None):
     	    return [sn for sn in model_list if sn.startswith('v19') and sn.endswith('corr')]
         else:
             return [sn for sn in model_list if sn.startswith('v19') and not sn.endswith('corr')]
+
+
+def print_rate(use_rate, gen):
+    """ Print simulation rate in a fancy format
+    Parameters
+    ---------------
+    use_rate: bool 
+            True if in the simulation the object are created with a specific rate in /Mpc^3/year
+    gen: Generator Object
+    Returns
+    ---------------
+    print the rate """
+
+    rate_str = "\nRate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
+
+    if use_rate:
+        rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
+    else:
+        rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
+        rate_str += ' (only for redshifts simulation)\n'
+        
+    print(rate_str)
+
         

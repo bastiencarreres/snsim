@@ -131,7 +131,9 @@ class SimSample:
                 dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
 
             model_sim.extend([sim_model])
-        return model_sim
+        
+        simmod={model.source.name: model for model in model_sim}
+        return simmod
 
     def _set_obj_effects_model(self, model, ID):
         """Set the model parameters of one obj.
@@ -174,21 +176,20 @@ class SimSample:
             sncosmo sim model of the obj.
 
         """
-        for model in self._sim_model:
-            if model.source.name == self.meta[obj_ID]['template']:
-                simmod = copy.copy(model)
-                par = {'z': self.meta[obj_ID]['zobs'],
-                       't0': self.meta[obj_ID]['sim_t0']}
+        model = self._sim_model[self.meta[obj_ID]['template']]
+        simmod = copy.copy(model)
+        par = {'z': self.meta[obj_ID]['zobs'],
+                't0': self.meta[obj_ID]['sim_t0']}
 
-                if self.header['obj_type'].lower() == 'snia':
-                    par = {**par, **self._get_snia_simsncpar(obj_ID)}
+        if self.header['obj_type'].lower() == 'snia':
+            par = {**par, **self._get_snia_simsncpar(obj_ID)}
 
-                else:
-                    par= {**par,**self._get_sn_simsncpar(obj_ID)}
+        else:
+            par= {**par,**self._get_sn_simsncpar(obj_ID)}
 
-                simmod.set(**par)
-                self._set_obj_effects_model(simmod, obj_ID)
-
+        simmod.set(**par)
+        self._set_obj_effects_model(simmod, obj_ID)
+        simmod.set_source_peakmag(self.meta[obj_ID]['sim_mb'],'bessellb','ab')
         return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
@@ -321,7 +322,7 @@ class SimSample:
                         lcs_df=self.modified_lcs,
                         sufname='_modified')
 
-    def write_fit(self, write_path=None):
+    def write_fit(self, fit_model_name, write_path=None):
         """Write fits results in fits format.
 
         Returns
@@ -346,7 +347,7 @@ class SimSample:
                 if id not in self.fit_res:
                     self.fit_lc(id)
 
-        io_ut.write_fit(self.meta, self.fit_res, self.header, write_path)
+        io_ut.write_fit(self.meta, self.fit_res, fit_model_name, self.header, write_path)
 
     def plot_hist(self, key, ax=None, **kwargs):
         """Plot the histogram of the key metadata.
@@ -494,11 +495,9 @@ class SimSample:
             Dict containing model parameters values.
         """
         dic_par = {}
-        for model in  self._sim_model:
-            if model.source.name[:4] == 'salt':
-                dic_par['x0'] = self.meta[ID]['sim_x0']
-                dic_par['x1'] = self.meta[ID]['sim_x1']
-                dic_par['c'] = self.meta[ID]['sim_c']
+        dic_par['x0'] = self.meta[ID]['sim_x0']
+        dic_par['x1'] = self.meta[ID]['sim_x1']
+        dic_par['c'] = self.meta[ID]['sim_c']
              
         return dic_par
 
@@ -536,6 +535,27 @@ class SimSample:
         else:
             meta_list = self.sim_lcs.attrs.values()
         return np.array([meta[key] for meta in meta_list])
+        
+    def get_peakmags(self, band, magsys='ab'):
+        """Get peak apparent magnitude in any band.
+
+        Parameters
+        ----------
+        band: str
+            The band, the name has to be in sncosmo registry
+        magsys: str
+            The magnitude system, default: ab.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the peak apparent magnitude for all SN.
+
+        """
+        mag_list=[self.get_obj_sim_model(ID).source_peakmag(band, magsys) for ID in self.get('ID')]
+        return np.array(mag_list)
+
+    
 
     @property
     def name(self):

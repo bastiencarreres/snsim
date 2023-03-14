@@ -73,6 +73,7 @@ def plot_lc(
         bandcol=None,
         set_main=None,
         set_res=None,
+        flux_limit=None,
         phase_limit=[-21,51],
         mtpstyle='seaborn-deep',
         dpi=100,
@@ -167,6 +168,9 @@ def plot_lc(
                     fontsize='xx-large')
 
         plt.xlim(phase_limit[0] * (1 + z), phase_limit[1] * (1 + z))
+
+        if flux_limit is not None:
+            ax0.set_ylim(flux_limit[0], flux_limit[1])
 
         ax0.spines['right'].set_visible(False)
         ax0.spines['top'].set_visible(False)
