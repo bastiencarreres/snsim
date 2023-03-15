@@ -118,12 +118,15 @@ class BasicAstrObj(abc.ABC):
         fluxtrue[mask_flux] = 0.
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
-        fluxerr = np.sqrt(np.abs(fluxtrue) / obs.gain
+        fluxerrtrue = np.sqrt(np.abs(fluxtrue) / obs.gain
                           + obs.skynoise**2
                           + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp)**2)
 
         gen = np.random.default_rng(random_seeds[1])
-        flux = fluxtrue + gen.normal(loc=0., scale=fluxerr)
+        flux = fluxtrue + gen.normal(loc=0., scale=fluxerrtrue)
+        fluxerr = np.sqrt(np.abs(flux) / obs.gain
+                          + obs.skynoise**2
+                          + (np.log(10) / 2.5 * flux * obs.sig_zp)**2)
 
         # Set magnitude
         mag = np.zeros_like(flux)
