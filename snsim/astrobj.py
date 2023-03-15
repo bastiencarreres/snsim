@@ -145,6 +145,7 @@ class BasicAstrObj(abc.ABC):
         # Create astropy Table lightcurve
         sim_lc = pd.DataFrame({'time': obs['time'],
                                'fluxtrue': fluxtrue,
+                               'fluxerrtrue': fluxerrtrue,
                                'flux': flux,
                                'fluxerr': fluxerr,
                                'mag': mag,
