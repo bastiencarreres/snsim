@@ -49,46 +49,32 @@ def sine_interp(x_new, fun_x, fun_y):
 
 
 @njit(cache=True)
-def R_base(a, t, vec, to_field_frame=True):
-    """Return the new carthesian coordinates after z axis and vec axis rotations.
-
+def R_base(theta, phi, vec):
+    """Give rotation to RA := theta, DEC := phi.
     Parameters
     ----------
-    a : float
-        Rotation angle around z axis.
-    t : Rotation angle around vec axis.
+    theta : float
+        RA amplitude of the rotation
+    phi : float
+        Dec amplitude of the rotation 
     vec : numpy.ndarray(float)
-        Coordinates of the second rotation axis.
-
+        Carthesian vector to rotate
     Returns
     -------
     numpy.ndarray(float)
-        Carthesian coordinates in the new basis.
-
-    Notes
-    -----
-    Rotation matrix computed using sagemaths
-
+        Rotated vector.
     """
-    R = np.zeros((3, 3))
-    R[0, 0] = (np.cos(t) - 1) * np.cos(a) * np.sin(a)**2 - \
-        ((np.cos(t) - 1) * np.sin(a)**2 - np.cos(t)) * np.cos(a)
-    R[0, 1] = (np.cos(t) - 1) * np.cos(a)**2 * np.sin(a) + \
-        ((np.cos(t) - 1) * np.sin(a)**2 - np.cos(t)) * np.sin(a)
-    R[0, 2] = np.cos(a) * np.sin(t)
-    R[1, 0] = (np.cos(t) - 1) * np.cos(a)**2 * np.sin(a) - \
-        ((np.cos(t) - 1) * np.cos(a)**2 - np.cos(t)) * np.sin(a)
-    R[1, 1] = -(np.cos(t) - 1) * np.cos(a) * np.sin(a)**2 - \
-        ((np.cos(t) - 1) * np.cos(a)**2 - np.cos(t)) * np.cos(a)
-    R[1, 2] = np.sin(a) * np.sin(t)
-    R[2, 0] = -np.cos(a)**2 * np.sin(t) - np.sin(a)**2 * np.sin(t)
+    R = np.zeros((3, 3), dtype='float')
+    R[0, 0] = np.cos(phi) * np.cos(theta)
+    R[0, 1] = -np.sin(theta)
+    R[0, 2] = -np.cos(theta) * np.sin(phi)
+    R[1, 0] = np.cos(phi) * np.sin(theta)
+    R[1, 1] = np.cos(theta)
+    R[1, 2] = -np.sin(phi) * np.sin(theta)
+    R[2, 0] = np.sin(phi)
     R[2, 1] = 0
-    R[2, 2] = np.cos(t)
-
-    if to_field_frame:
-        return R.T @ vec
-    else:
-        return R @ vec
+    R[2, 2] = np.cos(phi)
+    return R @ vec
 
 
 @guvectorize(["void(float64[:, :], float64[:, :], float64[:,:])"],
@@ -113,115 +99,10 @@ def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
         vec = np.array([np.cos(ra_dec[0][i]) * np.cos(ra_dec[1][i]),
                         np.sin(ra_dec[0][i]) * np.cos(ra_dec[1][i]),
                         np.sin(ra_dec[1][i])])
-        x, y, z = R_base(ra_dec_frame[0][i], -ra_dec_frame[1][i], vec, to_field_frame=False)
+        x, y, z = R_base(ra_dec_frame[0][i], ra_dec_frame[1][i], vec)
         new_radec[0][i] = np.arctan2(y, x)
-        if  new_radec[0][i] <0: new_radec[0][i] +=  2 * np.pi
+        if  new_radec[0][i] < 0: new_radec[0][i] +=  2 * np.pi
         new_radec[1][i] = np.arcsin(z)
-
-
-@njit(cache=True)
-def find_first(item, vec):
-    """Return the index of the first occurence of item in vec."""
-    for i in range(len(vec)):
-        if item == vec[i]:
-            return i
-    return -1
-
-
-@njit(cache=True, parallel=True)
-def time_selec(expMJD, ModelMinT, ModelMaxT):
-    """Select observations that are made in the good time to see a t0 peak SN.
-
-    Parameters
-    ----------
-    expMJD : numpy.ndarray(float)
-        MJD date of observations.
-    t0 : numpy.ndarray(float)
-        SN peakmjd.
-    ModelMaxT : float
-        SN model max date.
-    ModelMinT : float
-        SN model minus date.
-    fiveSigmaDepth :
-        5 sigma mag limit of observations.
-    fieldID : numpy.ndarray(float)
-        Field Id of each observation.
-
-    Returns
-    -------
-    numpy.ndarray(bool), numpy.ndarray(int)
-        The boolean array of field selection and the id of selectionned fields.
-    """
-    bool_array = np.zeros(len(expMJD), dtype=types.boolean)
-    any = False
-    for i in prange(len(expMJD)):
-        time = expMJD[i]
-        if (time > ModelMinT) & (time < ModelMaxT):
-            bool_array[i] = True
-    if True in bool_array:
-        any = True
-    return any, bool_array
-
-
-@njit(cache=True, parallel=True)
-def map_obs_fields(epochs_selec, fieldID, obsfield):
-    """Return the boolean array corresponding to observed fields.
-
-    Parameters
-    ----------
-    epochs_selec : numpy.array(bool)
-        Actual observations selection.
-    fieldID : numpy.array(int)
-        ID of fields.
-    obsfield : numba.Dict(int:bool)
-        Numba dic where keys are observed field.
-
-    Returns
-    -------
-    bool, numpy.ndarray(bool)
-        Is there an observation and the selection of observations.
-
-    """
-    bool_array = np.zeros(len(fieldID), dtype=types.boolean)
-    any = False
-    for i in prange(len(fieldID)):
-        fID = fieldID[i]
-        if fID in obsfield:
-            bool_array[i] = True
-
-    if True in bool_array:
-        any = True
-    epochs_selec[epochs_selec] &= bool_array
-    return any, epochs_selec
-
-
-@njit(cache=True)
-def map_obs_subfields(obs_fieldID, obs_subfield, mapdic):
-    """Return boolean array corresponding to observed subfields.
-
-    Parameters
-    ----------
-    epochs_selec : numpy.array(bool)
-        Actual observations selection.
-    obs_fieldID : int
-        Id of pre selected observed fields.
-    obs_subfield : int
-        Observed subfields.
-    mapdic : numba.Dict(int:int)
-        Numba dic of observed subfield in each observed field.
-
-    Returns
-    -------
-    bool, numpy.ndarray(bool)
-        Is there an observation and the selection of observations.
-
-    """
-    is_any = False
-    epochs_selec = (obs_subfield == np.array([mapdic[field] for field in
-                                             obs_fieldID], dtype=types.i8))
-    if True in epochs_selec:
-        is_any = True
-    return is_any, epochs_selec
 
 
 @njit(cache=True)
@@ -264,63 +145,3 @@ def radec_to_cart(ra, dec):
     """
     cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
     return cart_vec
-
-
-@njit(cache=True, parallel=True)
-def is_in_field(obj_ra, obj_dec, ra_fields, dec_fields, fieldsID,
-                subfields_id, subfields_corners):
-    """Chek if a SN is in fields.
-
-    Parameters
-    ----------
-    epochs_selec : numpy.ndarray(bool)
-        The boolean array of field selection.
-    obs_fieldID : numpy.ndarray(int)
-        Field Id of each observation.
-    ra_field_frame : numpy.ndarray(float)
-        SN Right Ascension in fields frames.
-    dec_field_frame : numpy.ndarray(float)
-        SN Declinaison in fields frames.
-    field_size : list(float)
-        ra and dec size.
-    fieldID : numpy.ndarray(int)
-        The list of preselected fields ID.
-
-    Returns
-    -------
-    numba.Dict(int:bool), numba.Dict(int:numpy.array(float))
-        The dictionnaries of boolean selection of obs fields and coordinates in observed fields.
-
-    """
-    obs_dic = np.ones((len(fieldsID), len(obj_ra)), dtype=np.int32) * -1
-    vec =  np.vstack((np.cos(obj_ra) * np.cos(obj_dec),
-                      np.sin(obj_ra) * np.cos(obj_dec),
-                      np.sin(obj_dec)))
-
-    for i in prange(len(fieldsID)):
-        fra, fdec = ra_fields[i], dec_fields[i]
-        x, y, z = R_base(fra, -fdec, vec)
-        ra_frame = np.arctan2(y, x)
-        dec_frame = np.arcsin(z)
-
-        for subf, subf_id in zip(subfields_corners, subfields_id):
-            obs_condition = ra_frame > np.min(subf.T[0])
-            obs_condition &= ra_frame < np.max(subf.T[0])
-            obs_condition &= dec_frame > np.min(subf.T[1])
-            obs_condition &= dec_frame < np.max(subf.T[1])
-            obs_dic[i][obs_condition] = subf_id
-    return obs_dic.T
-
-
-@njit(cache=True, parallel=True)
-def isin(a, b):
-    """isin numba version from
-    https://stackoverflow.com/questions/70865732/faster-numpy-isin-alternative-for-strings-using-numba
-    """
-    n = len(a)
-    bool_array = np.full(n, False)
-    set_b = set(b)
-    for i in prange(n):
-        if a[i] in set_b:
-            bool_array[i] = True
-    return bool_array
