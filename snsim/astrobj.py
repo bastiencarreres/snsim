@@ -111,12 +111,6 @@ class BasicAstrObj(abc.ABC):
                                                obs['time'],
                                                zp=obs['zp'],
                                                zpsys=obs['zpsys'])
-
-        # set flux=0 outside model time range (security when using templates)
-        #but think also to eliminate the data 
-       
-        mask_flux = np.where((obs['time']  < self.sim_model.mintime()) | (obs['time'] > self.sim_model.maxtime()))
-        fluxtrue[mask_flux]=0
         
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerr = np.sqrt(np.abs(fluxtrue) / obs.gain
@@ -155,6 +149,9 @@ class BasicAstrObj(abc.ABC):
         for k in obs.columns:
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
+
+        # mask to delete points outside time range of the model
+        sim_lc = sim_lc[(sim_lc['time']  > self.sim_model.mintime()) & (sim_lc['time'] < self.sim_model.maxtime())]
 
         sim_lc.attrs = {**sim_lc.attrs,
                         **{'zobs': self.zobs, 't0': self.sim_t0},
