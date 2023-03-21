@@ -93,6 +93,9 @@ class BasicAstrObj(abc.ABC):
         # Re - set the parameters
         self._set_model()
 
+        # mask to delete observed points outside time range of the model
+        obs = obs[(obs['time']  > self.sim_model.mintime()) & (obs['time'] < self.sim_model.maxtime())]
+
         if self._model_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
@@ -149,9 +152,6 @@ class BasicAstrObj(abc.ABC):
         for k in obs.columns:
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
-
-        # mask to delete points outside time range of the model
-        sim_lc = sim_lc[(sim_lc['time']  > self.sim_model.mintime()) & (sim_lc['time'] < self.sim_model.maxtime())]
 
         sim_lc.attrs = {**sim_lc.attrs,
                         **{'zobs': self.zobs, 't0': self.sim_t0},
