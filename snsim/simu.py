@@ -209,6 +209,8 @@ class Simulator:
         # -- Set default mintime, maxtime (restframe)
         snc_mintime = -20
         snc_maxtime = 50
+         #maybe default timerange to change to be more flexible with sncc
+
         cut_list = []
         if 'nep_cut' in self.config['sim_par']:
             nep_cut = self.config['sim_par']['nep_cut']
@@ -224,7 +226,7 @@ class Simulator:
                         cut_list.append((cut[0], cut[1], cut[2], cut[3]))
         else:
             cut_list = [(1, snc_mintime, snc_maxtime, 'any')]
-        dt = [('nep', np.int8), ('mintime', np.int8), ('maxtime', np.int8), ('band', np.str_, 8)]
+        dt = [('nep', np.int8), ('mintime', np.int16), ('maxtime', np.int16), ('band', np.str_, 8)]
         return np.asarray(cut_list, dtype=dt)
 
     def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
