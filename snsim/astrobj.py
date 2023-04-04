@@ -93,6 +93,9 @@ class BasicAstrObj(abc.ABC):
         # Re - set the parameters
         self._set_model()
 
+        # mask to delete observed points outside time range of the model
+        obs = obs[(obs['time']  > self.sim_model.mintime()) & (obs['time'] < self.sim_model.maxtime())]
+
         if self._model_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
@@ -111,11 +114,6 @@ class BasicAstrObj(abc.ABC):
                                                obs['time'],
                                                zp=obs['zp'],
                                                zpsys=obs['zpsys'])
-
-        # set flux=0 outside model time range
-        time_diff = obs['time'] - self.sim_model.get('t0')
-        mask_flux = time_diff < self.sim_model.mintime() | time_diff > self.sim_model.maxtime()
-        fluxtrue[mask_flux] = 0.
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerrtrue = np.sqrt(np.abs(fluxtrue) / obs.gain
