@@ -11,8 +11,6 @@ from . import plot_utils as plot_ut
 from . import dust_utils as dst_ut
 from . import io_utils as io_ut
 
-np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
-
 
 class SimSample:
     """Class to store simulated SN sample.
