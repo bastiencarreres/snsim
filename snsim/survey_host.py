@@ -664,7 +664,7 @@ class SnHost:
     def max_dz(self):
         """Get the maximum redshift gap."""
         if self._max_dz is None:
-            redshift_copy = np.sort(np.copy(self.table['redshift']))
+            redshift_copy = np.sort(np.copy(self.table['zcos']))
             diff = redshift_copy[1:] - redshift_copy[:-1]
             self._max_dz = np.max(diff)
         return self._max_dz
@@ -706,14 +706,14 @@ class SnHost:
         host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
         if z_range is not None:
             z_min, z_max = z_range
-            if (z_max > host_list['redshift'].max()
-               or z_min < host_list['redshift'].min()):
+            if (z_max > host_list['zcos'].max()
+               or z_min < host_list['zcos'].min()):
                 warnings.warn('Simulation redshift range does not match host file redshift range',
                               UserWarning)
-            host_list.query(f'redshift >= {z_min} & redshift <= {z_max}', inplace=True)
+            host_list.query(f'zcos >= {z_min} & zcos <= {z_max}', inplace=True)
         else:
             # By default give z range as hsot z range
-            z_range = host_list.redshift.min(), host_list.redshift.max()
+            z_range = host_list.zcos.min(), host_list.zcos.max()
         if self._geometry is not None:
             ra_min, dec_min, ra_max, dec_max = self._geometry.bounds
             host_list.query(f'{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}',
@@ -741,7 +741,7 @@ class SnHost:
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights = rate(self.table['redshift']) / (1 + self.table['redshift'])
+            weights = rate(self.table['zcos']) / (1 + self.table['zcos'])
             # Normalize the weights
             weights /= weights.sum()
         return weights

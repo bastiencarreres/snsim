@@ -168,8 +168,8 @@ class BaseGen(abc.ABC):
         if snc_par is not None:
             par_list = ({**{'ID': astrobj_par.index.values[i]},
                             **{k: astrobj_par[k][i+astrobj_par.index.values[0]] for k in astrobj_par},
-                             **{'sncosmo': {**sncp, **dstp}}} 
-                             for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
+                            **{'sncosmo': {**sncp, **dstp}}} 
+                            for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
         else:
             par_list = ({**{'ID': astrobj_par.index.values[i]},
                             **{k: astrobj_par[k][i+astrobj_par.index.values[0]] for k in astrobj_par},
@@ -466,7 +466,7 @@ class BaseGen(abc.ABC):
         if self.vpec_dist is not None:
             vpec = self.gen_vpec(n_obj, seed=seeds[3])
         elif self.host is not None:
-            vpec = host['v_radial'].values
+            vpec = host['vpec'].values
         else:
             vpec = np.zeros(len(ra))
 
