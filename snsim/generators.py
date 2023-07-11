@@ -453,7 +453,7 @@ class BaseGen(abc.ABC):
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
             host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate)
-            zcos = host['redshift'].values
+            zcos = host['zcos'].values
 
         # -- Generate ra, dec
         if self.host is not None:
