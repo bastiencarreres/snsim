@@ -86,7 +86,7 @@ class G10(snc.PropagationEffect):
         sigma_lam = []
         sigma_val = []
 
-        while lam < self._maxwave:
+        while lam <= self._maxwave:
             sigma_lam.append(lam)
             val = self._colordisp(lam)
             if lam > L0:

@@ -4,8 +4,7 @@ Getting started
 Basic usage
 -----------
 
-The code is launched in a python interpreter by calling the Simulator
-object :
+The code is launched in a python interpreter by calling the Simulator bject :
 
 .. code:: python
 
