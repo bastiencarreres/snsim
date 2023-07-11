@@ -293,9 +293,7 @@ class Simulator:
         for use_rate, gen in zip(self._use_rate, self.generators):
             
             rate_str = f"\nRate {gen._rate_expr} /Mpc^3/year "
-
             print(gen)
-            #ut.print_rate(use_rate, gen)           
 
             if not use_rate:
                 rate_str += ' (only for redshifts simulation)\n'
