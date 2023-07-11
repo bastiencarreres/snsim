@@ -983,7 +983,7 @@ class TimeSeriesGen(BaseGen):
         elif self._params['rate'].lower() == 'ptf19_pw':
             # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
             rate = 9.10e-5 * cst.SNCC_fraction['shivers17'][self._object_type] * (self.cosmology.h/0.70)**3
-            return lambda z: rate * ((1 + z)**2.7/(1+((1+z)/2.9))**5.6)
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
