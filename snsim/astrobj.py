@@ -313,7 +313,7 @@ class SNIa(BasicAstrObj):
             beta = self._model_par['beta']
             x1 = self._params['sncosmo']['x1']
             c = self._params['sncosmo']['c']
-            mb = self.sim_mu + M0 - alpha * x1 + beta * c
+            mb = self.sim_mu + M0 - alpha * x1 + beta * c #add mass step if you have host
 
             self.sim_x1 = x1
             self.sim_c = c

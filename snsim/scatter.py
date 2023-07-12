@@ -71,6 +71,7 @@ class G10(snc.PropagationEffect):
         self._minwave = model.source.minwave()
         self._maxwave = model.source.maxwave()
         self._colordisp = model.source._colordisp
+        
 
     def compute_sigma_nodes(self):
         """Computes the sigma nodes."""

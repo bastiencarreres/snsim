@@ -454,7 +454,7 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate)
+            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate) # change self random choiche depend on type 
             zcos = host['zcos'].values
 
         # -- Generate ra, dec
@@ -1391,7 +1391,7 @@ class SNIbcGen(TimeSeriesGen):
     def gen_coh_scatter_for_type(self, n_sn, seed):
         raise ValueError('Default scatterting for SNII not implemented yet, please provide SigM')
 class SNIcGen(TimeSeriesGen):
-    """SNIIn class.
+    """SNIc class.
 
     Parameters
     ----------
@@ -1457,7 +1457,7 @@ class SNIcGen(TimeSeriesGen):
             raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
 
 class SNIbGen(TimeSeriesGen):
-    """SNIIn class.
+    """SNIb class.
 
     Parameters
     ----------
@@ -1524,7 +1524,7 @@ class SNIbGen(TimeSeriesGen):
 
 
 class SNIc_BLGen(TimeSeriesGen):
-    """SNIIn class.
+    """SNIc_BL class.
 
     Parameters
     ----------
@@ -1591,8 +1591,3 @@ class SNIc_BLGen(TimeSeriesGen):
 
 
     
-        
-  
-   
- 
-       
