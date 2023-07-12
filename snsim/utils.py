@@ -498,33 +498,46 @@ def Templatelist_fromsncosmo(source_type=None):
     Parameters
     -----------
     source_type : str
-                 type of sources could be sniipl,sniib,sniin,snic,snib or snic-bl
+                 type of sources could be snii,sniipl,sniib,sniin,snib/c,snic,snib or snic-bl
     Return
     ----------
     list on names of sources with the given source_type from snscomo catalogue """
 
+    type_list=['snii','sniipl','sniib','sniin','snib/c','snic','snib','snic-bl']
+
     if source_type is None:
         raise ValueError("select the source type")
     
-    sources = snc.builtins._SOURCES.get_loaders_metadata()
+    if source_type not in type_list:
+         raise ValueError("Wrong source_type, the available types are snii,sniipl,sniib,sniin,snib/c,snic,snib or snic-bl")
+
+    else:
+        
+        sources = snc.builtins._SOURCES.get_loaders_metadata()
     
-    if source_type=='sniipl':
-        return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and not s['type'].endswith('n'))
-
-    elif source_type=='sniib':
-        return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and s['type'].endswith('b') and not s['type'].endswith('n'))
-
-    elif source_type=='sniin':
-        return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and s['type'].endswith('n'))
-
-    elif source_type=='snic':
-        return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and not s['type'].endswith('BL'))
+        if source_type=='snii':
+            return list(s['name'] for s in sources if 'sn ii' in s['type'].lower())
     
-    elif source_type=='snib':
-        return list(s['name'] for s in sources if 'sn ib' in s['type'].lower())
+        elif source_type=='sniipl':
+            return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and not s['type'].endswith('n'))
 
-    elif source_type=='snic-bl':
-        return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and  s['type'].endswith('BL'))
+        elif source_type=='sniib':
+            return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and s['type'].endswith('b') and not s['type'].endswith('n'))
+
+        elif source_type=='sniin':
+            return list(s['name'] for s in sources if 'sn ii' in s['type'].lower() and not s['type'].endswith('b') and s['type'].endswith('n'))
+
+        elif source_type=='snic':
+            return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and not s['type'].endswith('BL'))
+    
+        elif source_type=='snib':
+            return list(s['name'] for s in sources if 'sn ib' in s['type'].lower())
+
+        elif source_type=='snic-bl':
+            return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() and  s['type'].endswith('BL'))
+
+        elif source_type=='snib/c':
+            return list(s['name'] for s in sources if 'sn ic' in s['type'].lower() or 'sn ib' in s['type'].lower())
         
 
 def select_Vincenzi_template(model_list,corr=None):

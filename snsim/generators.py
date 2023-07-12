@@ -16,9 +16,11 @@ from . import constants as cst
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen',
                'timeseries_gen':'TimeSeriesGen',
+               'snii_gen': 'SNIIGen',
                'sniipl_gen': 'SNIIplGen',
                'sniib_gen': 'SNIIbGen',
                'sniin_gen': 'SNIInGen',
+               'snib/c_gen':'SNIbcGen',
                'snic_gen': 'SNIcGen',
                'snib_gen': 'SNIbGen',
                'snic-bl_gen': 'SNIc_BLGen'}
@@ -714,6 +716,10 @@ class SNIaGen(BaseGen):
     _object_type = 'SNIa'
     _available_models = ['salt2', 'salt3']
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
+    SNIA_M0 = {
+               'jla': -19.05
+               }
 
     def _init_registered_rate(self):
         """SNIa rates registry."""
@@ -737,7 +743,7 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
-            return ut.scale_M0_cosmology(self.cosmology.h,cst.SNIA_M0['jla'],cst.h_article['jla'])
+            return ut.scale_M0_cosmology(self.cosmology.h,SNIA_M0['jla'],cst.h_article['jla'])
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 is 'jla' ")  
 
@@ -969,24 +975,17 @@ class TimeSeriesGen(BaseGen):
       | ├── coord  list(ra, dec) dipole vector coordinates in ra, dec
       | ├── A  parameter of the A + B * cos(theta) dipole
       | └── B  B parameter of the A + B * cos(theta) dipole
-    """
-    def _init_registered_rate(self):
-        """SNII rates registry."""
-        if self._params['rate'].lower() == 'ztf20':
-            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-            rate = 1.01e-4 * cst.SNCC_fraction['ztf20'][self._object_type] * (self.cosmology.h/0.70)**3
-            return lambda z: rate
-        elif self._params['rate'].lower() == 'ptf19':
-            # Rate from  https://arxiv.org/abs/2010.15270
-            rate = 9.10e-5 * cst.SNCC_fraction['shivers17'][self._object_type] * (self.cosmology.h/0.70)**3
-            return lambda z: rate
-        elif self._params['rate'].lower() == 'ptf19_pw':
-            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-            rate = 9.10e-5 * cst.SNCC_fraction['shivers17'][self._object_type] * (self.cosmology.h/0.70)**3
-            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
-        else:
-            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+    
+    General Info about parameters:
 
+    For Rate:
+    SNCC ztf20 relative fraction of SNe subtypes from https://arxiv.org/abs/2009.01242 figure 6 + 
+    ztf20 relative fraction between SNe Ic and SNe Ib from https://iopscience.iop.org/article/10.3847/1538-4357/aa5eb7/meta
+    SNCC shiver17 fraction from https://arxiv.org/abs/1609.02922 Table 3
+
+    For Luminosity Functions:
+    SNCC M0 mean and scattering of luminosity function values from Vincenzi et al. 2021 Table 5 (https://arxiv.org/abs/2111.10382)
+    """
 
     def _init_M0(self):
         """Initialise absolute magnitude."""
@@ -994,17 +993,7 @@ class TimeSeriesGen(BaseGen):
             return self._params['M0']
 
         else:
-            if self._params['M0'].lower() == 'li11_gaussian':
-                return ut.scale_M0_cosmology(self.cosmology.h,
-                                             cst.SNCC_M0[self._object_type]['li11_gaussian'],
-                                             cst.h_article['li11'])
-
-            elif self._params['M0'].lower() == 'li11_skewed':
-                return ut.scale_M0_cosmology(self.cosmology.h,
-                                            cst.SNCC_M0[self._object_type]['li11_skewed'],
-                                            cst.h_article['li11'])
-            else:
-                raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            return self.init_M0_for_type()
          
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
@@ -1085,19 +1074,7 @@ class TimeSeriesGen(BaseGen):
                     sig_high=self._params['sigM'][1], seed=seed, size=n_sn)
 
         else:
-            if self._params['sigM'].lower() == 'li11_gaussian':
-                return ut.asym_gauss(mu=0,
-                    sig_low=cst.SNCC_mgscatter[self._object_type]['li11_gaussian'][0],
-                    sig_high=cst.SNCC_mgscatter[self._object_type]['li11_gaussian'][1],
-                    seed=seed, size=n_sn) 
-            
-            elif self._params['sigM'].lower() == 'li11_skewed':
-                return ut.asym_gauss(mu=0,
-                    sig_low=cst.SNCC_mgscatter[self._object_type]['li11_skewed'][0],
-                    sig_high=cst.SNCC_mgscatter[self._object_type]['li11_skewed'][1],
-                    seed=seed, size=n_sn)
-            else:
-                raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            return self.gen_coh_scatter_for_type(n_sn, seed)
             
 
     
@@ -1125,6 +1102,47 @@ class TimeSeriesGen(BaseGen):
     def _update_header(self, header):
         header['M0_band']='bessell_r'
 
+class SNIIGen(TimeSeriesGen):
+
+    """SNII parameters generator.
+
+    Parameters
+    ----------
+    same as TimeSeriesGen
+    """
+    _object_type = 'SNII'
+    _available_models = ut.Templatelist_fromsncosmo('snii')
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    
+    _sn_fraction= {
+                    'ztf20': 0.776208,
+                    'shivers17': 0.69673 
+                   }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20']* (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+
+
+    def init_M0_for_type(self):
+        raise ValueError('Default M0 for SNII not implemented yet, please provide M0')
+
+    def gen_coh_scatter_for_type(self, n_sn, seed):
+        raise ValueError('Default scatterting for SNII not implemented yet, please provide SigM')
 
 class SNIIplGen(TimeSeriesGen):
     """SNIIPL parameters generator.
@@ -1137,6 +1155,64 @@ class SNIIplGen(TimeSeriesGen):
     _available_models = ut.Templatelist_fromsncosmo('sniipl')
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
 
+    _sn_lumfunc= {
+                    'M0': {'li11_gaussian': -15.97, 'li11_skewed': -17.51},
+                    'mag_sct': {'li11_gaussian': [1.31, 1.31], 'li11_skewed': [2.01, 3.18]}
+                 }
+
+    _sn_fraction={
+                    'shivers17': 0.620136,
+                    'ztf20': 0.546554,
+                 }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+        if self._params['M0'].lower() == 'li11_gaussian':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                             self._sn_lumfunc['M0']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+        elif self._params['M0'].lower() == 'li11_skewed':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                            self._sn_lumfunc['M0']['li11_skewed'],
+                                            cst.h_article['li11'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        if self._params['sigM'].lower() == 'li11_gaussian':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    seed=seed, size=n_sn) 
+            
+        elif self._params['sigM'].lower() == 'li11_skewed':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    seed=seed, size=n_sn)
+        else:
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            
+
 class SNIIbGen(TimeSeriesGen):
     """SNIIb parameters generator.
 
@@ -1147,6 +1223,64 @@ class SNIIbGen(TimeSeriesGen):
     _object_type = 'SNIIb'
     _available_models = ut.Templatelist_fromsncosmo('sniib')
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    _sn_lumfunc= {
+                    'M0': {'li11_gaussian': -16.69, 'li11_skewed': -18.30},
+                    'mag_sct': {'li11_gaussian': [1.38, 1.38], 'li11_skewed': [2.03, 7.40]}
+                 }
+
+    _sn_fraction={
+                    'shivers17': 0.10944,
+                    'ztf20': 0.047652,
+                 }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+        if self._params['M0'].lower() == 'li11_gaussian':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                             self._sn_lumfunc['M0']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+        elif self._params['M0'].lower() == 'li11_skewed':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                            self._sn_lumfunc['M0']['li11_skewed'],
+                                            cst.h_article['li11'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        if self._params['sigM'].lower() == 'li11_gaussian':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    seed=seed, size=n_sn) 
+            
+        elif self._params['sigM'].lower() == 'li11_skewed':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    seed=seed, size=n_sn)
+        else:
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            
+
 
 class SNIInGen(TimeSeriesGen):
     """SNIIn parameters generator.
@@ -1158,8 +1292,104 @@ class SNIInGen(TimeSeriesGen):
     _object_type = 'SNIIn'
     _available_models = ut.Templatelist_fromsncosmo('sniin')
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    _sn_lumfunc= {
+                    'M0': {'li11_gaussian': -17.90, 'li11_skewed': -19.13},
+                    'mag_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed' :[1.53, 6.83]}
+                 }
+
+    _sn_fraction={
+                    'shivers17': 0.046632,
+                    'ztf20': 0.102524,
+                 }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+        if self._params['M0'].lower() == 'li11_gaussian':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                             self._sn_lumfunc['M0']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+        elif self._params['M0'].lower() == 'li11_skewed':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                            self._sn_lumfunc['M0']['li11_skewed'],
+                                            cst.h_article['li11'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        if self._params['sigM'].lower() == 'li11_gaussian':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    seed=seed, size=n_sn) 
+            
+        elif self._params['sigM'].lower() == 'li11_skewed':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    seed=seed, size=n_sn)
+        else:
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+
+class SNIbcGen(TimeSeriesGen):
+
+    """SNIb/c parameters generator.
+
+    Parameters
+    ----------
+    same as TimeSeriesGen
+    """
+    _object_type = 'SNIb/c'
+    _available_models = ut.Templatelist_fromsncosmo('snib/c')
+    _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    
+    _sn_fraction= {
+                    'ztf20': 0.217118,
+                    'shivers17': 0.19456 
+                   }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20']* (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
 
+
+    def init_M0_for_type(self):
+        raise ValueError('Default M0 for SNII not implemented yet, please provide M0')
+
+    def gen_coh_scatter_for_type(self, n_sn, seed):
+        raise ValueError('Default scatterting for SNII not implemented yet, please provide SigM')
 class SNIcGen(TimeSeriesGen):
     """SNIIn class.
 
@@ -1169,6 +1399,62 @@ class SNIcGen(TimeSeriesGen):
     _object_type = 'SNIc'
     _available_models =ut.Templatelist_fromsncosmo('snic')
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    _sn_lumfunc= {
+                    'M0': {'li11_gaussian': -16.75, 'li11_skewed': -17.51},
+                    'mag_sct': {'li11_gaussian': [0.97, 0.97], 'li11_skewed': [1.24, 1.22]}
+                 }
+
+    _sn_fraction={
+                    'shivers17': 0.075088,
+                    'ztf20': 0.110357,
+                 }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+        if self._params['M0'].lower() == 'li11_gaussian':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                             self._sn_lumfunc['M0']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+        elif self._params['M0'].lower() == 'li11_skewed':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                            self._sn_lumfunc['M0']['li11_skewed'],
+                                            cst.h_article['li11'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        if self._params['sigM'].lower() == 'li11_gaussian':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    seed=seed, size=n_sn) 
+            
+        elif self._params['sigM'].lower() == 'li11_skewed':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    seed=seed, size=n_sn)
+        else:
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
 
 class SNIbGen(TimeSeriesGen):
     """SNIIn class.
@@ -1179,6 +1465,63 @@ class SNIbGen(TimeSeriesGen):
     _object_type = 'SNIb'
     _available_models =ut.Templatelist_fromsncosmo('snib')
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    _sn_lumfunc= {
+                    'M0': {'li11_gaussian': -16.07, 'li11_skewed': -17.71},
+                    'mag_sct': {'li11_gaussian': [1.34, 1.34], 'li11_skewed': [2.11, 7.15]}
+                 }
+
+    _sn_fraction={
+                    'shivers17': 0.108224,
+                    'ztf20': 0.052551,
+                 }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+        if self._params['M0'].lower() == 'li11_gaussian':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                             self._sn_lumfunc['M0']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+        elif self._params['M0'].lower() == 'li11_skewed':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                            self._sn_lumfunc['M0']['li11_skewed'],
+                                            cst.h_article['li11'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        if self._params['sigM'].lower() == 'li11_gaussian':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    seed=seed, size=n_sn) 
+            
+        elif self._params['sigM'].lower() == 'li11_skewed':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    seed=seed, size=n_sn)
+        else:
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+
 
 class SNIc_BLGen(TimeSeriesGen):
     """SNIIn class.
@@ -1189,6 +1532,63 @@ class SNIc_BLGen(TimeSeriesGen):
     _object_type = 'SNIc_BL'
     _available_models =ut.Templatelist_fromsncosmo('snic-bl')
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
+    _sn_lumfunc= {
+                    'M0': {'li11_gaussian': -16.79, 'li11_skewed': -17.74},
+                    'mag_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed': [1.35, 2.06]}
+                 }
+
+    _sn_fraction={
+                    'shivers17': 0.011248,
+                    'ztf20': 0.05421,
+                 }
+
+    def _init_registered_rate(self):
+        """SNII rates registry."""
+        if self._params['rate'].lower() == 'ztf20':
+            # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+            rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19':
+            # Rate from  https://arxiv.org/abs/2010.15270
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate
+        elif self._params['rate'].lower() == 'ptf19_pw':
+            # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+            rate = 9.10e-5 * self._sn_fraction['shivers17'] * (self.cosmology.h/0.70)**3
+            return lambda z: rate * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+        if self._params['M0'].lower() == 'li11_gaussian':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                             self._sn_lumfunc['M0']['li11_gaussian'],
+                                             cst.h_article['li11'])
+
+        elif self._params['M0'].lower() == 'li11_skewed':
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                            self._sn_lumfunc['M0']['li11_skewed'],
+                                            cst.h_article['li11'])
+        else:
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        if self._params['sigM'].lower() == 'li11_gaussian':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    seed=seed, size=n_sn) 
+            
+        elif self._params['sigM'].lower() == 'li11_skewed':
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    seed=seed, size=n_sn)
+        else:
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+
 
     
         

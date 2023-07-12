@@ -402,6 +402,15 @@ class TimeSeries(BasicAstrObj):
         return self._params['template']
   
 
+class SNII(TimeSeries):
+    """SNII class.
+
+    Parameters
+    ----------
+    same as TimeSeries class"""
+    _type = 'snII'
+    _available_models = ut.Templatelist_fromsncosmo('snii')
+
 class SNIIpl(TimeSeries):
     """SNII P/L class.
 
@@ -429,6 +438,16 @@ class SNIIn(TimeSeries):
    same as TimeSeries class   """
     _type = 'snIIn'
     _available_models = ut.Templatelist_fromsncosmo('sniin')
+
+
+class SNIbc(TimeSeries):
+    """SNIb/c class.
+
+    Parameters
+    ----------
+    same as TimeSeries class"""
+    _type = 'snIb/c'
+    _available_models = ut.Templatelist_fromsncosmo('snib/c')
 
 class SNIc(TimeSeries):
     """SNIIn class.
