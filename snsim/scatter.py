@@ -2,6 +2,7 @@
 
 import numpy as np
 import sncosmo as snc
+from . import utils as ut
 from . import nb_fun as nbf
 
 
@@ -66,52 +67,25 @@ class G10(snc.PropagationEffect):
     def __init__(self, model):
         """Initialize G10 class."""
         self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800,
-                                     np.random.randint(low=1000, high=100000)])
+                                    np.random.randint(low=1000, high=100000)])
         self._minwave = model.source.minwave()
         self._maxwave = model.source.maxwave()
         self._colordisp = model.source._colordisp
 
-    @property
-    def scattering_law(self):
-        """Construct the scattering law.
-
-        Returns
-        -------
-        numpy.ndarray(float), numpy.ndarray(float)
-            wavelength, scatter law at wavelength.
-
-        """
-        L0, F0, F1, dL = self._parameters[:-1]
-        lam = self._minwave
-        sigma_lam = []
-        sigma_val = []
-
-        while lam <= self._maxwave:
-            sigma_lam.append(lam)
-            val = self._colordisp(lam)
-            if lam > L0:
-                val *= 1 + (lam - L0) * F1
-            elif lam < L0:
-                val *= 1 + (lam - L0) * F0
-
-            sigma_val.append(val)
-            lam += dL
-        return np.asarray(sigma_lam), np.asarray(sigma_val)
-
-    @property
-    def lam_scatter(self):
-        """Generate the scatter.
-
-        Returns
-        -------
-        numpy.ndarray(float), numpy.ndarray(float)
-            wavelength, random scatter at wavelength.
-
-        """
-        sigma_lam, sigma_val = self.scattering_law
-        RS = self._parameters[-1]
-        return sigma_lam, sigma_val * \
-            np.random.default_rng(int(RS)).normal(0, 1, size=len(sigma_val))
+    def compute_sigma_nodes(self):
+        """Computes the sigma nodes."""
+        L0, F0, F1, dL, RS = self._parameters
+        
+        # Computes the sigma values
+        lam_nodes = np.arange(self._minwave, self._maxwave, dL)
+        siglam_values = self._colordisp(lam_nodes) 
+        siglam_values[lam_nodes < L0] *= 1 + (lam_nodes[lam_nodes < L0] - L0) * F0
+        siglam_values[lam_nodes > L0] *= 1 + (lam_nodes[lam_nodes > L0] - L0) * F1
+        
+        # Random drawing
+        siglam_values *= np.random.default_rng(int(RS)).normal(size=len(sigma_val))
+        
+        return lam_nodes, siglam_values
 
     def propagate(self, wave, flux):
         """Propagate the effect to the flux.
@@ -128,9 +102,9 @@ class G10(snc.PropagationEffect):
         numpy.ndarray(float)
             Flux density with effect applied.
         """
-        lam, scatter = self.lam_scatter
-        scattering = np.asarray([nbf.sine_interp(w, lam, scatter) for w in wave])
-        return flux * 10**(-0.4 * scattering)
+        lam_nodes, siglam_values = self.compute_sigma_nodes()
+        magscat = ut.sine_interp(wave, lam_nodes, siglam_values)
+        return flux * 10**(-0.4 * magscat)
 
 
 class C11(snc.PropagationEffect):
@@ -255,5 +229,5 @@ class C11(snc.PropagationEffect):
             elif w <= self._sigma_lam[0]:
                 scattering[i] = scatter[0]
             else:
-                scattering[i] = nbf.sine_interp(w, self._sigma_lam, scatter)
+                scattering[i] = ut.sine_interp(w, self._sigma_lam, scatter)
         return flux * 10**(-0.4 * scattering)
