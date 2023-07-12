@@ -78,6 +78,11 @@ class G10(snc.PropagationEffect):
         
         # Computes the sigma values
         lam_nodes = np.arange(self._minwave, self._maxwave, dL)
+
+        # Cover the whole wavelength range
+        if lam_nodes.max() < self._maxwave:
+            lam_nodes = np.append(lam_nodes, self._maxwave)
+
         siglam_values = self._colordisp(lam_nodes) 
         siglam_values[lam_nodes < L0] *= 1 + (lam_nodes[lam_nodes < L0] - L0) * F0
         siglam_values[lam_nodes > L0] *= 1 + (lam_nodes[lam_nodes > L0] - L0) * F1
