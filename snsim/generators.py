@@ -743,7 +743,7 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() == 'jla':
-            return ut.scale_M0_cosmology(self.cosmology.h,SNIaGen.__class__.SNIA_M0['jla'],cst.h_article['jla'])
+            return ut.scale_M0_cosmology(self.cosmology.h,SNIaGen.SNIA_M0['jla'],cst.h_article['jla'])
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 is 'jla' ")  
 
