@@ -743,7 +743,7 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() in self.SNIA_M0:
-            return ut.scale_M0_cosmology(self.cosmology.h, 
+            return ut.scale_M0_cosmology(self.cosmology.h,
                                          self.SNIA_M0[self._params['M0'].lower()], 
                                          cst.h_article[self._params['M0'].lower()])
         else:
