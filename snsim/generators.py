@@ -742,10 +742,12 @@ class SNIaGen(BaseGen):
         if isinstance(self._params['M0'], (float, np.floating, int, np.integer)):
             return self._params['M0']
 
-        elif self._params['M0'].lower() == 'jla':
-            return ut.scale_M0_cosmology(self.cosmology.h,SNIA_M0['jla'],cst.h_article['jla'])
+        elif self._params['M0'].lower() in self.SNIA_M0:
+            return ut.scale_M0_cosmology(self.cosmology.h,
+                                         self.SNIA_M0[self._params['M0'].lower()], 
+                                         cst.h_article[self._params['M0'].lower()])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 is 'jla' ")  
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self.SNIA_M0.keys()}")  
 
     def _init_sim_model(self):
         """Initialise sncosmo model using the good source.
