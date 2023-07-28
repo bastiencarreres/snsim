@@ -743,10 +743,10 @@ class SNIaGen(BaseGen):
             return self._params['M0']
 
         elif self._params['M0'].lower() in self.SNIA_M0:
-            return ut.scale_M0_cosmology(self.cosmology.h,
+            return ut.scale_M0_cosmology(self.cosmology.h, 
                                          self.SNIA_M0[self._params['M0'].lower()], 
                                          cst.h_article[self._params['M0'].lower()])
-        else:
+        else: 
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self.SNIA_M0.keys()}")  
 
     def _init_sim_model(self):
@@ -1168,7 +1168,7 @@ class SNIIplGen(TimeSeriesGen):
                  }
 
     def _init_registered_rate(self):
-        """SNII rates registry."""
+        """SNIIPL rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
@@ -1196,7 +1196,7 @@ class SNIIplGen(TimeSeriesGen):
                                             self._sn_lumfunc['M0']['li11_skewed'],
                                             cst.h_article['li11'])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
@@ -1212,7 +1212,7 @@ class SNIIplGen(TimeSeriesGen):
                     sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
             
 
 class SNIIbGen(TimeSeriesGen):
@@ -1236,7 +1236,7 @@ class SNIIbGen(TimeSeriesGen):
                  }
 
     def _init_registered_rate(self):
-        """SNII rates registry."""
+        """SNIIb rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
@@ -1264,7 +1264,7 @@ class SNIIbGen(TimeSeriesGen):
                                             self._sn_lumfunc['M0']['li11_skewed'],
                                             cst.h_article['li11'])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['mag_scatter'].keys()} ")
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
@@ -1280,7 +1280,7 @@ class SNIIbGen(TimeSeriesGen):
                     sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
             
 
 
@@ -1305,7 +1305,7 @@ class SNIInGen(TimeSeriesGen):
                  }
 
     def _init_registered_rate(self):
-        """SNII rates registry."""
+        """SNIIn rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
@@ -1333,7 +1333,7 @@ class SNIInGen(TimeSeriesGen):
                                             self._sn_lumfunc['M0']['li11_skewed'],
                                             cst.h_article['li11'])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
@@ -1349,7 +1349,7 @@ class SNIInGen(TimeSeriesGen):
                     sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
 
 class SNIbcGen(TimeSeriesGen):
 
@@ -1412,7 +1412,7 @@ class SNIcGen(TimeSeriesGen):
                  }
 
     def _init_registered_rate(self):
-        """SNII rates registry."""
+        """SNIc rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
@@ -1440,7 +1440,7 @@ class SNIcGen(TimeSeriesGen):
                                             self._sn_lumfunc['M0']['li11_skewed'],
                                             cst.h_article['li11'])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
@@ -1456,7 +1456,7 @@ class SNIcGen(TimeSeriesGen):
                     sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
 
 class SNIbGen(TimeSeriesGen):
     """SNIb class.
@@ -1478,7 +1478,7 @@ class SNIbGen(TimeSeriesGen):
                  }
 
     def _init_registered_rate(self):
-        """SNII rates registry."""
+        """SNIb rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
@@ -1506,7 +1506,7 @@ class SNIbGen(TimeSeriesGen):
                                             self._sn_lumfunc['M0']['li11_skewed'],
                                             cst.h_article['li11'])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
@@ -1522,7 +1522,7 @@ class SNIbGen(TimeSeriesGen):
                     sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
 
 
 class SNIc_BLGen(TimeSeriesGen):
@@ -1545,7 +1545,7 @@ class SNIc_BLGen(TimeSeriesGen):
                  }
 
     def _init_registered_rate(self):
-        """SNII rates registry."""
+        """SNIc_BL rates registry."""
         if self._params['rate'].lower() == 'ztf20':
             # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
             rate = 1.01e-4 * self._sn_fraction['ztf20'] * (self.cosmology.h/0.70)**3
@@ -1573,7 +1573,7 @@ class SNIc_BLGen(TimeSeriesGen):
                                             self._sn_lumfunc['M0']['li11_skewed'],
                                             cst.h_article['li11'])
         else:
-            raise ValueError(f"{self._params['M0']} is not available! Available M0 are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
@@ -1589,7 +1589,38 @@ class SNIc_BLGen(TimeSeriesGen):
                     sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are 'li11_gaussian', 'li11_skewed' ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
 
 
     
+class SNIa_peculiar(TimeSeriesGen):
+    """SNIa_peculiar class.
+
+    Models form platicc challenge
+
+    Parameters
+    ----------
+   same as TimeSeriesGen class   """
+
+    _object_type = 'SNIa_peculiar'
+   # _available_models = need a directory to store model
+    #_available_rates = 
+   # _sn_lumfunc= {
+                   
+                # }
+
+    #_sn_fraction={
+                    
+                 #}
+
+    def _init_registered_rate(self):
+        """SNIa_peculiar rates registry."""
+       
+
+    def init_M0_for_type():
+        """Initialise absolute magnitude using default values from past literature works based on the type."""
+       
+
+    def gen_coh_scatter_for_type(n_sn, seed):
+        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
+        
