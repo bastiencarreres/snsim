@@ -237,3 +237,10 @@ class C11(snc.PropagationEffect):
             else:
                 scattering[i] = ut.sine_interp(w, self._sigma_lam, scatter)
         return flux * 10**(-0.4 * scattering)
+
+
+
+
+class BS21(snc.PropagationEffect):
+    """G10 scattering effect for sncosmo.
+    ask Rick """

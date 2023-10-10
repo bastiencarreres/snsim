@@ -1593,17 +1593,18 @@ class SNIc_BLGen(TimeSeriesGen):
 
 
     
-class SNIa_peculiar(TimeSeriesGen):
+class SNIa_peculiar(BaseGen):
     """SNIa_peculiar class.
 
-    Models form platicc challenge
+    Models form platicc challenge ask Rick
+    need a directory to store model
 
     Parameters
     ----------
    same as TimeSeriesGen class   """
 
     _object_type = 'SNIa_peculiar'
-   # _available_models = need a directory to store model
+   # _available_models = 
     #_available_rates = 
    # _sn_lumfunc= {
                    
@@ -1612,6 +1613,123 @@ class SNIa_peculiar(TimeSeriesGen):
     #_sn_fraction={
                     
                  #}
+
+
+    def _init_M0(self):
+        """Initialise absolute magnitude."""
+        if isinstance(self._params['M0'], (float, np.floating, int, np.integer)):
+            return self._params['M0']
+
+        else:
+            return self.init_M0_for_type()
+         
+    def _init_sim_model(self):
+        """Initialise sncosmo model using the good source.
+
+        Returns
+        -------
+        sncosmo.Model
+            sncosmo.Model(source) object where source depends on the
+            SN simulation model.
+        """
+
+        if isinstance(self._params['model_config']['model_name'], str):
+            if self._params['model_config']['model_name'].lower() == 'all':
+                selected_models = self._available_models
+            elif self._params['model_config']['model_name'].lower() == 'vinc_nocorr':
+                selected_models = ut.select_Vincenzi_template(self._available_models,corr=False)
+            elif self._params['model_config']['model_name'].lower() == 'vinc_corr':
+                selected_models = ut.select_Vincenzi_template(self._available_models,corr=True)
+            else:
+                selected_models = [self._params['model_config']['model_name']]
+
+            model= [ut.init_sn_model(m) 
+                    for m in selected_models]
+        else:            
+            model = [ut.init_sn_model(m) 
+                      for m in self._params['model_config']['model_name']]
+            
+        model = {i :m for i, m in enumerate(model)}
+        
+        return model
+
+
+    def _update_general_par(self):
+        """Initialise the general parameters, depends on the SN simulation model.
+
+        Returns
+        -------
+        list
+            A dict containing all the usefull keys of the SN model.
+        """
+
+        self._general_par['M0'] = self._init_M0()
+        self._general_par['sigM'] = self._params['sigM']
+       
+        return
+
+    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+        # -- Generate coherent mag scattering
+        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
+
+   
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Generate n coherent mag scattering term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag scattering terms to generate.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array containing scattering terms generated.
+
+        """
+        if seed is None:
+            seed = np.random.random_integers(1e3, 1e6)
+        rand_gen = np.random.default_rng(seed)
+        
+        if isinstance(self._params['sigM'], (float, np.floating, int, np.integer)):
+            return rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
+
+        elif isinstance(self._params['sigM'],list):
+            return ut.asym_gauss(mu=0,
+                    sig_low=self._params['sigM'][0],
+                    sig_high=self._params['sigM'][1], seed=seed, size=n_sn)
+
+        else:
+            return self.gen_coh_scatter_for_type(n_sn, seed)
+            
+
+    
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
+        """Generate sncosmo model dependant parameters (others than redshift and t0).
+        Parameters
+        ----------
+        n_obj : int
+            Number of parameters to generate.
+        seed : int, optional
+            Random seed
+            .
+        Returns
+        -------
+        dict
+            One dictionnary containing 'parameters names': numpy.ndarray(float).
+        """
+       
+        return None
+
+    def _add_print(self):
+        str = ''
+        return str
+
+    def _update_header(self, header):
+        header['M0_band']='bessell_r'
+
 
     def _init_registered_rate(self):
         """SNIa_peculiar rates registry."""
@@ -1623,4 +1741,26 @@ class SNIa_peculiar(TimeSeriesGen):
 
     def gen_coh_scatter_for_type(n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
-        
+
+
+class SNIax(SNIa_peculiar):
+    """SNIaxclass.
+
+    Models form platicc challenge ask Rick
+    need a directory to store model
+
+    Parameters
+    ----------
+   same as TimeSeriesGen class   """
+   
+   
+   
+class SNIa_91bg(SNIa_peculiar):
+    """SNIa 91bg-like class.
+
+    Models form platicc challenge ask Rick
+    need a directory to store model
+
+    Parameters
+    ----------
+   same as TimeSeriesGen class   """

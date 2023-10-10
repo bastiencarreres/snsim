@@ -741,10 +741,14 @@ class SnHost:
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights = rate(self.table['zcos']) / (1 + self.table['zcos'])
+            weights = rate(self.table['zcos']) / (1 + self.table['zcos'])  # X mass X 
             # Normalize the weights
             weights /= weights.sum()
         return weights
+
+         #elif self.config['distrib'].lower() == 'gal_prop':
+            #weights that depends on galaxy properties, it will depend on the SN type, to figure out implementation
+            #see vincenzi et al, and ask alex kim fo his model
 
     def random_choice(self, n, seed=None, rate=None):
         """Randomly select hosts.
