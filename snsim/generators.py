@@ -794,8 +794,18 @@ class SNIaGen(BaseGen):
         return
 
     def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
-        # -- Generate coherent mag scattering
-        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
+        # -- Generate mag scattering
+        if isinstance(self._params['sigM'], str):
+            if self._params['sigM'].lower()== 'bs20':
+                beta_sn, Rv, E_dust, c_int = sct.gen_BS20_scatter(n_obj, seed=seed)
+                astrobj_par['beta_sn'] = beta_sn
+                astrobj_par['c_int'] = c_int
+                astrobj_par['Rv_BS20']= Rv
+                astrobj_par['E_dust'] = E_dust
+                astrobj_par['mag_sct'] =  c_int * beta_sn + (Rv+1) * E_dust
+
+        else:
+            astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
 
     def _add_print(self):
         str = ''
@@ -842,6 +852,7 @@ class SNIaGen(BaseGen):
                 for par in params:
                     pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
                     header[par] = self.sim_model[0].parameters[pos][0]
+
 
     def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
@@ -892,7 +903,7 @@ class SNIaGen(BaseGen):
             else:
                 z_for_dist = None
             sim_x1, sim_c = self.gen_salt_par(n_obj, rand_gen.integers(1000, 1e6),
-                                              z=z_for_dist)
+                                              z=z_for_dist, astrobj_par=astrobj_par)
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         # -- Non-coherent scattering effects
@@ -908,7 +919,7 @@ class SNIaGen(BaseGen):
 
         return snc_par
 
-    def gen_salt_par(self, n_sn, seed=None, z=None):
+    def gen_salt_par(self, n_sn, seed=None, z=None, astrobj_par=None):
         """Generate n SALT parameters.
 
         Parameters
@@ -934,7 +945,11 @@ class SNIaGen(BaseGen):
                                    seed=seeds[0],
                                    size=n_sn)
 
-        sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
+        if isinstance(self._params['model_config']['dist_c'], str):
+            if self._params['model_config']['dist_c'].lower() == 'bs20':
+                sim_c = astrobj_par['E_dust'] + astrobj_par['c_int']
+        else:
+            sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
                               seed=seeds[1],
                               size=n_sn)
         return sim_x1, sim_c

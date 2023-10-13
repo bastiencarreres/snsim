@@ -310,10 +310,17 @@ class SNIa(BasicAstrObj):
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
             alpha = self._model_par['alpha']
-            beta = self._model_par['beta']
             x1 = self._params['sncosmo']['x1']
             c = self._params['sncosmo']['c']
-            mb = self.sim_mu + M0 - alpha * x1 + beta * c #add mass step if you have host
+
+            if isinstance(self._model_par['beta'] , str):
+                if self._model_par['beta'].lower() == 'bs20':
+                    #in this case the beta parameter is included in the mag_sct
+                    mb = self.sim_mu + M0 - alpha * x1
+            else:
+                #in this case beta is just 1 value for all SN
+                beta = self._model_par['beta']
+                mb = self.sim_mu + M0 - alpha * x1 + beta * c #add mass step if you have host 
 
             self.sim_x1 = x1
             self.sim_c = c

@@ -237,3 +237,36 @@ class C11(snc.PropagationEffect):
             else:
                 scattering[i] = ut.sine_interp(w, self._sigma_lam, scatter)
         return flux * 10**(-0.4 * scattering)
+
+
+##########################################
+#GENERATE terms for BS20 scattering model#
+##########################################
+def gen_BS20_scatter(n_sn, seed=None):
+        """Generate n coherent mag scattering term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag scattering terms to generate.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array containing scattering terms generated.
+
+        """
+        rand_gen = np.random.default_rng(seed)
+
+        Rv = rand_gen.normal(loc=2, scale=1.4 , size=n_sn) #value of mean and sigma are fitted in Brout and Scolnic 2020
+        Rv = np.where(Rv < 0.5, Rv, 0.5) #set floor of Rv = 0.5
+
+        E_dust = rand_gen.exponential(scale=0.1, size=n_sn) #value fitted in Brout and Scolnic 2020 shown in table 1
+
+        beta_sn = rand_gen.normal(loc=1.98, scale=0.35 , size=n_sn) #value of mean and sigma are fitted in Brout and Scolnic 2020
+
+        c_int = rand_gen.normal(loc= -0.084 , scale=0.042 , size=n_sn) #value of mean and sigma are fitted in Brout and Scolnic 2020
+
+        return beta_sn, Rv, E_dust, c_int
