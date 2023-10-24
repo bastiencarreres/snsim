@@ -838,7 +838,7 @@ class SNIaGen(BaseGen):
                     header['sig_c'] = 'BS20'
             
             
-            else:
+            elif isinstance(self._params['model_config']['dist_c'], list):
                 if len(self._params['model_config']['dist_c']) == 3:
                     header['mean_c'] = self._params['model_config']['dist_c'][0]
                     header['dist_c'] = 'asym_gauss'
