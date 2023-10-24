@@ -201,6 +201,14 @@ class BasicAstrObj(abc.ABC):
         if 'template' in self._params:
             sim_lc.attrs['template']= self._params['template']
 
+        if self.sim_model.source.name in ['salt2', 'salt3']:
+            if isinstance(self._model_par['beta'] , str):
+                if self._model_par['beta'].lower() == 'bs20':
+                    sim_lc.attrs['beta_sn'] = self._params['beta_sn']
+                    sim_lc.attrs['c_int'] = self._params['c_int']
+                    sim_lc.attrs['Rv_BS20']= self._params['Rv_BS20']
+                    sim_lc.attrs['E_dust'] = self._params['E_dust']
+
         return sim_lc
 
     @property

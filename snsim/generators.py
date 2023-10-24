@@ -830,15 +830,24 @@ class SNIaGen(BaseGen):
                     header['dist_x1'] = 'gauss'
                     header['sig_x1'] = self._params['model_config']['dist_x1'][1]
 
-            header['mean_c'] = self._params['model_config']['dist_c'][0]
-
-            if len(self._params['model_config']['dist_c']) == 3:
-                header['dist_c'] = 'asym_gauss'
-                header['sig_c_low'] = self._params['model_config']['dist_c'][1]
-                header['sig_c_hi'] = self._params['model_config']['dist_c'][2]
-            else:
-                header['dist_c'] = 'gauss'
-                header['sig_c'] = self._params['model_config']['dist_c'][1]
+            
+            if isinstance(self._params['model_config']['dist_c'], str):
+                if self._params['model_config']['dist_c'].lower() == 'bs20':
+                    header['mean_c'] = 'BS20'
+                    header['dist_c'] = 'gauss c_int + gauss Edust'
+                    header['sig_c'] = 'BS20'
+            
+            
+            else
+                if len(self._params['model_config']['dist_c']) == 3:
+                    header['mean_c'] = self._params['model_config']['dist_c'][0]
+                    header['dist_c'] = 'asym_gauss'
+                    header['sig_c_low'] = self._params['model_config']['dist_c'][1]
+                    header['sig_c_hi'] = self._params['model_config']['dist_c'][2]
+                else:
+                    header['mean_c'] = self._params['model_config']['dist_c'][0]
+                    header['dist_c'] = 'gauss'
+                    header['sig_c'] = self._params['model_config']['dist_c'][1]
 
         if 'sct_model' in self._params:
             header['sct_mod'] = self._params['sct_model']
@@ -1199,7 +1208,7 @@ class SNIIplGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(self.cosmology.h,
@@ -1213,7 +1222,7 @@ class SNIIplGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1267,7 +1276,7 @@ class SNIIbGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(self.cosmology.h,
@@ -1281,7 +1290,7 @@ class SNIIbGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['mag_scatter'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1336,7 +1345,7 @@ class SNIInGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(self.cosmology.h,
@@ -1350,7 +1359,7 @@ class SNIInGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1443,7 +1452,7 @@ class SNIcGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(self.cosmology.h,
@@ -1457,7 +1466,7 @@ class SNIcGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1509,7 +1518,7 @@ class SNIbGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(self.cosmology.h,
@@ -1523,7 +1532,7 @@ class SNIbGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1576,7 +1585,7 @@ class SNIc_BLGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(self.cosmology.h,
@@ -1590,7 +1599,7 @@ class SNIc_BLGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1632,10 +1641,10 @@ class SNIa_peculiar(TimeSeriesGen):
         """SNIa_peculiar rates registry."""
        
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
        
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         
