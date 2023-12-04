@@ -330,12 +330,6 @@ class SNIa(BasicAstrObj):
             self._params['sncosmo']['x0'] = self.sim_x0
 
 
-    @property
-    def mag_sct(self):
-        """SN coherent scattering term."""
-        return self._params['mag_sct']
-
-
 class TimeSeries(BasicAstrObj):
     """TimeSeries class.
 
