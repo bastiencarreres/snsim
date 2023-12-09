@@ -24,8 +24,8 @@ __GEN_DIC__ = {'snia_gen': 'SNIaGen',
                'snic_gen': 'SNIcGen',
                'snib_gen': 'SNIbGen',
                'snic-bl_gen': 'SNIc_BLGen'}
-               
-               
+
+
 class BaseGen(abc.ABC):
     """Abstract class for basic astrobj generator.
 
@@ -1138,11 +1138,12 @@ class SNIIGen(CCGen):
                     }
     
     _available_rates = {
-        'ptf19' : f"lambda z: 1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3", 
+        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
+        'ptf19' : f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3", 
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"lambda z: 9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6"
                         }
 
     def init_M0_for_type(self):
@@ -1174,11 +1175,11 @@ class SNIIplGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
 
@@ -1204,11 +1205,11 @@ class SNIIbGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
     def _init_registered_rate(self):
@@ -1241,11 +1242,11 @@ class SNIInGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
 
@@ -1266,11 +1267,11 @@ class SNIbcGen(CCGen):
 
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
     def init_M0_for_type(self):
@@ -1299,11 +1300,11 @@ class SNIcGen(CCGen):
                 }
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
 
@@ -1327,11 +1328,11 @@ class SNIbGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
 
 
@@ -1355,11 +1356,11 @@ class SNIc_BLGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {self._sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {self._sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
 
 
