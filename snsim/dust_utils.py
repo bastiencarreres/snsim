@@ -2,7 +2,7 @@
 
 import os
 import sncosmo as snc
-import sfdmap2
+from sfdmap2 import sfdmap
 from snsim import __snsim_dir_path__
 import glob
 import requests
@@ -116,6 +116,6 @@ def compute_ebv(ra, dec):
         The color excess correponding to ra, dec coordinates.
 
     """
-    map = sfdmap2.SFDMap(__snsim_dir_path__ + '/dust_data')
+    map = sfdmap.SFDMap(__snsim_dir_path__ + '/dust_data')
     ebv = map.ebv(ra, dec, unit='radian')
     return ebv
