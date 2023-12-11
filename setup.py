@@ -28,7 +28,7 @@ setup(
         "shapely >= 1.8.0",
         "numba",
         "pyyaml",
-        "sfdmap",
+        "sfdmap2",
         "requests",
         "geopandas"
     ]

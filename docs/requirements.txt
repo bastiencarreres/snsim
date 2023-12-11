@@ -3,7 +3,7 @@ numpy
 astropy
 pyyaml
 numba
-sfdmap
+sfdmap2
 matplotlib
 pandas
 
