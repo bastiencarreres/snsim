@@ -5,6 +5,7 @@ import pandas as pd
 from numpy.testing import assert_allclose, assert_approx_equal
 from snsim import astrobj as sn_astrobj
 
+
 class TestSNIa:
     def setup_class(self):
         """Create a SNIa."""
@@ -35,19 +36,19 @@ class TestSNIa:
             'mod_fcov': False          
             }
 
-        source = snc.get_source('salt2')
+        source = snc.get_source('salt2', version='2.4')
         
-        self.SNIa_Tripp = sn_astrobj.SNIa(source, {'relation': 'tripp', **sim_par})
+        self.SNIa_Tripp = sn_astrobj.SNIa(source, {'relation': 'SALTTripp', **sim_par})
         
         self.obs = pd.DataFrame({
-                    'time': [-10, 0, 20, 50],
-                    'band': ['bessellb', 'bessellv', 'bessellr', 'besselli'],
-                    'zp': np.ones(4) * 30,
-                    'zpsys': ['ab'] * 4,
-                    'gain': np.ones(4),
-                    'skynoise': np.zeros(4),
-                    'sig_zp': np.zeros(4)
-                    })
+            'time': [-10, 0, 20, 50],
+            'band': ['bessellb', 'bessellv', 'bessellr', 'besselli'],
+            'zp': np.ones(4) * 30,
+            'zpsys': ['ab'] * 4,
+            'gain': np.ones(4),
+            'skynoise': np.zeros(4),
+            'sig_zp': np.zeros(4)
+            })
     
     def test_tripp(self):
         mb = self.SNIa_Tripp.sim_par['M0'] + self.SNIa_Tripp.mu
@@ -57,18 +58,18 @@ class TestSNIa:
     
     def test_genflux(self):
         lcs = self.SNIa_Tripp.gen_flux(self.obs, seed=1234)
-        
+        print(lcs)
         test = {
-                'flux': np.array([15321.44241962, 28319.67362936, 15241.38760919,  4796.31358256]),
-                'fluxerr': np.array([123.77981427, 168.28450205, 123.45601488,  69.25542277]),
-                'fluxtrue': np.array([15188.46266493, 28422.51909986, 15482.77755192,  4813.45046363]),
-                'fluxerrtrue': np.array([123.2414811 , 168.58979536, 124.42980974,  69.37903476])
+                'fluxtrue': np.array([15425.39490416, 28576.9759029 , 15492.50307286,  4990.21114817]),
+                'fluxerrtrue': np.array([124.1990133 , 169.04725938, 124.46888395,  70.64142657]),
+                'flux': np.array([15559.40785314, 28473.85136389, 15251.03732738,  4972.76245161]),
+                'fluxerr': np.array([124.73735548, 168.74196681, 123.4950903 ,  70.51781655])
                 }
         
         for k in ['flux', 'fluxerr', 'fluxtrue', 'fluxerrtrue']:
             assert_allclose(lcs[k].values, test[k])
             
-    
+
 
         
     

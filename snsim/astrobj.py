@@ -35,6 +35,8 @@ class BasicAstrObj(abc.ABC):
 
     _type = ''
     _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'z2cmb', 'como_dist']
+    _obj_attrs = ['']
+    _available_models = ['']
 
     def __init__(self, source, sim_par, effects=[]):
         
@@ -52,7 +54,7 @@ class BasicAstrObj(abc.ABC):
         self._sim_model = self._init_model(source, effects)
         
         # -- Update attr of astrobj class
-        for k in self._attrs:
+        for k in self._obj_attrs:
             setattr(self, k, self._sim_par[k])
         
         self._check_keys()
@@ -61,7 +63,12 @@ class BasicAstrObj(abc.ABC):
         for k in self.sim_model.param_names:
             if (k!='z') & (k not in self.sim_par):
                 print(f'{k} is not in sim_par, it will be set to default value')   
-
+    
+    @abc.abstractmethod
+    def _set_model_par(self, model):
+        """This method set model parameters that are not t0 or z."""
+        pass
+        
     def _init_model(self, source, effects):
         """Initialise sncosmo model using the good source.
 
@@ -72,7 +79,9 @@ class BasicAstrObj(abc.ABC):
             SN simulation model.
 
         """
-        
+        if source.name not in self._available_models:
+            raise ValueError('{source.name} not available.')
+
         model = snc.Model(
             source=source,
             effects=[eff['source'] for eff in effects],
@@ -183,7 +192,7 @@ class BasicAstrObj(abc.ABC):
             'skynoise': obs['skynoise']
                             })
 
-        # TODO - BC: Maybe remove that for loop
+        # TODO - BC: Maybe remove this "for loop"
         for k in obs.columns:
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
@@ -237,14 +246,14 @@ class SNIa(BasicAstrObj):
     sim_model : sncosmo.Model
         sncosmo Model to use.
 
-    | same as BasicAstrObj model_par
-      | ├── M0, SNIa absolute magnitude
-      | ├── sigM, sigma of coherent scattering
-      | └── used model parameters
+    | same as BasicAstrObj model_par 
+    | ├── M0, SNIa absolute magnitude
+    | ├── sigM, sigma of coherent scattering
+    | └── used model parameters
     """
     _type = 'snIa'
     _available_models = ['salt2', 'salt3']
-    _attrs = ['M0', 'mb', 'mag_sct']
+    _obj_attrs = ['M0', 'mb', 'mag_sct']
 
     def _set_model_par(self, model):
         """Set SN Ia parameters to sncosmo model.
@@ -255,26 +264,36 @@ class SNIa(BasicAstrObj):
         """
         M0 = self._sim_par['M0'] + self._sim_par['mag_sct']
         
-        if self._sim_par['relation'].lower() == 'tripp':
-            self._attrs.extend(['alpha', 'beta', 'x0', 'x1', 'c'])
+        if self._sim_par['relation'].lower() == 'salttripp':
+            if model.source.name not in ['salt2', 'salt3']:
+                raise ValueError('SALTTripp only available for salt2 & salt3 models')
+            
+            self._obj_attrs.extend(['alpha', 'beta', 'x0', 'x1', 'c'])
             
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
-            mb = self.mu + M0 
-            mb += self._sim_par['alpha'] * self._sim_par['x1']
-            mb += -self._sim_par['beta'] * self._sim_par['c']
+            self._sim_par['mb'] = self.SALTTripp(
+                M0, 
+                self._sim_par['alpha'], 
+                self._sim_par['beta'], 
+                self._sim_par['x1'], 
+                self._sim_par['c']) + self.mu 
             
-            self._sim_par['mb'] = mb
-
             # Compute the x0 parameter
             model.set(
                 x1=self._sim_par['x1'], 
                 c=self._sim_par['c'])
             
-            self._sim_par['mb'] = mb
-            model.set_source_peakmag(mb, 'bessellb', 'ab')
+            model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
             self._sim_par['x0'] = model.get('x0')
+        else:
+            # TODO - BC: Find a way to use lambda function for relation
+            raise ValueError('Relation not available')
         return model
+    
+    @staticmethod
+    def SALTTripp(M0, alpha, beta, x1, c):
+        return M0  + alpha * x1 - beta * c
 
 
 class TimeSeries(BasicAstrObj):
@@ -297,7 +316,7 @@ class TimeSeries(BasicAstrObj):
     | ├── sigM, sigma of coherent scattering
     | └── used model parameters
     """
-    _attrs = ['amplitude', 'mb', 'mag_sct']
+    _obj_attrs = ['amplitude', 'mb', 'mag_sct']
 
     def _set_model_par(self, model):
         """Extract and compute SN parameters that depends on used model.
@@ -310,15 +329,13 @@ class TimeSeries(BasicAstrObj):
             - Template -> self._params['template']  SED template used
         """
         M0 = self._sim_par['M0'] + self._sim_par['mag_sct']
-
-        if model.name in self._available_models:
-            #self._sim_par['template'] = self.sim_model.source.name
-            m_r = self.mu + M0
+        #self._sim_par['template'] = self.sim_model.source.name
+        m_r = self.mu + M0
             
-            # Compute the amplitude  parameter
-            model.set_source_peakmag(m_r, 'bessellr', 'ab')
-            self._sim_par['mb'] = model.source_peakmag('bessellb', 'ab')
-            self._sim_par['amplitude'] = self.sim_model.get('amplitude')
+        # Compute the amplitude  parameter
+        model.set_source_peakmag(m_r, 'bessellr', 'ab')
+        self._sim_par['mb'] = model.source_peakmag('bessellb', 'ab')
+        self._sim_par['amplitude'] = model.get('amplitude')
         return model
 
     @property

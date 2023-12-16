@@ -319,7 +319,7 @@ def init_sn_source(name, model_dir=None, version=None):
         sncosmo Model corresponding to input configuration.
     """
     if model_dir is None:
-        return snc.get_source(source=name, version=version)
+        return snc.get_source(name=name, version=version)
     else:
         if name == 'salt2':
             return snc.SALT2Source(model_dir, name='salt2')
