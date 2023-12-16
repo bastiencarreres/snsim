@@ -9,7 +9,7 @@ from .constants import C_LIGHT_KMS
 from . import utils as ut
 
 
-class BasicAstrObj(abc.ABC):
+class AstrObj(abc.ABC):
     """Basic class for transients.
 
     Parameters
@@ -24,7 +24,7 @@ class BasicAstrObj(abc.ABC):
 
     | parameters
     | ├── zcos, cosmological redshift
-    | ├── z2cmb, CMB dipole redshift contribution
+    | ├── zpcmb, CMB dipole redshift contribution
     | ├── como_dist, comoving distance of the obj
     | ├── vpec, obj peculiar velocity
     | ├── ra, obj Right Ascension
@@ -34,7 +34,7 @@ class BasicAstrObj(abc.ABC):
     """
 
     _type = ''
-    _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'z2cmb', 'como_dist']
+    _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'zpcmb', 'como_dist']
     _obj_attrs = ['']
     _available_models = ['']
 
@@ -217,12 +217,12 @@ class BasicAstrObj(abc.ABC):
     @property
     def zobs(self):
         """Get observed redshift."""
-        return (1 + self.zcos) * (1 + self.zpec) * (1 + self.z2cmb) - 1.
+        return (1 + self.zcos) * (1 + self.zpec) * (1 + self.zpcmb) - 1.
 
     @property
     def mu(self):
         """Get distance moduli."""
-        return 5 * np.log10((1 + self.zcos) * (1 + self.z2cmb) *
+        return 5 * np.log10((1 + self.zcos) * (1 + self.zpcmb) *
                             (1 + self.zpec)**2 * self.como_dist) + 25
 
     @property
@@ -234,19 +234,19 @@ class BasicAstrObj(abc.ABC):
         return self._sim_par
 
 
-class SNIa(BasicAstrObj):
+class SNIa(AstrObj):
     """SNIa class.
 
     Parameters
     ----------
     sim_par : dict
         Parameters of the SN.
-    | same as BasicAstrObj parameters
+    | same as AstrObj parameters
     | └── mag_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
 
-    | same as BasicAstrObj model_par 
+    | same as AstrObj model_par 
     | ├── M0, SNIa absolute magnitude
     | ├── sigM, sigma of coherent scattering
     | └── used model parameters
@@ -296,7 +296,7 @@ class SNIa(BasicAstrObj):
         return M0  + alpha * x1 - beta * c
 
 
-class TimeSeries(BasicAstrObj):
+class TimeSeries(AstrObj):
     """TimeSeries class.
 
     Parameters
@@ -304,14 +304,14 @@ class TimeSeries(BasicAstrObj):
     sn_par : dict
         Parameters of the object.
 
-    | same as BasicAstrObj parameters
+    | same as AstrObj parameters
     | └── mag_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
     model_par : dict
         General model parameters.
 
-    | same as BasicAstrObj model_par
+    | same as AstrObj model_par
     | ├── M0,  absolute magnitude
     | ├── sigM, sigma of coherent scattering
     | └── used model parameters
