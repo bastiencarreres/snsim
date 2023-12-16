@@ -45,7 +45,7 @@ def check_files_and_download():
             break
 
 
-def init_mw_dust(model, mw_dust):
+def init_mw_dust(mw_dust):
     """Set MW dut effect on sncosmo model.
 
     Parameters
@@ -57,8 +57,8 @@ def init_mw_dust(model, mw_dust):
 
     Returns
     -------
-    None
-        Directly modify the sncosmo model.
+    dict
+        Dust effects.
 
     """
     f99_r_v = 3.1
@@ -73,7 +73,7 @@ def init_mw_dust(model, mw_dust):
     else:
         raise ValueError(f"{mw_dust['model']} model does not exist in sncosmo")
 
-    model.add_effect(dust, frame='obs', name='mw_')
+    return {'source': dust, 'frame': 'obs', 'name': 'mw_'}
 
 
 def add_mw_to_fit(fit_model, mwebv, mod_name, rv=3.1):

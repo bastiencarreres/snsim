@@ -14,18 +14,23 @@ class BasicAstrObj(abc.ABC):
 
     Parameters
     ----------
-    parameters : dict
-        Parameters of the obj.
+    source: sncosmo.Source
+        SED from sncosmo.
+    sim_par: dict
+        Simulation parameters.
+    effect: list(snc.PropagationEffect)
+        Effects to apply to the model.
+        
 
-      | parameters
-      | ├── zcos, cosmological redshift
-      | ├── z2cmb, CMB dipole redshift contribution
-      | ├── como_dist, comoving distance of the obj
-      | ├── vpec, obj peculiar velocity
-      | ├── ra, obj Right Ascension
-      | ├── dec, obj Declinaison
-      | ├── t0, obj peak time
-      | └── sncosmo
+    | parameters
+    | ├── zcos, cosmological redshift
+    | ├── z2cmb, CMB dipole redshift contribution
+    | ├── como_dist, comoving distance of the obj
+    | ├── vpec, obj peculiar velocity
+    | ├── ra, obj Right Ascension
+    | ├── dec, obj Declinaison
+    | └── t0, obj peak time
+    |  sncosmo
     """
 
     _type = ''
@@ -49,7 +54,13 @@ class BasicAstrObj(abc.ABC):
         # -- Update attr of astrobj class
         for k in self._attrs:
             setattr(self, k, self._sim_par[k])
-    
+        
+        self._check_keys()
+        
+    def _check_keys(self):
+        for k in self.sim_model.param_names:
+            if (k!='z') & (k not in self.sim_par):
+                print(f'{k} is not in sim_par, it will be set to default value')   
 
     def _init_model(self, source, effects):
         """Initialise sncosmo model using the good source.
@@ -84,7 +95,7 @@ class BasicAstrObj(abc.ABC):
     #             self.mw_dust['rv'] = 3.1
     #         for model in self.sim_model.values():
     #             dst_ut.init_mw_dust(model, self.mw_dust)
-                
+
     def gen_flux(self, obs, seed=None):
         """Generate the obj lightcurve.
 
@@ -112,10 +123,11 @@ class BasicAstrObj(abc.ABC):
         if self._sim_par['mod_fcov']:
             # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
-            fluxtrue, fluxcov = self.sim_model.bandfluxcov(obs['band'],
-                                                           obs['time'],
-                                                           zp=obs['zp'],
-                                                           zpsys=obs['zpsys'])
+            fluxtrue, fluxcov = self.sim_model.bandfluxcov(
+                obs['band'],
+                obs['time'],
+                zp=obs['zp'],
+                zpsys=obs['zpsys'])
 
             fluxtrue += gen.multivariate_normal(np.zeros(len(fluxcov)),
                                                 fluxcov,
@@ -123,21 +135,24 @@ class BasicAstrObj(abc.ABC):
                                                 method='eigh')
 
         else:
-            fluxtrue = self.sim_model.bandflux(obs['band'],
-                                               obs['time'],
-                                               zp=obs['zp'],
-                                               zpsys=obs['zpsys'])
+            fluxtrue = self.sim_model.bandflux(
+                obs['band'],
+                obs['time'],
+                zp=obs['zp'],
+                zpsys=obs['zpsys'])
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
-        fluxerrtrue = np.sqrt(np.abs(fluxtrue) / obs.gain
-                          + obs.skynoise**2
-                          + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp)**2)
+        fluxerrtrue = np.sqrt(
+            np.abs(fluxtrue) / obs.gain
+            + obs.skynoise**2
+            + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp)**2)
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0., scale=fluxerrtrue)
-        fluxerr = np.sqrt(np.abs(flux) / obs.gain
-                          + obs.skynoise**2
-                          + (np.log(10) / 2.5 * flux * obs.sig_zp)**2)
+        fluxerr = np.sqrt(
+            np.abs(flux) / obs.gain
+            + obs.skynoise**2
+            + (np.log(10) / 2.5 * flux * obs.sig_zp)**2)
 
         # Set magnitude
         mag = np.zeros_like(flux)
@@ -154,17 +169,19 @@ class BasicAstrObj(abc.ABC):
         magerr[~positive_fmask] = np.nan
 
         # Create astropy Table lightcurve
-        sim_lc = pd.DataFrame({'time': obs['time'],
-                               'fluxtrue': fluxtrue,
-                               'fluxerrtrue': fluxerrtrue,
-                               'flux': flux,
-                               'fluxerr': fluxerr,
-                               'mag': mag,
-                               'magerr': magerr,
-                               'zp': obs['zp'],
-                               'zpsys': obs['zpsys'],
-                               'gain': obs['gain'],
-                               'skynoise': obs['skynoise']})
+        sim_lc = pd.DataFrame({
+            'time': obs['time'],
+            'fluxtrue': fluxtrue,
+            'fluxerrtrue': fluxerrtrue,
+            'flux': flux,
+            'fluxerr': fluxerr,
+            'mag': mag,
+            'magerr': magerr,
+            'zp': obs['zp'],
+            'zpsys': obs['zpsys'],
+            'gain': obs['gain'],
+            'skynoise': obs['skynoise']
+                            })
 
         # TODO - BC: Maybe remove that for loop
         for k in obs.columns:
@@ -177,42 +194,6 @@ class BasicAstrObj(abc.ABC):
         sim_lc.reset_index(inplace=True, drop=True)
         sim_lc.index.set_names('epochs', inplace=True)
         return sim_lc
-
-    # @property
-    # def ID(self):
-    #     """Get ID."""
-    #     if 'ID' in self._sim_pars:
-    #         return self._sim_par['ID']
-
-    # @property
-    # def t0(self):
-    #     """Get peakmag time."""
-    #     return self._sim_par['t0']
-
-    # @property
-    # def vpec(self):
-    #     """Get peculiar velocity."""
-    #     return self._sim_par['vpec']
-
-    # @property
-    # def zcos(self):
-    #     """Get cosmological redshift."""
-    #     return self._sim_par['zcos']
-
-    # @property
-    # def como_dist(self):
-    #     """Get comoving distance."""
-    #     return self._sim_par['como_dist']
-
-    # @property
-    # def coord(self):
-    #     """Get coordinates (ra,dec)."""
-    #     return self._sim_par['ra'], self._sim_par['dec']
-
-    # @property
-    # def mag_sct(self):
-    #     """Get coherent scattering term."""
-    #     return self._sim_par['mag_sct']
 
     @property
     def zpec(self):
@@ -243,22 +224,20 @@ class BasicAstrObj(abc.ABC):
     def sim_par(self):
         return self._sim_par
 
+
 class SNIa(BasicAstrObj):
     """SNIa class.
 
     Parameters
     ----------
-    sn_par : dict
+    sim_par : dict
         Parameters of the SN.
-
-      | same as BasicAstrObj parameters
-      | └── mag_sct, coherent mag scattering.
+    | same as BasicAstrObj parameters
+    | └── mag_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
-    model_par : dict
-        General model parameters.
 
-      | same as BasicAstrObj model_par
+    | same as BasicAstrObj model_par
       | ├── M0, SNIa absolute magnitude
       | ├── sigM, sigma of coherent scattering
       | └── used model parameters
@@ -268,7 +247,7 @@ class SNIa(BasicAstrObj):
     _attrs = ['M0', 'mb', 'mag_sct']
 
     def _set_model_par(self, model):
-        """Extract and compute SN parameters that depends on used model.
+        """Set SN Ia parameters to sncosmo model.
 
         Notes
         -----
@@ -292,10 +271,11 @@ class SNIa(BasicAstrObj):
                 x1=self._sim_par['x1'], 
                 c=self._sim_par['c'])
             
+            self._sim_par['mb'] = mb
             model.set_source_peakmag(mb, 'bessellb', 'ab')
             self._sim_par['x0'] = model.get('x0')
-            
         return model
+
 
 class TimeSeries(BasicAstrObj):
     """TimeSeries class.
@@ -305,63 +285,47 @@ class TimeSeries(BasicAstrObj):
     sn_par : dict
         Parameters of the object.
 
-      | same as BasicAstrObj parameters
-      | └── mag_sct, coherent mag scattering.
+    | same as BasicAstrObj parameters
+    | └── mag_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
     model_par : dict
         General model parameters.
 
-      | same as BasicAstrObj model_par
-      | ├── M0,  absolute magnitude
-      | ├── sigM, sigma of coherent scattering
-      | └── used model parameters
+    | same as BasicAstrObj model_par
+    | ├── M0,  absolute magnitude
+    | ├── sigM, sigma of coherent scattering
+    | └── used model parameters
     """
-    _attrs = ['sim_mb', 'mag_sct']
+    _attrs = ['amplitude', 'mb', 'mag_sct']
 
-    def _update_model_par(self):
+    def _set_model_par(self, model):
         """Extract and compute SN parameters that depends on used model.
 
         Notes
         -----
         Set attributes dependant on SN model
-       
             - mb -> self.mb
             - amplitude -> self.sim_amplitude
-            - Template -> self._params['template']  Sed template used 
-           
+            - Template -> self._params['template']  SED template used
         """
-        M0 = self._model_par['M0'] +  self.mag_sct 
-        self._params['M0'] = M0
-        if self.sim_model.source.name in self._available_models:
-            self._params['template']=self.sim_model.source.name
-            m_r= self.mu + M0
-    
-            if 'dip_dM' in self._params:
-                m_r += self._params['dip_dM']
+        M0 = self._sim_par['M0'] + self._sim_par['mag_sct']
 
+        if model.name in self._available_models:
+            #self._sim_par['template'] = self.sim_model.source.name
+            m_r = self.mu + M0
+            
             # Compute the amplitude  parameter
-            self.sim_model.set_source_peakmag(m_r, 'bessellr', 'ab')
-            self.mb = self.sim_model.source_peakmag( 'bessellb', 'ab')
-            self.sim_amplitude = self.sim_model.get('amplitude')
-            self._params['sncosmo']['amplitude'] = self.sim_amplitude
-
-
-    @property
-    def mag_sct(self):
-        """SN coherent scattering term."""
-        return self._params['mag_sct']
-        
-    @property
-    def M0(self):
-        """SN absolute magnitude in B-band"""
-        return self._params['M0']
+            model.set_source_peakmag(m_r, 'bessellr', 'ab')
+            self._sim_par['mb'] = model.source_peakmag('bessellb', 'ab')
+            self._sim_par['amplitude'] = self.sim_model.get('amplitude')
+        return model
 
     @property
     def template(self):
         """sncosmo.Model source name """
         return self._params['template']
-  
+
 
 class SNII(TimeSeries):
     """SNII class.
@@ -387,7 +351,7 @@ class SNIIb(TimeSeries):
 
     Parameters
     ----------
-   same as TimeSeries class   """
+    same as TimeSeries class."""
     _type = 'snIIb'
     _available_models = ut.Templatelist_fromsncosmo('sniib')
 
@@ -396,7 +360,7 @@ class SNIIn(TimeSeries):
 
     Parameters
     ----------
-   same as TimeSeries class   """
+    same as TimeSeries class   """
     _type = 'snIIn'
     _available_models = ut.Templatelist_fromsncosmo('sniin')
 
@@ -410,12 +374,13 @@ class SNIbc(TimeSeries):
     _type = 'snIb/c'
     _available_models = ut.Templatelist_fromsncosmo('snib/c')
 
+
 class SNIc(TimeSeries):
     """SNIIn class.
 
     Parameters
     ----------
-   same as TimeSeries class   """
+    same as TimeSeries class   """
     _type = 'snIc'
     _available_models = ut.Templatelist_fromsncosmo('snic')
 
@@ -425,7 +390,7 @@ class SNIb(TimeSeries):
 
     Parameters
     ----------
-   same as TimeSeries class   """
+    same as TimeSeries class   """
     _type = 'snIb'
     _available_models = ut.Templatelist_fromsncosmo('snib')
 
@@ -435,6 +400,6 @@ class SNIc_BL(TimeSeries):
 
     Parameters
     ----------
-   same as TimeSeries class   """
+    same as TimeSeries class   """
     _type = 'snIc-BL'
     _available_models = ut.Templatelist_fromsncosmo('snic-bl')
