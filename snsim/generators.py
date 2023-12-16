@@ -14,16 +14,18 @@ from . import astrobj as astr
 from . import constants as cst
 
 
-__GEN_DIC__ = {'snia_gen': 'SNIaGen',
-               'timeseries_gen':'TimeSeriesGen',
-               'snii_gen': 'SNIIGen',
-               'sniipl_gen': 'SNIIplGen',
-               'sniib_gen': 'SNIIbGen',
-               'sniin_gen': 'SNIInGen',
-               'snib/c_gen':'SNIbcGen',
-               'snic_gen': 'SNIcGen',
-               'snib_gen': 'SNIbGen',
-               'snic-bl_gen': 'SNIc_BLGen'}
+__GEN_DIC__ = {
+    'snia_gen': 'SNIaGen',
+    'timeseries_gen':'TimeSeriesGen',
+    'snii_gen': 'SNIIGen',
+    'sniipl_gen': 'SNIIplGen',
+    'sniib_gen': 'SNIIbGen',
+    'sniin_gen': 'SNIInGen',
+    'snib/c_gen':'SNIbcGen',
+    'snic_gen': 'SNIcGen',
+    'snib_gen': 'SNIbGen',
+    'snic-bl_gen': 'SNIc_BLGen'
+    }
 
 
 class BaseGen(abc.ABC):
@@ -299,13 +301,6 @@ class BaseGen(abc.ABC):
             self._general_par['mod_fcov'] = False
         self._update_general_par()
 
-    def _init_dust(self):
-        """Initialise dust."""
-        if self.mw_dust is not None:
-            if 'rv' not in self.mw_dust:
-                self.mw_dust['rv'] = 3.1
-            for model in self.sim_model.values():
-                dst_ut.init_mw_dust(model, self.mw_dust)
 
     def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
@@ -731,29 +726,6 @@ class SNIaGen(BaseGen):
         else: 
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self.SNIA_M0.keys()}")  
 
-    def _init_sim_model(self):
-        """Initialise sncosmo model using the good source.
-
-        Returns
-        -------
-        sncosmo.Model
-            sncosmo.Model(source) object where source depends on the
-            SN simulation model.
-
-        """
-        if self._params['model_config']['model_name'].lower() not in self._available_models:
-            raise ValueError(f"Model {self._params['model_config']['model_name']} not available! Avaliable Models are {self._available_models}")
-
-        model_dir = None
-        if 'model_dir' in self._params['model_config']:
-            model_dir = self._params['model_config']['model_dir']
-
-        model = ut.init_sn_model(self._params['model_config']['model_name'],
-                                 model_dir)
-
-        if 'sct_model' in self._params:
-            sct.init_sn_sct_model(model, self._params['sct_model'])
-        return {0: model}
 
     def _update_general_par(self):
         """Initialise the general parameters, depends on the SN simulation model.

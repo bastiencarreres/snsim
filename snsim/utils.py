@@ -303,8 +303,8 @@ def compute_z2cmb(ra, dec, cmb):
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
 
 
-def init_sn_model(name, model_dir=None):
-    """Initialise a sncosmo model.
+def init_sn_source(name, model_dir=None, version=None):
+    """Initialise a sncosmo source.
 
     Parameters
     ----------
@@ -319,12 +319,12 @@ def init_sn_model(name, model_dir=None):
         sncosmo Model corresponding to input configuration.
     """
     if model_dir is None:
-        return snc.Model(source=name)
+        return snc.get_source(source=name, version=version)
     else:
         if name == 'salt2':
-            return snc.Model(source=snc.SALT2Source(model_dir, name='salt2'))
+            return snc.SALT2Source(model_dir, name='salt2')
         elif name == 'salt3':
-            return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
+            return snc.SALT3Source(model_dir, name='salt3')
     return None
 
 
