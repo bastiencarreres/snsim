@@ -26,27 +26,28 @@ class SurveyObs:
     survey_config : dic
         It contains all the survey configuration.
 
-      | survey_config
-      | ├── survey_file PATH TO SURVEY FILE
-      | ├── ra_size RA FIELD SIZE IN DEG -> float
-      | ├── dec_size DEC FIELD SIZE IN DEG -> float
-      | ├── gain CCD GAIN e-/ADU -> float
-      | ├── start_day STARTING DAY -> float or str, opt
-      | ├── end_day ENDING DAY -> float or str, opt
-      | ├── duration SURVEY DURATION -> float, opt
-      | ├── zp FIXED ZEROPOINT -> float, opt
-      | ├── survey_cut, CUT ON DB FILE -> dict, opt
-      | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
-      | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
-      | └── sub_field, SUBFIELD KEY -> str, opt
+    | survey_config
+    | ├── survey_file PATH TO SURVEY FILE
+    | ├── ra_size RA FIELD SIZE IN DEG -> float
+    | ├── dec_size DEC FIELD SIZE IN DEG -> float
+    | ├── gain CCD GAIN e-/ADU -> float
+    | ├── start_day STARTING DAY -> float or str, opt
+    | ├── end_day ENDING DAY -> float or str, opt
+    | ├── duration SURVEY DURATION -> float, opt
+    | ├── zp FIXED ZEROPOINT -> float, opt
+    | ├── survey_cut, CUT ON DB FILE -> dict, opt
+    | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+    | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
+    | └── sub_field, SUBFIELD KEY -> str, opt
     """
 
     # -- Basic keys needed in survey file (+ noise)
-    _base_keys = ['expMJD',
-                  'filter',
-                  'fieldID',
-                  'fieldRA',
-                  'fieldDec']
+    _base_keys = [
+        'expMJD',
+        'filter',
+        'fieldID',
+        'fieldRA',
+        'fieldDec']
 
     def __init__(self, survey_config):
         """Initialize SurveyObs class."""
@@ -64,7 +65,7 @@ class SurveyObs:
 
         self._sub_field_corners = self._init_fields_map(field_map)         
         self._envelope, self._envelope_area = self._compute_envelope()
-  
+
     def _compute_envelope(self):
         """Compute envelope of survey geometry and it's area.
 
@@ -392,7 +393,7 @@ class SurveyObs:
         # -- Compute max and min of table section       
         minMJD = df.expMJD.min()
         maxMJD = df.expMJD.max()
-     
+
         ObjPoints = ObjPoints[(maxMJD >= ObjPoints.min_t) & (ObjPoints.max_t >= minMJD)]
                             
         # -- Map field and rcid corners to their coordinates
@@ -417,12 +418,12 @@ class SurveyObs:
 
         join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
 
-        join['phase'] = (join['expMJD'] - join['sim_t0']) / join['1_zobs']
+        join['phase'] = (join['expMJD'] - join['t0']) / join['1_zobs']
 
-        return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 'sim_t0'])
+        return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 't0'])
 
     def get_observations(self, params, phase_cut=None, nep_cut=None, IDmin=0, 
-                         use_dask=False, npartitions=None):
+                        use_dask=False, npartitions=None):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -431,7 +432,7 @@ class SurveyObs:
             Obj ra coord [rad].
         dec : numpy.ndarray(float) or float
             Obj dec coord [rad].
-        sim_t0 : numpy.ndarray(float) or float
+        t0 : numpy.ndarray(float) or float
             Obj sncosmo model peak time.
         MinT : numpy.ndarray(float) or float
             Obj sncosmo model mintime.
@@ -449,9 +450,9 @@ class SurveyObs:
 
         """
         params = params.copy()
-        ObjPoints = gpd.GeoDataFrame(data=params[['sim_t0', 'min_t', 'max_t', '1_zobs']], 
-                                     geometry=gpd.points_from_xy(params['ra'], params['dec']),
-                                     index=params.index)
+        ObjPoints = gpd.GeoDataFrame(data=params[['t0', 'min_t', 'max_t', '1_zobs']], 
+                                    geometry=gpd.points_from_xy(params['ra'], params['dec']),
+                                    index=params.index)
         
         if use_dask:
             if npartitions is None: 
@@ -459,15 +460,16 @@ class SurveyObs:
                 npartitions = len(self.obs_table) // 10
             ddf = daskdf.from_pandas(self.obs_table, npartitions=npartitions)
             meta = daskdf.utils.make_meta({**{k: t for k, t in zip(ddf.columns, ddf.dtypes)}, 
-                                           'phase': 'float64'})
+                                        'phase': 'float64'})
             ObsObj = ddf.map_partitions(self._match_radec_to_obs,
                                         ObjPoints, self.config,
                                         self._sub_field_corners,
                                         align_dataframes=False,
                                         meta=meta).compute()
         else:
-            ObsObj = self._match_radec_to_obs(self.obs_table, ObjPoints,
-                                              self.config, self._sub_field_corners)
+            ObsObj = self._match_radec_to_obs(
+                self.obs_table, ObjPoints,
+                self.config, self._sub_field_corners)
         # -- Phase cut
         if phase_cut is not None:
             ObsObj = ObsObj[(ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])]

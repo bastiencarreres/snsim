@@ -75,7 +75,7 @@ def plot_lc(
         set_res=None,
         flux_limit=None,
         phase_limit=[-21,51],
-        mtpstyle='seaborn-deep',
+        mtpstyle='seaborn-v0_8-deep',
         dpi=100,
         savefig=False, savepath='LC', saveformat='png'):
     """Ploting a lightcurve flux table.
@@ -127,7 +127,7 @@ def plot_lc(
 
     time = flux_table['time']
 
-    t0 = meta['sim_t0']
+    t0 = meta['t0']
     z = meta['zobs']
 
     time_th = np.linspace(t0 + ((phase_limit[0]+1.2) * (1 + z)), t0 + ((phase_limit[1]-1.2) * (1 + z)), 200)

@@ -14,15 +14,13 @@ class AstrObj(abc.ABC):
 
     Parameters
     ----------
-    source: sncosmo.Source
-        SED from sncosmo.
     sim_par: dict
         Simulation parameters.
     effect: list(snc.PropagationEffect)
         Effects to apply to the model.
         
 
-    | parameters
+    | sim_par
     | ├── zcos, cosmological redshift
     | ├── zpcmb, CMB dipole redshift contribution
     | ├── como_dist, comoving distance of the obj
@@ -35,6 +33,7 @@ class AstrObj(abc.ABC):
 
     _type = ''
     _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'zpcmb', 'como_dist']
+    
     _obj_attrs = ['']
     _available_models = ['']
 
@@ -57,7 +56,7 @@ class AstrObj(abc.ABC):
         for k in self._obj_attrs:
             setattr(self, k, self._sim_par[k])
         
-        self._check_keys()
+        #self._check_keys()
         
     def _check_keys(self):
         for k in self.sim_model.param_names:
@@ -86,8 +85,12 @@ class AstrObj(abc.ABC):
             source=source,
             effects=[eff['source'] for eff in effects],
             effect_names=[eff['name'] for eff in effects],
-            effect_frames=[eff['frame'] for eff in effects]
-            )
+            effect_frames=[eff['frame'] for eff in effects])
+        
+        for eff in effects:
+            for k in eff['source'].param_names:
+                if k in self._sim_par:
+                    model.set(self._sim_par[eff['name'] + k])
         
         model.set(
             t0=self._sim_par['t0'], 
@@ -198,6 +201,8 @@ class AstrObj(abc.ABC):
                 sim_lc[k] = obs[k].values
 
         sim_lc.attrs = {'mu': self.mu,
+                        'zobs': self.zobs,
+                        'zCMB': self.zCMB,
                         **self._sim_par}
 
         sim_lc.reset_index(inplace=True, drop=True)

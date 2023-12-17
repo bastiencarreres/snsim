@@ -6,31 +6,23 @@ from . import utils as ut
 from . import nb_fun as nbf
 
 
-def init_sn_sct_model(model, sct_mod):
+def init_sn_sct_model(sct_mod, *args):
     """Add scattering effect on sncosmo model.
 
     Parameters
     ----------
-    model : sncosmo.Model
-        The model on which add effects.
     sct_mod : str
         Name of the model to use.
-
     Returns
     -------
     None
 
     """
     if sct_mod == 'G10':
-        model.add_effect(G10(model), 'G10_', 'rest')
-
+        eff_dic = {'source': G10(*args), 'name': 'G10_', 'frame': 'rest'}
     elif sct_mod[:3] == 'C11':
-        model.add_effect(C11(model), 'C11_', 'rest')
-        if sct_mod == 'C11_1':
-            model.set(C11_Cuu=1.)
-        elif sct_mod == 'C11_2':
-            model.set(C11_Cuu=-1.)
-
+        eff_dic = {'source': C11, 'name': 'C11_', 'frame': 'rest'}
+    return eff_dic
 
 class G10(snc.PropagationEffect):
     """Guy (2010) SNe Ia non-coherent scattering.
@@ -66,7 +58,7 @@ class G10(snc.PropagationEffect):
         """Propagate the effect to the flux."""# Draw the scattering
         lam_nodes, siglam_values = self.compute_sigma_nodes()
         siglam_values *= np.random.default_rng(self._seed).normal(size=len(lam_nodes))
-        magscat = sine_interp(wave, lam_nodes, siglam_values)
+        magscat = ut.sine_interp(wave, lam_nodes, siglam_values)
         return flux * 10**(-0.4 * magscat)
 
 
@@ -136,7 +128,7 @@ class C11(snc.PropagationEffect):
         magscat = np.zeros(len(wave))
         magscat[inf_mask] = siglam_values[0]
         magscat[sup_mask] = siglam_values[-1]
-        magscat[~inf_mask & ~sup_mask] = sine_interp(wave[~inf_mask & ~sup_mask], 
+        magscat[~inf_mask & ~sup_mask] = ut.sine_interp(wave[~inf_mask & ~sup_mask], 
                                                      self._lam_nodes, siglam_values)
         
         return flux * 10**(-0.4 * magscat)
