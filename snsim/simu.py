@@ -229,7 +229,8 @@ class Simulator:
         dt = [('nep', np.int8), ('mintime', np.int16), ('maxtime', np.int16), ('band', np.str_, 8)]
         return np.asarray(cut_list, dtype=dt)
 
-    def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
+    @staticmethod
+    def _gen_n_sn(z_shell_time_rate, duration_in_days, seed=None, area=4 * np.pi):
         """Generate the number of obj with Poisson law.
 
         Parameters
@@ -243,6 +244,7 @@ class Simulator:
             Number of obj to simulate.
 
         """
+        rng = np.random.default_rng(seed)
         nsn = duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate)
         nsn = int(np.round(nsn))
         return rand_gen.poisson(nsn)
@@ -318,22 +320,21 @@ class Simulator:
 
         print('\n-----------------------------------------------------------\n')
 
-        # -- Create the random generator object with the rand seed
-        rand_gen = np.random.default_rng(self.randseed)
-        seed_list = rand_gen.integers(1000, 1e6, size=len(self.generators))
-
+        # -- Create the SeedSequence object with the root rand seed
+        SeedSeq = np.random.SeedSequence(self.randseed)
+        
         # -- Change the samples attribute to store obj, init ID
         self._samples = []
         Obj_ID = 0
         file_str=''
 
         # -- Simulation for each of the selected obj.
-        for use_rate, seed, gen in zip(self._use_rate, seed_list, self.generators):
+        for use_rate, gen in zip(self._use_rate, self.generators):
             sim_time = time.time()
             if use_rate:
-                lcs_list = self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
+                lcs_list = self._cadence_sim(SeedSeq.spawn(1)[0], gen, Obj_ID)
             else:
-                lcs_list = self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
+                lcs_list = self._fix_nsn_sim(SeedSeq.spawn(1)[0], gen, Obj_ID)
             
             self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
                                                       lcs_list,
@@ -360,17 +361,17 @@ class Simulator:
         print('OUTPUT FILE(S) : ')
         print(file_str)
 
-    def _sim_lcs(self, generator, n_obj, Obj_ID=0, seed=None):
+    def _sim_lcs(self, seed, generator, n_obj, Obj_ID=0):
         """Simulate AstrObj lcs.
 
         Parameters
         ----------
-        generator : snsim.generator
-            The parameter generator class
+        seed : np.random.SeedSequence
+            Random Seed.
         n_obj : int
             The nummber of object to generate
         Obj_ID : int, optional
-           The first ID of AstrObj, by default 0
+            The first ID of AstrObj, by default 0
         seed : int, optional
             The random seed to generate parameters, by default None
 
@@ -380,16 +381,13 @@ class Simulator:
             List of the AstrObj LCs
 
         """
-        if seed is None:
-            seed = np.random.randint(1e3, 1e6)
-
-        rand_gen = np.random.default_rng(seed)
-
+        
+        seeds = seed.spawn(2)
         # -- Init lcs list
         lcs = []
 
         # -- Generate n base param
-        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6), 
+        param_tmp = generator.gen_astrobj_par(n_obj, seeds[0], 
                                               min_max_t=True)
 
         # -- Set up obj parameters
@@ -406,7 +404,7 @@ class Simulator:
             raise RuntimeError('None of the object pass the cuts...')
         
         # -- Generate the object
-        obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),
+        obj_list = generator(seed=seeds[1],
                              astrobj_par=params)
 
         # -- TO DO: dask it when understanding the random pickel-sncosmo error
@@ -423,16 +421,14 @@ class Simulator:
         lcs = [obj.gen_flux(epochs.loc[[obj.ID]]) for obj in obj_list]
         return lcs
 
-    def _cadence_sim(self, rand_gen, generator, Obj_ID=0):
+    def _cadence_sim(self, seed, generator, Obj_ID=0):
         """Simulate a number of AstrObj according to poisson law.
 
         Parameters
         ----------
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
-        shell_time_rate : numpy.ndarray
-            An array that contains sn time rate in each shell.
-
+        seed : np.random.SeedSequence
+            Random Seed.
+            
         Returns
         -------
         list(pandas.Dataframe)
@@ -450,27 +446,28 @@ class Simulator:
             7- Apply observation and selection cuts to SN
             8- Genertate fluxes
         """
+        seeds = seed.spawn(2)
         # -- Generate the number of SN
         if 'duration_for_rate' in self.config['sim_par']:
             duration = self.config['sim_par']['duration_for_rate']
         else:
             duration = generator.time_range[1] - generator.time_range[0]
 
-        n_obj = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
-                               duration, area=self.survey._envelope_area)
+        n_obj = self._gen_n_sn(generator._z_time_rate[1],
+                               duration,seed=seeds[0], area=self.survey._envelope_area)
 
-        lcs = self._sim_lcs(generator, n_obj,
-                            Obj_ID=Obj_ID, seed=rand_gen.integers(1e3, 1e6))
+        lcs = self._sim_lcs(seeds[1], generator, n_obj,
+                            Obj_ID=Obj_ID)
 
         return lcs
 
-    def _fix_nsn_sim(self, rand_gen, generator, Obj_ID=0):
+    def _fix_nsn_sim(self, seed, generator, Obj_ID=0):
         """Simulate a fixed number of AstrObj.
 
         Parameters
         ----------
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : np.random.SeedSequence
+            Random Seed.
 
         Returns
         -------
@@ -485,8 +482,8 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
-            lcs += self._sim_lcs(generator, n_to_sim,
-                                 Obj_ID=len(lcs), seed=rand_gen.integers(1e3, 1e6))
+            lcs += self._sim_lcs(seed, generator, n_to_sim,
+                                Obj_ID=len(lcs))
 
             # -- Arbitrary cut to stop the simulation if no SN are geenrated
             if n_to_sim == generator._params['force_n'] - len(lcs):
@@ -494,7 +491,7 @@ class Simulator:
                 if raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
                     raise RuntimeError('Cuts are too stricts')
                 continue
-           
+
             n_to_sim = generator._params['force_n'] - len(lcs)
 
         return lcs

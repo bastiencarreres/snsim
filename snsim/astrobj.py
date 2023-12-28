@@ -32,18 +32,25 @@ class AstrObj(abc.ABC):
     """
 
     _type = ''
-    _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'zpcmb', 'como_dist']
+    _base_attrs = ['ID', 'ra', 'dec', 
+                   'zcos', 'vpec', 'zpcmb', 
+                   'como_dist', 'template']
     
     _obj_attrs = ['']
     _available_models = ['']
 
     def __init__(self, source, sim_par, effects=[]):
         
-        # -- Intrinsic parameters of the astrobj
-        self._sim_par = sim_par
+        # -- Copy input parameters dic
+        self._sim_par = copy.copy(sim_par)
         
         if 'ID' not in self._sim_par:
             self._sim_par['ID'] = 0
+        
+        # -- Add template name
+        if source.name not in self._available_models:
+            raise ValueError(f'{source.name} not available.')
+        self._sim_par['template'] = source.name
         
         # -- Update attrs
         for k in self._base_attrs:
@@ -78,8 +85,6 @@ class AstrObj(abc.ABC):
             SN simulation model.
 
         """
-        if source.name not in self._available_models:
-            raise ValueError('{source.name} not available.')
 
         model = snc.Model(
             source=source,
@@ -166,7 +171,7 @@ class AstrObj(abc.ABC):
             + obs.skynoise**2
             + (np.log(10) / 2.5 * flux * obs.sig_zp)**2)
 
-        # Set magnitude
+        # -- Set magnitude
         mag = np.zeros_like(flux)
         magerr = np.zeros_like(flux)
 
@@ -180,7 +185,7 @@ class AstrObj(abc.ABC):
         mag[~positive_fmask] = np.nan
         magerr[~positive_fmask] = np.nan
 
-        # Create astropy Table lightcurve
+        # -- Create DataFrame of the lightcurve
         sim_lc = pd.DataFrame({
             'time': obs['time'],
             'fluxtrue': fluxtrue,
@@ -292,7 +297,7 @@ class SNIa(AstrObj):
             model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
             self._sim_par['x0'] = model.get('x0')
         else:
-            # TODO - BC: Find a way to use lambda function for relation
+            # TODO - BC : Find a way to use lambda function for relation
             raise ValueError('Relation not available')
         return model
     
@@ -334,7 +339,7 @@ class TimeSeries(AstrObj):
             - Template -> self._params['template']  SED template used
         """
         M0 = self._sim_par['M0'] + self._sim_par['mag_sct']
-        #self._sim_par['template'] = self.sim_model.source.name
+
         m_r = self.mu + M0
             
         # Compute the amplitude  parameter
@@ -342,11 +347,6 @@ class TimeSeries(AstrObj):
         self._sim_par['mb'] = model.source_peakmag('bessellb', 'ab')
         self._sim_par['amplitude'] = model.get('amplitude')
         return model
-
-    @property
-    def template(self):
-        """sncosmo.Model source name """
-        return self._params['template']
 
 
 class SNII(TimeSeries):

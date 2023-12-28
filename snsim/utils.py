@@ -604,3 +604,8 @@ def sine_interp(x_new, fun_x, fun_y):
     values = 0.5 * (fun_y_sup + fun_y_inf) + 0.5 * (fun_y_sup - fun_y_inf) * sin_interp
     return values
         
+def gen_rndchilds(seed, size=1):
+    if isinstance(seed, np.random.SeedSequence):
+        return seed.spawn(size)
+    else:
+        return np.random.SeedSequence(seed).spawn(size)

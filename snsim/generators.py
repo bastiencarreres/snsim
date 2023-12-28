@@ -35,11 +35,10 @@ class BaseGen(abc.ABC):
     ----------
     params : dict
         Basic generator configuration.
-
-      | params
-      | ├── General obj parameters
-      | └── model_config
-      |     └── General sncosmo model parameters
+        | params
+        | ├── General obj parameters
+        | └── model_config
+        |     └── General sncosmo model parameters
     cmb : dict
         The CMB dipole configuration.
 
@@ -57,13 +56,6 @@ class BaseGen(abc.ABC):
       | └── sig_vpec
     host : class SnHost, opt
         The host class to introduce sn host.
-    dipole : dict, opt
-        The alpha dipole parameters.
-
-      | dipole
-      | ├── coord  list(ra, dec) dipole vector coordinates in ra, dec
-      | ├── A  parameter of the A + B * cos(theta) dipole
-      | └── B  B parameter of the A + B * cos(theta) dipole
     """
 
     # General attributes
@@ -71,7 +63,7 @@ class BaseGen(abc.ABC):
     _available_rates = {}  # Rate models
 
     def __init__(self, params, cmb, cosmology, time_range, z_range=None, peak_out_trange=False,
-                 vpec_dist=None, host=None, mw_dust=None, dipole=None, geometry=None):
+                vpec_dist=None, host=None, mw_dust=None, dipole=None, geometry=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
@@ -123,7 +115,7 @@ class BaseGen(abc.ABC):
             t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
             self._time_range = (t0, t1)
 
-    def __call__(self, n_obj=None, rand_seed=None, astrobj_par=None):
+    def __call__(self, n_obj=None, seed=None, astrobj_par=None):
         """Launch the simulation of obj.
 
         Parameters
@@ -140,11 +132,9 @@ class BaseGen(abc.ABC):
         list(AstrObj)
             A list containing Astro Object.
         """
-        if rand_seed is None:
-            rand_seed = np.random.integer(1e3, 1e6)
 
         # -- Initialise 4 seeds for differents generation calls
-        seeds = np.random.default_rng(rand_seed).integers(1e3, 1e6, size=4)
+        seeds = ut.gen_rndchilds(rand_seed, 4)
 
         if astrobj_par is not None:
             n_obj = len(astrobj_par)
@@ -169,16 +159,6 @@ class BaseGen(abc.ABC):
         else:
             dust_par = [{}] * len(astrobj_par['ra'])
         
-        if snc_par is not None:
-            par_list = ({**{'ID': astrobj_par.index.values[i]},
-                            **{k: astrobj_par[k][i+astrobj_par.index.values[0]] for k in astrobj_par},
-                            **{'sncosmo': {**sncp, **dstp}}} 
-                            for i, (sncp, dstp) in enumerate(zip(snc_par, dust_par)))
-        else:
-            par_list = ({**{'ID': astrobj_par.index.values[i]},
-                            **{k: astrobj_par[k][i+astrobj_par.index.values[0]] for k in astrobj_par},
-                            **{'sncosmo': { **dstp}}} 
-                            for i, dstp in enumerate(dust_par))
         
         return [self._astrobj_class(snp,
                                     self.sim_model[k], 
@@ -422,7 +402,7 @@ class BaseGen(abc.ABC):
         Notes
         -----
         List of parameters:
-            * sim_t0 : obj peak
+            * t0 : obj peak
             * zcos : cosmological redshift
             * ra : Right Ascension
             * dec : Declinaison
@@ -433,7 +413,7 @@ class BaseGen(abc.ABC):
             * dip_dM, opt : Dipole magnitude modification
         """
         # -- Generate seeds for random calls
-        seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=4)
+        seeds = ut.gen_rndchilds(seed, 4)
 
         # -- Generate peak time
         t0 = self.gen_peak_time(n_obj, seed=seeds[0])
@@ -442,7 +422,7 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate) # change self random choiche depend on type 
+            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate) 
             zcos = host['zcos'].values
 
         # -- Generate ra, dec
@@ -463,7 +443,7 @@ class BaseGen(abc.ABC):
         astrobj_par = {'zcos': zcos,
                        'como_dist': self.cosmology.comoving_distance(zcos).value,
                        'z2cmb': ut.compute_z2cmb(ra, dec, self.cmb),
-                       'sim_t0': t0,
+                       't0': t0,
                        'ra': ra,
                        'dec': dec,
                        'vpec': vpec}
@@ -472,12 +452,9 @@ class BaseGen(abc.ABC):
             _1_zobs_ = (1 + astrobj_par['zcos']) 
             _1_zobs_ *= (1 + astrobj_par['z2cmb']) 
             _1_zobs_ *= (1 + astrobj_par['vpec'] / C_LIGHT_KMS)    
-            astrobj_par['min_t'] = astrobj_par['sim_t0'] + self.snc_model_time[0] * _1_zobs_
-            astrobj_par['max_t'] = astrobj_par['sim_t0'] + self.snc_model_time[1] * _1_zobs_
+            astrobj_par['min_t'] = astrobj_par['t0'] + self.snc_model_time[0] * _1_zobs_
+            astrobj_par['max_t'] = astrobj_par['t0'] + self.snc_model_time[1] * _1_zobs_
             astrobj_par['1_zobs'] = _1_zobs_
-
-        if self.dipole is not None:
-            astrobj_par['dip_dM'] = self._compute_dipole(ra, dec)
 
         return pd.DataFrame(astrobj_par)
 
@@ -536,15 +513,7 @@ class BaseGen(abc.ABC):
         else:
             raise ValueError(f'{mod_name} is not implemented')
         return dust_par
-
-    def _compute_dipole(self, ra, dec):
-        """Compute dipole."""
-        cart_vec = nbf.radec_to_cart(self.dipole['coord'][0],
-                                     self.dipole['coord'][1])
-
-        sn_vec = nbf.radec_to_cart_2d(ra, dec)
-        delta_M = self.dipole['A'] + self.dipole['B'] * sn_vec @ cart_vec
-        return delta_M
+    
 
     def __str__(self):
         """Print config."""
@@ -707,11 +676,10 @@ class SNIaGen(BaseGen):
         'ptf19': 'lambda z:  2.43e-5 * ({h}/0.70)**3', # Rate from https://arxiv.org/abs/1903.08580
         'ztf20': 'lambda z:  2.35e-5 * ({h}/0.70)**3', # Rate from https://arxiv.org/abs/2009.01242
         'ptf19_pw':  'lambda z:  2.35e-5 * ({h}/0.70)**3 * (1 + z)**1.7' # Rate from https://arxiv.org/abs/1903.08580
-
         }
-    # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
+    
     SNIA_M0 = {
-               'jla': -19.05
+               'jla': -19.05  # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
                }
 
     def _init_M0(self):
@@ -845,18 +813,18 @@ class SNIaGen(BaseGen):
                 z_for_dist = astrobj_par['zcos']
             else:
                 z_for_dist = None
-            sim_x1, sim_c = self.gen_salt_par(n_obj, rand_gen.integers(1000, 1e6),
+            sim_x1, sim_c = self.gen_salt_par(n_obj, ut.gen_rndchilds(rndgen=rand_gen)[0],
                                               z=z_for_dist)
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         # -- Non-coherent scattering effects
         if 'G10_' in self.sim_model[0].effect_names:
-            seeds = rand_gen.integers(low=1e3, high=1e6, size=n_obj)
+            seeds = ut.gen_rndchilds(rndgen=rand_gen, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['G10_RndS'] = s
 
         elif 'C11_' in self.sim_model[0].effect_names:
-            seeds = rand_gen.integers(low=1e3, high=1e6, size=n_obj)
+            seeds = ut.gen_rndchilds(rndgen=rand_gen, size=n_obj)
             for par, s in zip(snc_par, seeds):
                 par['C11_RndS'] = s
 
