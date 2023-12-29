@@ -2,7 +2,7 @@
 
 import os
 import sncosmo as snc
-import sfdmap
+from sfdmap2 import sfdmap
 from snsim import __snsim_dir_path__
 import glob
 import requests
