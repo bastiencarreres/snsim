@@ -24,8 +24,10 @@ def init_sn_sct_model(sct_mod, *args):
         eff_dic = {'source': C11, 'name': 'C11_', 'frame': 'rest'}
     return eff_dic
 
+
 class G10(snc.PropagationEffect):
     """Guy (2010) SNe Ia non-coherent scattering.
+    
     Implementation is done following arxiv:1209.2482."""
 
     _param_names = ['L0', 'F0', 'F1', 'dL']
@@ -40,7 +42,6 @@ class G10(snc.PropagationEffect):
 
         self._seed = np.random.SeedSequence()
         
-
     def compute_sigma_nodes(self):
         """Computes the sigma nodes."""
         L0, F0, F1, dL = self._parameters
@@ -58,7 +59,7 @@ class G10(snc.PropagationEffect):
         """Propagate the effect to the flux."""# Draw the scattering
         lam_nodes, siglam_values = self.compute_sigma_nodes()
         siglam_values *= np.random.default_rng(self._seed).normal(size=len(lam_nodes))
-        magscat = ut.sine_interp(wave, lam_nodes, siglam_values)
+        magscat = sine_interp(wave, lam_nodes, siglam_values)
         return flux * 10**(-0.4 * magscat)
 
 
@@ -128,7 +129,7 @@ class C11(snc.PropagationEffect):
         magscat = np.zeros(len(wave))
         magscat[inf_mask] = siglam_values[0]
         magscat[sup_mask] = siglam_values[-1]
-        magscat[~inf_mask & ~sup_mask] = ut.sine_interp(wave[~inf_mask & ~sup_mask], 
+        magscat[~inf_mask & ~sup_mask] = sine_interp(wave[~inf_mask & ~sup_mask], 
                                                      self._lam_nodes, siglam_values)
         
         return flux * 10**(-0.4 * magscat)

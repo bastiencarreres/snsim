@@ -10,7 +10,6 @@ from . import generators
 from . import survey_host as sh
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
-
 from .generators import __GEN_DIC__
 from .sample import SimSample
 
@@ -84,10 +83,6 @@ class Simulator:
     |     host_file: 'PATH/TO/HOSTFILE'
     |     distrib: 'rate' or 'random'  # Optional, default = 'rate'
     |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
-    | dipole:  # Optional, add a dipole as dM = A + B * cos(theta)
-    |     coord: [RA, Dec]  # Direction of the dipole
-    |     A: A_parameter
-    |     B: B_parameter
     | dask: # Optional for using dask parallelization
     |     use: True or False
     |     nworkers: NUMBER OF WORKERS # used to adjust work distribution
@@ -139,8 +134,10 @@ class Simulator:
 
         # -- Init host object
         if 'host' in self.config:
-            self._host = sh.SnHost(self.config['host'], z_range=self.z_range,
-                                   geometry=self.survey._envelope)
+            self._host = sh.SnHost(
+                self.config['host'], 
+                z_range=self.z_range,
+                geometry=self.survey._envelope)
         else:
             self._host = None
 
@@ -149,12 +146,6 @@ class Simulator:
             mw_dust = self.config['mw_dust']
         else:
             mw_dust = None
-
-        # -- Init dipole
-        if 'dipole' in self.config:
-            dipole = self.config['dipole']
-        else:
-            dipole = None
 
         # Init the cuts on lightcurves
         self._nep_cut = self._init_nep_cuts()
@@ -169,17 +160,17 @@ class Simulator:
             if object_name in self.config:
                 # -- Get which generator correspond to which transient in snsim.generators
                 gen_class = getattr(generators, object_genclass)
-                self._generators.append(gen_class(self.config[object_name],
-                                                  self.cmb,
-                                                  self.cosmology,
-                                                  time_range,
-                                                  z_range=self.z_range,
-                                                  peak_out_trange=True,
-                                                  vpec_dist=self.vpec_dist,
-                                                  host=self.host,
-                                                  mw_dust=mw_dust,
-                                                  dipole=dipole,
-                                                  geometry=self.survey._envelope))
+                self._generators.append(gen_class(
+                    self.config[object_name],
+                    self.cosmology,
+                    time_range,
+                    cmb=self.cmb,
+                    z_range=self.z_range,
+                    peak_out_trange=True,
+                    vpec_dist=self.vpec_dist,
+                    host=self.host,
+                    mw_dust=mw_dust,
+                    geometry=self.survey._envelope))
                 # -- Cadence sim or n fixed
                 if 'force_n' in self.config[object_name]:
                     self._use_rate.append(False)
@@ -209,7 +200,7 @@ class Simulator:
         # -- Set default mintime, maxtime (restframe)
         snc_mintime = -20
         snc_maxtime = 50
-         #maybe default timerange to change to be more flexible with sncc
+        # TODO : maybe default timerange to change to be more flexible with sncc
 
         cut_list = []
         if 'nep_cut' in self.config['sim_par']:
@@ -277,10 +268,11 @@ class Simulator:
 
         print('-----------------------------------------------------------\n')
 
-        print(f"SIM NAME : {self.sim_name}\n"
-              f"CONFIG FILE : {self._yml_path}\n"
-              f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
-              f"SIMULATION RANDSEED : {self.randseed}")
+        print(
+            f"SIM NAME : {self.sim_name}\n"
+            f"CONFIG FILE : {self._yml_path}\n"
+            f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
+            f"SIMULATION RANDSEED : {self.randseed}")
 
         if 'host_file' in self.config:
             print(f"HOST FILE : {self.config['host_file']}")
@@ -305,8 +297,9 @@ class Simulator:
         print('\n-----------------------------------------------------------\n')
 
         if 'mw_dust' in self.config:
-            print("Use mw dust model : "
-                  f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['rv']}")
+            print(
+                "Use mw dust model : "
+                f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['rv']}")
 
             print('\n-----------------------------------------------------------\n')
 
@@ -336,19 +329,23 @@ class Simulator:
             else:
                 lcs_list = self._fix_nsn_sim(SeedSeq.spawn(1)[0], gen, Obj_ID)
             
-            self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
-                                                      lcs_list,
-                                                      {'seed': seed,
-                                                       **gen._get_header(),
-                                                       'cosmo': self._get_cosmo_header()},
-                                                      model_dir=None,
-                                                      dir_path=self.config['data']['write_path']))
+            self._samples.append(SimSample.fromDFlist(
+                self.sim_name + '_' + gen._object_type,
+                lcs_list,
+                {'seed': seed,
+                **gen._get_header(),
+                'cosmo': self._get_cosmo_header()},
+                model_dir=None,
+                dir_path=self.config['data']['write_path']))
 
-            print(f'{len(lcs_list)} {gen._object_type} lcs generated'
-                  f' in {time.time() - sim_time:.1f} seconds')
+            print(
+                f'{len(lcs_list)} {gen._object_type} lcs generated'
+                f' in {time.time() - sim_time:.1f} seconds')
             write_time = time.time()
-            self._samples[-1]._write_sim(self.config['data']['write_path'],
-                                         self.config['data']['write_format'])
+            
+            self._samples[-1]._write_sim(
+                self.config['data']['write_path'],
+                self.config['data']['write_format'])
 
             print(f'Sim file write in {time.time() - write_time:.1f} seconds')
 
