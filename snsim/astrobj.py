@@ -32,9 +32,7 @@ class AstrObj(abc.ABC):
     """
 
     _type = ''
-    _base_attrs = ['ID', 'ra', 'dec', 
-                   'zcos', 'vpec', 'zpcmb', 
-                   'como_dist', 'template']
+    _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'zpcmb', 'como_dist', 'template']
     
     _obj_attrs = ['']
     _available_models = ['']

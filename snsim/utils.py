@@ -163,6 +163,10 @@ def set_cosmo(cosmo_dic):
             cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0
         return acosmo.w0waCDM(**cosmo_dic)
 
+def init_snc_source(name, version=None):
+    # TODO - BC: Not very usefull, maybe has to be reimplemented later
+    return snc.get_source(name=name, version=version)
+
 
 def scale_M0_cosmology(h, M0_art, h_art):
     """Compute a value of M0 corresponding the cosmology used in the simulation.
@@ -303,7 +307,7 @@ def compute_z2cmb(ra, dec, cmb):
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
 
 
-def init_sn_source(name, model_dir=None, version=None):
+def init_snia_source(name, model_dir=None, version=None):
     """Initialise a sncosmo source.
 
     Parameters

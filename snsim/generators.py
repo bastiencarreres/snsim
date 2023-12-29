@@ -2,7 +2,9 @@
 import abc
 import numpy as np
 import pandas as pd
+import copy
 import geopandas as gpd
+import sncosmo as snc
 from inspect import getsource
 from .constants import C_LIGHT_KMS, VCMB, L_CMB, B_CMB
 from . import utils as ut
@@ -38,7 +40,6 @@ class BaseGen(abc.ABC):
         | params
         | ├── General obj parameters
         | └── model_config
-        |     └── General sncosmo model parameters
     cmb : dict
         The CMB dipole configuration.
         | cmb
@@ -59,17 +60,29 @@ class BaseGen(abc.ABC):
     # General attributes
     _available_models = []  # Flux models
     _available_rates = {}  # Rate models
-
-    def __init__(self, params, cosmology, time_range, z_range=None, peak_out_trange=False,
+    _general_default_values = {'mod_fcov': False}
+    _default_values = {}
+    
+    def __init__(self, params, cosmology, time_range, z_range=None,
                 vpec_dist=None, host=None, mw_dust=None, cmb=None, geometry=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
 
         # -- Mandatory parameters
-        self._params = params    
+        self._params = copy.copy(params)    
         self._cosmology = cosmology
         self._time_range = time_range
+
+        self._default_values = {
+            **self._default_values,
+            **self._general_default_values
+            }
+
+        # -- Check defaults:
+        for k in self._default_values:
+            if k not in self._params:
+                self._params[k] = self._default_values[k]
 
         # -- At least one mandatory
         if vpec_dist is not None and host is None:
@@ -98,24 +111,21 @@ class BaseGen(abc.ABC):
 
         self._mw_dust = mw_dust
         self._geometry = geometry
-
         self.rate, self._rate_expr = self._init_rate()
 
         # -- Init sncosmo model
-        # self.sim_model = self._init_sim_model()
-        # self._init_dust()
-
-
+        self.sim_source, self._source_prange = self._init_snc_source()
+        
         # -- Init redshift distribution
         self._z_dist, self._z_time_rate = self._compute_zcdf()
 
         # -- Get the astrobj class
         self._astrobj_class = getattr(astr, self._object_type)
 
-        if peak_out_trange:
-            t0 = self.time_range[0] - self.snc_model_time[1] * (1 + self.z_range[1])
-            t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
-            self._time_range = (t0, t1)
+        # if peak_out_trange:
+        #     t0 = self.time_range[0] - self.snc_model_time[1] * (1 + self.z_range[1])
+        #     t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
+        #     self._time_range = (t0, t1)
 
     def __call__(self, n_obj=None, seed=None, basic_par=None):
         """Launch the simulation of obj.
@@ -149,17 +159,18 @@ class BaseGen(abc.ABC):
         obj_par = self.gen_par(n_obj, basic_par, seed=seeds[2])
 
         # -- randomly chose the number of object for each model
-        # rand_gen = np.random.default_rng(seeds[3])
-        # random_models = rand_gen.choice(list(self.sim_model.keys()), n_obj)
+        random_models = self.random_models(n_obj, seed=seed[3])
 
         # -- Check if there is dust
         if self.mw_dust is not None:
             dust_par = self._compute_dust_par(basic_par['ra'], basic_par['dec'])
         else:
-            dust_par = [{}] * len(basic_par['ra'])
+            dust_par = {}
         
-        return [self._astrobj_class(snp,
-                                    self.sim_model[k])
+        
+        return [self._astrobj_class(mod,
+                                    sp,
+                                    effects=eff)
                                     #self._general_par)
                 for k, snp in zip(random_models, par_list)]
 
@@ -183,6 +194,28 @@ class BaseGen(abc.ABC):
             Random seed.
         """
         pass
+    
+    def _init_source_list(self):
+        """ """
+        return [self._params['model_name']]
+        
+    def _init_snc_source(self):
+        if self._params['model_name'] not in self._available_models:
+            raise ValueError(f"{self._params['model_name']} is not available")
+        
+        source = {'model_name': self._init_source_list()}
+        
+        if 'model_version' in self._params:
+            if not isinstance(self._params['model_version'], list):
+                source['model_version'] = [self._params['model_version']]
+        else:
+            source['model_version'] = [None] * len(source['model_name'])
+        
+        sources = [snc.get_source(name=n, version=v) for n, v in zip(source['model_name'], source['model_version'])] 
+        maxphase = np.max([s.maxphase() for s in sources])
+        minphase = np.min([s.minphase() for s in sources])
+    
+        return source, (minphase, maxphase)
 
     def _update_header(self, header):
         """Method to add information in header,
@@ -242,7 +275,6 @@ class BaseGen(abc.ABC):
         else:
             self._general_par['mod_fcov'] = False
         #self._update_general_par()
-
 
     def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
@@ -351,7 +383,7 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def gen_basic_par(self, n_obj, seed=None, min_max_t=False):
+    def gen_basic_par(self, n_obj, seed=None, min_max_t=False, use_dask=False):
         """Generate basic obj properties.
 
         Parameters
@@ -401,7 +433,7 @@ class BaseGen(abc.ABC):
         else:
             vpec = np.zeros(len(ra))
 
-        astrobj_par = {
+        basic_par = {
             'zcos': zcos,
             'como_dist': self.cosmology.comoving_distance(zcos).value,
             'z2cmb': ut.compute_z2cmb(ra, dec, self.cmb),
@@ -411,15 +443,26 @@ class BaseGen(abc.ABC):
             'vpec': vpec}
 
         if min_max_t:
-            _1_zobs_ = (1 + astrobj_par['zcos']) 
-            _1_zobs_ *= (1 + astrobj_par['z2cmb']) 
-            _1_zobs_ *= (1 + astrobj_par['vpec'] / C_LIGHT_KMS)    
+            _1_zobs_ = (1 + basic_par['zcos']) 
+            _1_zobs_ *= (1 + basic_par['z2cmb']) 
+            _1_zobs_ *= (1 + basic_par['vpec'] / C_LIGHT_KMS)    
             astrobj_par['min_t'] = astrobj_par['t0'] + self.snc_model_time[0] * _1_zobs_
             astrobj_par['max_t'] = astrobj_par['t0'] + self.snc_model_time[1] * _1_zobs_
             astrobj_par['1_zobs'] = _1_zobs_
 
-        return pd.DataFrame(astrobj_par)
+        return pd.DataFrame(basic_par)
+    
+    def random_models(self, n_obj, seed=None):
+        rand_gen = np.random.default_rng(seed)
 
+        idx = rand_gen.integers(low=0, high=len(self.sim_source['model_name']), size=n_obj)
+        random_models = {
+            'name': np.array(self.sim_source['model_name'])[idx],
+            'version': np.array(self.sim_source['model_version'])[idx]}
+        
+        return random_models
+        
+    
     def _compute_zcdf(self):
         """Give the time rate SN/years in redshift shell.
 
@@ -464,19 +507,17 @@ class BaseGen(abc.ABC):
         list(dict)
             List of Dictionnaries that contains Rv and E(B-V) for each SN.
         """
-        ebv = dst_ut.compute_ebv(ra, dec)
         mod_name = self.mw_dust['model']
-
+        dust_par = {'mw_ebv': dst_ut.compute_ebv(ra, dec)}
+        
         if mod_name.lower() in ['ccm89', 'od94']:
-            r_v = np.ones(len(ra)) * self.mw_dust['rv']
-            dust_par = [{'mw_r_v': r, 'mw_ebv': e} for r, e in zip(r_v, ebv)]
-        elif mod_name.lower() in ['f99']:
-            dust_par = [{'mw_ebv': e} for e in ebv]
-        else:
-            raise ValueError(f'{mod_name} is not implemented')
+            if 'r_v' in self.mw_dust:
+                rv_val = self.mw_dust['r_v']
+            else:
+                rv_val = 3.1
+            dust_par['r_v'] = np.ones(len(ra)) * rv_val
         return dust_par
     
-
     def __str__(self):
         """Print config."""
         str = ''
@@ -489,7 +530,9 @@ class BaseGen(abc.ABC):
             model_dir_str = " from sncosmo"
 
         str += 'OBJECT TYPE : ' + self._object_type + '\n'
-        str += f"SIM MODEL : {self._params['model_name']}" + model_dir_str + '\n\n'
+        str += f"SIM MODEL : {self._params['model_name']}" 
+        str += f" v{self._params['model_version']}" 
+        str += model_dir_str + '\n\n'
 
         str += ("Peak mintime : "
                 f"{self.time_range[0]:.2f} MJD\n\n"
@@ -507,12 +550,12 @@ class BaseGen(abc.ABC):
             str += ' using rate\n'
 
         
-        str += self._add_print() + '\n'
+        str += self._add_print() + '\n\n'
 
-        if self._general_par['mod_fcov']:
-            str += "Model COV ON"
+        if self._params['mod_fcov']:
+            str += "Model FUX COV ON"
         else:
-            str += "Model COV OFF"
+            str += "Model FLUX COV OFF"
         return str
 
     def _get_header(self):
@@ -624,8 +667,11 @@ class SNIaGen(BaseGen):
     _available_rates = {
         'ptf19': 'lambda z:  2.43e-5 * ({h}/0.70)**3', # Rate from https://arxiv.org/abs/1903.08580
         'ztf20': 'lambda z:  2.35e-5 * ({h}/0.70)**3', # Rate from https://arxiv.org/abs/2009.01242
-        'ptf19_pw':  'lambda z:  2.35e-5 * ({h}/0.70)**3 * (1 + z)**1.7' # Rate from https://arxiv.org/abs/1903.08580
+        'ptf19_pw': 'lambda z:  2.35e-5 * ({h}/0.70)**3 * (1 + z)**1.7' # Rate from https://arxiv.org/abs/1903.08580
         }
+    
+    # TODO - BC: see if it is usefull
+    _default_values = {}
     
     SNIA_M0 = {
             'jla': -19.05  # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
@@ -644,26 +690,17 @@ class SNIaGen(BaseGen):
         else: 
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self.SNIA_M0.keys()}")  
 
-
-    # def _update_general_par(self):
-    #     """Initialise the general parameters, depends on the SN simulation model.
-
-    #     Returns
-    #     -------
-    #     list
-    #         A dict containing all the usefull keys of the SN model.
-    #     """
-    #     model_name = self._params['model_name']
-    #     if model_name[:5] in ('salt2', 'salt3'):
-    #         model_keys = ['alpha', 'beta']
-
-    #     self._general_par['M0'] = self._init_M0()
-    #     self._general_par['sigM'] = self._params['sigM']
-
-    #     for k in model_keys:
-    #         self._general_par[k] = self._params['model_config'][k]
-    #     return
-
+    # def _init_snc_source(self):
+    #     # TODO - BC: Not very usefull, maybe has to be reimplemented later
+    #     # if 'model_dir' in self._params:
+    #     #     model_dir = self._params['model_dir']
+    #     # else:
+    #     #     model_dir = None
+    #     if 'model_version' in self._params:
+    #         model_version = self._params['model_version']
+    #     else:
+    #         model_version = None
+    #     return snc.get_source(name=self._params['model_name'], version=model_version)
 
     def _add_print(self):
         str = ''
@@ -851,8 +888,8 @@ class TimeSeriesGen(BaseGen):
 
         else:
             return self.init_M0_for_type()
-         
-    def _init_sim_model(self):
+
+    def _init_source_list(self):
         """Initialise sncosmo model using the good source.
 
         Returns
@@ -862,26 +899,15 @@ class TimeSeriesGen(BaseGen):
             SN simulation model.
         """
 
-        if isinstance(self._params['model_name'], str):
-            if self._params['model_name'].lower() == 'all':
-                selected_models = self._available_models
-            elif self._params['model_name'].lower() == 'vinc_nocorr':
-                selected_models = ut.select_Vincenzi_template(self._available_models,corr=False)
-            elif self._params['model_name'].lower() == 'vinc_corr':
-                selected_models = ut.select_Vincenzi_template(self._available_models,corr=True)
-            else:
-                selected_models = [self._params['model_name']]
-
-            model= [ut.init_sn_model(m) 
-                    for m in selected_models]
-        else:            
-            model = [ut.init_sn_model(m) 
-                      for m in self._params['model_name']]
-            
-        model = {i :m for i, m in enumerate(model)}
-        
-        return model
-
+        if self._params['model_name'].lower() == 'all':
+            sources = self._available_models
+        elif self._params['model_name'].lower() == 'vinc_nocorr':
+            sources = ut.select_Vincenzi_template(self._available_models,corr=False)
+        elif self._params['model_name'].lower() == 'vinc_corr':
+            sources = ut.select_Vincenzi_template(self._available_models,corr=True)
+        else:
+            sources = [self._params['model_name']]
+        return sources
 
     def _update_general_par(self):
         """Initialise the general parameters, depends on the SN simulation model.
