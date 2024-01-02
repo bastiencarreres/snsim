@@ -166,17 +166,48 @@ class BaseGen(abc.ABC):
         
         # TODO - BC: Dask that part or vectorize it for more efficiency
         return [self._astrobj_class({k: par[k][idx] for k in par.keys()},
-                                   effects=self.sim_effects,
-                                   relation=relation)
-               for idx in range(n_obj)]
+                                    effects=self.sim_effects,
+                                    relation=relation)
+            for idx in range(n_obj)]
 
-    def _init_registered_rate(self):
-        """SNII rates registry."""
-        if self._params['rate'].lower() in self._available_rates:
-            return self._available_rates[self._params['rate'].lower()].format(h=self.cosmology.h)
+        def __str__(self):
+        """Print config."""
+        str = ''
+        
+        if 'model_dir' in self._params:
+            model_dir = self._params['model_dir']
+            model_dir_str = f" from {model_dir}"
         else:
-            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
+            model_dir = None
+            model_dir_str = " from sncosmo"
 
+        str += 'OBJECT TYPE : ' + self._object_type + '\n'
+        str += f"SIM MODEL : {self._params['model_name']}" 
+        str += f" v{self._params['model_version']}" 
+        str += model_dir_str + '\n\n'
+
+        str += ("Peak mintime : "
+                f"{self.time_range[0]:.2f} MJD\n\n"
+                "Peak maxtime : "
+                f"{self.time_range[1]:.2f} MJD\n\n")
+        
+        str += 'Redshift distribution computed'
+
+        if self.host is not None:
+            if self.host.config['distrib'] == 'random':
+                str += ' using host redshift distribution\n'
+            elif  self.host.config['distrib'] == 'survey_rate':
+                str += ' using rate\n\n'
+        else:
+            str += ' using rate\n'
+                    
+        str += self._add_print() + '\n\n'
+        return str
+
+    ##################################################
+    # FUNCTIONS TO ADAPT FOR EACH GENERATOR SUBCLASS #
+    ##################################################
+    
     @abc.abstractmethod
     def gen_par(self, n_obj, astrobj_par, seed=None):
         """Abstract method to add random generated parameters
@@ -191,20 +222,52 @@ class BaseGen(abc.ABC):
         """
         pass
     
-    def _update_header(self, header):
+    def _update_header(self):
         """Method to add information in header,
         called in _get_header
 
-        Parameters
+        Returns
         ----------
-        header: dict
-            dict to directly modify in the function.
+        dict
+            dict is added to header dict in _get_header().
         """
         pass
-
-    def _add_print(self):
-        """Method to print something in print_config."""
+    
+    def _add_effects(self):
+        """Method that return a list of effect dict.
+        
+        Notes
+        -----
+        Effect dict are like
+        {
+            'name': name of the effect,
+            'source': snc.PropagationEffect subclass
+            'frame': 'obs' or 'rest'
+        }
+        """
         pass
+    
+    def _add_print(self):
+        """Method to print something in __str__."""
+        pass
+
+    # TODO - BC : rename this function
+    def _init_source_list(self):
+        """ """
+        return [self._params['model_name']]
+    
+    ####################
+    # COMMON FUNCTIONS #
+    ####################
+    
+    # -- INIT FUNCTIONS -- #
+    
+    def _init_registered_rate(self):
+        """Rates registry."""
+        if self._params['rate'].lower() in self._available_rates:
+            return self._available_rates[self._params['rate'].lower()].format(h=self.cosmology.h)
+        else:
+            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
     
     def _init_snc_effects(self):
         effects = []
@@ -213,12 +276,7 @@ class BaseGen(abc.ABC):
             effects.append(dst_ut.init_mw_dust(self.mw_dust))
         effects += self._add_effects()
         return effects
-        
-    # TODO - BC : rename this function
-    def _init_source_list(self):
-        """ """
-        return [self._params['model_name']]
-        
+
     def _init_snc_sources(self):
         # -- Check existance of the model
         if self._params['model_name'] not in self._available_models:
@@ -237,8 +295,6 @@ class BaseGen(abc.ABC):
         source['model_version'] = [s.version for s in sources]
         maxphase = np.max([s.maxphase() for s in sources])
         minphase = np.min([s.minphase() for s in sources])
-        
-
         return source, (minphase, maxphase)
 
     def _init_rate(self):
@@ -270,6 +326,84 @@ class BaseGen(abc.ABC):
             expr = 'lambda z: 3e-5'
         return eval(expr), expr.strip()
 
+    def _compute_zcdf(self):
+        """Give the time rate SN/years in redshift shell.
+
+        Parameters
+        ----------
+        z : numpy.ndarray
+            The redshift bins.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            Numpy array containing the time rate in each redshift bin.
+
+        """
+        z_min, z_max = self.z_range
+
+        # -- Set the precision to dz = 1e-5
+        dz = 1e-5
+
+        z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
+        z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
+        co_dist = self.cosmology.comoving_distance(z_shell).value
+        shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
+
+        # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
+        shell_time_rate = self.rate(z_shell_center) * shell_vol / (1 + z_shell_center)
+
+        z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
+
+        return ut.CustomRandom(z_pdf, z_min, z_max, dx=1e-5), (z_shell, shell_time_rate)
+    
+    def _compute_dust_par(self, ra, dec):
+        """Compute dust parameters.
+        Parameters
+        ----------
+        ra : numpy.ndaray(float)
+            SN Right Ascension.
+        dec : numpy.ndarray(float)
+            SN Declinaison.
+        Returns
+        -------
+        list(dict)
+            List of Dictionnaries that contains Rv and E(B-V) for each SN.
+        """
+        mod_name = self.mw_dust['model']
+        dust_par = {'mw_ebv': dst_ut.compute_ebv(ra, dec)}
+        
+        if mod_name.lower() in ['ccm89', 'od94']:
+            if 'r_v' in self.mw_dust:
+                rv_val = self.mw_dust['r_v']
+            else:
+                rv_val = 3.1
+            dust_par['mw_r_v'] = np.ones(len(ra)) * rv_val
+        return dust_par
+
+    def _get_header(self):
+        """Generate header of sim file..
+
+        Returns
+        -------
+        None
+
+        """
+        header = {
+                'obj_type': self._object_type,
+                'rate': self._rate_expr,
+                **self.sim_sources
+                }
+    
+        if self.vpec_dist is not None:
+            header['m_vp'] = self.vpec_dist['mean_vpec']
+            header['s_vp'] = self.vpec_dist['sig_vpec']
+
+        header = {**header, self._update_header()}
+        return header
+    
+    # -- RANDOM FUNCTIONS -- #
+    
     def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
 
@@ -333,7 +467,6 @@ class BaseGen(abc.ABC):
                 ra.extend(ra_tmp[intersects])
                 dec.extend(dec_tmp[intersects])
                 n_to_sim = n - len(ra)
-    
         return ra, dec
 
     def gen_zcos(self, n, seed=None):
@@ -455,123 +588,7 @@ class BaseGen(abc.ABC):
             'model_version': np.array(self.sim_sources['model_version'])[idx]}
         return random_models
         
-    def _compute_zcdf(self):
-        """Give the time rate SN/years in redshift shell.
 
-        Parameters
-        ----------
-        z : numpy.ndarray
-            The redshift bins.
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            Numpy array containing the time rate in each redshift bin.
-
-        """
-        z_min, z_max = self.z_range
-
-        # -- Set the precision to dz = 1e-5
-        dz = 1e-5
-
-        z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
-        z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
-        co_dist = self.cosmology.comoving_distance(z_shell).value
-        shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
-
-        # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
-        shell_time_rate = self.rate(z_shell_center) * shell_vol / (1 + z_shell_center)
-
-        z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
-
-        return ut.CustomRandom(z_pdf, z_min, z_max, dx=1e-5), (z_shell, shell_time_rate)
-
-    def _compute_dust_par(self, ra, dec):
-        """Compute dust parameters.
-        Parameters
-        ----------
-        ra : numpy.ndaray(float)
-            SN Right Ascension.
-        dec : numpy.ndarray(float)
-            SN Declinaison.
-        Returns
-        -------
-        list(dict)
-            List of Dictionnaries that contains Rv and E(B-V) for each SN.
-        """
-        mod_name = self.mw_dust['model']
-        dust_par = {'mw_ebv': dst_ut.compute_ebv(ra, dec)}
-        
-        if mod_name.lower() in ['ccm89', 'od94']:
-            if 'r_v' in self.mw_dust:
-                rv_val = self.mw_dust['r_v']
-            else:
-                rv_val = 3.1
-            dust_par['mw_r_v'] = np.ones(len(ra)) * rv_val
-        return dust_par
-    
-    def __str__(self):
-        """Print config."""
-        str = ''
-        
-        if 'model_dir' in self._params:
-            model_dir = self._params['model_dir']
-            model_dir_str = f" from {model_dir}"
-        else:
-            model_dir = None
-            model_dir_str = " from sncosmo"
-
-        str += 'OBJECT TYPE : ' + self._object_type + '\n'
-        str += f"SIM MODEL : {self._params['model_name']}" 
-        str += f" v{self._params['model_version']}" 
-        str += model_dir_str + '\n\n'
-
-        str += ("Peak mintime : "
-                f"{self.time_range[0]:.2f} MJD\n\n"
-                "Peak maxtime : "
-                f"{self.time_range[1]:.2f} MJD\n\n")
-        
-        str += 'Redshift distribution computed'
-
-        if self.host is not None:
-            if self.host.config['distrib'] == 'random':
-                str += ' using host redshift distribution\n'
-            elif  self.host.config['distrib'] == 'survey_rate':
-                str += ' using rate\n\n'
-        else:
-            str += ' using rate\n'
-
-        
-        str += self._add_print() + '\n\n'
-
-        # if self._params['mod_fcov']:
-        #     str += "Model FUX COV ON"
-        # else:
-        #     str += "Model FLUX COV OFF"
-        return str
-
-    def _get_header(self):
-        """Generate header of sim file..
-
-        Returns
-        -------
-        None
-
-        """
-        header = {
-                'obj_type': self._object_type,
-                'rate': self._rate_expr,
-                **self.sim_sources
-                }
-
-        header = {**header}
-    
-        if self.vpec_dist is not None:
-            header['m_vp'] = self.vpec_dist['mean_vpec']
-            header['s_vp'] = self.vpec_dist['sig_vpec']
-
-        self._update_header(header)
-        return header
 
     @property
     def host(self):
@@ -697,8 +714,10 @@ class SNIaGen(BaseGen):
                             })
         return effects
         
-    def _update_header(self, header):
+    def _update_header(self):
         model_name = self._params['model_name']
+        
+        header = {}
         header['M0_band'] = 'bessell_b'
         if model_name.lower()[:4] == 'salt':
             if isinstance(self._params['dist_x1'], str):
@@ -722,20 +741,8 @@ class SNIaGen(BaseGen):
             else:
                 header['dist_c'] = 'gauss'
                 header['sig_c'] = self._params['dist_c'][1]
-
-        # if 'sct_model' in self._params:
-        #     header['sct_mod'] = self._params['sct_model']
-        #     if self._params['sct_model'].lower() == 'g10':
-        #         params = ['G10_L0', 'G10_F0', 'G10_F1', 'G10_dL']
-        #         for par in params:
-        #             pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
-        #             header[par] = self.sim_model[0].parameters[pos][0]
-        #     elif self._params['sct_model'].lower() in ['c11_0', 'c11_1', 'c11_2']:
-        #         params = ['C11_Cuu', 'C11_Sc']
-        #         for par in params:
-        #             pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
-        #             header[par] = self.sim_model[0].parameters[pos][0]
-
+        return header
+    
     def gen_par(self, n_obj, basic_par, seed=None):
         """Generate SNIa specific parameters.
 
@@ -972,8 +979,10 @@ class TimeSeriesGen(BaseGen):
         str = ''
         return str
 
-    def _update_header(self, header):
+    def _update_header(self):
+        header={}
         header['M0_band']='bessell_r'
+        return header
 
 class CCGen(TimeSeriesGen):
     """Template for CoreColapse."""
@@ -1387,8 +1396,11 @@ class SNIa_peculiar(BaseGen):
         str = ''
         return str
 
-    def _update_header(self, header):
+    def _update_header(self):
+        header = {}
         header['M0_band']='bessell_r'
+        
+        return header
 
 
     def _init_registered_rate(self):
