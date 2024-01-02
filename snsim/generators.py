@@ -59,6 +59,7 @@ class BaseGen(abc.ABC):
     """
 
     # General attributes
+    _object_type = ''
     _available_models = []  # Flux models
     _available_rates = {}  # Rate models
     
@@ -86,8 +87,10 @@ class BaseGen(abc.ABC):
         # -- If no host need to define a z_range
         if host is None:
             self._z_range = z_range
-        else:
+        elif host is not None:
             self._z_range = self.host._z_range
+        else:
+            raise ValueError('Set zrange xor host')
         
         if cmb is None:
             self._cmb =  {
@@ -156,7 +159,7 @@ class BaseGen(abc.ABC):
             dust_par = self._compute_dust_par(basic_par['ra'], basic_par['dec'])
         else:
             dust_par = {}
-        
+
         par = {**basic_par, **random_models, **obj_par, **dust_par}
 
         if 'relation' not in self._params:
@@ -209,7 +212,7 @@ class BaseGen(abc.ABC):
     ##################################################
     
     @abc.abstractmethod
-    def gen_par(self, n_obj, astrobj_par, seed=None):
+    def gen_par(self, n_obj, basic_par, seed=None):
         """Abstract method to add random generated parameters
         specific to the astro object used, called in __call__
 
@@ -286,7 +289,7 @@ class BaseGen(abc.ABC):
                 if s not in self._available_models:
                     raise ValueError(f"{s} is not available")
         
-        sources = {'model_name': self._init_source_list()}
+        sources = {'model_name': self._init_sources_list()}
                 
         if 'model_version' in self._params:
             if not isinstance(self._params['model_version'], list):
@@ -906,7 +909,7 @@ class TimeSeriesGen(BaseGen):
         else:
             return self.init_M0_for_type()
 
-    def _init_source_list(self):
+    def _init_sources_list(self):
         """Initialise sncosmo model using the good source.
 
         Returns
@@ -929,10 +932,6 @@ class TimeSeriesGen(BaseGen):
         
         return sources
 
-    def _update_astrobj_par(self, n_obj, basic_par, seed=None):
-        # -- Generate coherent mag scattering
-        astrobj_par['coh_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
-
     def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
 
@@ -949,8 +948,6 @@ class TimeSeriesGen(BaseGen):
             numpy array containing scattering terms generated.
 
         """
-        if seed is None:
-            seed = np.random.random_integers(1e3, 1e6)
         rand_gen = np.random.default_rng(seed)
         
         if isinstance(self._params['sigM'], (float, np.floating, int, np.integer)):
@@ -978,7 +975,10 @@ class TimeSeriesGen(BaseGen):
         dict
             One dictionnary containing 'parameters names': numpy.ndarray(float).
         """
-        return None
+        params = {
+            'M0': np.ones(n_obj) * self._init_M0(),
+            'coh_sct': self.gen_coh_scatter(n_obj, seed=seed)}
+        return params
 
     def _add_print(self):
         str = ''
@@ -992,7 +992,7 @@ class TimeSeriesGen(BaseGen):
 class CCGen(TimeSeriesGen):
     """Template for CoreColapse."""
     
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
             return ut.scale_M0_cosmology(
@@ -1008,7 +1008,7 @@ class CCGen(TimeSeriesGen):
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self, n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
@@ -1078,11 +1078,11 @@ class SNIIplGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
 
@@ -1108,11 +1108,11 @@ class SNIIbGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
     def _init_registered_rate(self):
@@ -1203,11 +1203,11 @@ class SNIcGen(CCGen):
                 }
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
 

@@ -333,7 +333,7 @@ class TimeSeries(AstrObj):
     | ├── sigM, sigma of coherent scattering
     | └── used model parameters
     """
-    _obj_attrs = ['amplitude', 'mb', 'coh_sct']
+    _obj_attrs = ['M0','amplitude', 'mb', 'coh_sct']
 
     def _set_model_par(self, model):
         """Extract and compute SN parameters that depends on used model.
