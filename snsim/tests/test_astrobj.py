@@ -21,24 +21,23 @@ class TestSNIa:
         # Params dic
         sim_par = {
             'zcos': zcos,
-            'z2cmb': 0.0,
+            'zpcmb': 0.0,
             'como_dist': cosmo.comoving_distance(zcos).value,
             'vpec': 300,
             't0': 0,#simulated peak time of the event
             'ra': coords[0],
             'dec': coords[1],
-            'mag_sct': 0.0,
+            'coh_sct': 0.0,
             'x1':1, 
             'c':0.1,
             'M0': -19.3,
             'alpha': 0.14,
             'beta': 3.1,
-            'mod_fcov': False          
+            'model_name': 'salt2',
+            'model_version': '2.4'         
             }
-
-        source = snc.get_source('salt2', version='2.4')
         
-        self.SNIa_Tripp = sn_astrobj.SNIa(source, {'relation': 'SALTTripp', **sim_par})
+        self.SNIa_Tripp = sn_astrobj.SNIa(sim_par, relation='SALTTripp')
         
         self.obs = pd.DataFrame({
             'time': [-10, 0, 20, 50],
@@ -57,7 +56,7 @@ class TestSNIa:
         assert(self.SNIa_Tripp.mb == mb)
     
     def test_genflux(self):
-        lcs = self.SNIa_Tripp.gen_flux(self.obs, seed=1234)
+        lcs = self.SNIa_Tripp.gen_flux(self.obs, seed=1234, mod_fcov=False)
         print(lcs)
         test = {
                 'fluxtrue': np.array([15425.39490416, 28576.9759029 , 15492.50307286,  4990.21114817]),

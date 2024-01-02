@@ -270,7 +270,7 @@ def asym_gauss(mu, sig_low, sig_high=None, seed=None, size=1):
     return asym_dist.draw(size, seed=seed)
 
 
-def compute_z2cmb(ra, dec, cmb):
+def compute_zpcmb(ra, dec, cmb):
     """Compute the redshifts of a list of objects relative to the CMB.
 
     Parameters
@@ -420,7 +420,7 @@ def flux_to_Jansky(zp, band):
     return norm
 
 def zobs_MinT_MaxT(par, model_t_range):
-    zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
+    zobs = (1. + par['zcos']) * (1. + par['zpcmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
     MinT = par['sim_t0'] + model_t_range[0] * (1. + zobs)
     MaxT = par['sim_t0'] + model_t_range[1] * (1. + zobs)
     return zobs, MinT, MaxT

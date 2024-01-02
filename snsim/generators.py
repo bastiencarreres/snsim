@@ -3,6 +3,7 @@ import abc
 import numpy as np
 import pandas as pd
 import copy
+import time
 import geopandas as gpd
 import sncosmo as snc
 from inspect import getsource
@@ -60,8 +61,6 @@ class BaseGen(abc.ABC):
     # General attributes
     _available_models = []  # Flux models
     _available_rates = {}  # Rate models
-    _general_default_values = {'mod_fcov': False}
-    _default_values = {}
     
     def __init__(self, params, cosmology, time_range, z_range=None,
                 vpec_dist=None, host=None, mw_dust=None, cmb=None, geometry=None):
@@ -73,16 +72,6 @@ class BaseGen(abc.ABC):
         self._params = copy.copy(params)    
         self._cosmology = cosmology
         self._time_range = time_range
-
-        self._default_values = {
-            **self._default_values,
-            **self._general_default_values
-            }
-
-        # -- Check defaults:
-        for k in self._default_values:
-            if k not in self._params:
-                self._params[k] = self._default_values[k]
 
         # -- At least one mandatory
         if vpec_dist is not None and host is None:
@@ -113,8 +102,9 @@ class BaseGen(abc.ABC):
         self._geometry = geometry
         self.rate, self._rate_expr = self._init_rate()
 
-        # -- Init sncosmo model
-        self.sim_source, self._source_prange = self._init_snc_source()
+        # -- Init sncosmo model & effects
+        self.sim_sources, self._sources_prange = self._init_snc_sources()
+        self.sim_effects = self._init_snc_effects()
         
         # -- Init redshift distribution
         self._z_dist, self._z_time_rate = self._compute_zcdf()
@@ -127,7 +117,7 @@ class BaseGen(abc.ABC):
         #     t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
         #     self._time_range = (t0, t1)
 
-    def __call__(self, n_obj=None, seed=None, basic_par=None):
+    def __call__(self, n_obj=None, seed=None, basic_par=None, use_dask=False):
         """Launch the simulation of obj.
 
         Parameters
@@ -145,34 +135,40 @@ class BaseGen(abc.ABC):
             A list containing Astro Object.
         """
 
-        # -- Initialise 4 seeds for differents generation calls
-        seeds = ut.gen_rndchilds(seed, 4)
+        # -- Initialise 3 seeds for differents generation calls
+        seeds = ut.gen_rndchilds(seed, 3)
 
         if basic_par is not None:
-            n_obj = len(basic_par)
+            n_obj = len(basic_par['zcos'])
         elif n_obj is not None:
             basic_par = self.gen_basic_par(n_obj, seed=seeds[0])
         else:
             raise ValueError('n_obj and astrobj_par cannot be None at the same time')
 
         # -- Add parameters specific to the generated obj
-        obj_par = self.gen_par(n_obj, basic_par, seed=seeds[2])
+        obj_par = self.gen_par(n_obj, basic_par, seed=seeds[1])
 
         # -- randomly chose the number of object for each model
-        random_models = self.random_models(n_obj, seed=seed[3])
-
+        random_models = self.random_models(n_obj, seed=seeds[2])
+    
         # -- Check if there is dust
         if self.mw_dust is not None:
             dust_par = self._compute_dust_par(basic_par['ra'], basic_par['dec'])
         else:
             dust_par = {}
         
+        par = {**basic_par, **random_models, **obj_par, **dust_par}
+
+        if 'relation' not in self._params:
+            relation = None
+        else:
+            relation = self._params['relation']
         
-        return [self._astrobj_class(mod,
-                                    sp,
-                                    effects=eff)
-                                    #self._general_par)
-                for k, snp in zip(random_models, par_list)]
+        # TODO - BC: Dask that part or vectorize it for more efficiency
+        return [self._astrobj_class({k: par[k][idx] for k in par.keys()},
+                                   effects=self.sim_effects,
+                                   relation=relation)
+               for idx in range(n_obj)]
 
     def _init_registered_rate(self):
         """SNII rates registry."""
@@ -195,28 +191,6 @@ class BaseGen(abc.ABC):
         """
         pass
     
-    def _init_source_list(self):
-        """ """
-        return [self._params['model_name']]
-        
-    def _init_snc_source(self):
-        if self._params['model_name'] not in self._available_models:
-            raise ValueError(f"{self._params['model_name']} is not available")
-        
-        source = {'model_name': self._init_source_list()}
-        
-        if 'model_version' in self._params:
-            if not isinstance(self._params['model_version'], list):
-                source['model_version'] = [self._params['model_version']]
-        else:
-            source['model_version'] = [None] * len(source['model_name'])
-        
-        sources = [snc.get_source(name=n, version=v) for n, v in zip(source['model_name'], source['model_version'])] 
-        maxphase = np.max([s.maxphase() for s in sources])
-        minphase = np.min([s.minphase() for s in sources])
-    
-        return source, (minphase, maxphase)
-
     def _update_header(self, header):
         """Method to add information in header,
         called in _get_header
@@ -231,10 +205,44 @@ class BaseGen(abc.ABC):
     def _add_print(self):
         """Method to print something in print_config."""
         pass
+    
+    def _init_snc_effects(self):
+        effects = []
+        # -- MW dust
+        if self.mw_dust is not None:
+            effects.append(dst_ut.init_mw_dust(self.mw_dust))
+        effects += self._add_effects()
+        return effects
+        
+    # TODO - BC : rename this function
+    def _init_source_list(self):
+        """ """
+        return [self._params['model_name']]
+        
+    def _init_snc_sources(self):
+        # -- Check existance of the model
+        if self._params['model_name'] not in self._available_models:
+            raise ValueError(f"{self._params['model_name']} is not available")
+        
+        source = {'model_name': self._init_source_list()}
+        
+        if 'model_version' in self._params:
+            if not isinstance(self._params['model_version'], list):
+                source['model_version'] = [self._params['model_version']]
+        else:
+            source['model_version'] = [None] * len(source['model_name'])
+        
+        # -- Compute max, min phase
+        sources = [snc.get_source(name=n, version=v) for n, v in zip(source['model_name'], source['model_version'])] 
+        source['model_version'] = [s.version for s in sources]
+        maxphase = np.max([s.maxphase() for s in sources])
+        minphase = np.min([s.minphase() for s in sources])
+        
+
+        return source, (minphase, maxphase)
 
     def _init_rate(self):
         """Initialise rate in obj/Mpc^-3/year
-        
         Returns
         -------
             lambda funtion, str
@@ -261,20 +269,6 @@ class BaseGen(abc.ABC):
         else:
             expr = 'lambda z: 3e-5'
         return eval(expr), expr.strip()
-
-    def _init_general_par(self):
-        """Init general parameters."""
-        if self.mw_dust is not None:
-            self._general_par['mw_dust'] = self.mw_dust
-        # for model in self.sim_model.values():
-        #     if not hasattr(model, 'bandfluxcov'):
-        #         raise ValueError('This sncosmo model has no flux covariance available')
-                
-        if 'mod_fcov' in self._params:
-            self._general_par['mod_fcov'] = self._params['mod_fcov']
-        else:
-            self._general_par['mod_fcov'] = False
-        #self._update_general_par()
 
     def gen_peak_time(self, n, seed=None):
         """Generate uniformly n peak time in the survey time range.
@@ -402,7 +396,7 @@ class BaseGen(abc.ABC):
             * dec : Declinaison
             * vpec : peculiar velocity
             * como_dist : comoving distance
-            * z2cmb : CMB dipole redshift contribution
+            * zpcmb : CMB dipole redshift contribution
             * mw_ebv, opt : Milky way dust extinction
         """
         # -- Generate seeds for random calls
@@ -436,7 +430,7 @@ class BaseGen(abc.ABC):
         basic_par = {
             'zcos': zcos,
             'como_dist': self.cosmology.comoving_distance(zcos).value,
-            'z2cmb': ut.compute_z2cmb(ra, dec, self.cmb),
+            'zpcmb': ut.compute_zpcmb(ra, dec, self.cmb),
             't0': t0,
             'ra': ra,
             'dec': dec,
@@ -446,23 +440,21 @@ class BaseGen(abc.ABC):
             _1_zobs_ = (1 + basic_par['zcos']) 
             _1_zobs_ *= (1 + basic_par['z2cmb']) 
             _1_zobs_ *= (1 + basic_par['vpec'] / C_LIGHT_KMS)    
-            astrobj_par['min_t'] = astrobj_par['t0'] + self.snc_model_time[0] * _1_zobs_
-            astrobj_par['max_t'] = astrobj_par['t0'] + self.snc_model_time[1] * _1_zobs_
-            astrobj_par['1_zobs'] = _1_zobs_
+            basic_par['min_t'] = basic_par['t0'] + self.snc_model_time[0] * _1_zobs_
+            basic_par['max_t'] = basic_par['t0'] + self.snc_model_time[1] * _1_zobs_
+            basic_par['1_zobs'] = _1_zobs_
 
-        return pd.DataFrame(basic_par)
+        return basic_par
     
     def random_models(self, n_obj, seed=None):
         rand_gen = np.random.default_rng(seed)
 
-        idx = rand_gen.integers(low=0, high=len(self.sim_source['model_name']), size=n_obj)
+        idx = rand_gen.integers(low=0, high=len(self.sim_sources['model_name']), size=n_obj)
         random_models = {
-            'name': np.array(self.sim_source['model_name'])[idx],
-            'version': np.array(self.sim_source['model_version'])[idx]}
-        
+            'model_name': np.array(self.sim_sources['model_name'])[idx],
+            'model_version': np.array(self.sim_sources['model_version'])[idx]}
         return random_models
         
-    
     def _compute_zcdf(self):
         """Give the time rate SN/years in redshift shell.
 
@@ -515,7 +507,7 @@ class BaseGen(abc.ABC):
                 rv_val = self.mw_dust['r_v']
             else:
                 rv_val = 3.1
-            dust_par['r_v'] = np.ones(len(ra)) * rv_val
+            dust_par['mw_r_v'] = np.ones(len(ra)) * rv_val
         return dust_par
     
     def __str__(self):
@@ -552,10 +544,10 @@ class BaseGen(abc.ABC):
         
         str += self._add_print() + '\n\n'
 
-        if self._params['mod_fcov']:
-            str += "Model FUX COV ON"
-        else:
-            str += "Model FLUX COV OFF"
+        # if self._params['mod_fcov']:
+        #     str += "Model FUX COV ON"
+        # else:
+        #     str += "Model FLUX COV OFF"
         return str
 
     def _get_header(self):
@@ -569,11 +561,10 @@ class BaseGen(abc.ABC):
         header = {
                 'obj_type': self._object_type,
                 'rate': self._rate_expr,
-                'model_name': [model.source.name 
-                            for model in self.sim_model.values()]
+                **self.sim_sources
                 }
 
-        header = {**header, **self._general_par}
+        header = {**header}
     
         if self.vpec_dist is not None:
             header['m_vp'] = self.vpec_dist['mean_vpec']
@@ -581,13 +572,6 @@ class BaseGen(abc.ABC):
 
         self._update_header(header)
         return header
-
-    @property
-    def snc_model_time(self):
-        """Get the sncosmo model mintime and maxtime."""
-        maxtime = np.max([model.maxtime() for model in self.sim_model.values()])
-        mintime = np.min([model.mintime() for model in self.sim_model.values()])
-        return mintime, maxtime
 
     @property
     def host(self):
@@ -670,9 +654,6 @@ class SNIaGen(BaseGen):
         'ptf19_pw': 'lambda z:  2.35e-5 * ({h}/0.70)**3 * (1 + z)**1.7' # Rate from https://arxiv.org/abs/1903.08580
         }
     
-    # TODO - BC: see if it is usefull
-    _default_values = {}
-    
     SNIA_M0 = {
             'jla': -19.05  # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
             }
@@ -681,7 +662,6 @@ class SNIaGen(BaseGen):
         """Initialise absolute magnitude."""
         if isinstance(self._params['M0'], (float, np.floating, int, np.integer)):
             return self._params['M0']
-
         elif self._params['M0'].lower() in self.SNIA_M0:
             return ut.scale_M0_cosmology(
                 self.cosmology.h, 
@@ -690,25 +670,33 @@ class SNIaGen(BaseGen):
         else: 
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self.SNIA_M0.keys()}")  
 
-    # def _init_snc_source(self):
-    #     # TODO - BC: Not very usefull, maybe has to be reimplemented later
-    #     # if 'model_dir' in self._params:
-    #     #     model_dir = self._params['model_dir']
-    #     # else:
-    #     #     model_dir = None
-    #     if 'model_version' in self._params:
-    #         model_version = self._params['model_version']
-    #     else:
-    #         model_version = None
-    #     return snc.get_source(name=self._params['model_name'], version=model_version)
-
     def _add_print(self):
         str = ''
         if 'sct_model' in self._params:
             str += ("\nUse intrinsic scattering model : "
                     f"{self._params['sct_model']}")
         return str
-
+    
+    def _add_effects(self):
+        effects = []
+        if self._params['sct_model'] == 'G10':
+            if (len(self.sim_sources['model_name']) > 1 
+                or  self.sim_sources['model_name'][0] not in ['salt2', 'salt3']):
+                raise ValueError('G10 cannot be used')
+            effects.append({
+                'source': sct.G10(snc.get_source(
+                    name=self.sim_sources['model_name'][0],
+                    version=self.sim_sources['model_version'][0])),
+                'frame': 'rest',
+                'name': 'G10_'
+                })
+        elif self._params['sct_model'] in ['C11_0', 'C11_1', 'C11_2']:
+            effects.append({'source': sct.C11(),
+                            'frame': 'rest',
+                            'name': 'C11_'
+                            })
+        return effects
+        
     def _update_header(self, header):
         model_name = self._params['model_name']
         header['M0_band'] = 'bessell_b'
@@ -716,7 +704,7 @@ class SNIaGen(BaseGen):
             if isinstance(self._params['dist_x1'], str):
                 header['dist_x1'] = self._params['dist_x1']
             else:
-                header['mean_x1'] = self._params['dist_x1'][0]
+                header['peak_x1'] = self._params['dist_x1'][0]
                 if len(self._params['dist_x1']) == 3:
                     header['dist_x1'] = 'asym_gauss'
                     header['sig_x1_low'] = self._params['dist_x1'][1]
@@ -725,7 +713,7 @@ class SNIaGen(BaseGen):
                     header['dist_x1'] = 'gauss'
                     header['sig_x1'] = self._params['dist_x1'][1]
 
-            header['mean_c'] = self._params['dist_c'][0]
+            header['peak_c'] = self._params['dist_c'][0]
 
             if len(self._params['dist_c']) == 3:
                 header['dist_c'] = 'asym_gauss'
@@ -735,41 +723,20 @@ class SNIaGen(BaseGen):
                 header['dist_c'] = 'gauss'
                 header['sig_c'] = self._params['dist_c'][1]
 
-        if 'sct_model' in self._params:
-            header['sct_mod'] = self._params['sct_model']
-            if self._params['sct_model'].lower() == 'g10':
-                params = ['G10_L0', 'G10_F0', 'G10_F1', 'G10_dL']
-                for par in params:
-                    pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
-                    header[par] = self.sim_model[0].parameters[pos][0]
-            elif self._params['sct_model'].lower() == 'c11':
-                params = ['C11_Cuu', 'C11_Sc']
-                for par in params:
-                    pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
-                    header[par] = self.sim_model[0].parameters[pos][0]
+        # if 'sct_model' in self._params:
+        #     header['sct_mod'] = self._params['sct_model']
+        #     if self._params['sct_model'].lower() == 'g10':
+        #         params = ['G10_L0', 'G10_F0', 'G10_F1', 'G10_dL']
+        #         for par in params:
+        #             pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
+        #             header[par] = self.sim_model[0].parameters[pos][0]
+        #     elif self._params['sct_model'].lower() in ['c11_0', 'c11_1', 'c11_2']:
+        #         params = ['C11_Cuu', 'C11_Sc']
+        #         for par in params:
+        #             pos = np.where(np.array(self.sim_model[0].param_names) == par)[0]
+        #             header[par] = self.sim_model[0].parameters[pos][0]
 
-    def gen_coh_scatter(self, n_sn, seed=None):
-        """Generate n coherent mag scattering term.
-
-        Parameters
-        ----------
-        n : int
-            Number of mag scattering terms to generate.
-        seed : int, optional
-            Random seed.
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            numpy array containing scattering terms generated.
-
-        """
-        rand_gen = np.random.default_rng(seed)
-
-        mag_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
-        return mag_sct
-
-    def gen_par(self, n_obj, astrobj_par, seed=None):
+    def gen_par(self, n_obj, basic_par, seed=None):
         """Generate SNIa specific parameters.
 
         Parameters
@@ -777,8 +744,7 @@ class SNIaGen(BaseGen):
         n_obj : int
             Number of parameters to generate.
         seed : int, optional
-            Random seed
-            .
+            Random seed.
 
         Returns
         -------
@@ -788,16 +754,19 @@ class SNIaGen(BaseGen):
         """
         seeds = ut.gen_rndchilds(seed=seed, size=3)
         
-        self.gen_coh_scatter(n_obj, seed=seeds[0])
+        params = {
+            'M0': np.ones(n_obj) * self._init_M0(), 
+            'coh_sct': self.gen_coh_scatter(n_obj, seed=seeds[0])}
+        
         # -- Spectra model parameters
         model_name = self._params['model_name']
 
         if model_name in ('salt2', 'salt3'):
-            sim_x1, sim_c = self.gen_salt_par(
+            sim_x1, sim_c, alpha, beta = self.gen_salt_par(
                 n_obj,
                 seeds[1],
-                z=astrobj_par['zcos'])
-            params = {'x1': sim_x1, 'c': sim_c}
+                z=basic_par['zcos'])
+            params = {**params, 'x1': sim_x1, 'c': sim_c, 'alpha': alpha, 'beta': beta}
 
         # -- Non-coherent scattering effects
         if 'sct_model' in self._params:
@@ -823,20 +792,56 @@ class SNIaGen(BaseGen):
             2 numpy arrays containing SALT2 x1 and c generated parameters.
 
         """
-        seeds = ut.gen_rndchilds(seed=seed, size=2)
+        seeds = ut.gen_rndchilds(seed=seed, size=4)
 
         if isinstance(self._params['dist_x1'], str):
             if self._params['dist_x1'].lower() == 'n21':
                 sim_x1 = salt_ut.n21_x1_model(z, seed=seeds[0])
-        else:
+        elif isinstance(self._params['dist_x1'], list):
             sim_x1 = ut.asym_gauss(*self._params['dist_x1'],
-                                   seed=seeds[0],
-                                   size=n_sn)
+                                    seed=seeds[0],
+                                    size=n_sn)
 
         sim_c = ut.asym_gauss(*self._params['dist_c'],
-                              seed=seeds[1],
-                              size=n_sn)
-        return sim_x1, sim_c
+                                seed=seeds[1],
+                                size=n_sn)
+        
+        # -- Alpha dist
+        if isinstance(self._params['alpha'], float):
+            alpha = np.ones(n_sn) * self._params['alpha']
+        elif isinstance(self._params['alpha'], list):
+            alpha = ut.asym_gauss(*self._params['alpha'],
+                                seed=seeds[2],
+                                size=n_sn)
+        # -- Beta dist
+        if isinstance(self._params['beta'], float):
+            beta = np.ones(n_sn) * self._params['beta']
+        elif isinstance(self._params['alpha'], list):
+            beta = ut.asym_gauss(*self._params['beta'],
+                                seed=seeds[2],
+                                size=n_sn)
+        return sim_x1, sim_c, alpha, beta
+    
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Generate n coherent mag scattering term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag scattering terms to generate.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array containing scattering terms generated.
+
+        """
+        rand_gen = np.random.default_rng(seed)
+
+        coh_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
+        return coh_sct
 
 
 
@@ -909,25 +914,10 @@ class TimeSeriesGen(BaseGen):
             sources = [self._params['model_name']]
         return sources
 
-    def _update_general_par(self):
-        """Initialise the general parameters, depends on the SN simulation model.
-
-        Returns
-        -------
-        list
-            A dict containing all the usefull keys of the SN model.
-        """
-
-        self._general_par['M0'] = self._init_M0()
-        self._general_par['sigM'] = self._params['sigM']
-       
-        return
-
-    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+    def _update_astrobj_par(self, n_obj, basic_par, seed=None):
         # -- Generate coherent mag scattering
-        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
+        astrobj_par['coh_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
 
-   
     def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
 
@@ -1008,17 +998,17 @@ class CCGen(TimeSeriesGen):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
             return ut.asym_gauss(mu=0,
-                    sig_low=self._sn_lumfunc['mag_sct']['li11_gaussian'][0],
-                    sig_high=self._sn_lumfunc['mag_sct']['li11_gaussian'][1],
+                    sig_low=self._sn_lumfunc['coh_sct']['li11_gaussian'][0],
+                    sig_high=self._sn_lumfunc['coh_sct']['li11_gaussian'][1],
                     seed=seed, size=n_sn) 
             
         elif self._params['sigM'].lower() == 'li11_skewed':
             return ut.asym_gauss(mu=0,
-                    sig_low=self._sn_lumfunc['mag_sct']['li11_skewed'][0],
-                    sig_high=self._sn_lumfunc['mag_sct']['li11_skewed'][1],
+                    sig_low=self._sn_lumfunc['coh_sct']['li11_skewed'][0],
+                    sig_high=self._sn_lumfunc['coh_sct']['li11_skewed'][1],
                     seed=seed, size=n_sn)
         else:
-            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['mag_scatter'].keys()} ")
+            raise ValueError(f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['coh_scatter'].keys()} ")
     
     
 class SNIIGen(CCGen):
@@ -1064,7 +1054,7 @@ class SNIIplGen(CCGen):
 
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -15.97, 'li11_skewed': -17.51},
-                    'mag_sct': {'li11_gaussian': [1.31, 1.31], 'li11_skewed': [2.01, 3.18]}
+                    'coh_sct': {'li11_gaussian': [1.31, 1.31], 'li11_skewed': [2.01, 3.18]}
                 }
 
     _sn_fraction={
@@ -1094,7 +1084,7 @@ class SNIIbGen(CCGen):
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.69, 'li11_skewed': -18.30},
-                    'mag_sct': {'li11_gaussian': [1.38, 1.38], 'li11_skewed': [2.03, 7.40]}
+                    'coh_sct': {'li11_gaussian': [1.38, 1.38], 'li11_skewed': [2.03, 7.40]}
                 }
 
     _sn_fraction={
@@ -1131,7 +1121,7 @@ class SNIInGen(CCGen):
 
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -17.90, 'li11_skewed': -19.13},
-                    'mag_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed' :[1.53, 6.83]}
+                    'coh_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed' :[1.53, 6.83]}
                 }
 
     _sn_fraction={
@@ -1190,7 +1180,7 @@ class SNIcGen(CCGen):
     _available_models =ut.Templatelist_fromsncosmo('snic')
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.75, 'li11_skewed': -17.51},
-                    'mag_sct': {'li11_gaussian': [0.97, 0.97], 'li11_skewed': [1.24, 1.22]}
+                    'coh_sct': {'li11_gaussian': [0.97, 0.97], 'li11_skewed': [1.24, 1.22]}
                 }
 
     _sn_fraction={
@@ -1217,7 +1207,7 @@ class SNIbGen(CCGen):
     _available_models =ut.Templatelist_fromsncosmo('snib')
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.07, 'li11_skewed': -17.71},
-                    'mag_sct': {'li11_gaussian': [1.34, 1.34], 'li11_skewed': [2.11, 7.15]}
+                    'coh_sct': {'li11_gaussian': [1.34, 1.34], 'li11_skewed': [2.11, 7.15]}
                  }
 
     _sn_fraction={
@@ -1245,7 +1235,7 @@ class SNIc_BLGen(CCGen):
     _available_models =ut.Templatelist_fromsncosmo('snic-bl')
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.79, 'li11_skewed': -17.74},
-                    'mag_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed': [1.35, 2.06]}
+                    'coh_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed': [1.35, 2.06]}
                 }
 
     _sn_fraction={
@@ -1340,7 +1330,7 @@ class SNIa_peculiar(BaseGen):
 
     def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
         # -- Generate coherent mag scattering
-        astrobj_par['mag_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
+        astrobj_par['coh_sct'] = self.gen_coh_scatter(n_obj, seed=seed)
 
    
     def gen_coh_scatter(self, n_sn, seed=None):

@@ -32,48 +32,46 @@ class AstrObj(abc.ABC):
     """
 
     _type = ''
-    _base_attrs = ['ID', 'ra', 'dec', 'zcos', 'vpec', 'zpcmb', 'como_dist', 'template']
+    _base_attrs = [
+        'ID', 'ra', 'dec', 'zcos',
+        'vpec', 'zpcmb', 'como_dist', 
+        'model_name', 'model_version'
+        ]
     
     _obj_attrs = ['']
     _available_models = ['']
-
-    def __init__(self, source, sim_par, effects=[]):
+    
+    def __init__(self, sim_par, relation=None, effects=[]):
         
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
         
+        self._relation = relation
+
         if 'ID' not in self._sim_par:
             self._sim_par['ID'] = 0
         
-        # -- Add template name
-        if source.name not in self._available_models:
-            raise ValueError(f'{source.name} not available.')
-        self._sim_par['template'] = source.name
+        # -- Check model name
+        if self.sim_par['model_name'] not in self._available_models:
+            raise ValueError(f"{self.sim_par['model_name']} not available.")
         
         # -- Update attrs
         for k in self._base_attrs:
             setattr(self, k, self._sim_par[k])
 
         # -- sncosmo model
-        self._sim_model = self._init_model(source, effects)
+        self._sim_model = self._init_model(effects)
         
         # -- Update attr of astrobj class
         for k in self._obj_attrs:
             setattr(self, k, self._sim_par[k])
-        
-        #self._check_keys()
-        
-    def _check_keys(self):
-        for k in self.sim_model.param_names:
-            if (k!='z') & (k not in self.sim_par):
-                print(f'{k} is not in sim_par, it will be set to default value')   
     
     @abc.abstractmethod
     def _set_model_par(self, model):
         """This method set model parameters that are not t0 or z."""
         pass
-        
-    def _init_model(self, source, effects):
+    
+    def _init_model(self, effects):
         """Initialise sncosmo model using the good source.
 
         Returns
@@ -83,9 +81,20 @@ class AstrObj(abc.ABC):
             SN simulation model.
 
         """
+        if 'model_version' not in self._sim_par:
+            version = None
+        else:
+            version = self._sim_par['model_version']
+            
+        snc_source = snc.get_source(
+            name=self._sim_par['model_name'], 
+            version=version)
+        
+        if 'model_version' not in self._sim_par:
+            self._sim_par['model_version'] = snc_source.version
 
         model = snc.Model(
-            source=source,
+            source=snc_source,
             effects=[eff['source'] for eff in effects],
             effect_names=[eff['name'] for eff in effects],
             effect_frames=[eff['frame'] for eff in effects])
@@ -102,16 +111,8 @@ class AstrObj(abc.ABC):
         model = self._set_model_par(model)
 
         return model
-        
-    # def _init_dust(self):
-    #     """Initialise dust."""
-    #     if self._sim_par['mw'] is not None:
-    #         if 'rv' not in self.mw_dust:
-    #             self.mw_dust['rv'] = 3.1
-    #         for model in self.sim_model.values():
-    #             dst_ut.init_mw_dust(model, self.mw_dust)
 
-    def gen_flux(self, obs, seed=None):
+    def gen_flux(self, obs, mod_fcov=False, seed=None):
         """Generate the obj lightcurve.
 
         Parameters
@@ -132,10 +133,15 @@ class AstrObj(abc.ABC):
         else:
             random_seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=2)
 
+        # -- Check for fcov
+        if mod_fcov:
+            if not hasattr(self.sim_model, 'bandfluxcov'):
+                raise ValueError('This sncosmo model has no flux covariance available')
+                    
         # mask to delete observed points outside time range of the model
         obs = obs[(obs['time']  > self.sim_model.mintime()) & (obs['time'] < self.sim_model.maxtime())]
 
-        if self._sim_par['mod_fcov']:
+        if mod_fcov:
             # -- Implement the flux variation due to simulation model covariance
             gen = np.random.default_rng(random_seeds[0])
             fluxtrue, fluxcov = self.sim_model.bandfluxcov(
@@ -250,7 +256,7 @@ class SNIa(AstrObj):
     sim_par : dict
         Parameters of the SN.
     | same as AstrObj parameters
-    | └── mag_sct, coherent mag scattering.
+    | └── coh_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
 
@@ -261,7 +267,7 @@ class SNIa(AstrObj):
     """
     _type = 'snIa'
     _available_models = ['salt2', 'salt3']
-    _obj_attrs = ['M0', 'mb', 'mag_sct']
+    _obj_attrs = ['M0', 'mb', 'coh_sct']
 
     def _set_model_par(self, model):
         """Set SN Ia parameters to sncosmo model.
@@ -270,9 +276,12 @@ class SNIa(AstrObj):
         -----
         Set attributes dependant on SN model
         """
-        M0 = self._sim_par['M0'] + self._sim_par['mag_sct']
+        M0 = self._sim_par['M0'] + self._sim_par['coh_sct']
         
-        if self._sim_par['relation'].lower() == 'salttripp':
+        if self._relation is None:
+            self._relation = 'salttripp'
+        
+        if self._relation.lower() == 'salttripp':
             if model.source.name not in ['salt2', 'salt3']:
                 raise ValueError('SALTTripp only available for salt2 & salt3 models')
             
@@ -313,7 +322,7 @@ class TimeSeries(AstrObj):
         Parameters of the object.
 
     | same as AstrObj parameters
-    | └── mag_sct, coherent mag scattering.
+    | └── coh_sct, coherent mag scattering.
     sim_model : sncosmo.Model
         sncosmo Model to use.
     model_par : dict
@@ -324,7 +333,7 @@ class TimeSeries(AstrObj):
     | ├── sigM, sigma of coherent scattering
     | └── used model parameters
     """
-    _obj_attrs = ['amplitude', 'mb', 'mag_sct']
+    _obj_attrs = ['amplitude', 'mb', 'coh_sct']
 
     def _set_model_par(self, model):
         """Extract and compute SN parameters that depends on used model.
@@ -336,7 +345,7 @@ class TimeSeries(AstrObj):
             - amplitude -> self.sim_amplitude
             - Template -> self._params['template']  SED template used
         """
-        M0 = self._sim_par['M0'] + self._sim_par['mag_sct']
+        M0 = self._sim_par['M0'] + self._sim_par['coh_sct']
 
         m_r = self.mu + M0
             
