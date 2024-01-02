@@ -35,8 +35,7 @@ class AstrObj(abc.ABC):
     _base_attrs = [
         'ID', 'ra', 'dec', 'zcos',
         'vpec', 'zpcmb', 'como_dist', 
-        'model_name', 'model_version'
-        ]
+        'model_name']
     
     _obj_attrs = ['']
     _available_models = ['']
@@ -63,7 +62,7 @@ class AstrObj(abc.ABC):
         self._sim_model = self._init_model(effects)
         
         # -- Update attr of astrobj class
-        for k in self._obj_attrs:
+        for k in [*self._obj_attrs, 'model_version']:
             setattr(self, k, self._sim_par[k])
     
     @abc.abstractmethod

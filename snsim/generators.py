@@ -785,10 +785,11 @@ class SNIaGen(BaseGen):
 
         # -- Non-coherent scattering effects
         if 'sct_model' in self._params:
+            randgen = np.random.default_rng(seeds[2])
             if self._params['sct_model'] == 'G10':
-                params['G10_RndS'] = np.array(seeds[2].spawn(n_obj))
+                params['G10_RndS'] = randgen.integers(1e12, size=n_obj)
             elif self._params['sct_model'] == 'C11':
-                params['G10_RndS'] = np.array(seeds[2].spawn(n_obj))
+                params['C11_RndS'] = randgen.integers(1e12, size=n_obj)
         return params
 
     def gen_salt_par(self, n_sn, seed=None, z=None):

@@ -30,21 +30,22 @@ class G10(snc.PropagationEffect):
     
     Implementation is done following arxiv:1209.2482."""
 
-    _param_names = ['L0', 'F0', 'F1', 'dL']
-    param_names_latex = [r'\lambda_0', 'F_0', 'F_1', 'd_L']
+    _param_names = ['L0', 'F0', 'F1', 'dL', 'RndS']
+    param_names_latex = [r'\lambda_0', 'F_0', 'F_1', 'd_L', 'RndS']
 
     def __init__(self, SALTsource):
         """Initialize G10 class."""
-        self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800])
+        self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800, np.random.randint(1e11)])
         self._colordisp = SALTsource._colordisp
         self._minwave = SALTsource.minwave()
         self._maxwave = SALTsource.maxwave()
-
-        self._seed = np.random.SeedSequence()
+        
+        
+        #self._seed = np.random.SeedSequence()
         
     def compute_sigma_nodes(self):
         """Computes the sigma nodes."""
-        L0, F0, F1, dL = self._parameters
+        L0, F0, F1, dL = self._parameters[:-1]
         lam_nodes = np.arange(self._minwave, self._maxwave, dL)
         if lam_nodes.max() < self._maxwave:
             lam_nodes = np.append(lam_nodes, self._maxwave)
@@ -58,8 +59,8 @@ class G10(snc.PropagationEffect):
     def propagate(self, wave, flux):
         """Propagate the effect to the flux."""# Draw the scattering
         lam_nodes, siglam_values = self.compute_sigma_nodes()
-        siglam_values *= np.random.default_rng(self._seed).normal(size=len(lam_nodes))
-        magscat = sine_interp(wave, lam_nodes, siglam_values)
+        siglam_values *= np.random.default_rng(int(self._parameters[-1])).normal(size=len(lam_nodes))
+        magscat = ut.sine_interp(wave, lam_nodes, siglam_values)
         return flux * 10**(-0.4 * magscat)
 
 
@@ -68,14 +69,14 @@ class C11(snc.PropagationEffect):
     Use COV matrix between the vUBVRI bands from N. Chottard thesis.
         Implementation is done following arxiv:1209.2482."""
 
-    _param_names = ["CvU", 'Sf']
-    param_names_latex = ["\rho_\mathrm{vU}", 'S_f']
+    _param_names = ["CvU", 'Sf', 'RndS']
+    param_names_latex = ["\rho_\mathrm{vU}", 'S_f', 'RndS']
     _minwave = 2000
     _maxwave = 11000
 
     def __init__(self):
         """Initialise C11 class."""
-        self._parameters = np.array([0., 1.3])
+        self._parameters = np.array([0., 1.3, np.random.randint(1e11)])
 
         # vUBVRI lambda eff
         self._lam_nodes = np.array([2500.0, 3560.0, 4390.0, 5490.0, 6545.0, 8045.0])
@@ -95,10 +96,10 @@ class C11(snc.PropagationEffect):
         # vUBVRI sigma
         self._variance = np.array([0.5900, 0.06001, 0.040034, 0.050014, 0.040017, 0.080007])
         
-        self._seed = np.random.SeedSequence()
+        #self._seed = np.random.SeedSequence()
 
     def build_cov(self):
-        CvU, Sf = self._parameters
+        CvU, Sf = self._parameters[:-1]
         
         cov_matrix = self._corr_matrix.copy()
         
@@ -120,8 +121,8 @@ class C11(snc.PropagationEffect):
         cov_matrix = self.build_cov()
         
         # Draw the scattering
-        siglam_values = np.random.default_rng(self._seed).multivariate_normal(np.zeros(len(self._lam_nodes)), 
-                                                                              cov_matrix)
+        siglam_values = np.random.default_rng(int(self._parameters[-1])).multivariate_normal(np.zeros(len(self._lam_nodes)), 
+                                                                                        cov_matrix)
 
         inf_mask = wave <= self._lam_nodes[0]
         sup_mask = wave >= self._lam_nodes[-1]
@@ -129,7 +130,7 @@ class C11(snc.PropagationEffect):
         magscat = np.zeros(len(wave))
         magscat[inf_mask] = siglam_values[0]
         magscat[sup_mask] = siglam_values[-1]
-        magscat[~inf_mask & ~sup_mask] = sine_interp(wave[~inf_mask & ~sup_mask], 
-                                                     self._lam_nodes, siglam_values)
+        magscat[~inf_mask & ~sup_mask] = ut.sine_interp(wave[~inf_mask & ~sup_mask], 
+                                                        self._lam_nodes, siglam_values)
         
         return flux * 10**(-0.4 * magscat)
