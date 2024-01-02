@@ -150,7 +150,7 @@ class BaseGen(abc.ABC):
 
         # -- Add parameters specific to the generated obj
         obj_par = self.gen_par(n_obj, basic_par, seed=seeds[1])
-
+        
         # -- randomly chose the number of object for each model
         random_models = self.random_models(n_obj, seed=seeds[2])
     
@@ -160,7 +160,9 @@ class BaseGen(abc.ABC):
         else:
             dust_par = {}
 
-        par = {**basic_par, **random_models, **obj_par, **dust_par}
+        par = pd.DataFrame({**random_models, **obj_par, **dust_par}, index=basic_par.index)
+
+        par = pd.concat([basic_par, par], axis=1)
 
         if 'relation' not in self._params:
             relation = None
@@ -168,10 +170,10 @@ class BaseGen(abc.ABC):
             relation = self._params['relation']
         
         # TODO - BC: Dask that part or vectorize it for more efficiency
-        return [self._astrobj_class({k: par[k][idx] for k in par.keys()},
+        return [self._astrobj_class(par_dic,
                                     effects=self.sim_effects,
                                     relation=relation)
-            for idx in range(n_obj)]
+            for par_dic in par.reset_index().to_dict(orient='records')]
 
     def __str__(self):
         """Print config."""
@@ -185,9 +187,12 @@ class BaseGen(abc.ABC):
             model_dir_str = " from sncosmo"
 
         str += 'OBJECT TYPE : ' + self._object_type + '\n'
-        str += f"SIM MODEL : {self._params['model_name']}" 
-        str += f" v{self._params['model_version']}" 
-        str += model_dir_str + '\n\n'
+        str += "SIM MODEL(S) :\n"
+        for sn, snv in zip(self.sim_sources['model_name'], self.sim_sources['model_version']):
+            str += f"- {sn}" 
+            str += f" v{snv}" 
+            str += model_dir_str + '\n'
+        str += '\n'
 
         str += ("Peak mintime : "
                 f"{self.time_range[0]:.2f} MJD\n\n"
@@ -519,7 +524,7 @@ class BaseGen(abc.ABC):
             size=n)
         return vpec
 
-    def gen_basic_par(self, n_obj, seed=None, min_max_t=False, use_dask=False):
+    def gen_basic_par(self, n_obj, seed=None, min_max_t=False):
         """Generate basic obj properties.
 
         Parameters
@@ -580,13 +585,13 @@ class BaseGen(abc.ABC):
 
         if min_max_t:
             _1_zobs_ = (1 + basic_par['zcos']) 
-            _1_zobs_ *= (1 + basic_par['z2cmb']) 
+            _1_zobs_ *= (1 + basic_par['zpcmb']) 
             _1_zobs_ *= (1 + basic_par['vpec'] / C_LIGHT_KMS)    
-            basic_par['min_t'] = basic_par['t0'] + self.snc_model_time[0] * _1_zobs_
-            basic_par['max_t'] = basic_par['t0'] + self.snc_model_time[1] * _1_zobs_
+            basic_par['min_t'] = basic_par['t0'] + self._sources_prange[0] * _1_zobs_
+            basic_par['max_t'] = basic_par['t0'] + self._sources_prange[1] * _1_zobs_
             basic_par['1_zobs'] = _1_zobs_
 
-        return basic_par
+        return pd.DataFrame(basic_par)
     
     def random_models(self, n_obj, seed=None):
         rand_gen = np.random.default_rng(seed)
@@ -858,7 +863,6 @@ class SNIaGen(BaseGen):
 
         coh_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
         return coh_sct
-
 
 
 class TimeSeriesGen(BaseGen):

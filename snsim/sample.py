@@ -37,7 +37,7 @@ class SimSample:
         self._model_dir = model_dir
         self._dir_path = dir_path
 
-        self._sim_model = self._init_sim_model()
+       # self._sim_model = self._init_sim_model()
 
         self._fit_model = None
         self._fit_res = None
@@ -75,9 +75,8 @@ class SimSample:
             A SimSample class with the simulated lcs.
 
         """
-        lcs = pd.concat(sim_lcs)
-        lcs.set_index(['ID'], append=True, inplace=True)
-        lcs = lcs.swaplevel()
+        IDs = (sim_lcs[i].attrs['ID'] for i in range(len(sim_lcs)))
+        lcs = pd.concat(sim_lcs,  keys=IDs, names=['ID'])
         lcs.attrs = {lc.attrs['ID']: lc.attrs for lc in sim_lcs}
         return cls(sample_name, lcs, header, model_dir=model_dir,
                    dir_path=dir_path)

@@ -55,7 +55,7 @@ class Simulator:
     |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
     | mw_dust:
     |     model: MOD_NAME
-    |     rv: Rv # Optional, default Rv = 3.1
+    |     r_v: Rv # Optional, default Rv = 3.1
     | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
     |     rate: rate of SN/Mpc^3/year # Optional, default=3e-5
@@ -144,6 +144,8 @@ class Simulator:
         # -- Init mw dust
         if 'mw_dust' in self.config:
             mw_dust = self.config['mw_dust']
+            if 'r_v' not in self.config['mw_dust']:
+                self.config['mw_dust']['r_v'] = 3.1
         else:
             mw_dust = None
 
@@ -166,7 +168,6 @@ class Simulator:
                     time_range,
                     cmb=self.cmb,
                     z_range=self.z_range,
-                    peak_out_trange=True,
                     vpec_dist=self.vpec_dist,
                     host=self.host,
                     mw_dust=mw_dust,
@@ -299,7 +300,7 @@ class Simulator:
         if 'mw_dust' in self.config:
             print(
                 "Use mw dust model : "
-                f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['rv']}")
+                f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['r_v']}")
 
             print('\n-----------------------------------------------------------\n')
 
@@ -324,15 +325,17 @@ class Simulator:
         # -- Simulation for each of the selected obj.
         for use_rate, gen in zip(self._use_rate, self.generators):
             sim_time = time.time()
+            seed = SeedSeq.spawn(1)[0]
             if use_rate:
-                lcs_list = self._cadence_sim(SeedSeq.spawn(1)[0], gen, Obj_ID)
+                lcs_list = self._cadence_sim(seed, gen, Obj_ID)
             else:
-                lcs_list = self._fix_nsn_sim(SeedSeq.spawn(1)[0], gen, Obj_ID)
-            
+                lcs_list = self._fix_nsn_sim(seed, gen, Obj_ID)
+
             self._samples.append(SimSample.fromDFlist(
                 self.sim_name + '_' + gen._object_type,
                 lcs_list,
-                {'seed': seed,
+                {'seed': seed.entropy,
+                 'seed_key': seed.spawn_key,
                 **gen._get_header(),
                 'cosmo': self._get_cosmo_header()},
                 model_dir=None,
@@ -384,26 +387,25 @@ class Simulator:
         lcs = []
 
         # -- Generate n base param
-        param_tmp = generator.gen_astrobj_par(n_obj, seeds[0], 
-                                              min_max_t=True)
-
-        # -- Set up obj parameters
-        model_t_range = (generator.snc_model_time[0], generator.snc_model_time[1])
+        param_tmp = generator.gen_basic_par(n_obj, seeds[0], 
+                                            min_max_t=True)
 
         # -- Select observations that pass all the cuts
-        epochs, params = self.survey.get_observations(param_tmp,
-                                                      phase_cut=model_t_range,
-                                                      nep_cut=self.nep_cut,
-                                                      IDmin=Obj_ID,
-                                                      use_dask=self.config['dask']['use'],
-                                                      npartitions=self.config['dask']['nworkers'])
+        epochs, params = self.survey.get_observations(
+            param_tmp,
+            phase_cut=None,
+            nep_cut=self.nep_cut,
+            IDmin=Obj_ID,
+            use_dask=self.config['dask']['use'],
+            npartitions=self.config['dask']['nworkers'])
         if params is None:
             raise RuntimeError('None of the object pass the cuts...')
-        
-        # -- Generate the object
-        obj_list = generator(seed=seeds[1],
-                             astrobj_par=params)
 
+        # -- Generate the object
+        obj_list = generator(
+            seed=seeds[1],
+            basic_par=params)
+                
         # -- TO DO: dask it when understanding the random pickel-sncosmo error
 
         # if self.config['dask']['use']:
@@ -415,7 +417,8 @@ class Simulator:
         #         lcs += dask.compute([dask.delayed(obj).gen_flux(epochs.loc[[obj.ID]])
         #                              for obj in obj_list[imin:imax]])[0]
         # else:
-        lcs = [obj.gen_flux(epochs.loc[[obj.ID]]) for obj in obj_list]
+        lcs = [obj.gen_flux(epochs.loc[obj.ID]) for obj in obj_list]
+
         return lcs
 
     def _cadence_sim(self, seed, generator, Obj_ID=0):
