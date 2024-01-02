@@ -170,7 +170,7 @@ class BaseGen(abc.ABC):
                                     relation=relation)
             for idx in range(n_obj)]
 
-        def __str__(self):
+    def __str__(self):
         """Print config."""
         str = ''
         
@@ -245,17 +245,15 @@ class BaseGen(abc.ABC):
             'frame': 'obs' or 'rest'
         }
         """
-        pass
+        return []
     
     def _add_print(self):
         """Method to print something in __str__."""
         pass
-
-    # TODO - BC : rename this function
-    def _init_source_list(self):
-        """ """
-        return [self._params['model_name']]
     
+    def _init_sources_list(self):
+        return [self._params['model_name']]
+
     ####################
     # COMMON FUNCTIONS #
     ####################
@@ -278,24 +276,32 @@ class BaseGen(abc.ABC):
         return effects
 
     def _init_snc_sources(self):
-        # -- Check existance of the model
-        if self._params['model_name'] not in self._available_models:
+        
+        # -- Check existence of the model
+        if (isinstance(self._params['model_name'], str) &
+            (self._params['model_name'] not in self._available_models)):
             raise ValueError(f"{self._params['model_name']} is not available")
+        elif isinstance(self._params['model_name'], list):
+            for s in self._params['model_name']:
+                if s not in self._available_models:
+                    raise ValueError(f"{s} is not available")
         
-        source = {'model_name': self._init_source_list()}
-        
+        sources = {'model_name': self._init_source_list()}
+                
         if 'model_version' in self._params:
             if not isinstance(self._params['model_version'], list):
-                source['model_version'] = [self._params['model_version']]
+                sources['model_version'] = [self._params['model_version']]
         else:
-            source['model_version'] = [None] * len(source['model_name'])
+            sources['model_version'] = [None] * len(sources['model_name'])
         
         # -- Compute max, min phase
-        sources = [snc.get_source(name=n, version=v) for n, v in zip(source['model_name'], source['model_version'])] 
-        source['model_version'] = [s.version for s in sources]
-        maxphase = np.max([s.maxphase() for s in sources])
-        minphase = np.min([s.minphase() for s in sources])
-        return source, (minphase, maxphase)
+        snc_sources = [snc.get_source(name=n, version=v) for n, v in zip(sources['model_name'],
+                                                                    sources['model_version'])] 
+
+        sources['model_version'] = [s.version for s in snc_sources]
+        maxphase = np.max([s.maxphase() for s in snc_sources])
+        minphase = np.min([s.minphase() for s in snc_sources])
+        return sources, (minphase, maxphase)
 
     def _init_rate(self):
         """Initialise rate in obj/Mpc^-3/year
@@ -399,7 +405,7 @@ class BaseGen(abc.ABC):
             header['m_vp'] = self.vpec_dist['mean_vpec']
             header['s_vp'] = self.vpec_dist['sig_vpec']
 
-        header = {**header, self._update_header()}
+        header = {**header, **self._update_header()}
         return header
     
     # -- RANDOM FUNCTIONS -- #
@@ -588,7 +594,6 @@ class BaseGen(abc.ABC):
             'model_version': np.array(self.sim_sources['model_version'])[idx]}
         return random_models
         
-
 
     @property
     def host(self):
@@ -910,15 +915,18 @@ class TimeSeriesGen(BaseGen):
             sncosmo.Model(source) object where source depends on the
             SN simulation model.
         """
-
-        if self._params['model_name'].lower() == 'all':
-            sources = self._available_models
-        elif self._params['model_name'].lower() == 'vinc_nocorr':
-            sources = ut.select_Vincenzi_template(self._available_models,corr=False)
-        elif self._params['model_name'].lower() == 'vinc_corr':
-            sources = ut.select_Vincenzi_template(self._available_models,corr=True)
+        if isinstance(self._params['model_name'], str):
+            if self._params['model_name'].lower() == 'all':
+                sources = self._available_models
+            elif self._params['model_name'].lower() == 'vinc_nocorr':
+                sources = ut.select_Vincenzi_template(self._available_models,corr=False)
+            elif self._params['model_name'].lower() == 'vinc_corr':
+                sources = ut.select_Vincenzi_template(self._available_models,corr=True)
+            else:
+                sources = [self._params['model_name']]
         else:
-            sources = [self._params['model_name']]
+            sources = self._params['model_name']
+        
         return sources
 
     def _update_astrobj_par(self, n_obj, basic_par, seed=None):
@@ -955,10 +963,8 @@ class TimeSeriesGen(BaseGen):
 
         else:
             return self.gen_coh_scatter_for_type(n_sn, seed)
-            
 
-    
-    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
+    def gen_par(self, n_obj, astrobj_par, seed=None):
         """Generate sncosmo model dependant parameters (others than redshift and t0).
         Parameters
         ----------
@@ -972,7 +978,6 @@ class TimeSeriesGen(BaseGen):
         dict
             One dictionnary containing 'parameters names': numpy.ndarray(float).
         """
-       
         return None
 
     def _add_print(self):
@@ -1321,7 +1326,6 @@ class SNIa_peculiar(BaseGen):
         model = {i :m for i, m in enumerate(model)}
         
         return model
-
 
     def _update_general_par(self):
         """Initialise the general parameters, depends on the SN simulation model.
