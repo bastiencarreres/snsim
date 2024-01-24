@@ -239,7 +239,7 @@ class Simulator:
         rng = np.random.default_rng(seed)
         nsn = duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate)
         nsn = int(np.round(nsn))
-        return rand_gen.poisson(nsn)
+        return np.max([rng.poisson(nsn), 1])
 
     def _get_cosmo_header(self):
         """Return the header for cosmology model used."""
