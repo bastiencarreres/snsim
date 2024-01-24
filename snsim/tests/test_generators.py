@@ -2,7 +2,7 @@ import snsim
 import sncosmo as snc
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_allclose, assert_approx_equal
+from numpy.testing import assert_allclose, assert_approx_equal, assert_array_almost_equal
 from snsim import generators as gen
 
 
@@ -64,12 +64,25 @@ class TestGenerators:
             vpec_dist=self.vpec_dist)
             
         assert_approx_equal(Gen_str_rate.rate(2), 1e-5 * 2)
-        assert_approx_equal(Gen_lambda_rate.rate(2), 1e-5 * 2)
+        (Gen_lambda_rate.rate(2), 1e-5 * 2)
         assert_approx_equal(Gen_register_rate.rate(2), 1e-5 * 2 * (self.cosmo.h / 0.70)**3)
-
-        
     
-
+    def test_zcdf(self):
+        Gen_str_rate =  FakeGen(
+            {**self.config, 'rate': 'lambda z: 1e-5'},
+            self.cosmo,
+            self.time_range,
+            z_range=self.z_range,
+            vpec_dist=self.vpec_dist)
+        
+        test_array = np.array([
+            3.45704207e-03, 4.10371336e-01, 1.46706705e+00, 3.13588799e+00,
+            5.38069438e+00, 8.16680786e+00, 1.14609591e+01, 1.52312376e+01,
+            1.94470438e+01, 2.40790431e+01
+            ])
+        
+        assert_array_almost_equal(Gen_str_rate._z_dist.pdfx[::1000], test_array)
+        
         
 
     
