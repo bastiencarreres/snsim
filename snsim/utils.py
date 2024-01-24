@@ -9,7 +9,7 @@ import astropy.units as astu
 from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
 from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
-
+import matplotlib.pyplot as plt
 
 def gauss(mu, sig, x):
     """Gaussian function.
