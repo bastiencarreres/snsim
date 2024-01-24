@@ -360,14 +360,13 @@ class BaseGen(abc.ABC):
         dz = 1e-5
 
         z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
-        z_shell_center = 0.5 * (z_shell[1:] + z_shell[:-1])
         co_dist = self.cosmology.comoving_distance(z_shell).value
-        shell_vol = 4 * np.pi / 3 * (co_dist[1:]**3 - co_dist[:-1]**3)
+        shell_vol = 4 * np.pi / 3 * co_dist**2 * C_LIGHT_KMS / self.cosmology.H(z_shell).value * dz
 
         # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
-        shell_time_rate = self.rate(z_shell_center) * shell_vol / (1 + z_shell_center)
+        shell_time_rate = self.rate(z_shell) * shell_vol / (1 + z_shell)
 
-        z_pdf = lambda x : np.interp(x, z_shell, np.append(0, shell_time_rate))
+        z_pdf = lambda x : np.interp(x, z_shell, shell_time_rate)
 
         return ut.CustomRandom(z_pdf, z_min, z_max, dx=1e-5), (z_shell, shell_time_rate)
     
@@ -914,29 +913,6 @@ class TimeSeriesGen(BaseGen):
         else:
             return self.init_M0_for_type()
 
-    def _init_sources_list(self):
-        """Initialise sncosmo model using the good source.
-
-        Returns
-        -------
-        sncosmo.Model
-            sncosmo.Model(source) object where source depends on the
-            SN simulation model.
-        """
-        if isinstance(self._params['model_name'], str):
-            if self._params['model_name'].lower() == 'all':
-                sources = self._available_models
-            elif self._params['model_name'].lower() == 'vinc_nocorr':
-                sources = ut.select_Vincenzi_template(self._available_models,corr=False)
-            elif self._params['model_name'].lower() == 'vinc_corr':
-                sources = ut.select_Vincenzi_template(self._available_models,corr=True)
-            else:
-                sources = [self._params['model_name']]
-        else:
-            sources = self._params['model_name']
-        
-        return sources
-
     def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
 
@@ -997,6 +973,8 @@ class TimeSeriesGen(BaseGen):
 class CCGen(TimeSeriesGen):
     """Template for CoreColapse."""
     
+    _available_models = ["vin19_corr", "vin19_nocorr"]
+    
     def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
         if self._params['M0'].lower() == 'li11_gaussian':
@@ -1012,7 +990,30 @@ class CCGen(TimeSeriesGen):
                                             cst.h_article['li11'])
         else:
             raise ValueError(f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} ")
+        
+    def _init_sources_list(self):
+        """Initialise sncosmo model using the good source.
 
+        Returns
+        -------
+        sncosmo.Model
+            sncosmo.Model(source) object where source depends on the
+            SN simulation model.
+        """
+        if isinstance(self._params['model_name'], str):
+            if self._params['model_name'].lower() == 'all':
+                sources = self._available_models
+            elif self._params['model_name'].lower() == 'vin19_nocorr':
+                sources = ut.select_Vincenzi_template(self._available_models,corr=False)
+            elif self._params['model_name'].lower() == 'vin19_corr':
+                sources = ut.select_Vincenzi_template(self._available_models,corr=True)
+            else:
+                sources = [self._params['model_name']]
+        else:
+            sources = self._params['model_name']
+        
+        return sources
+    
     def gen_coh_scatter_for_type(self, n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
         if self._params['sigM'].lower() == 'li11_gaussian':
@@ -1038,7 +1039,7 @@ class SNIIGen(CCGen):
     same as TimeSeriesGen
     """
     _object_type = 'SNII'
-    _available_models = ut.Templatelist_fromsncosmo('snii')
+    _available_models = ut.Templatelist_fromsncosmo('snii') + CCGen._available_models
     
     _sn_fraction = {
                     'ztf20': 0.776208,
@@ -1069,7 +1070,7 @@ class SNIIplGen(CCGen):
     same as TimeSeriesGen
     """
     _object_type = 'SNIIpl'
-    _available_models = ut.Templatelist_fromsncosmo('sniipl')
+    _available_models = ut.Templatelist_fromsncosmo('sniipl') + CCGen._available_models
 
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -15.97, 'li11_skewed': -17.51},
@@ -1099,7 +1100,7 @@ class SNIIbGen(CCGen):
     same as TimeSeriesGen
     """
     _object_type = 'SNIIb'
-    _available_models = ut.Templatelist_fromsncosmo('sniib')
+    _available_models = ut.Templatelist_fromsncosmo('sniib') + CCGen._available_models
     _available_rates = ['ptf19', 'ztf20', 'ptf19_pw']
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.69, 'li11_skewed': -18.30},
@@ -1119,14 +1120,7 @@ class SNIIbGen(CCGen):
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
-        
-    def _init_registered_rate(self):
-        """SNIIPL rates registry."""
-        if self._params['rate'].lower() in self._available_rates:
-            return self._available_rates[self._params['rate'].lower()].format(h=self.cosmology.h)
-        else:
-            raise ValueError(f"{self._params['rate']} is not available! Available rate are {self._available_rates}")
-        
+
 
 class SNIInGen(CCGen):
     """SNIIn parameters generator.
@@ -1136,7 +1130,7 @@ class SNIInGen(CCGen):
     same as TimeSeriesGen
     """
     _object_type = 'SNIIn'
-    _available_models = ut.Templatelist_fromsncosmo('sniin')
+    _available_models = ut.Templatelist_fromsncosmo('sniin') + CCGen._available_models
 
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -17.90, 'li11_skewed': -19.13},
@@ -1150,11 +1144,11 @@ class SNIInGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
 
@@ -1167,7 +1161,7 @@ class SNIbcGen(CCGen):
     same as TimeSeriesGen
     """
     _object_type = 'SNIb/c'
-    _available_models = ut.Templatelist_fromsncosmo('snib/c')    
+    _available_models = ut.Templatelist_fromsncosmo('snib/c') + CCGen._available_models    
     _sn_fraction= {
                     'ztf20': 0.217118,
                     'shivers17': 0.19456 
@@ -1175,11 +1169,11 @@ class SNIbcGen(CCGen):
 
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
         
     def init_M0_for_type(self):
@@ -1196,7 +1190,7 @@ class SNIcGen(CCGen):
     ----------
     same as TimeSeriesGen class   """
     _object_type = 'SNIc'
-    _available_models =ut.Templatelist_fromsncosmo('snic')
+    _available_models = ut.Templatelist_fromsncosmo('snic') + CCGen._available_models
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.75, 'li11_skewed': -17.51},
                     'coh_sct': {'li11_gaussian': [0.97, 0.97], 'li11_skewed': [1.24, 1.22]}
@@ -1223,7 +1217,7 @@ class SNIbGen(CCGen):
     ----------
     same as TimeSeriesGen class."""
     _object_type = 'SNIb'
-    _available_models =ut.Templatelist_fromsncosmo('snib')
+    _available_models =ut.Templatelist_fromsncosmo('snib') + CCGen._available_models
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.07, 'li11_skewed': -17.71},
                     'coh_sct': {'li11_gaussian': [1.34, 1.34], 'li11_skewed': [2.11, 7.15]}
@@ -1236,11 +1230,11 @@ class SNIbGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
 
 
@@ -1251,7 +1245,7 @@ class SNIc_BLGen(CCGen):
     ----------
     Same as TimeSeriesGen class."""
     _object_type = 'SNIc_BL'
-    _available_models =ut.Templatelist_fromsncosmo('snic-bl')
+    _available_models = ut.Templatelist_fromsncosmo('snic-bl') + CCGen._available_models
     _sn_lumfunc= {
                     'M0': {'li11_gaussian': -16.79, 'li11_skewed': -17.74},
                     'coh_sct': {'li11_gaussian': [0.95, 0.95], 'li11_skewed': [1.35, 2.06]}
@@ -1264,11 +1258,11 @@ class SNIc_BLGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        'ptf19_pw': f"9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
+        'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
 
 
@@ -1315,9 +1309,9 @@ class SNIa_peculiar(BaseGen):
         if isinstance(self._params['model_name'], str):
             if self._params['model_name'].lower() == 'all':
                 selected_models = self._available_models
-            elif self._params['model_name'].lower() == 'vinc_nocorr':
+            elif self._params['model_name'].lower() == 'vin19_nocorr':
                 selected_models = ut.select_Vincenzi_template(self._available_models,corr=False)
-            elif self._params['model_name'].lower() == 'vinc_corr':
+            elif self._params['model_name'].lower() == 'vin19_corr':
                 selected_models = ut.select_Vincenzi_template(self._available_models,corr=True)
             else:
                 selected_models = [self._params['model_name']]
