@@ -259,9 +259,11 @@ def gen_BS20_scatter(n_sn, seed=None):
 
         """
         rand_gen = np.random.default_rng(seed)
-
-        Rv = rand_gen.normal(loc=2, scale=1.4 , size=n_sn) #value of mean and sigma are fitted in Brout and Scolnic 2020
-        Rv = np.where(Rv < 0.5, Rv, 0.5) #set floor of Rv = 0.5
+    
+        lower,upper = 0.5, 10000
+        mu, sigma = 2,1.4 #value of mean and sigma are fitted in Brout and Scolnic 2020
+        X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
+        Rv= X.rvs(n_sn, random_state=seed)
 
         E_dust = rand_gen.exponential(scale=0.1, size=n_sn) #value fitted in Brout and Scolnic 2020 shown in table 1
 

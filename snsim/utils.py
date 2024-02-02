@@ -9,7 +9,9 @@ import astropy.units as astu
 from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
 from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
-
+from . import constants as cst
+from snsim import __snsim_dir_path__
+import pandas as pd
 
 def gauss(mu, sig, x):
     """Gaussian function.
@@ -117,6 +119,18 @@ class CustomRandom:
         """        
         rand_gen = np.random.default_rng(seed)
         return np.interp(rand_gen.random(n), self.cdf, self.x)
+
+
+def reshape_prob_data():
+    """ function that read DES X1-mass probability file and return 
+    grid values fro interpolation """
+    
+    prob_data=pd.read_csv(__snsim_dir_path__+'data_probability/DES-SN5YR_DES_S3_x1.DAT', sep=',')
+    prob = np.zeros((len(np.unique(prob_data.x1.values)),len(np.unique(prob_data.logmass.values))))
+    for i, (name, group) in enumerate(prob_data.groupby('x1')):
+        prob[i]=group.prob.values
+    
+    return np.unique(prob_data.x1.values), np.unique(prob_data.logmass.values), prob
 
 
 def set_cosmo(cosmo_dic):
@@ -604,3 +618,16 @@ def sine_interp(x_new, fun_x, fun_y):
     values = 0.5 * (fun_y_sup + fun_y_inf) + 0.5 * (fun_y_sup - fun_y_inf) * sin_interp
     return values
         
+def compute_weight_mass_for_type(mass, sn_type, cosmology):
+    """ compute the mass dependent weights for HOST - SN matching """
+    if sn_type.lower() == 'snia':
+        weights_mass = cst.sullivan_para['mass'] * (cosmology.h/cst.h_article['sullivan06']) * mass
+
+    return weights_mass
+
+def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
+    """ compute the SFR dependent weights for HOST - SN matching """
+    if sn_type.lower() == 'snia':
+        weights_SFR = cst.sullivan_para['SFR'] * (cosmology.h/cst.h_article['sullivan06']) * SFR
+
+    return weights_SFR

@@ -59,8 +59,25 @@ def get_sed_listname(model_name):
 
 def sncosmo_model_from_SED(model):
 
+    import numpy as np
 
+phase = np.linspace(-50., 50., 11)
+
+disp = np.linspace(3000., 8000., 6)
+
+flux = np.repeat(np.array([[0.], [1.], [2.], [3.], [4.], [5.],
+
+                           [4.], [3.], [2.], [1.], [0.]]),
+
+                 6, axis=1)
+
+source = sncosmo.TimeSeriesSource(phase, disp, flux)
+
+#the file are already well organized, just ask rick the unit of the flux
     #create sncosmo model from it 
+
+    model = sncosmo.Model(source)
+    # init the model
 
 
 

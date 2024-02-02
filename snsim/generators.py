@@ -11,7 +11,8 @@ from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
-from . import constants as cst
+from . import constants as cst 
+
 
 
 __GEN_DIC__ = {'snia_gen': 'SNIaGen',
@@ -79,6 +80,7 @@ class BaseGen(abc.ABC):
         self._cmb = cmb
         self._cosmology = cosmology
         self._time_range = time_range
+        
 
         # -- At least one mandatory
         if vpec_dist is not None and host is None:
@@ -454,8 +456,9 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate) # change self random choiche depend on type 
+            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate, sn_type=self._object_type, cosmology=self.cosmology) 
             zcos = host['zcos'].values
+
 
         # -- Generate ra, dec
         if self.host is not None:
@@ -490,6 +493,12 @@ class BaseGen(abc.ABC):
 
         if self.dipole is not None:
             astrobj_par['dip_dM'] = self._compute_dipole(ra, dec)
+
+        #save in astrobj_par all the column of the host_table that start with host, to save the data in final sim
+        col_name = [column for column in host if column.startswith('host_')]
+        if len(col_name) > 0 :
+            for c in col_name:
+                astrobj_par[c] = host[c].values
 
         return pd.DataFrame(astrobj_par)
 
@@ -788,6 +797,9 @@ class SNIaGen(BaseGen):
         self._general_par['M0'] = self._init_M0()
         self._general_par['sigM'] = self._params['sigM']
 
+        if 'mass_step' in self._params.keys():
+            self._general_par['mass_step'] = self._params['mass_step']
+
         for k in model_keys:
             self._general_par[k] = self._params['model_config'][k]
         
@@ -913,6 +925,8 @@ class SNIaGen(BaseGen):
                 z_for_dist = None
             sim_x1, sim_c = self.gen_salt_par(n_obj, rand_gen.integers(1000, 1e6),
                                               z=z_for_dist, astrobj_par=astrobj_par)
+            #if 'host_mass' in astrobj_par:
+
             snc_par = [{'x1': x1, 'c': c} for x1, c in zip(sim_x1, sim_c)]
 
         # -- Non-coherent scattering effects
@@ -949,6 +963,10 @@ class SNIaGen(BaseGen):
         if isinstance(self._params['model_config']['dist_x1'], str):
             if self._params['model_config']['dist_x1'].lower() == 'n21':
                 sim_x1 = salt_ut.n21_x1_model(z, seed=seeds[0])
+            elif self._params['model_config']['dist_x1'].lower() == 'n21+mass':
+                sim_x1 = salt_ut.n21_x1_mass_model(z, astrobj_par['host_mass'], seed=seeds[0])
+            elif self._params['model_config']['dist_x1'].lower() == 'mass':
+                sim_x1 = salt_ut.x1_mass_model(astrobj_par['host_mass'], seed=seeds[0])
         else:
             sim_x1 = ut.asym_gauss(*self._params['model_config']['dist_x1'],
                                    seed=seeds[0],

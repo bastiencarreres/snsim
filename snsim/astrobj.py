@@ -324,7 +324,7 @@ class SNIa(BasicAstrObj):
             if isinstance(self._model_par['beta'] , str):
                 if self._model_par['beta'].lower() == 'bs20':
                     #in this case the beta parameter is included in the mag_sct
-                    mb = self.sim_mu + M0 - alpha * x1
+                    mb = self.sim_mu + M0 - alpha * x1 
             else:
                 #in this case beta is just 1 value for all SN
                 beta = self._model_par['beta']
@@ -335,6 +335,13 @@ class SNIa(BasicAstrObj):
 
             if 'dip_dM' in self._params:
                 mb += self._params['dip_dM']
+
+            if 'mass_step' in self._model_par:
+                if 'host_mass' in self._params:
+                    if self._params['host_mass'] > 10. :
+                        mb += self._model_par['mass_step']
+                else:
+                    raise ValueError('provide SN host mass to account for the magnitude mass step')
 
             self.sim_mb = mb
 
