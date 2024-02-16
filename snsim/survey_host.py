@@ -83,20 +83,17 @@ class SurveyObs:
         # Represent them as rectangle
         restfield_corners = self._init_fields_map('rectangle')
 
-        f_RA = [minRA, maxRA, maxRA, minRA]
-        f_Dec = [maxDec, maxDec, minDec, minDec]
+        f_RA = np.array([minRA, maxRA, maxRA, minRA])
+        f_Dec = np.array([maxDec, maxDec, minDec, minDec])
 
-        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, 4, 2))
+        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, *restfield_corners[0].shape))
 
-        corners = {}
-        for i in range(4):
-            corners[i] = nbf.new_coord_on_fields(sub_fields_corners[:, i].T, 
-                                                 [f_RA, f_Dec])
+        corners = np.stack([nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], 
+                            np.stack([f_RA, f_Dec])) for i in range(4)], axis=1)
+        
         corners = ut._format_corner(corners, f_RA)
-        envelope = shp_ops.unary_union([ut._compute_polygon([[corners[i][0][j],
-                                                              corners[i][1][j]] 
-                                                            for i in range(4)]) 
-                                        for j in range(4)]).envelope
+        
+        envelope = shp_ops.unary_union([ut._compute_polygon(corners[i])  for i in range(4)]).envelope
         envelope_area = ut._compute_area(envelope)
         return envelope, envelope_area
         
@@ -360,10 +357,10 @@ class SurveyObs:
 
         """
         if field_config == 'rectangle':
-            sub_fields_corners = {0: np.array([[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
+            sub_fields_corners = {0: np.array([[[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
                                                [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
                                                [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
-                                               [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]])}
+                                               [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]]])}
         else:
             sub_fields_corners = io_ut._read_sub_field_map(self.field_size_rad, field_config)
 
@@ -402,15 +399,15 @@ class SurveyObs:
         else:
             field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)) 
 
-        corner = np.stack([new_coord_on_fields(
+        corners = np.stack([nbf.new_coord_on_fields(
             field_corners[:, :, i, :], 
-            np.array([sout._ra.values, sout._dec.values])) 
+            np.array([df.fieldRA.values, df.fieldDec.values])) 
                             for i in range(4)], axis=1)
 
-        corner = ut._format_corner(corner, df.fieldRA.values)
+        corners = ut._format_corner(corners, df.fieldRA.values)
         
         # -- Create shapely polygon
-        fgeo = np.vectorize(lambda i: ut._compute_polygon(corner[i]))
+        fgeo = np.vectorize(lambda i: ut._compute_polygon(corners[i]))
 
         GeoS = gpd.GeoDataFrame(data=df, 
                                 geometry=fgeo(np.arange(df.shape[0])))

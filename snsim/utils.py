@@ -490,7 +490,7 @@ def _compute_polygon(corners):
     transl_mask = polydiv.boundary.bounds['maxx'] > 2 * np.pi
     polydiv[transl_mask] = polydiv[transl_mask].translate(-2*np.pi)
     
-    return shp_geo.MultiPolygon([*polygons.values, *polydiv.values])
+    return shp_geo.MultiPolygon([*polygons[~int_mask].values, *polydiv.values])
 
 
 def Templatelist_fromsncosmo(source_type=None):
