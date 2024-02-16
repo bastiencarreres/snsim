@@ -400,21 +400,20 @@ class SurveyObs:
         if 'sub_field' in config:
             field_corners = np.stack(df[config['sub_field']].map(sub_fields_corners).values)
         else:
-            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), 4, 2))
+            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)) 
 
-        corner = {}
-        for i in range(4):
-            corner[i] = nbf.new_coord_on_fields(field_corners[:, i].T, 
-                                                [df.fieldRA.values, df.fieldDec.values])
+        corner = np.stack([new_coord_on_fields(
+            field_corners[:, :, i, :], 
+            np.array([sout._ra.values, sout._dec.values])) 
+                            for i in range(4)], axis=1)
 
         corner = ut._format_corner(corner, df.fieldRA.values)
-
+        
         # -- Create shapely polygon
-        geometry = [ut._compute_polygon([[corner[i][0][j], corner[i][1][j]] for i in range(4)]) 
-                                        for j in range(len(df))]
+        fgeo = np.vectorize(lambda i: ut._compute_polygon(corner[i]))
 
         GeoS = gpd.GeoDataFrame(data=df, 
-                                geometry=geometry)
+                                geometry=fgeo(np.arange(df.shape[0])))
 
         join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
 

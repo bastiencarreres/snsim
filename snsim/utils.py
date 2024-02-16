@@ -6,6 +6,7 @@ import astropy.time as atime
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as astu
+import geopandas as gpd
 from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
 from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
@@ -178,7 +179,7 @@ def scale_M0_cosmology(h, M0_art, h_art):
     M0_art: float
             M0 value to be scaled
     h_art: float
-          the H0/100 constant used in the article to retrive M0_art
+        the H0/100 constant used in the article to retrive M0_art
 
     Returns
     -------
@@ -447,18 +448,18 @@ def _format_corner(corner, RA):
     #       - RA_3 < RA_2
     #       - RA_0 and RA_3 on the same side of the field center
     
-    sign = (corner[3][0] - RA) * (corner[0][0] - RA) < 0
-    comp = corner[0][0] < corner[3][0]
+    sign = (corner[:, 3, :, 0] - RA[:, None]) * (corner[:, 0, :, 0] - RA[:, None]) < 0
+    comp = corner[:, 0, :, 0] < corner[:, 3, :, 0]
 
-    corner[1][0][corner[1][0] < corner[0][0]] += 2 * np.pi
-    corner[2][0][corner[2][0] < corner[3][0]] += 2 * np.pi
+    corner[:, 1, :, 0][corner[:, 1, :, 0] < corner[:, 0, :, 0]]  += 2 * np.pi
+    corner[:, 2, :, 0][corner[:, 2, :, 0] < corner[:, 3, :, 0]] += 2 * np.pi
 
 
-    corner[0][0][sign & comp] += 2 * np.pi
-    corner[1][0][sign & comp] += 2 * np.pi
+    corner[:, 0, :, 0][sign & comp] += 2 * np.pi
+    corner[:, 1, :, 0][sign & comp] += 2 * np.pi
 
-    corner[2][0][sign & ~comp] += 2 * np.pi
-    corner[3][0][sign & ~comp] += 2 * np.pi
+    corner[:, 2, :, 0][sign & ~comp] += 2 * np.pi
+    corner[:, 3, :, 0][sign & ~comp] += 2 * np.pi
     return corner
 
 
@@ -477,24 +478,19 @@ def _compute_area(polygon):
 
 def _compute_polygon(corners):
     """Create polygon on a sphere, check for edges conditions."""
-    polygon = shp_geo.Polygon(corners)
-    # -- Cut into 2 polygon if cross the edges
-    if polygon.intersects(_SPHERE_LIMIT_):
-        unioned = polygon.boundary.union(_SPHERE_LIMIT_)
-        polygon = [p for p in shp_ops.polygonize(unioned)
-                    if p.representative_point().within(polygon)]
-
-        x0, y0 = polygon[0].boundary.xy
-        x1, y1 = polygon[1].boundary.xy
-
-        if x1 > x0: 
-            x1 = np.array(x1) - 2 * np.pi
-            polygon[1] = shp_geo.Polygon(np.array([x1, y1]).T)
-        else:
-            x0 = np.array(x0) - 2 * np.pi
-            polygon[0] = shp_geo.Polygon(np.array([x0, y0]).T)
-        polygon =  shp_geo.MultiPolygon(polygon)
-    return polygon
+    
+    # Create polygons
+    polygons = gpd.GeoSeries([shp_geo.Polygon(corners[:, j, :]) for j in range(corners.shape[1])])
+    
+    # Check if they intersect the 2pi edge line
+    int_mask = polygons.intersects(_SPHERE_LIMIT_)
+    
+    # If they do cut divide them in 2 and translate the one that is beyond the edge at -2pi
+    polydiv = gpd.GeoSeries(shp_ops.polygonize(polygons[int_mask].boundary.union(_SPHERE_LIMIT_)))
+    transl_mask = polydiv.boundary.bounds['maxx'] > 2 * np.pi
+    polydiv[transl_mask] = polydiv[transl_mask].translate(-2*np.pi)
+    
+    return shp_geo.MultiPolygon([*polygons.values, *polydiv.values])
 
 
 def Templatelist_fromsncosmo(source_type=None):
