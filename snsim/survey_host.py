@@ -548,11 +548,12 @@ class SurveyObs:
             fig, ax = plt.subplots()
         for k, corners in self._sub_field_corners.items():
             corners_deg = np.degrees(corners)
-            p = Polygon(corners_deg, color='r', fill=False)
-            ax.add_patch(p)
-            x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
-            y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
-            ax.text(x_text, y_text, k, ha='center', va='center')
+            polist = [Polygon(cd, color='r', fill=False) for cd in corners_deg]
+            for p in polist:
+                ax.add_patch(p)
+                x_text = 0.5 * (p.xy[0][0] + p.xy[1][0])
+                y_text = 0.5 * (p.xy[0][1] + p.xy[3][1])
+                ax.text(x_text, y_text, k, ha='center', va='center')
         ax.set_xlabel('RA [deg]')
         ax.set_ylabel('Dec [deg]')
         ax.set_xlim(-self.config['ra_size'] / 2 - 0.5, 
