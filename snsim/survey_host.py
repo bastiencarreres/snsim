@@ -83,20 +83,17 @@ class SurveyObs:
         # Represent them as rectangle
         restfield_corners = self._init_fields_map('rectangle')
 
-        f_RA = [minRA, maxRA, maxRA, minRA]
-        f_Dec = [maxDec, maxDec, minDec, minDec]
+        f_RA = np.array([minRA, maxRA, maxRA, minRA])
+        f_Dec = np.array([maxDec, maxDec, minDec, minDec])
 
-        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, 4, 2))
+        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, *restfield_corners[0].shape))
 
-        corners = {}
-        for i in range(4):
-            corners[i] = nbf.new_coord_on_fields(sub_fields_corners[:, i].T, 
-                                                 [f_RA, f_Dec])
+        corners = np.stack([nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], 
+                            np.stack([f_RA, f_Dec])) for i in range(4)], axis=1)
+        
         corners = ut._format_corner(corners, f_RA)
-        envelope = shp_ops.unary_union([ut._compute_polygon([[corners[i][0][j],
-                                                              corners[i][1][j]] 
-                                                            for i in range(4)]) 
-                                        for j in range(4)]).envelope
+        
+        envelope = shp_ops.unary_union([ut._compute_polygon(corners[i])  for i in range(4)]).envelope
         envelope_area = ut._compute_area(envelope)
         return envelope, envelope_area
         
@@ -360,10 +357,10 @@ class SurveyObs:
 
         """
         if field_config == 'rectangle':
-            sub_fields_corners = {0: np.array([[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
+            sub_fields_corners = {0: np.array([[[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
                                                [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
                                                [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
-                                               [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]])}
+                                               [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]]])}
         else:
             sub_fields_corners = io_ut._read_sub_field_map(self.field_size_rad, field_config)
 
@@ -400,21 +397,20 @@ class SurveyObs:
         if 'sub_field' in config:
             field_corners = np.stack(df[config['sub_field']].map(sub_fields_corners).values)
         else:
-            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), 4, 2))
+            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)) 
 
-        corner = {}
-        for i in range(4):
-            corner[i] = nbf.new_coord_on_fields(field_corners[:, i].T, 
-                                                [df.fieldRA.values, df.fieldDec.values])
+        corners = np.stack([nbf.new_coord_on_fields(
+            field_corners[:, :, i, :], 
+            np.array([df.fieldRA.values, df.fieldDec.values])) 
+                            for i in range(4)], axis=1)
 
-        corner = ut._format_corner(corner, df.fieldRA.values)
-
+        corners = ut._format_corner(corners, df.fieldRA.values)
+        
         # -- Create shapely polygon
-        geometry = [ut._compute_polygon([[corner[i][0][j], corner[i][1][j]] for i in range(4)]) 
-                                        for j in range(len(df))]
+        fgeo = np.vectorize(lambda i: ut._compute_polygon(corners[i]))
 
         GeoS = gpd.GeoDataFrame(data=df, 
-                                geometry=geometry)
+                                geometry=fgeo(np.arange(df.shape[0])))
 
         join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
 
@@ -552,11 +548,12 @@ class SurveyObs:
             fig, ax = plt.subplots()
         for k, corners in self._sub_field_corners.items():
             corners_deg = np.degrees(corners)
-            p = Polygon(corners_deg, color='r', fill=False)
-            ax.add_patch(p)
-            x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
-            y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
-            ax.text(x_text, y_text, k, ha='center', va='center')
+            polist = [Polygon(cd, color='r', fill=False) for cd in corners_deg]
+            for p in polist:
+                ax.add_patch(p)
+                x_text = 0.5 * (p.xy[0][0] + p.xy[1][0])
+                y_text = 0.5 * (p.xy[0][1] + p.xy[3][1])
+                ax.text(x_text, y_text, k, ha='center', va='center')
         ax.set_xlabel('RA [deg]')
         ax.set_ylabel('Dec [deg]')
         ax.set_xlim(-self.config['ra_size'] / 2 - 0.5, 
