@@ -12,15 +12,5 @@ def test_compute_area():
     area = geo_ut._compute_area(polygon)
     assert_almost_equal(area, 4 * np.pi)
     
-    
-def test_compute_polygon():
-    
-    # Regular polygon
-    corners = np.array([[[np.pi - 0.02, 0.02]], [[np.pi + 0.02, 0.02]] ,
-                        [[np.pi + 0.02, -0.02]], [[np.pi - 0.02, -0.02]]])
-    
-    polygon = geo_ut._compute_polygon(corners)
-    
-    ra = np.random.uniform(0, 2 * np.pi, 10
-    
+
     

@@ -51,8 +51,8 @@ class TestSNIa:
     
     def test_tripp(self):
         mb = self.SNIa_Tripp.sim_par['M0'] + self.SNIa_Tripp.mu
-        mb += self.SNIa_Tripp.sim_par['alpha'] * self.SNIa_Tripp.sim_par['x1']
-        mb += -self.SNIa_Tripp.sim_par['beta'] * self.SNIa_Tripp.sim_par['c']
+        mb -= self.SNIa_Tripp.sim_par['alpha'] * self.SNIa_Tripp.sim_par['x1']
+        mb += self.SNIa_Tripp.sim_par['beta'] * self.SNIa_Tripp.sim_par['c']
         assert(self.SNIa_Tripp.mb == mb)
     
     def test_genflux(self):

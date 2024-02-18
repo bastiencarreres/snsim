@@ -302,6 +302,27 @@ class SNIa(AstrObj):
             
             model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
             self._sim_par['x0'] = model.get('x0')
+            
+        elif self._relation.lower() == 'salttrip_BS20':
+            # TODO : COMPLETE BS20 using dev_damiano
+            self._obj_attrs.extend(['alpha', 'beta', 'RV', 'Edust', 'x0', 'x1', 'c'])
+            self._sim_par['mb'] = self.SALTTripp(
+                M0, 
+                self._sim_par['alpha'], 
+                self._sim_par['beta'], 
+                self._sim_par['RV'],
+                self._sim_par['Edust']
+                self._sim_par['x1'], 
+                self._sim_par['c']) + self.mu
+            
+            # Compute the x0 parameter
+            model.set(
+                x1=self._sim_par['x1'], 
+                c=self._sim_par['c'])
+            
+            model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
+            self._sim_par['x0'] = model.get('x0')
+            
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError('Relation not available')
@@ -309,8 +330,11 @@ class SNIa(AstrObj):
     
     @staticmethod
     def SALTTripp(M0, alpha, beta, x1, c):
-        return M0  + alpha * x1 - beta * c
+        return M0 - alpha * x1 + beta * c
 
+    @staticmethod
+    def SALTTrippBS20(M0, alpha, beta, RV, Edust, x1, c):
+        return M0 - alpha * x1 + beta * c + (RV + 1) * Edust
 
 class TimeSeries(AstrObj):
     """TimeSeries class.
