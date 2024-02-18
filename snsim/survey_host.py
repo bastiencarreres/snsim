@@ -13,9 +13,9 @@ import geopandas as gpd
 from shapely import ops as shp_ops
 import dask.dataframe as daskdf
 from . import utils as ut
+from . import geo_utils as geo_ut
 from . import io_utils as io_ut
 from . import nb_fun as nbf
-from .constants import C_LIGHT_KMS
 
 
 class SurveyObs:
@@ -91,10 +91,10 @@ class SurveyObs:
         corners = np.stack([nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], 
                             np.stack([f_RA, f_Dec])) for i in range(4)], axis=1)
         
-        corners = ut._format_corner(corners, f_RA)
+        corners = geo_ut._format_corner(corners, f_RA)
         
-        envelope = shp_ops.unary_union([ut._compute_polygon(corners[i])  for i in range(4)]).envelope
-        envelope_area = ut._compute_area(envelope)
+        envelope = shp_ops.unary_union([geo_ut._compute_polygon(corners[i]) for i in range(4)]).envelope
+        envelope_area = geo_ut._compute_area(envelope)
         return envelope, envelope_area
         
     def __str__(self):
@@ -160,10 +160,11 @@ class SurveyObs:
 
         end_day = ut.init_astropy_time(end_day)
         if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
-            warnings.warn(f'Starting day {start_day.mjd:.3f} MJD or'
-                          f'Ending day {end_day.mjd:.3f} MJD is outer of'
-                          f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
-                          UserWarning)
+            warnings.warn(
+                f'Starting day {start_day.mjd:.3f} MJD or'
+                f'Ending day {end_day.mjd:.3f} MJD is outer of'
+                f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
+                UserWarning)
 
         if end_day.mjd < start_day.mjd:
             raise ValueError("The ending day is before the starting day !")
@@ -341,7 +342,6 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-
     def _init_fields_map(self, field_config):
         """Init the subfield map parameters.
 
@@ -357,10 +357,11 @@ class SurveyObs:
 
         """
         if field_config == 'rectangle':
-            sub_fields_corners = {0: np.array([[[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
-                                               [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
-                                               [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
-                                               [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]]])}
+            sub_fields_corners = {0: np.array(
+                [[[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
+                  [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
+                  [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
+                  [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]]])}
         else:
             sub_fields_corners = io_ut._read_sub_field_map(self.field_size_rad, field_config)
 
@@ -404,10 +405,10 @@ class SurveyObs:
             np.array([df.fieldRA.values, df.fieldDec.values])) 
                             for i in range(4)], axis=1)
 
-        corners = ut._format_corner(corners, df.fieldRA.values)
+        corners = geo_ut._format_corner(corners, df.fieldRA.values)
         
         # -- Create shapely polygon
-        fgeo = np.vectorize(lambda i: ut._compute_polygon(corners[i]))
+        fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
 
         GeoS = gpd.GeoDataFrame(data=df, 
                                 geometry=fgeo(np.arange(df.shape[0])))
@@ -419,7 +420,7 @@ class SurveyObs:
         return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 't0'])
 
     def get_observations(self, params, phase_cut=None, nep_cut=None, IDmin=0, 
-                        use_dask=False, npartitions=None):
+                         use_dask=False, npartitions=None):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -447,8 +448,8 @@ class SurveyObs:
         """
         params = params.copy()
         ObjPoints = gpd.GeoDataFrame(data=params[['t0', 'min_t', 'max_t', '1_zobs']], 
-                                    geometry=gpd.points_from_xy(params['ra'], params['dec']),
-                                    index=params.index)
+                                     geometry=gpd.points_from_xy(params['ra'], params['dec']),
+                                     index=params.index)
         
         if use_dask:
             if npartitions is None: 
@@ -456,7 +457,7 @@ class SurveyObs:
                 npartitions = len(self.obs_table) // 10
             ddf = daskdf.from_pandas(self.obs_table, npartitions=npartitions)
             meta = daskdf.utils.make_meta({**{k: t for k, t in zip(ddf.columns, ddf.dtypes)}, 
-                                        'phase': 'float64'})
+                                           'phase': 'float64'})
             ObsObj = ddf.map_partitions(self._match_radec_to_obs,
                                         ObjPoints, self.config,
                                         self._sub_field_corners,
@@ -482,7 +483,7 @@ class SurveyObs:
         params = params.loc[ObsObj.index.unique()]
 
         # -- Reset index
-        new_idx = {k:IDmin + i for i, k in enumerate(ObsObj.index.unique())}
+        new_idx = {k: IDmin + i for i, k in enumerate(ObsObj.index.unique())}
         ObsObj['ID'] = ObsObj.index.map(new_idx)
         params['ID'] = params.index.map(new_idx)
 
@@ -557,8 +558,8 @@ class SurveyObs:
         ax.set_xlabel('RA [deg]')
         ax.set_ylabel('Dec [deg]')
         ax.set_xlim(-self.config['ra_size'] / 2 - 0.5, 
-                    self.config['ra_size']  / 2 + 0.5)
-        ax.set_ylim(-self.config['dec_size']  / 2 - 0.5, 
+                    self.config['ra_size'] / 2 + 0.5)
+        ax.set_ylim(-self.config['dec_size'] / 2 - 0.5, 
                     self.config['dec_size'] / 2 + 0.5)
         ax.set_aspect('equal')
         if ax is None:
@@ -654,6 +655,7 @@ class SnHost:
         elif self.config['distrib'].lower() not in self._dist_options:
             raise ValueError(f"{self.config['distrib']} is not an available option," 
                              f"distributions are {self._dist_options}")
+            
     @property
     def config(self):
         """Get the configuration dic of host."""
@@ -745,9 +747,9 @@ class SnHost:
             weights /= weights.sum()
         return weights
 
-         #elif self.config['distrib'].lower() == 'gal_prop':
-            #weights that depends on galaxy properties, it will depend on the SN type, to figure out implementation
-            #see vincenzi et al, and ask alex kim fo his model
+        # elif self.config['distrib'].lower() == 'gal_prop':
+        # weights that depends on galaxy properties, it will depend on the SN type, to figure out implementation
+        # see vincenzi et al, and ask alex kim fo his model
 
     def random_choice(self, n, seed=None, rate=None):
         """Randomly select hosts.

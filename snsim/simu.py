@@ -453,8 +453,11 @@ class Simulator:
         else:
             duration = generator.time_range[1] - generator.time_range[0]
 
-        n_obj = self._gen_n_sn(generator._z_time_rate[1],
-                               duration,seed=seeds[0], area=self.survey._envelope_area)
+        n_obj = self._gen_n_sn(
+            generator._z_time_rate[1],
+            duration, 
+            seed=seeds[0],
+            area=self.survey._envelope_area)
 
         lcs = self._sim_lcs(seeds[1], generator, n_obj,
                             Obj_ID=Obj_ID)
@@ -482,8 +485,11 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
-            lcs += self._sim_lcs(seed, generator, n_to_sim,
-                                Obj_ID=len(lcs))
+            lcs += self._sim_lcs(
+                seed, 
+                generator, 
+                n_to_sim,
+                Obj_ID=len(lcs))
 
             # -- Arbitrary cut to stop the simulation if no SN are geenrated
             if n_to_sim == generator._params['force_n'] - len(lcs):
