@@ -17,6 +17,7 @@ def _format_corner(corner, RA):
     #       - RA_0 < RA_1
     #       - RA_3 < RA_2
     #       - RA_0 and RA_3 on the same side of the field center
+    # corner[fields, corner, subfields, ra/dec]
     
     sign = (corner[:, 3, :, 0] - RA[:, None]) * (corner[:, 0, :, 0] - RA[:, None]) < 0
     comp = corner[:, 0, :, 0] < corner[:, 3, :, 0]
@@ -46,7 +47,12 @@ def _compute_area(polygon):
 
 
 def _compute_polygon(corners):
-    """Create polygon on a sphere, check for edges conditions."""
+    """Create polygon on a sphere, check for edges conditions.
+    
+    Notes
+    -----
+    corners[corner, subfields, ra/dec]
+    """
     
     # Create polygons
     polygons = gpd.GeoSeries([shp_geo.Polygon(corners[:, j, :]) for j in range(corners.shape[1])])
