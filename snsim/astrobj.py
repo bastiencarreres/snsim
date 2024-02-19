@@ -311,7 +311,7 @@ class SNIa(AstrObj):
                 self._sim_par['alpha'], 
                 self._sim_par['beta'], 
                 self._sim_par['RV'],
-                self._sim_par['Edust']
+                self._sim_par['Edust'],
                 self._sim_par['x1'], 
                 self._sim_par['c']) + self.mu
             
