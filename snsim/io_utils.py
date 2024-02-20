@@ -224,7 +224,7 @@ def open_fit(file):
     return fit
 
 
-def _read_sub_field_map(self, field_config):
+def _read_sub_field_map(field_size_rad, field_config):
     """Read the sub-field map file.
 
     Parameters
@@ -271,17 +271,17 @@ def _read_sub_field_map(self, field_config):
             dec_space += dic_symbol[lines[0]]['size']
             used_dec -= 1
 
-    subfield_ra_size = (self.field_size_rad[0] - ra_space) / used_ra
-    subfield_dec_size = (self.field_size_rad[1] - dec_space) / used_dec
+    subfield_ra_size = (field_size_rad[0] - ra_space) / used_ra
+    subfield_dec_size = (field_size_rad[1] - dec_space) / used_dec
 
     # Compute all ccd corner
     corner_dic = {}
-    dec_metric = self.field_size_rad[1] / 2
+    dec_metric = field_size_rad[1] / 2
     for i, l in enumerate(subfield_map):
         if l[0] in dic_symbol and dic_symbol[l[0]]['type'] == 'dec':
             dec_metric -= dic_symbol[l[0]]['size']
         else:
-            ra_metric = - self.field_size_rad[0] / 2
+            ra_metric = - field_size_rad[0] / 2
             for j, elmt in enumerate(l):
                 if elmt in dic_symbol.keys() and dic_symbol[elmt]['type'] == 'ra':
                     ra_metric += dic_symbol[elmt]['size']
