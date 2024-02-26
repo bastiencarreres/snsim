@@ -295,12 +295,6 @@ class SNIa(AstrObj):
                 self._sim_par['x1'],
                 self._sim_par['c']) + self.mu
             
-            # Compute the x0 parameter
-
-            
-            model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
-            self._sim_par['x0'] = model.get('x0')
-
         elif self._relation.lower() == 'salttrip_BS20':
             # TODO : COMPLETE BS20 using dev_damiano
             self._obj_attrs.extend(['alpha', 'beta', 'RV', 'Edust', 'x0', 'x1', 'c'])
@@ -312,14 +306,14 @@ class SNIa(AstrObj):
                 self._sim_par['Edust'],
                 self._sim_par['x1'], 
                 self._sim_par['c']) + self.mu
-            
-            # Compute the x0 parameter
-            model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
-            self._sim_par['x0'] = model.get('x0')
     
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError('Relation not available')
+
+        # Compute the x0 parameter
+        model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
+        self._sim_par['x0'] = model.get('x0')
 
         model.set(
                 x1=self._sim_par['x1'],
