@@ -290,19 +290,17 @@ class SNIa(AstrObj):
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
             self._sim_par['mb'] = self.SALTTripp(
                 M0, 
-                self._sim_par['alpha'], 
-                self._sim_par['beta'], 
-                self._sim_par['x1'], 
-                self._sim_par['c']) + self.mu 
+                self._sim_par['alpha'],
+                self._sim_par['beta'],
+                self._sim_par['x1'],
+                self._sim_par['c']) + self.mu
             
             # Compute the x0 parameter
-            model.set(
-                x1=self._sim_par['x1'], 
-                c=self._sim_par['c'])
+
             
             model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
             self._sim_par['x0'] = model.get('x0')
-            
+
         elif self._relation.lower() == 'salttrip_BS20':
             # TODO : COMPLETE BS20 using dev_damiano
             self._obj_attrs.extend(['alpha', 'beta', 'RV', 'Edust', 'x0', 'x1', 'c'])
@@ -316,16 +314,16 @@ class SNIa(AstrObj):
                 self._sim_par['c']) + self.mu
             
             # Compute the x0 parameter
-            model.set(
-                x1=self._sim_par['x1'], 
-                c=self._sim_par['c'])
-            
             model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
             self._sim_par['x0'] = model.get('x0')
-            
+    
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError('Relation not available')
+
+        model.set(
+                x1=self._sim_par['x1'],
+                c=self._sim_par['c'])
         return model
     
     @staticmethod
