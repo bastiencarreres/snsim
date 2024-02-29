@@ -187,9 +187,7 @@ def scale_M0_cosmology(h, M0_art, h_art):
         Scaled SN Absolute Magnitude.
 
     """
-
-    dh = (h_art - h) / h
-    return M0_art - 5 * np.log10(1 + dh)
+    return M0_art + 5 * np.log10(h / h_art)
 
 
 def init_astropy_time(date):
