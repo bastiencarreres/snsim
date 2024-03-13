@@ -18,7 +18,6 @@ class AstrObj(abc.ABC):
         Simulation parameters.
     effect: list(snc.PropagationEffect)
         Effects to apply to the model.
-        
 
     | sim_par
     | ├── zcos, cosmological redshift
