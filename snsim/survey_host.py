@@ -13,9 +13,9 @@ import geopandas as gpd
 from shapely import ops as shp_ops
 import dask.dataframe as daskdf
 from . import utils as ut
+from . import geo_utils as geo_ut
 from . import io_utils as io_ut
 from . import nb_fun as nbf
-from .constants import C_LIGHT_KMS
 
 
 class SurveyObs:
@@ -26,27 +26,28 @@ class SurveyObs:
     survey_config : dic
         It contains all the survey configuration.
 
-      | survey_config
-      | ├── survey_file PATH TO SURVEY FILE
-      | ├── ra_size RA FIELD SIZE IN DEG -> float
-      | ├── dec_size DEC FIELD SIZE IN DEG -> float
-      | ├── gain CCD GAIN e-/ADU -> float
-      | ├── start_day STARTING DAY -> float or str, opt
-      | ├── end_day ENDING DAY -> float or str, opt
-      | ├── duration SURVEY DURATION -> float, opt
-      | ├── zp FIXED ZEROPOINT -> float, opt
-      | ├── survey_cut, CUT ON DB FILE -> dict, opt
-      | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
-      | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
-      | └── sub_field, SUBFIELD KEY -> str, opt
+    | survey_config
+    | ├── survey_file PATH TO SURVEY FILE
+    | ├── ra_size RA FIELD SIZE IN DEG -> float
+    | ├── dec_size DEC FIELD SIZE IN DEG -> float
+    | ├── gain CCD GAIN e-/ADU -> float
+    | ├── start_day STARTING DAY -> float or str, opt
+    | ├── end_day ENDING DAY -> float or str, opt
+    | ├── duration SURVEY DURATION -> float, opt
+    | ├── zp FIXED ZEROPOINT -> float, opt
+    | ├── survey_cut, CUT ON DB FILE -> dict, opt
+    | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+    | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
+    | └── sub_field, SUBFIELD KEY -> str, opt
     """
 
     # -- Basic keys needed in survey file (+ noise)
-    _base_keys = ['expMJD',
-                  'filter',
-                  'fieldID',
-                  'fieldRA',
-                  'fieldDec']
+    _base_keys = [
+        'expMJD',
+        'filter',
+        'fieldID',
+        'fieldRA',
+        'fieldDec']
 
     def __init__(self, survey_config):
         """Initialize SurveyObs class."""
@@ -64,7 +65,7 @@ class SurveyObs:
 
         self._sub_field_corners = self._init_fields_map(field_map)         
         self._envelope, self._envelope_area = self._compute_envelope()
-  
+
     def _compute_envelope(self):
         """Compute envelope of survey geometry and it's area.
 
@@ -82,21 +83,18 @@ class SurveyObs:
         # Represent them as rectangle
         restfield_corners = self._init_fields_map('rectangle')
 
-        f_RA = [minRA, maxRA, maxRA, minRA]
-        f_Dec = [maxDec, maxDec, minDec, minDec]
+        f_RA = np.array([minRA, maxRA, maxRA, minRA])
+        f_Dec = np.array([maxDec, maxDec, minDec, minDec])
 
-        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, 4, 2))
+        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, *restfield_corners[0].shape))
 
-        corners = {}
-        for i in range(4):
-            corners[i] = nbf.new_coord_on_fields(sub_fields_corners[:, i].T, 
-                                                 [f_RA, f_Dec])
-        corners = ut._format_corner(corners, f_RA)
-        envelope = shp_ops.unary_union([ut._compute_polygon([[corners[i][0][j],
-                                                              corners[i][1][j]] 
-                                                            for i in range(4)]) 
-                                        for j in range(4)]).envelope
-        envelope_area = ut._compute_area(envelope)
+        corners = np.stack([nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], 
+                            np.stack([f_RA, f_Dec])) for i in range(4)], axis=1)
+        
+        corners = geo_ut._format_corner(corners, f_RA)
+        
+        envelope = shp_ops.unary_union([geo_ut._compute_polygon(corners[i]) for i in range(4)]).envelope
+        envelope_area = geo_ut._compute_area(envelope)
         return envelope, envelope_area
         
     def __str__(self):
@@ -162,10 +160,11 @@ class SurveyObs:
 
         end_day = ut.init_astropy_time(end_day)
         if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
-            warnings.warn(f'Starting day {start_day.mjd:.3f} MJD or'
-                          f'Ending day {end_day.mjd:.3f} MJD is outer of'
-                          f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
-                          UserWarning)
+            warnings.warn(
+                f'Starting day {start_day.mjd:.3f} MJD or'
+                f'Ending day {end_day.mjd:.3f} MJD is outer of'
+                f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
+                UserWarning)
 
         if end_day.mjd < start_day.mjd:
             raise ValueError("The ending day is before the starting day !")
@@ -343,7 +342,6 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-
     def _init_fields_map(self, field_config):
         """Init the subfield map parameters.
 
@@ -359,10 +357,11 @@ class SurveyObs:
 
         """
         if field_config == 'rectangle':
-            sub_fields_corners = {0: np.array([[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
-                                               [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
-                                               [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
-                                               [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]])}
+            sub_fields_corners = {0: np.array(
+                [[[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
+                  [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
+                  [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
+                  [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]]])}
         else:
             sub_fields_corners = io_ut._read_sub_field_map(self.field_size_rad, field_config)
 
@@ -392,34 +391,33 @@ class SurveyObs:
         # -- Compute max and min of table section       
         minMJD = df.expMJD.min()
         maxMJD = df.expMJD.max()
-     
+
         ObjPoints = ObjPoints[(maxMJD >= ObjPoints.min_t) & (ObjPoints.max_t >= minMJD)]
                             
         # -- Map field and rcid corners to their coordinates
         if 'sub_field' in config:
             field_corners = np.stack(df[config['sub_field']].map(sub_fields_corners).values)
         else:
-            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), 4, 2))
+            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)) 
 
-        corner = {}
-        for i in range(4):
-            corner[i] = nbf.new_coord_on_fields(field_corners[:, i].T, 
-                                                [df.fieldRA.values, df.fieldDec.values])
+        corners = np.stack([nbf.new_coord_on_fields(
+            field_corners[:, :, i, :], 
+            np.array([df.fieldRA.values, df.fieldDec.values])) 
+                            for i in range(4)], axis=1)
 
-        corner = ut._format_corner(corner, df.fieldRA.values)
-
+        corners = geo_ut._format_corner(corners, df.fieldRA.values)
+        
         # -- Create shapely polygon
-        geometry = [ut._compute_polygon([[corner[i][0][j], corner[i][1][j]] for i in range(4)]) 
-                                        for j in range(len(df))]
+        fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
 
         GeoS = gpd.GeoDataFrame(data=df, 
-                                geometry=geometry)
+                                geometry=fgeo(np.arange(df.shape[0])))
 
         join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
 
-        join['phase'] = (join['expMJD'] - join['sim_t0']) / join['1_zobs']
+        join['phase'] = (join['expMJD'] - join['t0']) / join['1_zobs']
 
-        return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 'sim_t0'])
+        return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 't0'])
 
     def get_observations(self, params, phase_cut=None, nep_cut=None, IDmin=0, 
                          use_dask=False, npartitions=None):
@@ -431,7 +429,7 @@ class SurveyObs:
             Obj ra coord [rad].
         dec : numpy.ndarray(float) or float
             Obj dec coord [rad].
-        sim_t0 : numpy.ndarray(float) or float
+        t0 : numpy.ndarray(float) or float
             Obj sncosmo model peak time.
         MinT : numpy.ndarray(float) or float
             Obj sncosmo model mintime.
@@ -449,7 +447,7 @@ class SurveyObs:
 
         """
         params = params.copy()
-        ObjPoints = gpd.GeoDataFrame(data=params[['sim_t0', 'min_t', 'max_t', '1_zobs']], 
+        ObjPoints = gpd.GeoDataFrame(data=params[['t0', 'min_t', 'max_t', '1_zobs']], 
                                      geometry=gpd.points_from_xy(params['ra'], params['dec']),
                                      index=params.index)
         
@@ -466,8 +464,9 @@ class SurveyObs:
                                         align_dataframes=False,
                                         meta=meta).compute()
         else:
-            ObsObj = self._match_radec_to_obs(self.obs_table, ObjPoints,
-                                              self.config, self._sub_field_corners)
+            ObsObj = self._match_radec_to_obs(
+                self.obs_table, ObjPoints,
+                self.config, self._sub_field_corners)
         # -- Phase cut
         if phase_cut is not None:
             ObsObj = ObsObj[(ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])]
@@ -484,7 +483,7 @@ class SurveyObs:
         params = params.loc[ObsObj.index.unique()]
 
         # -- Reset index
-        new_idx = {k:IDmin + i for i, k in enumerate(ObsObj.index.unique())}
+        new_idx = {k: IDmin + i for i, k in enumerate(ObsObj.index.unique())}
         ObsObj['ID'] = ObsObj.index.map(new_idx)
         params['ID'] = params.index.map(new_idx)
 
@@ -550,16 +549,17 @@ class SurveyObs:
             fig, ax = plt.subplots()
         for k, corners in self._sub_field_corners.items():
             corners_deg = np.degrees(corners)
-            p = Polygon(corners_deg, color='r', fill=False)
-            ax.add_patch(p)
-            x_text = 0.5 * (corners_deg[0][0] + corners_deg[1][0])
-            y_text = 0.5 * (corners_deg[0][1] + corners_deg[3][1])
-            ax.text(x_text, y_text, k, ha='center', va='center')
+            polist = [Polygon(cd, color='r', fill=False) for cd in corners_deg]
+            for p in polist:
+                ax.add_patch(p)
+                x_text = 0.5 * (p.xy[0][0] + p.xy[1][0])
+                y_text = 0.5 * (p.xy[0][1] + p.xy[3][1])
+                ax.text(x_text, y_text, k, ha='center', va='center')
         ax.set_xlabel('RA [deg]')
         ax.set_ylabel('Dec [deg]')
         ax.set_xlim(-self.config['ra_size'] / 2 - 0.5, 
-                    self.config['ra_size']  / 2 + 0.5)
-        ax.set_ylim(-self.config['dec_size']  / 2 - 0.5, 
+                    self.config['ra_size'] / 2 + 0.5)
+        ax.set_ylim(-self.config['dec_size'] / 2 - 0.5, 
                     self.config['dec_size'] / 2 + 0.5)
         ax.set_aspect('equal')
         if ax is None:
@@ -655,6 +655,7 @@ class SnHost:
         elif self.config['distrib'].lower() not in self._dist_options:
             raise ValueError(f"{self.config['distrib']} is not an available option," 
                              f"distributions are {self._dist_options}")
+            
     @property
     def config(self):
         """Get the configuration dic of host."""
@@ -741,7 +742,7 @@ class SnHost:
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights = rate(self.table['zcos']) / (1 + self.table['zcos'])
+            weights = rate(self.table['zcos']) / (1 + self.table['zcos'])  # X mass X 
             # Normalize the weights
             weights /= weights.sum()
         elif self.config['distrib'].lower() == 'mass':
@@ -777,7 +778,11 @@ class SnHost:
             weights /= weights.sum()
         return weights
 
-    def random_choice(self, n, seed=None, rate=None, sn_type=None, cosmology=None):
+        # elif self.config['distrib'].lower() == 'gal_prop':
+        # weights that depends on galaxy properties, it will depend on the SN type, to figure out implementation
+        # see vincenzi et al, and ask alex kim fo his model
+
+    def random_choice(self, n, seed=None, rate=None):
         """Randomly select hosts.
 
         Parameters

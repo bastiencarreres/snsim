@@ -1,3 +1,7 @@
 {
-    "restructuredtext.preview.name": "docutils"
+    "python.testing.pytestArgs": [
+        "snsim"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
