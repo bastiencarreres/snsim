@@ -12,7 +12,8 @@ from shapely import ops as shp_ops
 from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
 from . import constants as cst
 from snsim import __snsim_dir_path__
-import pandas as pdimport matplotlib.pyplot as plt
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def gauss(mu, sig, x):
     """Gaussian function.
@@ -562,11 +563,12 @@ def gen_rndchilds(seed, size=1):
     if isinstance(seed, np.random.SeedSequence):
         return seed.spawn(size)
     else:
-        return np.random.SeedSequence(seed).spawn(size)def compute_weight_mass_for_type(mass, sn_type, cosmology):
+        return np.random.SeedSequence(seed).spawn(size)
+
+def compute_weight_mass_for_type(mass, sn_type, cosmology):
     """ compute the mass dependent weights for HOST - SN matching """
     if sn_type.lower() == 'snia':
         weights_mass = cst.sullivan_para['mass'] * (cosmology.h/cst.h_article['sullivan06']) * mass
-
     return weights_mass
 
 def compute_weight_SFR_for_type(SFR, sn_type, cosmology):

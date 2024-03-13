@@ -38,9 +38,6 @@ class BaseGen(abc.ABC):
     ----------
     params : dict
         Basic generator configuration.
-        | params
-        | ├── General obj parameters
-        | └── model_config
     cmb : dict
         The CMB dipole configuration.
         | cmb
@@ -735,7 +732,7 @@ class SNIaGen(BaseGen):
                                 'name': 'C11_'
                                 })
         return effects
-        
+
     def _update_header(self):
         model_name = self._params['model_name']
         
@@ -757,46 +754,25 @@ class SNIaGen(BaseGen):
             
             if isinstance(self._params['dist_c'], str):
                 if self._params['dist_c'].lower() == 'bs20':
-                    header['mean_c'] = 'BS20'
+                    header['peak_c'] = 'BS20'
                     header['dist_c'] = 'c_int BS20'
                     header['sig_c'] = 'c_int BS20'
             
             
             elif isinstance(self._params['dist_c'], list):
                 if len(self._params['dist_c']) == 3:
-                    header['mean_c'] = self._params['dist_c'][0]
+                    header['peak_c'] = self._params['dist_c'][0]
                     header['dist_c'] = 'asym_gauss'
                     header['sig_c_low'] = self._params['dist_c'][1]
                     header['sig_c_hi'] = self._params['dist_c'][2]
                 else:
-                    header['mean_c'] = self._params['dist_c'][0]
+                    header['peak_c'] = self._params['dist_c'][0]
                     header['dist_c'] = 'gauss'
                     header['sig_c'] = self._params['dist_c'][1]
         return header
 
-    def gen_coh_scatter(self, n_sn, seed=None):
-        """Generate n coherent mag scattering term.
-
-        Parameters
-        ----------
-        n : int
-            Number of mag scattering terms to generate.
-        seed : int, optional
-            Random seed.
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            numpy array containing scattering terms generated.
-
-        """
-        rand_gen = np.random.default_rng(seed)
-
-        mag_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
-        return mag_sct
-
-    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
-        """Generate sncosmo model dependant parameters (others than redshift and t0).
+    def gen_par(self, n_obj, basic_par, seed=None):
+        """Generate SNIa specific parameters.
 
         Parameters
         ----------
@@ -824,8 +800,7 @@ class SNIaGen(BaseGen):
             sim_x1, sim_c, alpha, beta = self.gen_salt_par(
                 n_obj,
                 seeds[1],
-                z=basic_par['zcos'],
-                astrobj_par=astrobj_par)
+                z=basic_par['zcos'])
             params = {**params, 'x1': sim_x1, 'c': sim_c, 'alpha': alpha, 'beta': beta}
 
         # -- Non-coherent scattering effects
@@ -836,6 +811,27 @@ class SNIaGen(BaseGen):
             elif self._params['sct_model'] == 'C11':
                 params['C11_RndS'] = randgen.integers(1e12, size=n_obj)
         return params
+
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Generate n coherent mag scattering term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag scattering terms to generate.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array containing scattering terms generated.
+
+        """
+        rand_gen = np.random.default_rng(seed)
+
+        mag_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
+        return mag_sct
 
     def gen_salt_par(self, n_sn, seed=None, z=None, astrobj_par=None):
         """Generate SALT parameters.
@@ -855,6 +851,7 @@ class SNIaGen(BaseGen):
         """
         seeds = ut.gen_rndchilds(seed=seed, size=4)
 
+        # -- x1 dist
         if isinstance(self._params['dist_x1'], str):
             if self._params['dist_x1'].lower() == 'n21':
                 sim_x1 = salt_ut.n21_x1_model(z, seed=seeds[0])
@@ -862,32 +859,34 @@ class SNIaGen(BaseGen):
                 sim_x1 = salt_ut.n21_x1_mass_model(z, astrobj_par['host_mass'], seed=seeds[0])
             elif self._params['dist_x1'].lower() == 'mass':
                 sim_x1 = salt_ut.x1_mass_model(astrobj_par['host_mass'], seed=seeds[0])
+
         elif isinstance(self._params['dist_x1'], list):
             sim_x1 = ut.asym_gauss(*self._params['dist_x1'],
                                     seed=seeds[0],
                                     size=n_sn)
 
-        if isinstance(self._params['model_config']['dist_c'], str):
-            if self._params['model_config']['dist_c'].lower() == 'bs20':
+        # -- c dist
+        if isinstance(self._params['dist_c'], str):
+            if self._params['dist_c'].lower() == 'bs20':
                 sim_c = astrobj_par['c_int']
         else:
             sim_c = ut.asym_gauss(*self._params['dist_c'],
                                 seed=seeds[1],
                                 size=n_sn)
         
-        # -- Alpha dist
+        # -- alpha dist
         if isinstance(self._params['alpha'], float):
             alpha = np.ones(n_sn) * self._params['alpha']
         elif isinstance(self._params['alpha'], list):
             alpha = ut.asym_gauss(*self._params['alpha'],
                                 seed=seeds[2],
                                 size=n_sn)
-        # -- Beta dist
+        # -- beta dist
         if isinstance(self._params['beta'], float):
             beta = np.ones(n_sn) * self._params['beta']
         elif isinstance(self._params['alpha'], list):
             beta = ut.asym_gauss(*self._params['beta'],
-                                seed=seeds[2],
+                                seed=seeds[3],
                                 size=n_sn)
         return sim_x1, sim_c, alpha, beta
     
@@ -991,7 +990,7 @@ class TimeSeriesGen(BaseGen):
         else:
             return self.gen_coh_scatter_for_type(n_sn, seed)
 
-    def gen_par(self, n_obj, astrobj_par, seed=None):
+    def gen_par(self, n_obj, basic_par, seed=None):
         """Generate sncosmo model dependant parameters (others than redshift and t0).
         Parameters
         ----------
