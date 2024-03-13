@@ -64,6 +64,15 @@ class BasicAstrObj(abc.ABC):
                   **self._params['sncosmo']}
         self.sim_model.set(**params)
 
+        if isinstance(self._model_par['beta'] , str):
+                if self._model_par['beta'].lower() == 'bs20':
+                    dust = snc.CCM89Dust()
+                    self.sim_model.add_effect(dust, frame='rest', name='host_')
+                    self.sim_model.set(**{
+                                       'host_ebv': self._params['E_dust'],
+                                       'host_r_v': self._params['Rv_BS20']
+                                        })
+
     @abc.abstractmethod
     def _update_model_par(self):
         """Abstract method to add general model parameters call during __init__."""
@@ -205,7 +214,6 @@ class BasicAstrObj(abc.ABC):
             if isinstance(self._model_par['beta'] , str):
                 if self._model_par['beta'].lower() == 'bs20':
                     sim_lc.attrs['beta_sn'] = self._params['beta_sn']
-                    sim_lc.attrs['c_int'] = self._params['c_int']
                     sim_lc.attrs['Rv_BS20']= self._params['Rv_BS20']
                     sim_lc.attrs['E_dust'] = self._params['E_dust']
 
@@ -312,7 +320,7 @@ class SNIa(BasicAstrObj):
             - x1 -> self.sim_x1
             - c -> self.sim_c
         """
-        M0 = self._model_par['M0'] + self.mag_sct
+        M0 = self._model_par['M0'] 
         if self.sim_model.source.name in ['salt2', 'salt3']:
             self._params['template']=self.sim_model.source.name
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
@@ -323,12 +331,12 @@ class SNIa(BasicAstrObj):
 
             if isinstance(self._model_par['beta'] , str):
                 if self._model_par['beta'].lower() == 'bs20':
-                    #in this case the beta parameter is included in the mag_sct
-                    mb = self.sim_mu + M0 - alpha * x1 
+                    #in this case the beta parameter is different for each SN
+                    mb = self.sim_mu + M0 - alpha * x1  + self._params['beta_sn'] * c
             else:
                 #in this case beta is just 1 value for all SN
                 beta = self._model_par['beta']
-                mb = self.sim_mu + M0 - alpha * x1 + beta * c #add mass step if you have host 
+                mb = self.sim_mu + M0 - alpha * x1 + beta * c  + self.mag_sct  
 
             self.sim_x1 = x1
             self.sim_c = c

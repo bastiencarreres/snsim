@@ -258,10 +258,11 @@ def gen_BS20_scatter(n_sn, seed=None):
             numpy array containing scattering terms generated.
 
         """
+
         rand_gen = np.random.default_rng(seed)
     
-        lower,upper = 0.5, 10000
-        mu, sigma = 2,1.4 #value of mean and sigma are fitted in Brout and Scolnic 2020
+        lower,upper = 0.5, 1000
+        mu, sigma = 2,1.4
         X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
         Rv= X.rvs(n_sn, random_state=seed)
 

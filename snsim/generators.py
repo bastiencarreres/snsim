@@ -846,8 +846,8 @@ class SNIaGen(BaseGen):
             if isinstance(self._params['model_config']['dist_c'], str):
                 if self._params['model_config']['dist_c'].lower() == 'bs20':
                     header['mean_c'] = 'BS20'
-                    header['dist_c'] = 'gauss c_int + gauss Edust'
-                    header['sig_c'] = 'BS20'
+                    header['dist_c'] = 'c_int BS20'
+                    header['sig_c'] = 'c_int BS20'
             
             
             elif isinstance(self._params['model_config']['dist_c'], list):
@@ -974,7 +974,7 @@ class SNIaGen(BaseGen):
 
         if isinstance(self._params['model_config']['dist_c'], str):
             if self._params['model_config']['dist_c'].lower() == 'bs20':
-                sim_c = astrobj_par['E_dust'] + astrobj_par['c_int']
+                sim_c = astrobj_par['c_int']
         else:
             sim_c = ut.asym_gauss(*self._params['model_config']['dist_c'],
                               seed=seeds[1],
