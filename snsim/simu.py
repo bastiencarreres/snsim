@@ -10,7 +10,6 @@ from . import generators
 from . import survey_host as sh
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
-
 from .generators import __GEN_DIC__
 from .sample import SimSample
 
@@ -56,7 +55,7 @@ class Simulator:
     |     duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
     | mw_dust:
     |     model: MOD_NAME
-    |     rv: Rv # Optional, default Rv = 3.1
+    |     r_v: Rv # Optional, default Rv = 3.1
     | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
     |     rate: rate of SN/Mpc^3/year # Optional, default=3e-5
@@ -84,10 +83,6 @@ class Simulator:
     |     host_file: 'PATH/TO/HOSTFILE'
     |     distrib: 'rate' or 'random'  # Optional, default = 'rate'
     |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
-    | dipole:  # Optional, add a dipole as dM = A + B * cos(theta)
-    |     coord: [RA, Dec]  # Direction of the dipole
-    |     A: A_parameter
-    |     B: B_parameter
     | dask: # Optional for using dask parallelization
     |     use: True or False
     |     nworkers: NUMBER OF WORKERS # used to adjust work distribution
@@ -139,22 +134,20 @@ class Simulator:
 
         # -- Init host object
         if 'host' in self.config:
-            self._host = sh.SnHost(self.config['host'], z_range=self.z_range,
-                                   geometry=self.survey._envelope)
+            self._host = sh.SnHost(
+                self.config['host'], 
+                z_range=self.z_range,
+                geometry=self.survey._envelope)
         else:
             self._host = None
 
         # -- Init mw dust
         if 'mw_dust' in self.config:
             mw_dust = self.config['mw_dust']
+            if 'r_v' not in self.config['mw_dust']:
+                self.config['mw_dust']['r_v'] = 3.1
         else:
             mw_dust = None
-
-        # -- Init dipole
-        if 'dipole' in self.config:
-            dipole = self.config['dipole']
-        else:
-            dipole = None
 
         # Init the cuts on lightcurves
         self._nep_cut = self._init_nep_cuts()
@@ -169,17 +162,16 @@ class Simulator:
             if object_name in self.config:
                 # -- Get which generator correspond to which transient in snsim.generators
                 gen_class = getattr(generators, object_genclass)
-                self._generators.append(gen_class(self.config[object_name],
-                                                  self.cmb,
-                                                  self.cosmology,
-                                                  time_range,
-                                                  z_range=self.z_range,
-                                                  peak_out_trange=True,
-                                                  vpec_dist=self.vpec_dist,
-                                                  host=self.host,
-                                                  mw_dust=mw_dust,
-                                                  dipole=dipole,
-                                                  geometry=self.survey._envelope))
+                self._generators.append(gen_class(
+                    self.config[object_name],
+                    self.cosmology,
+                    time_range,
+                    cmb=self.cmb,
+                    z_range=self.z_range,
+                    vpec_dist=self.vpec_dist,
+                    host=self.host,
+                    mw_dust=mw_dust,
+                    geometry=self.survey._envelope))
                 # -- Cadence sim or n fixed
                 if 'force_n' in self.config[object_name]:
                     self._use_rate.append(False)
@@ -209,7 +201,7 @@ class Simulator:
         # -- Set default mintime, maxtime (restframe)
         snc_mintime = -20
         snc_maxtime = 50
-         #maybe default timerange to change to be more flexible with sncc
+        # TODO : maybe default timerange to change to be more flexible with sncc
 
         cut_list = []
         if 'nep_cut' in self.config['sim_par']:
@@ -229,7 +221,8 @@ class Simulator:
         dt = [('nep', np.int8), ('mintime', np.int16), ('maxtime', np.int16), ('band', np.str_, 8)]
         return np.asarray(cut_list, dtype=dt)
 
-    def _gen_n_sn(self, rand_gen, z_shell_time_rate, duration_in_days, area=4 * np.pi):
+    @staticmethod
+    def _gen_n_sn(z_shell_time_rate, duration_in_days, seed=None, area=4 * np.pi):
         """Generate the number of obj with Poisson law.
 
         Parameters
@@ -243,9 +236,10 @@ class Simulator:
             Number of obj to simulate.
 
         """
+        rng = np.random.default_rng(seed)
         nsn = duration_in_days / 365.25 * area / (4 * np.pi) * np.sum(z_shell_time_rate)
         nsn = int(np.round(nsn))
-        return rand_gen.poisson(nsn)
+        return np.max([rng.poisson(nsn), 1])
 
     def _get_cosmo_header(self):
         """Return the header for cosmology model used."""
@@ -275,10 +269,11 @@ class Simulator:
 
         print('-----------------------------------------------------------\n')
 
-        print(f"SIM NAME : {self.sim_name}\n"
-              f"CONFIG FILE : {self._yml_path}\n"
-              f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
-              f"SIMULATION RANDSEED : {self.randseed}")
+        print(
+            f"SIM NAME : {self.sim_name}\n"
+            f"CONFIG FILE : {self._yml_path}\n"
+            f"SIM WRITE DIRECTORY : {self.config['data']['write_path']}\n"
+            f"SIMULATION RANDSEED : {self.randseed}")
 
         if 'host_file' in self.config:
             print(f"HOST FILE : {self.config['host_file']}")
@@ -303,8 +298,9 @@ class Simulator:
         print('\n-----------------------------------------------------------\n')
 
         if 'mw_dust' in self.config:
-            print("Use mw dust model : "
-                  f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['rv']}")
+            print(
+                "Use mw dust model : "
+                f"{self.config['mw_dust']['model']} with RV = {self.config['mw_dust']['r_v']}")
 
             print('\n-----------------------------------------------------------\n')
 
@@ -318,36 +314,41 @@ class Simulator:
 
         print('\n-----------------------------------------------------------\n')
 
-        # -- Create the random generator object with the rand seed
-        rand_gen = np.random.default_rng(self.randseed)
-        seed_list = rand_gen.integers(1000, 1e6, size=len(self.generators))
-
+        # -- Create the SeedSequence object with the root rand seed
+        SeedSeq = np.random.SeedSequence(self.randseed)
+        
         # -- Change the samples attribute to store obj, init ID
         self._samples = []
         Obj_ID = 0
         file_str=''
 
         # -- Simulation for each of the selected obj.
-        for use_rate, seed, gen in zip(self._use_rate, seed_list, self.generators):
+        for use_rate, gen in zip(self._use_rate, self.generators):
             sim_time = time.time()
+            seed = SeedSeq.spawn(1)[0]
             if use_rate:
-                lcs_list = self._cadence_sim(np.random.default_rng(seed), gen, Obj_ID)
+                lcs_list = self._cadence_sim(seed, gen, Obj_ID)
             else:
-                lcs_list = self._fix_nsn_sim(np.random.default_rng(seed), gen, Obj_ID)
-            
-            self._samples.append(SimSample.fromDFlist(self.sim_name + '_' + gen._object_type,
-                                                      lcs_list,
-                                                      {'seed': seed,
-                                                       **gen._get_header(),
-                                                       'cosmo': self._get_cosmo_header()},
-                                                      model_dir=None,
-                                                      dir_path=self.config['data']['write_path']))
+                lcs_list = self._fix_nsn_sim(seed, gen, Obj_ID)
 
-            print(f'{len(lcs_list)} {gen._object_type} lcs generated'
-                  f' in {time.time() - sim_time:.1f} seconds')
+            self._samples.append(SimSample.fromDFlist(
+                self.sim_name + '_' + gen._object_type,
+                lcs_list,
+                {'seed': seed.entropy,
+                 'seed_key': seed.spawn_key,
+                **gen._get_header(),
+                'cosmo': self._get_cosmo_header()},
+                model_dir=None,
+                dir_path=self.config['data']['write_path']))
+
+            print(
+                f'{len(lcs_list)} {gen._object_type} lcs generated'
+                f' in {time.time() - sim_time:.1f} seconds')
             write_time = time.time()
-            self._samples[-1]._write_sim(self.config['data']['write_path'],
-                                         self.config['data']['write_format'])
+            
+            self._samples[-1]._write_sim(
+                self.config['data']['write_path'],
+                self.config['data']['write_format'])
 
             print(f'Sim file write in {time.time() - write_time:.1f} seconds')
 
@@ -360,17 +361,17 @@ class Simulator:
         print('OUTPUT FILE(S) : ')
         print(file_str)
 
-    def _sim_lcs(self, generator, n_obj, Obj_ID=0, seed=None):
+    def _sim_lcs(self, seed, generator, n_obj, Obj_ID=0):
         """Simulate AstrObj lcs.
 
         Parameters
         ----------
-        generator : snsim.generator
-            The parameter generator class
+        seed : np.random.SeedSequence
+            Random Seed.
         n_obj : int
             The nummber of object to generate
         Obj_ID : int, optional
-           The first ID of AstrObj, by default 0
+            The first ID of AstrObj, by default 0
         seed : int, optional
             The random seed to generate parameters, by default None
 
@@ -380,35 +381,31 @@ class Simulator:
             List of the AstrObj LCs
 
         """
-        if seed is None:
-            seed = np.random.randint(1e3, 1e6)
-
-        rand_gen = np.random.default_rng(seed)
-
+        
+        seeds = seed.spawn(2)
         # -- Init lcs list
         lcs = []
 
         # -- Generate n base param
-        param_tmp = generator.gen_astrobj_par(n_obj, rand_gen.integers(1000, 1e6), 
-                                              min_max_t=True)
-
-        # -- Set up obj parameters
-        model_t_range = (generator.snc_model_time[0], generator.snc_model_time[1])
+        param_tmp = generator.gen_basic_par(n_obj, seeds[0], 
+                                            min_max_t=True)
 
         # -- Select observations that pass all the cuts
-        epochs, params = self.survey.get_observations(param_tmp,
-                                                      phase_cut=model_t_range,
-                                                      nep_cut=self.nep_cut,
-                                                      IDmin=Obj_ID,
-                                                      use_dask=self.config['dask']['use'],
-                                                      npartitions=self.config['dask']['nworkers'])
+        epochs, params = self.survey.get_observations(
+            param_tmp,
+            phase_cut=None,
+            nep_cut=self.nep_cut,
+            IDmin=Obj_ID,
+            use_dask=self.config['dask']['use'],
+            npartitions=self.config['dask']['nworkers'])
         if params is None:
             raise RuntimeError('None of the object pass the cuts...')
-        
-        # -- Generate the object
-        obj_list = generator(rand_seed=rand_gen.integers(1e3, 1e6),
-                             astrobj_par=params)
 
+        # -- Generate the object
+        obj_list = generator(
+            seed=seeds[1],
+            basic_par=params)
+                
         # -- TO DO: dask it when understanding the random pickel-sncosmo error
 
         # if self.config['dask']['use']:
@@ -420,19 +417,18 @@ class Simulator:
         #         lcs += dask.compute([dask.delayed(obj).gen_flux(epochs.loc[[obj.ID]])
         #                              for obj in obj_list[imin:imax]])[0]
         # else:
-        lcs = [obj.gen_flux(epochs.loc[[obj.ID]]) for obj in obj_list]
+        lcs = [obj.gen_flux(epochs.loc[obj.ID]) for obj in obj_list]
+
         return lcs
 
-    def _cadence_sim(self, rand_gen, generator, Obj_ID=0):
+    def _cadence_sim(self, seed, generator, Obj_ID=0):
         """Simulate a number of AstrObj according to poisson law.
 
         Parameters
         ----------
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
-        shell_time_rate : numpy.ndarray
-            An array that contains sn time rate in each shell.
-
+        seed : np.random.SeedSequence
+            Random Seed.
+            
         Returns
         -------
         list(pandas.Dataframe)
@@ -450,27 +446,31 @@ class Simulator:
             7- Apply observation and selection cuts to SN
             8- Genertate fluxes
         """
+        seeds = seed.spawn(2)
         # -- Generate the number of SN
         if 'duration_for_rate' in self.config['sim_par']:
             duration = self.config['sim_par']['duration_for_rate']
         else:
             duration = generator.time_range[1] - generator.time_range[0]
 
-        n_obj = self._gen_n_sn(rand_gen, generator._z_time_rate[1],
-                               duration, area=self.survey._envelope_area)
+        n_obj = self._gen_n_sn(
+            generator._z_time_rate[1],
+            duration, 
+            seed=seeds[0],
+            area=self.survey._envelope_area)
 
-        lcs = self._sim_lcs(generator, n_obj,
-                            Obj_ID=Obj_ID, seed=rand_gen.integers(1e3, 1e6))
+        lcs = self._sim_lcs(seeds[1], generator, n_obj,
+                            Obj_ID=Obj_ID)
 
         return lcs
 
-    def _fix_nsn_sim(self, rand_gen, generator, Obj_ID=0):
+    def _fix_nsn_sim(self, seed, generator, Obj_ID=0):
         """Simulate a fixed number of AstrObj.
 
         Parameters
         ----------
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        seed : np.random.SeedSequence
+            Random Seed.
 
         Returns
         -------
@@ -485,8 +485,11 @@ class Simulator:
         raise_trigger = 0
         n_to_sim = generator._params['force_n']
         while len(lcs) < generator._params['force_n']:
-            lcs += self._sim_lcs(generator, n_to_sim,
-                                 Obj_ID=len(lcs), seed=rand_gen.integers(1e3, 1e6))
+            lcs += self._sim_lcs(
+                seed, 
+                generator, 
+                n_to_sim,
+                Obj_ID=len(lcs))
 
             # -- Arbitrary cut to stop the simulation if no SN are geenrated
             if n_to_sim == generator._params['force_n'] - len(lcs):
@@ -494,7 +497,7 @@ class Simulator:
                 if raise_trigger > 2 * len(self.survey.obs_table['expMJD']):
                     raise RuntimeError('Cuts are too stricts')
                 continue
-           
+
             n_to_sim = generator._params['force_n'] - len(lcs)
 
         return lcs

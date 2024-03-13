@@ -34,6 +34,13 @@ _SPHERE_LIMIT_ = shp_geo.LineString([[2 * np.pi, -np.pi/2],
 #Value of h used in the various articles
 h_article = {
              'jla' : 0.70,
-             'li11': 0.73
+             'li11': 0.73,
+             'sullivan06': 0.70
              }
+
+#value of fitted parameter of SNIa-Host_galaxy from Sullivan et al 2006 https://iopscience.iop.org/article/10.1086/506137/pdf
+sullivan_para = {
+                'mass': 5.3 * 1.e-14,
+                'SFR': 3.9 * 1.e-4
+                }
 

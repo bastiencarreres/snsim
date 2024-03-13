@@ -77,8 +77,8 @@ def R_base(theta, phi, vec):
     return R @ vec
 
 
-@guvectorize(["void(float64[:, :], float64[:, :], float64[:,:])"],
-              "(m, n),(m, n)->(m, n)", nopython=True)
+@guvectorize(["(float64[:, :, :], float64[:, :], float64[:, :, :])"],
+              "(m, n, k),(k, m)->(m, n, k)", nopython=True)
 def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
     """Compute new coordinates of an object in a list of fields frames.
     Parameters
@@ -94,15 +94,15 @@ def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
     numpy.ndarray(float, size = (2, ?))
         The new coordinates of the obect in each field frame.
     """
-   
-    for i in range(len(ra_dec_frame[0])):
-        vec = np.array([np.cos(ra_dec[0][i]) * np.cos(ra_dec[1][i]),
-                        np.sin(ra_dec[0][i]) * np.cos(ra_dec[1][i]),
-                        np.sin(ra_dec[1][i])])
-        x, y, z = R_base(ra_dec_frame[0][i], ra_dec_frame[1][i], vec)
-        new_radec[0][i] = np.arctan2(y, x)
-        if  new_radec[0][i] < 0: new_radec[0][i] +=  2 * np.pi
-        new_radec[1][i] = np.arcsin(z)
+    for i in range(ra_dec_frame.shape[1]):
+        ra = ra_dec[i]
+        vec = np.vstack((np.cos(ra_dec[i, :, 0]) * np.cos(ra_dec[i, :, 1]),
+                         np.sin(ra_dec[i, :, 0]) * np.cos(ra_dec[i, :, 1]),
+                         np.sin(ra_dec[i, :, 1])))
+        x, y, z = R_base(ra_dec_frame[0, i], ra_dec_frame[1, i], vec)
+        new_radec[i, :, 0] = np.arctan2(y, x)
+        new_radec[i, :, 0][new_radec[i, :, 0] < 0] +=  2 * np.pi
+        new_radec[i, :, 1] = np.arcsin(z)
 
 
 @njit(cache=True)

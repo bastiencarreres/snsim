@@ -6,10 +6,13 @@ import astropy.time as atime
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as astu
+import geopandas as gpd
 from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
 from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
-
+from . import constants as cst
+from snsim import __snsim_dir_path__
+import pandas as pdimport matplotlib.pyplot as plt
 
 def gauss(mu, sig, x):
     """Gaussian function.
@@ -119,6 +122,18 @@ class CustomRandom:
         return np.interp(rand_gen.random(n), self.cdf, self.x)
 
 
+def reshape_prob_data():
+    """ function that read DES X1-mass probability file and return 
+    grid values fro interpolation """
+    
+    prob_data=pd.read_csv(__snsim_dir_path__+'data_probability/DES-SN5YR_DES_S3_x1.DAT', sep=',')
+    prob = np.zeros((len(np.unique(prob_data.x1.values)),len(np.unique(prob_data.logmass.values))))
+    for i, (name, group) in enumerate(prob_data.groupby('x1')):
+        prob[i]=group.prob.values
+    
+    return np.unique(prob_data.x1.values), np.unique(prob_data.logmass.values), prob
+
+
 def set_cosmo(cosmo_dic):
     """Load an astropy cosmological model.
 
@@ -163,6 +178,10 @@ def set_cosmo(cosmo_dic):
             cosmo_dic['Ode0'] = 1 - cosmo_dic['Om0'] - Ok0
         return acosmo.w0waCDM(**cosmo_dic)
 
+def init_snc_source(name, version=None):
+    # TODO - BC: Not very usefull, maybe has to be reimplemented later
+    return snc.get_source(name=name, version=version)
+
 
 def scale_M0_cosmology(h, M0_art, h_art):
     """Compute a value of M0 corresponding the cosmology used in the simulation.
@@ -174,7 +193,7 @@ def scale_M0_cosmology(h, M0_art, h_art):
     M0_art: float
             M0 value to be scaled
     h_art: float
-          the H0/100 constant used in the article to retrive M0_art
+        the H0/100 constant used in the article to retrive M0_art
 
     Returns
     -------
@@ -182,9 +201,7 @@ def scale_M0_cosmology(h, M0_art, h_art):
         Scaled SN Absolute Magnitude.
 
     """
-
-    dh = (h_art - h) / h
-    return M0_art - 5 * np.log10(1 + dh)
+    return M0_art + 5 * np.log10(h / h_art)
 
 
 def init_astropy_time(date):
@@ -266,7 +283,7 @@ def asym_gauss(mu, sig_low, sig_high=None, seed=None, size=1):
     return asym_dist.draw(size, seed=seed)
 
 
-def compute_z2cmb(ra, dec, cmb):
+def compute_zpcmb(ra, dec, cmb):
     """Compute the redshifts of a list of objects relative to the CMB.
 
     Parameters
@@ -303,8 +320,8 @@ def compute_z2cmb(ra, dec, cmb):
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.
 
 
-def init_sn_model(name, model_dir=None):
-    """Initialise a sncosmo model.
+def init_snia_source(name, model_dir=None, version=None):
+    """Initialise a sncosmo source.
 
     Parameters
     ----------
@@ -319,12 +336,12 @@ def init_sn_model(name, model_dir=None):
         sncosmo Model corresponding to input configuration.
     """
     if model_dir is None:
-        return snc.Model(source=name)
+        return snc.get_source(name=name, version=version)
     else:
         if name == 'salt2':
-            return snc.Model(source=snc.SALT2Source(model_dir, name='salt2'))
+            return snc.SALT2Source(model_dir, name='salt2')
         elif name == 'salt3':
-            return snc.Model(source=snc.SALT3Source(model_dir, name='salt3'))
+            return snc.SALT3Source(model_dir, name='salt3')
     return None
 
 
@@ -416,7 +433,7 @@ def flux_to_Jansky(zp, band):
     return norm
 
 def zobs_MinT_MaxT(par, model_t_range):
-    zobs = (1. + par['zcos']) * (1. + par['z2cmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
+    zobs = (1. + par['zcos']) * (1. + par['zpcmb']) * (1. + par['vpec'] / C_LIGHT_KMS) - 1.
     MinT = par['sim_t0'] + model_t_range[0] * (1. + zobs)
     MaxT = par['sim_t0'] + model_t_range[1] * (1. + zobs)
     return zobs, MinT, MaxT
@@ -429,69 +446,6 @@ def print_dic(dic, prefix=''):
             print_dic(dic[K], prefix=prefix + indent)
         else:
             print(prefix + f'{K}: {dic[K]}')
-
-
-def _format_corner(corner, RA):
-    # -- Replace corners that cross sphere edges
-    #    
-    #     0 ---- 1
-    #     |      |
-    #     3 ---- 2
-    # 
-    #   conditions : 
-    #       - RA_0 < RA_1
-    #       - RA_3 < RA_2
-    #       - RA_0 and RA_3 on the same side of the field center
-    
-    sign = (corner[3][0] - RA) * (corner[0][0] - RA) < 0
-    comp = corner[0][0] < corner[3][0]
-
-    corner[1][0][corner[1][0] < corner[0][0]] += 2 * np.pi
-    corner[2][0][corner[2][0] < corner[3][0]] += 2 * np.pi
-
-
-    corner[0][0][sign & comp] += 2 * np.pi
-    corner[1][0][sign & comp] += 2 * np.pi
-
-    corner[2][0][sign & ~comp] += 2 * np.pi
-    corner[3][0][sign & ~comp] += 2 * np.pi
-    return corner
-
-
-def _compute_area(polygon):
-    """Compute survey total area."""
-    # It's an integration by dec strip
-    area = 0
-    strip_dec = np.linspace(-np.pi/2, np.pi/2, 10_000)
-    for da, db in zip(strip_dec[:-1], strip_dec[1:]):
-        line = shp_geo.LineString([[0, (da + db) * 0.5], [2 * np.pi, (da + db) * 0.5]])
-        if line.intersects(polygon):
-            dRA = line.intersection(polygon).length
-            area += dRA * (np.sin(db) - np.sin(da))
-    return area
-
-
-def _compute_polygon(corners):
-    """Create polygon on a sphere, check for edges conditions."""
-    polygon = shp_geo.Polygon(corners)
-    # -- Cut into 2 polygon if cross the edges
-    if polygon.intersects(_SPHERE_LIMIT_):
-        unioned = polygon.boundary.union(_SPHERE_LIMIT_)
-        polygon = [p for p in shp_ops.polygonize(unioned)
-                    if p.representative_point().within(polygon)]
-
-        x0, y0 = polygon[0].boundary.xy
-        x1, y1 = polygon[1].boundary.xy
-
-        if x1 > x0: 
-            x1 = np.array(x1) - 2 * np.pi
-            polygon[1] = shp_geo.Polygon(np.array([x1, y1]).T)
-        else:
-            x0 = np.array(x0) - 2 * np.pi
-            polygon[0] = shp_geo.Polygon(np.array([x0, y0]).T)
-        polygon =  shp_geo.MultiPolygon(polygon)
-    return polygon
-
 
 def Templatelist_fromsncosmo(source_type=None):
     """ list names of templates in sncosmo built-in sources catalogue  
@@ -604,3 +558,20 @@ def sine_interp(x_new, fun_x, fun_y):
     values = 0.5 * (fun_y_sup + fun_y_inf) + 0.5 * (fun_y_sup - fun_y_inf) * sin_interp
     return values
         
+def gen_rndchilds(seed, size=1):
+    if isinstance(seed, np.random.SeedSequence):
+        return seed.spawn(size)
+    else:
+        return np.random.SeedSequence(seed).spawn(size)def compute_weight_mass_for_type(mass, sn_type, cosmology):
+    """ compute the mass dependent weights for HOST - SN matching """
+    if sn_type.lower() == 'snia':
+        weights_mass = cst.sullivan_para['mass'] * (cosmology.h/cst.h_article['sullivan06']) * mass
+
+    return weights_mass
+
+def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
+    """ compute the SFR dependent weights for HOST - SN matching """
+    if sn_type.lower() == 'snia':
+        weights_SFR = cst.sullivan_para['SFR'] * (cosmology.h/cst.h_article['sullivan06']) * SFR
+
+    return weights_SFR

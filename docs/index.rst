@@ -17,6 +17,7 @@ Welcome to snsim's documentation!
    installation.rst
    basicusage.rst
    configfile.rst
+   astrobj.rst
    obsfile.rst
    hostfile.rst
    snsample.rst
