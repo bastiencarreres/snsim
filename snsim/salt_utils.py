@@ -3,6 +3,7 @@
 import sncosmo as snc
 import numpy as np
 from . import utils as ut
+from scipy.interpolate import RectBivariateSpline as spline2d
 
 def n21_x1_model(z, seed=None):
     """X1 distribution redshift dependant model from  Nicolas et al. 2021.
@@ -44,6 +45,84 @@ def n21_x1_model(z, seed=None):
     X1 = np.zeros(len(z))
     X1[is_young] = rand_gen.normal(loc=mu1, scale=sig1, size=np.sum(is_young))
     X1[~is_young] = dist_old.draw(np.sum(~is_young), seed=rand_gen.integers(low=1e3, high=1e6))
+    return X1
+
+def x1_mass_model(host_mass, seed=None):
+
+    if host_mass is None:
+        raise ValueError('provide host_mass')
+    
+    rand_gen = np.random.default_rng(seed)    
+    
+     #probability x1-mass from Popovic et al. 2021b
+    x1_bin,mass_bin,prob = ut.reshape_prob_data()
+    prob_x1_mass = spline2d(mass_bin,x1_bin,prob.T)
+
+    #to avoid errors            
+    host_mass = np.atleast_1d(host_mass)
+
+   
+    dist_mass = (CustomRandom(lambda x: prob_x1_mass(m, x), 
+                            x1_bin.min(), x1_bin.max(),ndiv=10000) for m in host_mass) 
+                
+   
+    return np.asarray([dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_mass])
+
+         
+
+def n21_x1_mass_model(z, host_mass=None, seed=None):
+    
+    rand_gen = np.random.default_rng(seed)
+    
+    # Constants defines in the paper Nicolas et al 2021
+    a = 0.51
+    K = 0.87
+    mu1 = 0.37
+    mu2 = -1.22
+    sig1 = 0.61
+    sig2 = 0.56
+    
+    if host_mass is None:
+        raise ValueError('provide host_mass')
+    
+    #probability x1-mass from Popovic et al. 2021b
+    x1_bin,mass_bin,prob = ut.reshape_prob_data()
+    prob_x1_mass = spline2d(mass_bin,x1_bin,prob.T)
+                
+        
+    # Just to avoid errors
+    z = np.atleast_1d(z)
+    host_mass = np.atleast_1d(host_mass)
+
+    # Constants defines in the paper
+    a = 0.51
+    K = 0.87
+    mu1 = 0.37
+    mu2 = -1.22
+    sig1 = 0.61
+    sig2 = 0.56
+
+    young_or_old = rand_gen.random(size=len(z))
+
+    # Apply the pdf eq 2 from Nicolas et al. 2021
+    delta_z = 1 / (1 / (K * (1 + z)**2.8) + 1)  # Probability to be young
+    is_young = young_or_old < delta_z
+    X1 = np.zeros(len(z))
+    
+    
+    # Compute the distribution for old galaxies
+    pdf_old = lambda x: a * ut.gauss(mu1, sig1, x) + (1 - a) * ut.gauss(mu2, sig2, x)
+    dist_old = (CustomRandom(lambda x: pdf_old(x) * prob_x1_mass(m, x), 
+                            mu2 - 10 * sig2, mu1 + 10 * sig1,ndiv=10000) for m in host_mass[~is_young]) 
+                
+    
+    #compute distribution for young galaxies
+    pdf_young = lambda x: ut.gauss(mu1,sig1,x)
+    dist_young = (CustomRandom(lambda x: pdf_old(x) * prob_x1_mass(m, x),
+                                mu1 - 10 * sig1, mu1 + 10 * sig1,ndiv=10000) for m in host_mass[is_young])
+   
+    X1[is_young] = np.asarray([dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_young])
+    X1[~is_young] = np.asarray([dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_old])
     return X1
 
 

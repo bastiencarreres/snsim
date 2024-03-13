@@ -640,7 +640,7 @@ class SnHost:
     z_range : list(float), opt
         The redshift range.
     """
-    _dist_options = ['rate', 'random']
+    _dist_options = ['rate', 'random', 'mass', 'mass_sfr', 'sfr']
 
     def __init__(self, config, z_range=None, geometry=None):
         """Initialize SnHost class."""
@@ -723,7 +723,7 @@ class SnHost:
         host_list.reset_index(drop=True, inplace=True)
         return z_range, host_list
 
-    def compute_weights(self, rate=None):
+    def compute_weights(self, rate=None, sn_type=None, cosmology = None):
         """Compute the weights for random choice.
 
         Parameters
@@ -744,6 +744,37 @@ class SnHost:
             # Take into account rate is divide by (1 + z)
             weights = rate(self.table['zcos']) / (1 + self.table['zcos'])  # X mass X 
             # Normalize the weights
+            weights /= weights.sum()
+        elif self.config['distrib'].lower() == 'mass':
+            if rate is None:
+                raise ValueError("rate should be set to use 'rate' distribution")
+            # Take into account rate is divide by (1 + z)
+            weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
+            #compute mass weight
+            weights_mass = ut.compute_weight_mass_for_type(mass=self.table['host_mass'], sn_type=sn_type, cosmology=cosmology)
+            weights = weights_rate * weights_mass
+            #normalize
+            weights /= weights.sum()
+        elif self.config['distrib'].lower() == 'sfr':
+            if rate is None:
+                raise ValueError("rate should be set to use 'rate' distribution")
+            # Take into account rate is divide by (1 + z)
+            weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
+            #compute SFR weight
+            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_SFR'], sn_type=sn_type, cosmology=cosmology)
+            weights = weights_rate * weights_SFR
+            #normalize
+            weights /= weights.sum()
+        elif self.config['distrib'].lower() == 'mass_sfr':
+            if rate is None:
+                raise ValueError("rate should be set to use 'rate' distribution")
+            # Take into account rate is divide by (1 + z)
+            weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
+            #compute SFR and mass weight
+            weights_mass = ut.compute_weight_mass_for_type(mass=self.table['host_mass'], sn_type=sn_type, cosmology=cosmology)
+            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_SFR'], sn_type=sn_type, cosmology=cosmology)
+            weights = weights_rate * (weights_mass + weights_SFR)
+            #normalize
             weights /= weights.sum()
         return weights
 
@@ -769,7 +800,7 @@ class SnHost:
         """
         rand_gen = np.random.default_rng(seed)
 
-        weights = self.compute_weights(rate=rate)
+        weights = self.compute_weights(rate=rate, sn_type=sn_type, cosmology=cosmology)
         
         if self._geometry is None:
             idx = rand_gen.choice(self.table.index, p=weights, size=n)

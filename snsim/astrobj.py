@@ -294,22 +294,17 @@ class SNIa(AstrObj):
                 self._sim_par['beta'],
                 self._sim_par['x1'],
                 self._sim_par['c']) + self.mu
-            
-        elif self._relation.lower() == 'salttrip_BS20':
-            # TODO : COMPLETE BS20 using dev_damiano
-            self._obj_attrs.extend(['alpha', 'beta', 'RV', 'Edust', 'x0', 'x1', 'c'])
-            self._sim_par['mb'] = self.SALTTripp(
-                M0, 
-                self._sim_par['alpha'], 
-                self._sim_par['beta'], 
-                self._sim_par['RV'],
-                self._sim_par['Edust'],
-                self._sim_par['x1'], 
-                self._sim_par['c']) + self.mu
     
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError('Relation not available')
+        
+        if 'mass_step' in self._sim_par:
+            if 'host_mass' in self._sim_par:
+                if self._sim_par['host_mass'] > 10. :
+                    mb += self._sim_par['mass_step']
+            else:
+                raise ValueError('Provide SN host mass to account for the magnitude mass step')
 
         # Compute the x0 parameter
         model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')

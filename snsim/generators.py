@@ -17,6 +17,7 @@ from . import astrobj as astr
 from . import constants as cst
 
 
+
 __GEN_DIC__ = {
     'snia_gen': 'SNIaGen',
     'timeseries_gen':'TimeSeriesGen',
@@ -29,7 +30,6 @@ __GEN_DIC__ = {
     'snib_gen': 'SNIbGen',
     'snic-bl_gen': 'SNIc_BLGen'
     }
-
 
 class BaseGen(abc.ABC):
     """Abstract class for basic astrobj generator.
@@ -73,6 +73,7 @@ class BaseGen(abc.ABC):
         self._params = copy.copy(params)    
         self._cosmology = cosmology
         self._time_range = time_range
+        
 
         # -- At least one mandatory
         if vpec_dist is not None and host is None:
@@ -555,8 +556,9 @@ class BaseGen(abc.ABC):
         if self.host is None:
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
         else:
-            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate) 
+            host = self.host.random_choice(n_obj, seed=seeds[1], rate=self.rate, sn_type=self._object_type, cosmology=self.cosmology) 
             zcos = host['zcos'].values
+
 
         # -- Generate ra, dec
         if self.host is not None:
@@ -589,6 +591,12 @@ class BaseGen(abc.ABC):
             basic_par['min_t'] = basic_par['t0'] + self._sources_prange[0] * _1_zobs_
             basic_par['max_t'] = basic_par['t0'] + self._sources_prange[1] * _1_zobs_
             basic_par['1_zobs'] = _1_zobs_
+
+        # save in astrobj_par all the column of the host_table that start with host, to save the data in final sim
+        # col_name = [column for column in host if column.startswith('host_')]
+        # if len(col_name) > 0 :
+        #   for c in col_name:
+        #        astrobj_par[c] = host[c].values
 
         return pd.DataFrame(basic_par)
     
@@ -746,19 +754,49 @@ class SNIaGen(BaseGen):
                     header['dist_x1'] = 'gauss'
                     header['sig_x1'] = self._params['dist_x1'][1]
 
-            header['peak_c'] = self._params['dist_c'][0]
-
-            if len(self._params['dist_c']) == 3:
-                header['dist_c'] = 'asym_gauss'
-                header['sig_c_low'] = self._params['dist_c'][1]
-                header['sig_c_hi'] = self._params['dist_c'][2]
-            else:
-                header['dist_c'] = 'gauss'
-                header['sig_c'] = self._params['dist_c'][1]
+            
+            if isinstance(self._params['dist_c'], str):
+                if self._params['dist_c'].lower() == 'bs20':
+                    header['mean_c'] = 'BS20'
+                    header['dist_c'] = 'c_int BS20'
+                    header['sig_c'] = 'c_int BS20'
+            
+            
+            elif isinstance(self._params['dist_c'], list):
+                if len(self._params['dist_c']) == 3:
+                    header['mean_c'] = self._params['dist_c'][0]
+                    header['dist_c'] = 'asym_gauss'
+                    header['sig_c_low'] = self._params['dist_c'][1]
+                    header['sig_c_hi'] = self._params['dist_c'][2]
+                else:
+                    header['mean_c'] = self._params['dist_c'][0]
+                    header['dist_c'] = 'gauss'
+                    header['sig_c'] = self._params['dist_c'][1]
         return header
-    
-    def gen_par(self, n_obj, basic_par, seed=None):
-        """Generate SNIa specific parameters.
+
+    def gen_coh_scatter(self, n_sn, seed=None):
+        """Generate n coherent mag scattering term.
+
+        Parameters
+        ----------
+        n : int
+            Number of mag scattering terms to generate.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        numpy.ndarray(float)
+            numpy array containing scattering terms generated.
+
+        """
+        rand_gen = np.random.default_rng(seed)
+
+        mag_sct = rand_gen.normal(loc=0, scale=self._params['sigM'], size=n_sn)
+        return mag_sct
+
+    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
+        """Generate sncosmo model dependant parameters (others than redshift and t0).
 
         Parameters
         ----------
@@ -786,7 +824,8 @@ class SNIaGen(BaseGen):
             sim_x1, sim_c, alpha, beta = self.gen_salt_par(
                 n_obj,
                 seeds[1],
-                z=basic_par['zcos'])
+                z=basic_par['zcos'],
+                astrobj_par=astrobj_par)
             params = {**params, 'x1': sim_x1, 'c': sim_c, 'alpha': alpha, 'beta': beta}
 
         # -- Non-coherent scattering effects
@@ -798,7 +837,7 @@ class SNIaGen(BaseGen):
                 params['C11_RndS'] = randgen.integers(1e12, size=n_obj)
         return params
 
-    def gen_salt_par(self, n_sn, seed=None, z=None):
+    def gen_salt_par(self, n_sn, seed=None, z=None, astrobj_par=None):
         """Generate SALT parameters.
 
         Parameters
@@ -819,12 +858,20 @@ class SNIaGen(BaseGen):
         if isinstance(self._params['dist_x1'], str):
             if self._params['dist_x1'].lower() == 'n21':
                 sim_x1 = salt_ut.n21_x1_model(z, seed=seeds[0])
+            elif self._params['dist_x1'].lower() == 'n21+mass':
+                sim_x1 = salt_ut.n21_x1_mass_model(z, astrobj_par['host_mass'], seed=seeds[0])
+            elif self._params['dist_x1'].lower() == 'mass':
+                sim_x1 = salt_ut.x1_mass_model(astrobj_par['host_mass'], seed=seeds[0])
         elif isinstance(self._params['dist_x1'], list):
             sim_x1 = ut.asym_gauss(*self._params['dist_x1'],
                                     seed=seeds[0],
                                     size=n_sn)
 
-        sim_c = ut.asym_gauss(*self._params['dist_c'],
+        if isinstance(self._params['model_config']['dist_c'], str):
+            if self._params['model_config']['dist_c'].lower() == 'bs20':
+                sim_c = astrobj_par['c_int']
+        else:
+            sim_c = ut.asym_gauss(*self._params['dist_c'],
                                 seed=seeds[1],
                                 size=n_sn)
         
@@ -1050,9 +1097,9 @@ class SNIIGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19' : f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3", 
+        'ptf19' : f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3", 
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6"
                         }
@@ -1086,9 +1133,9 @@ class SNIIplGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1116,9 +1163,9 @@ class SNIIbGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1146,9 +1193,9 @@ class SNIInGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1171,9 +1218,9 @@ class SNIbcGen(CCGen):
 
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1204,9 +1251,9 @@ class SNIcGen(CCGen):
                 }
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1232,9 +1279,9 @@ class SNIbGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1260,9 +1307,9 @@ class SNIc_BLGen(CCGen):
     
     _available_rates = {
         # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6 
-        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
+        'ptf19': f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
         # Rate from  https://arxiv.org/abs/2010.15270
-        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
+        'ztf20': f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         'ptf19_pw': f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)"
         }
@@ -1412,13 +1459,12 @@ class SNIa_peculiar(BaseGen):
         """SNIa_peculiar rates registry."""
        
 
-    def init_M0_for_type():
+    def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
        
 
-    def gen_coh_scatter_for_type(n_sn, seed):
+    def gen_coh_scatter_for_type(self,n_sn, seed):
         """Generate n coherent mag scattering term using default values from past literature works based on the type."""
-
 
 class SNIax(SNIa_peculiar):
     """SNIaxclass.
@@ -1441,3 +1487,4 @@ class SNIa_91bg(SNIa_peculiar):
     Parameters
     ----------
    same as TimeSeriesGen class   """
+   
