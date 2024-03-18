@@ -38,9 +38,8 @@ class AstrObj(abc.ABC):
     
     _obj_attrs = ['']
     _available_models = ['']
-    
+
     def __init__(self, sim_par, relation=None, effects=[]):
-        
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
         
@@ -304,16 +303,17 @@ class SNIa(AstrObj):
                     mb += self._sim_par['mass_step']
             else:
                 raise ValueError('Provide SN host mass to account for the magnitude mass step')
+        
+        # Set x1 and c
+        model.set(
+                x1=self._sim_par['x1'],
+                c=self._sim_par['c'])
 
         # Compute the x0 parameter
         model.set_source_peakmag(self._sim_par['mb'], 'bessellb', 'ab')
         self._sim_par['x0'] = model.get('x0')
-
-        model.set(
-                x1=self._sim_par['x1'],
-                c=self._sim_par['c'])
         return model
-    
+
     @staticmethod
     def SALTTripp(M0, alpha, beta, x1, c):
         return M0 - alpha * x1 + beta * c
@@ -321,6 +321,7 @@ class SNIa(AstrObj):
     @staticmethod
     def SALTTrippBS20(M0, alpha, beta, RV, Edust, x1, c):
         return M0 - alpha * x1 + beta * c + (RV + 1) * Edust
+
 
 class TimeSeries(AstrObj):
     """TimeSeries class.
