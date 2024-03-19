@@ -359,7 +359,7 @@ class BaseGen(abc.ABC):
 
         z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
         co_dist = self.cosmology.comoving_distance(z_shell).value
-        shell_vol = 4 * np.pi / 3 * co_dist**2 * C_LIGHT_KMS / self.cosmology.H(z_shell).value * dz
+        shell_vol = 4 * np.pi * co_dist**2 * C_LIGHT_KMS / self.cosmology.H(z_shell).value * dz
 
         # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = self.rate(z_shell) * shell_vol / (1 + z_shell)
