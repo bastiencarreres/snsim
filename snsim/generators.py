@@ -60,8 +60,9 @@ class BaseGen(abc.ABC):
     _available_models = []  # Flux models
     _available_rates = {}  # Rate models
     
-    def __init__(self, params, cosmology, time_range, z_range=None,
-                vpec_dist=None, host=None, mw_dust=None, cmb=None, geometry=None):
+    def __init__(self, params, cosmology, time_range,
+                 z_range=None, vpec_dist=None, host=None,
+                 mw_dust=None, cmb=None, geometry=None):
 
         if vpec_dist is not None and host is not None:
             raise ValueError("You can't set vpec_dist and host at the same time")
@@ -175,8 +176,8 @@ class BaseGen(abc.ABC):
 
     def __str__(self):
         """Print config."""
-        str = ''
-        
+        pstr = ''
+
         if 'model_dir' in self._params:
             model_dir = self._params['model_dir']
             model_dir_str = f" from {model_dir}"
@@ -184,31 +185,31 @@ class BaseGen(abc.ABC):
             model_dir = None
             model_dir_str = " from sncosmo"
 
-        str += 'OBJECT TYPE : ' + self._object_type + '\n'
-        str += "SIM MODEL(S) :\n"
+        pstr += 'OBJECT TYPE : ' + self._object_type + '\n'
+        pstr += "SIM MODEL(S) :\n"
         for sn, snv in zip(self.sim_sources['model_name'], self.sim_sources['model_version']):
-            str += f"- {sn}" 
-            str += f" v{snv}" 
-            str += model_dir_str + '\n'
-        str += '\n'
+            pstr += f"- {sn}" 
+            pstr += f" v{snv}" 
+            pstr += model_dir_str + '\n'
+        pstr += '\n'
 
-        str += ("Peak mintime : "
+        pstr += ("Peak mintime : "
                 f"{self.time_range[0]:.2f} MJD\n\n"
                 "Peak maxtime : "
                 f"{self.time_range[1]:.2f} MJD\n\n")
         
-        str += 'Redshift distribution computed'
+        pstr += 'Redshift distribution computed'
 
         if self.host is not None:
             if self.host.config['distrib'] == 'random':
-                str += ' using host redshift distribution\n'
+                pstr += ' using host redshift distribution\n'
             elif  self.host.config['distrib'] == 'survey_rate':
-                str += ' using rate\n\n'
+                pstr += ' using rate\n\n'
         else:
-            str += ' using rate\n'
+            pstr += ' using rate\n'
                     
-        str += self._add_print() + '\n\n'
-        return str
+        pstr += self._add_print() + '\n\n'
+        return pstr
 
     ##################################################
     # FUNCTIONS TO ADAPT FOR EACH GENERATOR SUBCLASS #
@@ -581,6 +582,7 @@ class BaseGen(abc.ABC):
             'dec': dec,
             'vpec': vpec}
 
+
         if min_max_t:
             _1_zobs_ = (1 + basic_par['zcos']) 
             _1_zobs_ *= (1 + basic_par['zpcmb']) 
@@ -589,11 +591,11 @@ class BaseGen(abc.ABC):
             basic_par['max_t'] = basic_par['t0'] + self._sources_prange[1] * _1_zobs_
             basic_par['1_zobs'] = _1_zobs_
 
-        # save in astrobj_par all the column of the host_table that start with host, to save the data in final sim
-        # col_name = [column for column in host if column.startswith('host_')]
-        # if len(col_name) > 0 :
-        #   for c in col_name:
-        #        astrobj_par[c] = host[c].values
+        # Save in basic_par all the column of the host_table that start with host, to save the data in final sim
+        if self.host is not None:
+            for k in host.columns:
+                if k.startswith('host_'):
+                    basic_par[k] = host[k].values
 
         return pd.DataFrame(basic_par)
     

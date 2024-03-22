@@ -703,8 +703,7 @@ class SnHost:
 
         host_list = host_list.astype('float64')
         host_list.rename(columns=key_dic, inplace=True)
-        ra_mask = host_list['ra'] < 0
-        host_list['ra'][ra_mask] = host_list['ra'][ra_mask] + 2 * np.pi
+        host_list['ra'] += 2 * np.pi * (host_list['ra'] < 0)
         if z_range is not None:
             z_min, z_max = z_range
             if (z_max > host_list['zcos'].max()
@@ -723,7 +722,7 @@ class SnHost:
         host_list.reset_index(drop=True, inplace=True)
         return z_range, host_list
 
-    def compute_weights(self, rate=None, sn_type=None, cosmology = None):
+    def compute_weights(self, rate=None, sn_type=None, cosmology=None):
         """Compute the weights for random choice.
 
         Parameters
@@ -761,7 +760,7 @@ class SnHost:
             # Take into account rate is divide by (1 + z)
             weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
             #compute SFR weight
-            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_SFR'], sn_type=sn_type, cosmology=cosmology)
+            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_sfr'], sn_type=sn_type, cosmology=cosmology)
             weights = weights_rate * weights_SFR
             #normalize
             weights /= weights.sum()
@@ -772,7 +771,7 @@ class SnHost:
             weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
             #compute SFR and mass weight
             weights_mass = ut.compute_weight_mass_for_type(mass=self.table['host_mass'], sn_type=sn_type, cosmology=cosmology)
-            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_SFR'], sn_type=sn_type, cosmology=cosmology)
+            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_sfr'], sn_type=sn_type, cosmology=cosmology)
             weights = weights_rate * (weights_mass + weights_SFR)
             #normalize
             weights /= weights.sum()
@@ -782,7 +781,7 @@ class SnHost:
         # weights that depends on galaxy properties, it will depend on the SN type, to figure out implementation
         # see vincenzi et al, and ask alex kim fo his model
 
-    def random_choice(self, n, seed=None, rate=None):
+    def random_choice(self, n, seed=None, rate=None, sn_type=None, cosmology=None):
         """Randomly select hosts.
 
         Parameters

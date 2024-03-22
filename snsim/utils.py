@@ -575,5 +575,4 @@ def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
     """ compute the SFR dependent weights for HOST - SN matching """
     if sn_type.lower() == 'snia':
         weights_SFR = cst.sullivan_para['SFR'] * (cosmology.h/cst.h_article['sullivan06']) * SFR
-
     return weights_SFR

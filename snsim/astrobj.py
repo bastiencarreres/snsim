@@ -33,41 +33,41 @@ class AstrObj(abc.ABC):
     _type = ''
     _base_attrs = [
         'ID', 'ra', 'dec', 'zcos',
-        'vpec', 'zpcmb', 'como_dist', 
+        'vpec', 'zpcmb', 'como_dist',
         'model_name']
-    
+
     _obj_attrs = ['']
     _available_models = ['']
 
     def __init__(self, sim_par, relation=None, effects=[]):
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
-        
+
         self._relation = relation
 
         if 'ID' not in self._sim_par:
             self._sim_par['ID'] = 0
-        
+
         # -- Check model name
         if self.sim_par['model_name'] not in self._available_models:
             raise ValueError(f"{self.sim_par['model_name']} not available.")
-        
+
         # -- Update attrs
         for k in self._base_attrs:
             setattr(self, k, self._sim_par[k])
 
         # -- sncosmo model
         self._sim_model = self._init_model(effects)
-        
+
         # -- Update attr of astrobj class
         for k in [*self._obj_attrs, 'model_version']:
             setattr(self, k, self._sim_par[k])
-    
+
     @abc.abstractmethod
     def _set_model_par(self, model):
         """This method set model parameters that are not t0 or z."""
         pass
-    
+
     def _init_model(self, effects):
         """Initialise sncosmo model using the good source.
 
@@ -82,11 +82,11 @@ class AstrObj(abc.ABC):
             version = None
         else:
             version = self._sim_par['model_version']
-            
+
         snc_source = snc.get_source(
-            name=self._sim_par['model_name'], 
+            name=self._sim_par['model_name'],
             version=version)
-        
+
         if 'model_version' not in self._sim_par:
             self._sim_par['model_version'] = snc_source.version
 
@@ -95,16 +95,16 @@ class AstrObj(abc.ABC):
             effects=[eff['source'] for eff in effects],
             effect_names=[eff['name'] for eff in effects],
             effect_frames=[eff['frame'] for eff in effects])
-        
+
         for eff in effects:
             for k in eff['source'].param_names:
                 if k in self._sim_par:
                     model.set(self._sim_par[eff['name'] + k])
-        
+
         model.set(
-            t0=self._sim_par['t0'], 
+            t0=self._sim_par['t0'],
             z=self.zobs)
-        
+
         model = self._set_model_par(model)
 
         return model
@@ -317,11 +317,6 @@ class SNIa(AstrObj):
     @staticmethod
     def SALTTripp(M0, alpha, beta, x1, c):
         return M0 - alpha * x1 + beta * c
-
-    @staticmethod
-    def SALTTrippBS20(M0, alpha, beta, RV, Edust, x1, c):
-        return M0 - alpha * x1 + beta * c + (RV + 1) * Edust
-
 
 class TimeSeries(AstrObj):
     """TimeSeries class.
