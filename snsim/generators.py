@@ -20,7 +20,7 @@ from . import constants as cst
 
 __GEN_DIC__ = {
     "snia_gen": "SNIaGen",
-    "timeseries_gen": "TimeSeriesGen",
+    "cc_gen": "CCGen",
     "snii_gen": "SNIIGen",
     "sniipl_gen": "SNIIplGen",
     "sniib_gen": "SNIIbGen",
