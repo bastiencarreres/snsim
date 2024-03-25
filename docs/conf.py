@@ -52,7 +52,20 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.linkcode",
     "sphinx.ext.intersphinx",
+    "autoapi.extension"
 ]
+
+napoleon_numpy_docstring = True
+autoapi_dirs = ['../snsim']
+autoapi_type = "python"
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "show-inheritance",
+    "show-module-summary",
+    "imported-members",
+]
+autoapi_python_class_content = "both"
 
 myst_enable_extensions = ["dollarmath"]
 myst_dmath_double_inline = True
