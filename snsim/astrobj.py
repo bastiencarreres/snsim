@@ -124,12 +124,14 @@ class AstrObj(abc.ABC):
             effect_frames=eff_frames,
         )
 
-        for eff in effects:
-            for k in eff["source"].param_names:
-                if k in self._sim_par:
-                    model.set(self._sim_par[eff["name"] + k])
+        effect_par = {}
+        for eff, eff_name in zip(model.effects, model.effect_names):
+            for k in eff.param_names:
+                eff_par = eff_name + k
+                if eff_par in self._sim_par:
+                    effect_par[eff_par] = self._sim_par[eff_par]
 
-        model.set(t0=self._sim_par["t0"], z=self.zobs)
+        model.set(t0=self._sim_par["t0"], z=self.zobs, **effect_par)
 
         model = self._set_model_par(model)
 
