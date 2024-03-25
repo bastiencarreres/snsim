@@ -2,18 +2,15 @@
 
 import numpy as np
 import sncosmo as snc
+import pandas as pd
+import matplotlib.pyplot as plt
 import astropy.time as atime
 from astropy.coordinates import SkyCoord
 from astropy import cosmology as acosmo
 import astropy.units as astu
-import geopandas as gpd
-from shapely import geometry as shp_geo
-from shapely import ops as shp_ops
-from .constants import C_LIGHT_KMS, _SPHERE_LIMIT_
-from . import constants as cst
 from snsim import __snsim_dir_path__
-import pandas as pd
-import matplotlib.pyplot as plt
+from . import constants as cst
+from .constants import C_LIGHT_KMS
 
 
 def gauss(mu, sig, x):

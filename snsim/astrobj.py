@@ -10,25 +10,7 @@ from . import utils as ut
 
 
 class AstrObj(abc.ABC):
-    """Basic class for transients.
-
-    Parameters
-    ----------
-    sim_par: dict
-        Simulation parameters.
-    effect: list(snc.PropagationEffect)
-        Effects to apply to the model.
-
-    | sim_par
-    | ├── zcos, cosmological redshift
-    | ├── zpcmb, CMB dipole redshift contribution
-    | ├── como_dist, comoving distance of the obj
-    | ├── vpec, obj peculiar velocity
-    | ├── ra, obj Right Ascension
-    | ├── dec, obj Declinaison
-    | └── t0, obj peak time
-    |  sncosmo
-    """
+    """Basic class for transients."""
 
     _type = ""
     _base_attrs = ["ID", "ra", "dec", "zcos", "vpec", "zpcmb", "como_dist", "model_name"]
@@ -36,7 +18,38 @@ class AstrObj(abc.ABC):
     _obj_attrs = [""]
     _available_models = [""]
 
-    def __init__(self, sim_par, relation=None, effects=[]):
+    def __init__(self, sim_par, relation=None, effects=None):
+        """Init AstrObj class.
+
+        Parameters
+        ----------
+        sim_par: dict
+            Simulation parameters.
+
+            | sim_par
+            | ├── zcos, cosmological redshift
+            | ├── zpcmb, CMB dipole redshift contribution
+            | ├── como_dist, comoving distance of the obj
+            | ├── vpec, obj peculiar velocity
+            | ├── ra, obj Right Ascension
+            | ├── dec, obj Declinaison
+            | ├── t0, obj peak time
+            | └── sncosmo par
+        relation : str, optional
+            _description_, by default None
+        effects : list, optional
+            sncosmo effects dic, by default None
+
+            | effect
+            | ├── source: sncosmo.effect, sncosmo effect obj
+            | ├── frame: str 'obs' or 'rest'
+            | └── name: str, effect name
+
+        Raises
+        ------
+        ValueError
+            If simpar['model_name'] is not available
+        """
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
 
@@ -68,6 +81,16 @@ class AstrObj(abc.ABC):
     def _init_model(self, effects):
         """Initialise sncosmo model using the good source.
 
+        Parameters
+        ----------
+        effects : list, optional
+            sncosmo effects dic, by default None
+
+            | effect
+            | ├── source: sncosmo.effect, sncosmo effect obj
+            | ├── frame: str 'obs' or 'rest'
+            | └── name: str, effect name
+
         Returns
         -------
         sncosmo.Model
@@ -85,11 +108,20 @@ class AstrObj(abc.ABC):
         if "model_version" not in self._sim_par:
             self._sim_par["model_version"] = snc_source.version
 
+        if effects is not None:
+            eff = [eff["source"] for eff in effects]
+            eff_names = [eff["name"] for eff in effects]
+            eff_frames = [eff["frame"] for eff in effects]
+        else:
+            eff = None
+            eff_names = None
+            eff_frames = None
+
         model = snc.Model(
             source=snc_source,
-            effects=[eff["source"] for eff in effects],
-            effect_names=[eff["name"] for eff in effects],
-            effect_frames=[eff["frame"] for eff in effects],
+            effects=eff,
+            effect_names=eff_names,
+            effect_frames=eff_frames,
         )
 
         for eff in effects:
@@ -104,25 +136,29 @@ class AstrObj(abc.ABC):
         return model
 
     def gen_flux(self, obs, mod_fcov=False, seed=None):
-        """Generate the obj lightcurve.
+        """
+        Generate the flux for given obs.
 
         Parameters
         ----------
-        rand_gen : numpy.random.default_rng
-            Numpy random generator.
+        obs : pd.DataFrame
+            Observations info.
+        mod_fcov : bool, optional
+            Either or not using model scattering, by default False
+        seed : numpy.random.SeedSequence, optional
+            numpy random seed, by default None
 
         Returns
         -------
-        None
+        pd.DataFrane
+            Flux of the AstrObj for given obs.
 
-        Notes
-        -----
-        Set the sim_lc attributes as a pandas.DataFrame
+        Raises
+        ------
+        ValueError
+            Raises if mod_fcov is not available for the used model
         """
-        if seed is None:
-            random_seeds = np.random.randint(1e3, 1e6, size=2)
-        else:
-            random_seeds = np.random.default_rng(seed).integers(1e3, 1e6, size=2)
+        random_seeds = ut.gen_rndchilds(seed, size=2)
 
         # -- Check for fcov
         if mod_fcov:
@@ -238,33 +274,34 @@ class AstrObj(abc.ABC):
 
 
 class SNIa(AstrObj):
-    """SNIa class.
-
-    Parameters
-    ----------
-    sim_par : dict
-        Parameters of the SN.
-    | same as AstrObj parameters
-    | └── coh_sct, coherent mag scattering.
-    sim_model : sncosmo.Model
-        sncosmo Model to use.
-
-    | same as AstrObj model_par
-    | ├── M0, SNIa absolute magnitude
-    | ├── sigM, sigma of coherent scattering
-    | └── used model parameters
-    """
+    """SNIa class. Inherit from AstrObj."""
 
     _type = "snIa"
     _available_models = ["salt2", "salt3"]
     _obj_attrs = ["M0", "mb", "coh_sct"]
 
     def _set_model_par(self, model):
-        """Set SN Ia parameters to sncosmo model.
+        """
+        Set sncosmo model parameters.
 
-        Notes
-        -----
-        Set attributes dependant on SN model
+        Parameters
+        ----------
+        model : sncosmo.Model
+            The sncosmo model.
+
+        Returns
+        -------
+        sncosmo.Model
+            The sncosmo model with parameters set.
+
+        Raises
+        ------
+        ValueError
+            Raises if you use relation 'salttripp' for a non salt model.
+        ValueError
+            Raises if you use a non-implemented relation.
+        ValueError
+            Raises if you use mass-step without host logmass.
         """
         M0 = self._sim_par["M0"] + self._sim_par["coh_sct"]
 
@@ -315,38 +352,24 @@ class SNIa(AstrObj):
 
 
 class TimeSeries(AstrObj):
-    """TimeSeries class.
-
-    Parameters
-    ----------
-    sn_par : dict
-        Parameters of the object.
-
-    | same as AstrObj parameters
-    | └── coh_sct, coherent mag scattering.
-    sim_model : sncosmo.Model
-        sncosmo Model to use.
-    model_par : dict
-        General model parameters.
-
-    | same as AstrObj model_par
-    | ├── M0,  absolute magnitude
-    | ├── sigM, sigma of coherent scattering
-    | └── used model parameters
-    """
+    """TimeSeries class."""
 
     _obj_attrs = ["M0", "amplitude", "mb", "coh_sct"]
 
     def _set_model_par(self, model):
-        """Extract and compute SN parameters that depends on used model.
+        """Set sncosmo model parameters.
 
-        Notes
-        -----
-        Set attributes dependant on SN model
-            - mb -> self.mb
-            - amplitude -> self.sim_amplitude
-            - Template -> self._params['template']  SED template used
+        Parameters
+        ----------
+        model : sncosmo.Model
+            The sncosmo model.
+
+        Returns
+        -------
+        sncosmo.Model
+            The sncosmo model with parameters set.
         """
+
         M0 = self._sim_par["M0"] + self._sim_par["coh_sct"]
 
         m_r = self.mu + M0
@@ -359,88 +382,56 @@ class TimeSeries(AstrObj):
 
 
 class SNII(TimeSeries):
-    """SNII class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNII class. Inherit from TimeSeries."""
 
     _type = "snII"
     _available_models = ut.Templatelist_fromsncosmo("snii")
 
 
 class SNIIpl(TimeSeries):
-    """SNII P/L class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNII P/L class. Inherit from TimeSeries."""
 
     _type = "snIIpl"
     _available_models = ut.Templatelist_fromsncosmo("sniipl")
 
 
 class SNIIb(TimeSeries):
-    """SNIIb class.
-
-    Parameters
-    ----------
-    same as TimeSeries class."""
+    """SNIIb class. Inherit from TimeSeries."""
 
     _type = "snIIb"
     _available_models = ut.Templatelist_fromsncosmo("sniib")
 
 
 class SNIIn(TimeSeries):
-    """SNIIn class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNIIn class. Inherit from TimeSeries."""
 
     _type = "snIIn"
     _available_models = ut.Templatelist_fromsncosmo("sniin")
 
 
 class SNIbc(TimeSeries):
-    """SNIb/c class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNIb/c class. Inherit from TimeSeries."""
 
     _type = "snIb/c"
     _available_models = ut.Templatelist_fromsncosmo("snib/c")
 
 
 class SNIc(TimeSeries):
-    """SNIIn class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNIIn class. Inherit from TimeSeries."""
 
     _type = "snIc"
     _available_models = ut.Templatelist_fromsncosmo("snic")
 
 
 class SNIb(TimeSeries):
-    """SNIIn class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNIIn class. Inherit from TimeSeries."""
 
     _type = "snIb"
     _available_models = ut.Templatelist_fromsncosmo("snib")
 
 
 class SNIc_BL(TimeSeries):
-    """SNIIn class.
-
-    Parameters
-    ----------
-    same as TimeSeries class"""
+    """SNIIn class. Inherit from TimeSeries."""
 
     _type = "snIc-BL"
     _available_models = ut.Templatelist_fromsncosmo("snic-bl")

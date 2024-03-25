@@ -33,28 +33,7 @@ __GEN_DIC__ = {
 
 
 class BaseGen(abc.ABC):
-    """Abstract class for basic astrobj generator.
-
-    Parameters
-    ----------
-    params : dict
-        Basic generator configuration.
-    cmb : dict
-        The CMB dipole configuration.
-        | cmb
-        | ├── v_cmb
-        | ├── l_cmb
-        | └── b_cmb
-    cosmology : astropy.cosmology
-        The astropy cosmological model to use.
-    vpec_dist : dict
-        The parameters of the peculiar velocity distribution.
-        | vpec_dist
-        | ├── mean_vpec
-        | └── sig_vpec
-    host : class SnHost, opt
-        The host class to introduce sn host.
-    """
+    """Abstract class for basic astrobj generator."""
 
     # General attributes
     _object_type = ""
@@ -73,9 +52,47 @@ class BaseGen(abc.ABC):
         cmb=None,
         geometry=None,
     ):
+        """
+        Init BaseGen class.
 
-        if vpec_dist is not None and host is not None:
-            raise ValueError("You can't set vpec_dist and host at the same time")
+        Parameters
+        ----------
+        params : dict
+            Basic generator configuration.
+        cosmology : astropy.cosmology
+            The cosmological model to use.
+        time_range : tuple
+            (tmin, tmax) time range.
+        z_range : tuple, optional
+            (zmin, zmax) redshift range,
+            no need to be defined if there is host, by default None
+        vpec_dist : dic, optional
+            PV distrib parameters, by default None
+            | vpec_dist
+            | ├── mean_vpec, by default 0.
+            | └── sig_vpec, by default 0.
+        host : snsim.SnHost, optional
+            host for simulated SN, by default None
+        mw_dust : dic, optional
+            Milky Way dust, by default None
+        cmb : dic, optional
+            CMB dipole parameters, by default None
+            | cmb
+            | ├── v_cmb, by default 369.82 km/s
+            | ├── l_cmb, by default 264.021 deg
+            | └── b_cmb, by default 48.253 deg
+        geometry : shapely.geometry, optional
+            The survey footprint, by default None
+
+        Raises
+        ------
+        ValueError
+            If you set PV dist and host at the same time.
+        ValueError
+            If you neither set PV or host.
+        ValueError
+            If no host and no z_range.
+        """
 
         # -- Mandatory parameters
         self._params = copy.copy(params)
@@ -83,7 +100,9 @@ class BaseGen(abc.ABC):
         self._time_range = time_range
 
         # -- At least one mandatory
-        if vpec_dist is not None and host is None:
+        if vpec_dist is not None and host is not None:
+            raise ValueError("You can't set vpec_dist and host at the same time")
+        elif vpec_dist is not None and host is None:
             self._vpec_dist = vpec_dist
             self._host = None
         elif host is not None and vpec_dist is None:
@@ -124,7 +143,7 @@ class BaseGen(abc.ABC):
         #     t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
         #     self._time_range = (t0, t1)
 
-    def __call__(self, n_obj=None, seed=None, basic_par=None, use_dask=False):
+    def __call__(self, n_obj=None, seed=None, basic_par=None):
         """Launch the simulation of obj.
 
         Parameters
@@ -133,8 +152,8 @@ class BaseGen(abc.ABC):
             Number of obj to simulate.
         seed : int or np.random.SeedSequence
             The random seed of the simulation.
-        astrobj_par : np.records
-            An array that contains pre-generated parameters
+        basic_par : pd.DataFrame
+            A DataFrame that contains pre-generated parameters
 
         Returns
         -------
@@ -229,9 +248,9 @@ class BaseGen(abc.ABC):
 
         Parameters
         ----------
-        astrobj_par : dict(key: np.ndarray())
+        basic_par : dict(key: np.ndarray())
             Contains basic random generated properties.
-        seed : int, optional
+        seed : int or numpy.random.SeedSequence, optional
             Random seed.
         """
         pass
@@ -275,7 +294,18 @@ class BaseGen(abc.ABC):
     # -- INIT FUNCTIONS -- #
 
     def _init_registered_rate(self):
-        """Rates registry."""
+        """Rates registry.
+
+        Returns
+        -------
+        str
+            The rate function as a lamdba function in a str.
+
+        Raises
+        ------
+        ValueError
+            The rate in params is not available.
+        """
         if self._params["rate"].lower() in self._available_rates:
             return self._available_rates[self._params["rate"].lower()].format(h=self.cosmology.h)
         else:
@@ -284,6 +314,13 @@ class BaseGen(abc.ABC):
             )
 
     def _init_snc_effects(self):
+        """Init sncosmo effects.
+
+        Returns
+        -------
+        list
+            The list of effects dic.
+        """
         effects = []
         # -- MW dust
         if self.mw_dust is not None:
@@ -292,7 +329,19 @@ class BaseGen(abc.ABC):
         return effects
 
     def _init_snc_sources(self):
+        """
+        Init the sncosmo model.
 
+        Returns
+        -------
+        dic
+            Sources dic.
+
+        Raises
+        ------
+        ValueError
+            model_name not available.
+        """
         # -- Check existence of the model
         if isinstance(self._params["model_name"], str) & (
             self._params["model_name"] not in self._available_models
@@ -327,8 +376,7 @@ class BaseGen(abc.ABC):
         Returns
         -------
             lambda funtion, str
-
-            The funtion and it's expression as a string
+                The funtion and it's expression as a string
         """
         if "rate" in self._params:
             if isinstance(self._params["rate"], type(lambda: 0)):
@@ -356,15 +404,10 @@ class BaseGen(abc.ABC):
     def _compute_zcdf(self):
         """Give the time rate SN/years in redshift shell.
 
-        Parameters
-        ----------
-        z : numpy.ndarray
-            The redshift bins.
-
         Returns
         -------
-        numpy.ndarray(float)
-            Numpy array containing the time rate in each redshift bin.
+        snsim.utils.CustomRandom, (float, float)
+            Redshift dist, (shell redshifts, shell rates)
 
         """
         z_min, z_max = self.z_range
@@ -388,9 +431,9 @@ class BaseGen(abc.ABC):
         Parameters
         ----------
         ra : numpy.ndaray(float)
-            SN Right Ascension.
+            SN Right Ascension rad.
         dec : numpy.ndarray(float)
-            SN Declinaison.
+            SN Declinaison rad.
         Returns
         -------
         list(dict)
@@ -408,13 +451,7 @@ class BaseGen(abc.ABC):
         return dust_par
 
     def _get_header(self):
-        """Generate header of sim file..
-
-        Returns
-        -------
-        None
-
-        """
+        """Generate header of sim file."""
         header = {
             "obj_type": self._object_type,
             "rate": self._rate_expr,
@@ -437,14 +474,13 @@ class BaseGen(abc.ABC):
         ----------
         n : int
             Number of time to generate.
-        seed : int
-            Random seed.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
         numpy.ndarray(float)
             A numpy array which contains generated peak time.
-
         """
         rand_gen = np.random.default_rng(seed)
 
@@ -457,9 +493,9 @@ class BaseGen(abc.ABC):
         Parameters
         ----------
         n : int
-            Number of coord to generate.
-        seed : int
-            Random seed.
+            Number of coords to generate.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
@@ -500,9 +536,9 @@ class BaseGen(abc.ABC):
         Parameters
         ----------
         n : int
-            Number of redshift to generate.
-        seed : int
-            Random seed.
+            Number of redshifts to generate.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
@@ -518,8 +554,8 @@ class BaseGen(abc.ABC):
         ----------
         n : int
             Number of vpec to generate.
-        seed : int
-            Random seed.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
@@ -541,8 +577,8 @@ class BaseGen(abc.ABC):
         ----------
         n_obj: int
             Number of obj.
-        seed: int
-            Random seed.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Notes
         -----
@@ -555,6 +591,7 @@ class BaseGen(abc.ABC):
             * como_dist : comoving distance
             * zpcmb : CMB dipole redshift contribution
             * mw_ebv, opt : Milky way dust extinction
+            * host_, opt : host parameters
         """
         # -- Generate seeds for random calls
         seeds = ut.gen_rndchilds(seed, 4)
@@ -617,6 +654,20 @@ class BaseGen(abc.ABC):
         return pd.DataFrame(basic_par)
 
     def random_models(self, n_obj, seed=None):
+        """Draw n random models for a given source.
+
+        Parameters
+        ----------
+        n_obj : int
+            Number of models to draw.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
+
+        Returns
+        -------
+        dic(model_names: list, model_version: list)
+            Dic which contains list of model_names and versions.
+        """
         rand_gen = np.random.default_rng(seed)
 
         idx = rand_gen.integers(low=0, high=len(self.sim_sources["model_name"]), size=n_obj)
@@ -670,35 +721,7 @@ class BaseGen(abc.ABC):
 
 
 class SNIaGen(BaseGen):
-    """SNIa parameters generator.
-
-    Parameters
-    ----------
-    params : dict
-        Basic params + SNIa specific parameters.
-
-      | params
-      | ├── M0, SNIa absolute magnitude
-      | ├── sigM, SNIa coherent scattering
-      | └── sct_model, opt, SNIa wavelenght dependant scattering
-    cmb : dict
-        The CMB dipole configuration.
-
-      | cmb
-      | ├── vcmb
-      | ├── l_cmb
-      | └── b_cmb
-    cosmology : astropy.cosmology
-        The astropy cosmological model to use.
-    vpec_dist : dict
-        The parameters of the peculiar velocity distribution.
-
-      | vpec_dist
-      | ├── mean_vpec
-      | └── sig_vpec
-    host : class SnHost, opt
-        The host class to introduce sn host.
-    """
+    """SNIa parameters generator. Inherit from BaseGen"""
 
     _object_type = "SNIa"
     _available_models = ["salt2", "salt3"]
@@ -726,6 +749,7 @@ class SNIaGen(BaseGen):
             )
 
     def _add_print(self):
+        """Add print statement."""
         str = ""
         if "sct_model" in self._params:
             str += "\nUse intrinsic scattering model : " f"{self._params['sct_model']}"
@@ -799,8 +823,10 @@ class SNIaGen(BaseGen):
         ----------
         n_obj : int
             Number of parameters to generate.
-        seed : int, optional
-            Random seed.
+        basic_par: pd.DataFrame
+            Dataframe with pre-generated parameters.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
@@ -819,7 +845,7 @@ class SNIaGen(BaseGen):
         model_name = self._params["model_name"]
 
         if model_name in ("salt2", "salt3"):
-            sim_x1, sim_c, alpha, beta = self.gen_salt_par(n_obj, seeds[1], z=basic_par["zcos"])
+            sim_x1, sim_c, alpha, beta = self.gen_salt_par(n_obj, seeds[1], basic_par=basic_par)
             params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
 
         # -- Non-coherent scattering effects
@@ -836,10 +862,10 @@ class SNIaGen(BaseGen):
 
         Parameters
         ----------
-        n : int
+        n_sn : int
             Number of mag scattering terms to generate.
-        seed : int, optional
-            Random seed.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
@@ -852,15 +878,17 @@ class SNIaGen(BaseGen):
         mag_sct = rand_gen.normal(loc=0, scale=self._params["sigM"], size=n_sn)
         return mag_sct
 
-    def gen_salt_par(self, n_sn, seed=None, z=None, astrobj_par=None):
+    def gen_salt_par(self, n_sn, seed=None, basic_par=None):
         """Generate SALT parameters.
 
         Parameters
         ----------
         n_sn : int
             Number of parameters to generate.
-        seed : int
-            Random seed.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
+        basic_par : pd.DataFrame
+            Pre-generated parameters.
 
         Returns
         -------
@@ -873,11 +901,13 @@ class SNIaGen(BaseGen):
         # -- x1 dist
         if isinstance(self._params["dist_x1"], str):
             if self._params["dist_x1"].lower() == "n21":
-                sim_x1 = salt_ut.n21_x1_model(z, seed=seeds[0])
+                sim_x1 = salt_ut.n21_x1_model(basic_par["zcos"], seed=seeds[0])
             elif self._params["dist_x1"].lower() == "n21+mass":
-                sim_x1 = salt_ut.n21_x1_mass_model(z, astrobj_par["host_mass"], seed=seeds[0])
+                sim_x1 = salt_ut.n21_x1_mass_model(
+                    basic_par["zcos"], basic_par["host_mass"], seed=seeds[0]
+                )
             elif self._params["dist_x1"].lower() == "mass":
-                sim_x1 = salt_ut.x1_mass_model(astrobj_par["host_mass"], seed=seeds[0])
+                sim_x1 = salt_ut.x1_mass_model(basic_par["host_mass"], seed=seeds[0])
 
         elif isinstance(self._params["dist_x1"], list):
             sim_x1 = ut.asym_gauss(*self._params["dist_x1"], seed=seeds[0], size=n_sn)
@@ -885,7 +915,7 @@ class SNIaGen(BaseGen):
         # -- c dist
         if isinstance(self._params["dist_c"], str):
             if self._params["dist_c"].lower() == "bs20":
-                sim_c = astrobj_par["c_int"]
+                sim_c = basic_par["c_int"]
         else:
             sim_c = ut.asym_gauss(*self._params["dist_c"], seed=seeds[1], size=n_sn)
 
@@ -901,74 +931,28 @@ class SNIaGen(BaseGen):
             beta = ut.asym_gauss(*self._params["beta"], seed=seeds[3], size=n_sn)
         return sim_x1, sim_c, alpha, beta
 
-    def gen_coh_scatter(self, n_sn, seed=None):
-        """Generate n coherent mag scattering term.
 
-        Parameters
-        ----------
-        n : int
-            Number of mag scattering terms to generate.
-        seed : int, optional
-            Random seed.
+class CCGen(BaseGen):
+    """Template for CoreColapse. Inherit from BaseGen.
 
-        Returns
-        -------
-        numpy.ndarray(float)
-            numpy array containing scattering terms generated.
-
-        """
-        rand_gen = np.random.default_rng(seed)
-
-        coh_sct = rand_gen.normal(loc=0, scale=self._params["sigM"], size=n_sn)
-        return coh_sct
-
-
-class TimeSeriesGen(BaseGen):
-    """TimeSeries parameters generator.
-
-    Parameters
-    ----------
-    params : dict
-        Basic params + TimeSeries specific parameters.
-
-      | params
-      | ├── M0, absolute magnitude
-      | ├── sigM, coherent scattering
-      |
-    cmb : dict
-        The CMB dipole configuration.
-
-      | cmb
-      | ├── vcmb
-      | ├── l_cmb
-      | └── b_cmb
-    cosmology : astropy.cosmology
-        The astropy cosmological model to use.
-    vpec_dist : dict
-        The parameters of the peculiar velocity distribution.
-
-      | vpec_dist
-      | ├── mean_vpec
-      | └── sig_vpec
-    host : class SnHost, opt
-        The host class to introduce sn host.
-
-    General Info about parameters:
+    Notes
+    -----
 
     For Rate:
-    SNCC ztf20 relative fraction of SNe subtypes from https://arxiv.org/abs/2009.01242 figure 6 +
-    ztf20 relative fraction between SNe Ic and SNe Ib from https://iopscience.iop.org/article/10.3847/1538-4357/aa5eb7/meta
-    SNCC shiver17 fraction from https://arxiv.org/abs/1609.02922 Table 3
+        * SNCC ztf20 relative fraction of SNe subtypes from https://arxiv.org/abs/2009.01242 figure 6 +
+        ztf20 relative fraction between SNe Ic and SNe Ib from https://iopscience.iop.org/article/10.3847/1538-4357/aa5eb7/meta
+        * SNCC shiver17 fraction from https://arxiv.org/abs/1609.02922 Table 3
 
     For Luminosity Functions:
-    SNCC M0 mean and scattering of luminosity function values from Vincenzi et al. 2021 Table 5 (https://arxiv.org/abs/2111.10382)
+        * SNCC M0 mean and scattering of luminosity function values from Vincenzi et al. 2021 Table 5 (https://arxiv.org/abs/2111.10382)
     """
+
+    _available_models = ["vin19_corr", "vin19_nocorr"]
 
     def _init_M0(self):
         """Initialise absolute magnitude."""
         if isinstance(self._params["M0"], (float, np.floating, int, np.integer)):
             return self._params["M0"]
-
         else:
             return self.init_M0_for_type()
 
@@ -979,8 +963,8 @@ class TimeSeriesGen(BaseGen):
         ----------
         n : int
             Number of mag scattering terms to generate.
-        seed : int, optional
-            Random seed.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
 
         Returns
         -------
@@ -1001,7 +985,6 @@ class TimeSeriesGen(BaseGen):
                 seed=seed,
                 size=n_sn,
             )
-
         else:
             return self.gen_coh_scatter_for_type(n_sn, seed)
 
@@ -1011,8 +994,10 @@ class TimeSeriesGen(BaseGen):
         ----------
         n_obj : int
             Number of parameters to generate.
-        seed : int, optional
-            Random seed
+        basic_par :
+            Pre-generated parameters.
+        seed : int or numpy.random.SeedSequence, optional
+            Random seed, by default None
             .
         Returns
         -------
@@ -1033,12 +1018,6 @@ class TimeSeriesGen(BaseGen):
         header = {}
         header["M0_band"] = "bessell_r"
         return header
-
-
-class CCGen(TimeSeriesGen):
-    """Template for CoreColapse."""
-
-    _available_models = ["vin19_corr", "vin19_nocorr"]
 
     def init_M0_for_type(self):
         """Initialise absolute magnitude using default values from past literature works based on the type."""
@@ -1109,12 +1088,7 @@ class CCGen(TimeSeriesGen):
 
 
 class SNIIGen(CCGen):
-    """SNII parameters generator.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen
-    """
+    """SNII parameters generator. Inherit from CCGen."""
 
     _object_type = "SNII"
     _available_models = ut.Templatelist_fromsncosmo("snii") + CCGen._available_models
@@ -1138,12 +1112,7 @@ class SNIIGen(CCGen):
 
 
 class SNIIplGen(CCGen):
-    """SNIIPL parameters generator.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen
-    """
+    """SNIIPL parameters generator. Inherit from CCGen."""
 
     _object_type = "SNIIpl"
     _available_models = ut.Templatelist_fromsncosmo("sniipl") + CCGen._available_models
@@ -1169,12 +1138,7 @@ class SNIIplGen(CCGen):
 
 
 class SNIIbGen(CCGen):
-    """SNIIb parameters generator.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen
-    """
+    """SNIIb parameters generator. Inherit from CCGen."""
 
     _object_type = "SNIIb"
     _available_models = ut.Templatelist_fromsncosmo("sniib") + CCGen._available_models
@@ -1200,12 +1164,7 @@ class SNIIbGen(CCGen):
 
 
 class SNIInGen(CCGen):
-    """SNIIn parameters generator.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen
-    """
+    """SNIIn parameters generator. Inherit from CCGen."""
 
     _object_type = "SNIIn"
     _available_models = ut.Templatelist_fromsncosmo("sniin") + CCGen._available_models
@@ -1231,12 +1190,7 @@ class SNIInGen(CCGen):
 
 
 class SNIbcGen(CCGen):
-    """SNIb/c parameters generator.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen
-    """
+    """SNIb/c parameters generator. Inherit from CCGen."""
 
     _object_type = "SNIb/c"
     _available_models = ut.Templatelist_fromsncosmo("snib/c") + CCGen._available_models
@@ -1259,11 +1213,7 @@ class SNIbcGen(CCGen):
 
 
 class SNIcGen(CCGen):
-    """SNIc class.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen class"""
+    """SNIc class. Inherit from CCGen."""
 
     _object_type = "SNIc"
     _available_models = ut.Templatelist_fromsncosmo("snic") + CCGen._available_models
@@ -1287,11 +1237,7 @@ class SNIcGen(CCGen):
 
 
 class SNIbGen(CCGen):
-    """SNIb class.
-
-    Parameters
-    ----------
-    same as TimeSeriesGen class."""
+    """SNIb class. Inherit from CCGen."""
 
     _object_type = "SNIb"
     _available_models = ut.Templatelist_fromsncosmo("snib") + CCGen._available_models
@@ -1316,11 +1262,7 @@ class SNIbGen(CCGen):
 
 
 class SNIc_BLGen(CCGen):
-    """SNIc_BL class.
-
-    Parameters
-    ----------
-    Same as TimeSeriesGen class."""
+    """SNIc_BL class. Inherit from CCGen."""
 
     _object_type = "SNIc_BL"
     _available_models = ut.Templatelist_fromsncosmo("snic-bl") + CCGen._available_models
@@ -1345,14 +1287,14 @@ class SNIc_BLGen(CCGen):
 
 
 class SNIa_peculiar(BaseGen):
-    """SNIa_peculiar class.
+    """SNIa_peculiar class. Inherit from BaseGen.
 
-     Models form platicc challenge ask Rick
-     need a directory to store model
+    Notes
+    -----
+    Models form platicc challenge ask Rick
+    need a directory to store model
 
-     Parameters
-     ----------
-    same as TimeSeriesGen class"""
+    """
 
     _object_type = "SNIa_peculiar"
     # _available_models =
@@ -1415,9 +1357,9 @@ class SNIa_peculiar(BaseGen):
 
         return
 
-    def _update_astrobj_par(self, n_obj, astrobj_par, seed=None):
+    def _update_astrobj_par(self, n_obj, basic_par, seed=None):
         # -- Generate coherent mag scattering
-        astrobj_par["coh_sct"] = self.gen_coh_scatter(n_obj, seed=seed)
+        basic_par["coh_sct"] = self.gen_coh_scatter(n_obj, seed=seed)
 
     def gen_coh_scatter(self, n_sn, seed=None):
         """Generate n coherent mag scattering term.
