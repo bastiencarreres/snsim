@@ -5,6 +5,7 @@ import numpy as np
 from . import utils as ut
 from scipy.interpolate import RectBivariateSpline as spline2d
 
+
 def n21_x1_model(z, seed=None):
     """X1 distribution redshift dependant model from  Nicolas et al. 2021.
 
@@ -40,40 +41,42 @@ def n21_x1_model(z, seed=None):
     young_or_old = rand_gen.random(size=len(z))
 
     # Apply the pdf eq 2 from Nicolas et al. 2021
-    delta_z = 1 / (1 / (K * (1 + z)**2.8) + 1)  # Probability to be young
+    delta_z = 1 / (1 / (K * (1 + z) ** 2.8) + 1)  # Probability to be young
     is_young = young_or_old < delta_z
     X1 = np.zeros(len(z))
     X1[is_young] = rand_gen.normal(loc=mu1, scale=sig1, size=np.sum(is_young))
     X1[~is_young] = dist_old.draw(np.sum(~is_young), seed=rand_gen.integers(low=1e3, high=1e6))
     return X1
 
+
 def x1_mass_model(host_mass, seed=None):
 
     if host_mass is None:
-        raise ValueError('provide host_mass')
-    
-    rand_gen = np.random.default_rng(seed)    
-    
-     #probability x1-mass from Popovic et al. 2021b
-    x1_bin,mass_bin,prob = ut.reshape_prob_data()
-    prob_x1_mass = spline2d(mass_bin,x1_bin,prob.T)
+        raise ValueError("provide host_mass")
 
-    #to avoid errors            
+    rand_gen = np.random.default_rng(seed)
+
+    # probability x1-mass from Popovic et al. 2021b
+    x1_bin, mass_bin, prob = ut.reshape_prob_data()
+    prob_x1_mass = spline2d(mass_bin, x1_bin, prob.T)
+
+    # to avoid errors
     host_mass = np.atleast_1d(host_mass)
 
-   
-    dist_mass = (CustomRandom(lambda x: prob_x1_mass(m, x), 
-                            x1_bin.min(), x1_bin.max(),ndiv=10000) for m in host_mass) 
-                
-   
-    return np.asarray([dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_mass])
+    dist_mass = (
+        CustomRandom(lambda x: prob_x1_mass(m, x), x1_bin.min(), x1_bin.max(), ndiv=10000)
+        for m in host_mass
+    )
 
-         
+    return np.asarray(
+        [dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_mass]
+    )
+
 
 def n21_x1_mass_model(z, host_mass=None, seed=None):
-    
+
     rand_gen = np.random.default_rng(seed)
-    
+
     # Constants defines in the paper Nicolas et al 2021
     a = 0.51
     K = 0.87
@@ -81,15 +84,14 @@ def n21_x1_mass_model(z, host_mass=None, seed=None):
     mu2 = -1.22
     sig1 = 0.61
     sig2 = 0.56
-    
+
     if host_mass is None:
-        raise ValueError('provide host_mass')
-    
-    #probability x1-mass from Popovic et al. 2021b
-    x1_bin,mass_bin,prob = ut.reshape_prob_data()
-    prob_x1_mass = spline2d(mass_bin,x1_bin,prob.T)
-                
-        
+        raise ValueError("provide host_mass")
+
+    # probability x1-mass from Popovic et al. 2021b
+    x1_bin, mass_bin, prob = ut.reshape_prob_data()
+    prob_x1_mass = spline2d(mass_bin, x1_bin, prob.T)
+
     # Just to avoid errors
     z = np.atleast_1d(z)
     host_mass = np.atleast_1d(host_mass)
@@ -105,24 +107,34 @@ def n21_x1_mass_model(z, host_mass=None, seed=None):
     young_or_old = rand_gen.random(size=len(z))
 
     # Apply the pdf eq 2 from Nicolas et al. 2021
-    delta_z = 1 / (1 / (K * (1 + z)**2.8) + 1)  # Probability to be young
+    delta_z = 1 / (1 / (K * (1 + z) ** 2.8) + 1)  # Probability to be young
     is_young = young_or_old < delta_z
     X1 = np.zeros(len(z))
-    
-    
+
     # Compute the distribution for old galaxies
     pdf_old = lambda x: a * ut.gauss(mu1, sig1, x) + (1 - a) * ut.gauss(mu2, sig2, x)
-    dist_old = (CustomRandom(lambda x: pdf_old(x) * prob_x1_mass(m, x), 
-                            mu2 - 10 * sig2, mu1 + 10 * sig1,ndiv=10000) for m in host_mass[~is_young]) 
-                
-    
-    #compute distribution for young galaxies
-    pdf_young = lambda x: ut.gauss(mu1,sig1,x)
-    dist_young = (CustomRandom(lambda x: pdf_old(x) * prob_x1_mass(m, x),
-                                mu1 - 10 * sig1, mu1 + 10 * sig1,ndiv=10000) for m in host_mass[is_young])
-   
-    X1[is_young] = np.asarray([dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_young])
-    X1[~is_young] = np.asarray([dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_old])
+    dist_old = (
+        CustomRandom(
+            lambda x: pdf_old(x) * prob_x1_mass(m, x), mu2 - 10 * sig2, mu1 + 10 * sig1, ndiv=10000
+        )
+        for m in host_mass[~is_young]
+    )
+
+    # compute distribution for young galaxies
+    pdf_young = lambda x: ut.gauss(mu1, sig1, x)
+    dist_young = (
+        CustomRandom(
+            lambda x: pdf_old(x) * prob_x1_mass(m, x), mu1 - 10 * sig1, mu1 + 10 * sig1, ndiv=10000
+        )
+        for m in host_mass[is_young]
+    )
+
+    X1[is_young] = np.asarray(
+        [dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_young]
+    )
+    X1[~is_young] = np.asarray(
+        [dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_old]
+    )
     return X1
 
 
@@ -147,7 +159,7 @@ def cov_x0_to_mb(x0, cov):
     return new_cov
 
 
-def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
+def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys="ab"):
     r"""Compute fit error on flux from sncosmo fit covariance x0,x1,c.
 
     Parameters
@@ -197,36 +209,38 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys='ab'):
                         CL(\lambda_s)10^{-0.4 c CL(\lambda_s)}T_b(\lambda) \frac{\lambda}{hc} d\lambda \times \text{NF}
 
     """
-    a = 1. / (1 + fit_model.parameters[0])
+    a = 1.0 / (1 + fit_model.parameters[0])
     t0 = fit_model.parameters[1]
     x0 = fit_model.parameters[2]
     x1 = fit_model.parameters[3]
     c = fit_model.parameters[4]
     b = snc.get_bandpass(band)
     wave, dwave = snc.utils.integration_grid(
-        b.minwave(), b.maxwave(), snc.constants.MODEL_BANDFLUX_SPACING)
+        b.minwave(), b.maxwave(), snc.constants.MODEL_BANDFLUX_SPACING
+    )
     trans = b(wave)
     ms = snc.get_magsystem(magsys)
     zpms = ms.zpbandflux(b)
-    normfactor = 10**(0.4 * zp) / zpms
-    M1 = fit_model.source._model['M1']
-    M0 = fit_model.source._model['M0']
+    normfactor = 10 ** (0.4 * zp) / zpms
+    M1 = fit_model.source._model["M1"]
+    M0 = fit_model.source._model["M0"]
     CL = fit_model.source._colorlaw
 
     p = time_th - t0
 
-    dfdx0 = fit_model.bandflux(b, time_th, zp=zp, zpsys='ab') / x0
+    dfdx0 = fit_model.bandflux(b, time_th, zp=zp, zpsys="ab") / x0
 
-    fint1 = M1(a * p, a * wave) * 10.**(-0.4 * CL(a * wave) * c)
-    fint2 = (M0(a * p, a * wave) + x1 * M1(a * p, a * wave)) * \
-        10.**(-0.4 * CL(a * wave) * c) * CL(a * wave)
-    m1int = np.sum(wave * trans * fint1, axis=1) * \
-        dwave / snc.constants.HC_ERG_AA
-    clint = np.sum(wave * trans * fint2, axis=1) * \
-        dwave / snc.constants.HC_ERG_AA
+    fint1 = M1(a * p, a * wave) * 10.0 ** (-0.4 * CL(a * wave) * c)
+    fint2 = (
+        (M0(a * p, a * wave) + x1 * M1(a * p, a * wave))
+        * 10.0 ** (-0.4 * CL(a * wave) * c)
+        * CL(a * wave)
+    )
+    m1int = np.sum(wave * trans * fint1, axis=1) * dwave / snc.constants.HC_ERG_AA
+    clint = np.sum(wave * trans * fint2, axis=1) * dwave / snc.constants.HC_ERG_AA
 
     dfdx1 = a * x0 * m1int * normfactor
     dfdc = -0.4 * np.log(10) * a * x0 * clint * normfactor
     J = np.asarray([[d1, d2, d3] for d1, d2, d3 in zip(dfdx0, dfdx1, dfdc)])
-    err_th = np.sqrt(np.einsum('ki,ki->k', J, np.einsum('ij,kj->ki', cov, J)))
+    err_th = np.sqrt(np.einsum("ki,ki->k", J, np.einsum("ij,kj->ki", cov, J)))
     return err_th

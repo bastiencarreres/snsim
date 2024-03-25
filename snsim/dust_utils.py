@@ -16,15 +16,19 @@ def check_files_and_download():
     -------
     None
         No return, just download files.
-    
+
     Notes
     -----
     TODO : Change that for environement variable or cleaner solution
 
     """
-    files_in_dust_data = glob.glob(__snsim_dir_path__ + '/dust_data/*.fits')
-    files_list = ['SFD_dust_4096_ngp.fits', 'SFD_dust_4096_sgp.fits',
-                  'SFD_mask_4096_ngp.fits', 'SFD_mask_4096_sgp.fits']
+    files_in_dust_data = glob.glob(__snsim_dir_path__ + "/dust_data/*.fits")
+    files_list = [
+        "SFD_dust_4096_ngp.fits",
+        "SFD_dust_4096_sgp.fits",
+        "SFD_mask_4096_ngp.fits",
+        "SFD_mask_4096_sgp.fits",
+    ]
     filenames = []
     for file in files_in_dust_data:
         filenames.append(os.path.basename(file))
@@ -34,14 +38,14 @@ def check_files_and_download():
             url = "https://github.com/kbarbary/sfddata/archive/master.tar.gz"
             response = requests.get(url, stream=True)
             file = tarfile.open(fileobj=response.raw, mode="r|gz")
-            file.extractall(path=__snsim_dir_path__ + '/dust_data')
-            new_file = glob.glob(__snsim_dir_path__ + '/dust_data/sfddata-master/*.fits')
+            file.extractall(path=__snsim_dir_path__ + "/dust_data")
+            new_file = glob.glob(__snsim_dir_path__ + "/dust_data/sfddata-master/*.fits")
             for nfile in new_file:
-                os.replace(nfile, __snsim_dir_path__ + '/dust_data/' + os.path.basename(nfile))
-            other_files = glob.glob(__snsim_dir_path__ + '/dust_data/sfddata-master/*')
+                os.replace(nfile, __snsim_dir_path__ + "/dust_data/" + os.path.basename(nfile))
+            other_files = glob.glob(__snsim_dir_path__ + "/dust_data/sfddata-master/*")
             for ofile in other_files:
                 os.remove(ofile)
-            os.rmdir(__snsim_dir_path__ + '/dust_data/sfddata-master')
+            os.rmdir(__snsim_dir_path__ + "/dust_data/sfddata-master")
             break
 
 
@@ -62,18 +66,18 @@ def init_mw_dust(mw_dust):
 
     """
     f99_r_v = 3.1
-    if 'rv' in mw_dust:
-        f99_r_v = mw_dust['rv']
-    if mw_dust['model'].lower() == 'ccm89':
+    if "rv" in mw_dust:
+        f99_r_v = mw_dust["rv"]
+    if mw_dust["model"].lower() == "ccm89":
         dust = snc.CCM89Dust()
-    elif mw_dust['model'].lower() == 'od94':
+    elif mw_dust["model"].lower() == "od94":
         dust = snc.OD94Dust()
-    elif mw_dust['model'].lower() == 'f99':
+    elif mw_dust["model"].lower() == "f99":
         dust = snc.F99Dust(r_v=f99_r_v)
     else:
         raise ValueError(f"{mw_dust['model']} model does not exist in sncosmo")
 
-    return {'source': dust, 'frame': 'obs', 'name': 'mw_'}
+    return {"source": dust, "frame": "obs", "name": "mw_"}
 
 
 def add_mw_to_fit(fit_model, mwebv, mod_name, rv=3.1):
@@ -94,9 +98,9 @@ def add_mw_to_fit(fit_model, mwebv, mod_name, rv=3.1):
         Directly modify the sncosmo model.
 
     """
-    if 'mw_' in fit_model.effect_names:
+    if "mw_" in fit_model.effect_names:
         fit_model.set(mw_ebv=mwebv)
-    if mod_name .lower() not in ['f99']:
+    if mod_name.lower() not in ["f99"]:
         fit_model.set(mw_r_v=rv)
 
 
@@ -116,6 +120,6 @@ def compute_ebv(ra, dec):
         The color excess correponding to ra, dec coordinates.
 
     """
-    map = sfdmap.SFDMap(__snsim_dir_path__ + '/dust_data')
-    ebv = map.ebv(ra, dec, unit='radian')
+    map = sfdmap.SFDMap(__snsim_dir_path__ + "/dust_data")
+    ebv = map.ebv(ra, dec, unit="radian")
     return ebv

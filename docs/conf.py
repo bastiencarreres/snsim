@@ -18,24 +18,26 @@
 # -- Project information -----------------------------------------------------
 import sys
 import os
-sys.path.insert(0, os.path.abspath('..'))
+
+sys.path.insert(0, os.path.abspath(".."))
 import snsim
 
-project = 'snsim'
-copyright = '2021, Carreres'
-author = 'Carreres'
+project = "snsim"
+copyright = "2021, Carreres"
+author = "Carreres"
 
 # The full version, including alpha/beta/rc tags
 release = snsim.__version__
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
-    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
-    'astropy': ('http://docs.astropy.org/en/stable/', None),
-    'numba': ('https://numba.readthedocs.io/en/stable/', None),
-    'sncosmo': ('https://sncosmo.readthedocs.io/en/stable/', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None)}
+    "python": ("https://docs.python.org/3/", None),
+    "numpy": ("https://docs.scipy.org/doc/numpy/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "astropy": ("http://docs.astropy.org/en/stable/", None),
+    "numba": ("https://numba.readthedocs.io/en/stable/", None),
+    "sncosmo": ("https://sncosmo.readthedocs.io/en/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+}
 
 # -- General configuration ---------------------------------------------------
 
@@ -43,15 +45,21 @@ intersphinx_mapping = {
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-extensions = ['myst_parser', 'sphinx.ext.napoleon', 'sphinx_markdown_tables', 'sphinx.ext.autosectionlabel',
-              'sphinx.ext.linkcode', 'sphinx.ext.intersphinx']
+extensions = [
+    "myst_parser",
+    "sphinx.ext.napoleon",
+    "sphinx_markdown_tables",
+    "sphinx.ext.autosectionlabel",
+    "sphinx.ext.linkcode",
+    "sphinx.ext.intersphinx",
+]
 
 myst_enable_extensions = ["dollarmath"]
 myst_dmath_double_inline = True
 
 autosectionlabel_prefix_document = True
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -59,9 +67,9 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 source_suffix = {
-    '.rst': 'restructuredtext',
-    '.txt': 'markdown',
-    '.md': 'markdown',
+    ".rst": "restructuredtext",
+    ".txt": "markdown",
+    ".md": "markdown",
 }
 # -- Options for HTML output -------------------------------------------------
 
@@ -73,13 +81,13 @@ html_theme = "furo"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 html_logo = "_static/snsimlogo.svg"
 
 html_theme_options = {
-                        "sidebar_hide_name": True,
-                     }
+    "sidebar_hide_name": True,
+}
 
 import inspect
 from os.path import relpath
@@ -88,18 +96,18 @@ from os.path import relpath
 # Copied on snsim documentation
 def linkcode_resolve(domain, info):
     """Determine the URL corresponding to Python object."""
-    if domain != 'py':
+    if domain != "py":
         return None
 
-    modname = info['module']
-    fullname = info['fullname']
+    modname = info["module"]
+    fullname = info["fullname"]
 
     submod = sys.modules.get(modname)
     if submod is None:
         return None
 
     obj = submod
-    for part in fullname.split('.'):
+    for part in fullname.split("."):
         try:
             obj = getattr(obj, part)
         except:
@@ -123,7 +131,7 @@ def linkcode_resolve(domain, info):
         linespec = ""
 
     fn = relpath(fn, start=snsim.__snsim_dir_path__)
-    if 'dev' in snsim.__version__:
+    if "dev" in snsim.__version__:
         return "https://github.com/bcarreres/snsim/tree/dev/snsim/%s%s" % (fn, linespec)
     else:
         return "https://github.com/bcarreres/snsim/tree/main/snsim/%s%s" % (fn, linespec)

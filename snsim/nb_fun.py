@@ -1,4 +1,5 @@
 """This module contains functions with numba decorator to speed up the simulation."""
+
 from numba import njit, prange, guvectorize
 import numpy as np
 from numba.core import types
@@ -25,10 +26,10 @@ def sine_interp(x_new, fun_x, fun_y):
 
     """
     if len(fun_x) != len(fun_y):
-        raise ValueError('x and y must have the same len')
+        raise ValueError("x and y must have the same len")
 
     if (x_new > fun_x[-1]) or (x_new < fun_x[0]):
-        raise ValueError('x_new is out of range of fun_x')
+        raise ValueError("x_new is out of range of fun_x")
 
     inf_sel = x_new >= fun_x[:-1]
     sup_sel = x_new < fun_x[1:]
@@ -56,7 +57,7 @@ def R_base(theta, phi, vec):
     theta : float
         RA amplitude of the rotation
     phi : float
-        Dec amplitude of the rotation 
+        Dec amplitude of the rotation
     vec : numpy.ndarray(float)
         Carthesian vector to rotate
     Returns
@@ -64,7 +65,7 @@ def R_base(theta, phi, vec):
     numpy.ndarray(float)
         Rotated vector.
     """
-    R = np.zeros((3, 3), dtype='float')
+    R = np.zeros((3, 3), dtype="float")
     R[0, 0] = np.cos(phi) * np.cos(theta)
     R[0, 1] = -np.sin(theta)
     R[0, 2] = -np.cos(theta) * np.sin(phi)
@@ -77,8 +78,11 @@ def R_base(theta, phi, vec):
     return R @ vec
 
 
-@guvectorize(["(float64[:, :, :], float64[:, :], float64[:, :, :])"],
-              "(m, n, k),(k, m)->(m, n, k)", nopython=True)
+@guvectorize(
+    ["(float64[:, :, :], float64[:, :], float64[:, :, :])"],
+    "(m, n, k),(k, m)->(m, n, k)",
+    nopython=True,
+)
 def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
     """Compute new coordinates of an object in a list of fields frames.
     Parameters
@@ -96,12 +100,16 @@ def new_coord_on_fields(ra_dec, ra_dec_frame, new_radec):
     """
     for i in range(ra_dec_frame.shape[1]):
         ra = ra_dec[i]
-        vec = np.vstack((np.cos(ra_dec[i, :, 0]) * np.cos(ra_dec[i, :, 1]),
-                         np.sin(ra_dec[i, :, 0]) * np.cos(ra_dec[i, :, 1]),
-                         np.sin(ra_dec[i, :, 1])))
+        vec = np.vstack(
+            (
+                np.cos(ra_dec[i, :, 0]) * np.cos(ra_dec[i, :, 1]),
+                np.sin(ra_dec[i, :, 0]) * np.cos(ra_dec[i, :, 1]),
+                np.sin(ra_dec[i, :, 1]),
+            )
+        )
         x, y, z = R_base(ra_dec_frame[0, i], ra_dec_frame[1, i], vec)
         new_radec[i, :, 0] = np.arctan2(y, x)
-        new_radec[i, :, 0][new_radec[i, :, 0] < 0] +=  2 * np.pi
+        new_radec[i, :, 0][new_radec[i, :, 0] < 0] += 2 * np.pi
         new_radec[i, :, 1] = np.arcsin(z)
 
 

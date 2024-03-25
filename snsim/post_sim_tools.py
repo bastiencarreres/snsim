@@ -1,4 +1,5 @@
 """This module contains some tools for post-sim analysis."""
+
 import numpy as np
 
 
@@ -32,14 +33,12 @@ def SNR_pdet(SNR, SNR_mean, SNRp, p):
 
     """
     n = np.log((1 - p) / p) / (np.log(SNR_mean) - np.log(SNRp))
-    return 1 / (1 + (SNR_mean / SNR)**n)
+    return 1 / (1 + (SNR_mean / SNR) ** n)
 
 
-def SNR_select(selec_function,
-               lcs,
-               SNR_mean=5,
-               SNR_limit=[15, 0.99],
-               randseed=np.random.randint(1000, 100000)):
+def SNR_select(
+    selec_function, lcs, SNR_mean=5, SNR_limit=[15, 0.99], randseed=np.random.randint(1000, 100000)
+):
     r"""Run a SNR efficiency detection on all lcs.
 
     Parameters
@@ -73,21 +72,19 @@ def SNR_select(selec_function,
     """
     rand_gen = np.random.default_rng(randseed)
     SNR_proba = {}
-    bands = lcs['band'].unique()
-    if selec_function == 'approx':
-        if isinstance(SNR_limit, (list, np.ndarray)) and isinstance(SNR_mean, (int, np.integer, float, np.floating)):
+    bands = lcs["band"].unique()
+    if selec_function == "approx":
+        if isinstance(SNR_limit, (list, np.ndarray)) and isinstance(
+            SNR_mean, (int, np.integer, float, np.floating)
+        ):
             for b in bands:
-                SNR_proba[b] = lambda SNR: SNR_pdet(SNR,
-                                                    SNR_mean,
-                                                    SNR_limit[0],
-                                                    SNR_limit[1])
+                SNR_proba[b] = lambda SNR: SNR_pdet(SNR, SNR_mean, SNR_limit[0], SNR_limit[1])
         else:
             for b in bands:
-                SNR_proba[b] = lambda SNR: SNR_pdet(SNR,
-                                                    SNR_mean[b],
-                                                    SNR_limit[b][0],
-                                                    SNR_limit[b][1])
+                SNR_proba[b] = lambda SNR: SNR_pdet(
+                    SNR, SNR_mean[b], SNR_limit[b][0], SNR_limit[b][1]
+                )
 
-    SNR = lcs['flux'] / lcs['fluxerr']
-    p_det = np.array([SNR_proba[b](s) for b, s in zip(lcs['band'], SNR)])
+    SNR = lcs["flux"] / lcs["fluxerr"]
+    p_det = np.array([SNR_proba[b](s) for b, s in zip(lcs["band"], SNR)])
     return lcs[rand_gen.random(len(SNR)) < p_det]

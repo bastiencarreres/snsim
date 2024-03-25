@@ -42,12 +42,7 @@ class SurveyObs:
     """
 
     # -- Basic keys needed in survey file (+ noise)
-    _base_keys = [
-        'expMJD',
-        'filter',
-        'fieldID',
-        'fieldRA',
-        'fieldDec']
+    _base_keys = ["expMJD", "filter", "fieldID", "fieldRA", "fieldDec"]
 
     def __init__(self, survey_config):
         """Initialize SurveyObs class."""
@@ -58,12 +53,12 @@ class SurveyObs:
         self._obs_table, self._start_end_days = self._init_data()
 
         # -- Init fields
-        if 'field_map' in self.config:
-            field_map = self.config['field_map']
+        if "field_map" in self.config:
+            field_map = self.config["field_map"]
         else:
-            field_map = 'rectangle'
+            field_map = "rectangle"
 
-        self._sub_field_corners = self._init_fields_map(field_map)         
+        self._sub_field_corners = self._init_fields_map(field_map)
         self._envelope, self._envelope_area = self._compute_envelope()
 
     def _compute_envelope(self):
@@ -81,43 +76,52 @@ class SurveyObs:
         maxRA = self.obs_table.fieldRA.max()
 
         # Represent them as rectangle
-        restfield_corners = self._init_fields_map('rectangle')
+        restfield_corners = self._init_fields_map("rectangle")
 
         f_RA = np.array([minRA, maxRA, maxRA, minRA])
         f_Dec = np.array([maxDec, maxDec, minDec, minDec])
 
         sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, *restfield_corners[0].shape))
 
-        corners = np.stack([nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], 
-                            np.stack([f_RA, f_Dec])) for i in range(4)], axis=1)
-        
+        corners = np.stack(
+            [
+                nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], np.stack([f_RA, f_Dec]))
+                for i in range(4)
+            ],
+            axis=1,
+        )
+
         corners = geo_ut._format_corner(corners, f_RA)
-        
-        envelope = shp_ops.unary_union([geo_ut._compute_polygon(corners[i]) for i in range(4)]).envelope
+
+        envelope = shp_ops.unary_union(
+            [geo_ut._compute_polygon(corners[i]) for i in range(4)]
+        ).envelope
         envelope_area = geo_ut._compute_area(envelope)
         return envelope, envelope_area
-        
+
     def __str__(self):
         str = f"SURVEY FILE : {self.config['survey_file']}\n\n"
 
-        str += ("First day in survey_file : "
-                f"{self.start_end_days[0].mjd:.2f} MJD / {self.start_end_days[0].iso}\n"
-                "Last day in survey_file : "
-                f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}\n\n"
-                f"Survey effective duration is {self.duration:.2f} days\n\n"
-                f"Survey envelope area is {self._envelope_area * (180 / np.pi)**2:.2f} "
-                "squared degrees "
-                f"({self._envelope_area / (4 * np.pi) * 100:.1f} % of the sky)\n\n")
+        str += (
+            "First day in survey_file : "
+            f"{self.start_end_days[0].mjd:.2f} MJD / {self.start_end_days[0].iso}\n"
+            "Last day in survey_file : "
+            f"{self.start_end_days[1].mjd:.2f} MJD / {self.start_end_days[1].iso}\n\n"
+            f"Survey effective duration is {self.duration:.2f} days\n\n"
+            f"Survey envelope area is {self._envelope_area * (180 / np.pi)**2:.2f} "
+            "squared degrees "
+            f"({self._envelope_area / (4 * np.pi) * 100:.1f} % of the sky)\n\n"
+        )
 
-        if 'survey_cut' in self.config:
-            for k, v in self.config['survey_cut'].items():
-                conditions_str = ''
+        if "survey_cut" in self.config:
+            for k, v in self.config["survey_cut"].items():
+                conditions_str = ""
                 for cond in v:
-                    conditions_str += str(cond) + ' OR '
+                    conditions_str += str(cond) + " OR "
                 conditions_str = conditions_str[:-4]
-                str += (f'Select {k}: ' + conditions_str + '\n')
+                str += f"Select {k}: " + conditions_str + "\n"
         else:
-            str += 'No cut on survey file.'
+            str += "No cut on survey file."
         return str
 
     def _read_start_end_days(self, obs_dic):
@@ -141,30 +145,31 @@ class SurveyObs:
 
         Note that end_day key has priority on duration
         """
-        min_mjd = obs_dic['expMJD'].min()
-        max_mjd = obs_dic['expMJD'].max()
-        
-        if 'start_day' in self.config:
-            start_day = self.config['start_day']
+        min_mjd = obs_dic["expMJD"].min()
+        max_mjd = obs_dic["expMJD"].max()
+
+        if "start_day" in self.config:
+            start_day = self.config["start_day"]
         else:
             start_day = min_mjd
 
         start_day = ut.init_astropy_time(start_day)
 
-        if 'end_day' in self.config:
-            end_day = self.config['end_day']
-        elif 'duration' in self.config:
-            end_day = start_day.mjd + self.config['duration']
+        if "end_day" in self.config:
+            end_day = self.config["end_day"]
+        elif "duration" in self.config:
+            end_day = start_day.mjd + self.config["duration"]
         else:
             end_day = max_mjd
 
         end_day = ut.init_astropy_time(end_day)
         if end_day.mjd > max_mjd or start_day.mjd < min_mjd:
             warnings.warn(
-                f'Starting day {start_day.mjd:.3f} MJD or'
-                f'Ending day {end_day.mjd:.3f} MJD is outer of'
-                f'the survey range : {min_mjd:.3f} - {max_mjd:.3f}',
-                UserWarning)
+                f"Starting day {start_day.mjd:.3f} MJD or"
+                f"Ending day {end_day.mjd:.3f} MJD is outer of"
+                f"the survey range : {min_mjd:.3f} - {max_mjd:.3f}",
+                UserWarning,
+            )
 
         if end_day.mjd < start_day.mjd:
             raise ValueError("The ending day is before the starting day !")
@@ -181,25 +186,25 @@ class SurveyObs:
         """
         keys = copy.copy(self._base_keys)
 
-        keys += [self.config['noise_key'][0]]
+        keys += [self.config["noise_key"][0]]
 
-        if 'zp' not in self.config:
-            keys += ['zp']
+        if "zp" not in self.config:
+            keys += ["zp"]
 
-        if 'sig_zp' not in self.config:
-            keys += ['sig_zp']
+        if "sig_zp" not in self.config:
+            keys += ["sig_zp"]
 
-        if 'sig_psf' not in self.config:
-            keys += ['FWHMeff']
+        if "sig_psf" not in self.config:
+            keys += ["FWHMeff"]
 
-        if 'gain' not in self.config:
-            keys += ['gain']
+        if "gain" not in self.config:
+            keys += ["gain"]
 
-        if 'sub_field' in self.config:
-            keys += [self.config['sub_field']]
+        if "sub_field" in self.config:
+            keys += [self.config["sub_field"]]
 
-        if 'add_data' in self.config:
-            add_k = (k for k in self.config['add_data'] if k not in keys)
+        if "add_data" in self.config:
+            add_k = (k for k in self.config["add_data"] if k not in keys)
             keys += add_k
         return keys
 
@@ -211,28 +216,26 @@ class SurveyObs:
         pandas.DataFrame
             The observations table.
         """
-        if ext == '.csv':
-            obs_dic = pd.read_csv(self.config['survey_file'])
-        elif ext == '.parquet':
-            obs_dic = pd.read_parquet(self.config['survey_file'])
+        if ext == ".csv":
+            obs_dic = pd.read_csv(self.config["survey_file"])
+        elif ext == ".parquet":
+            obs_dic = pd.read_parquet(self.config["survey_file"])
 
         # Optionnaly rename columns
-        if 'key_dic' in self.config:
-            obs_dic.rename(columns=self.config['key_dic'],
-                           inplace=True)
+        if "key_dic" in self.config:
+            obs_dic.rename(columns=self.config["key_dic"], inplace=True)
 
         for k in keys:
             if k not in obs_dic.keys().to_list():
-                raise KeyError(f'{k} is needed in obs file')
+                raise KeyError(f"{k} is needed in obs file")
 
-        if 'survey_cut' in self.config:
-            query = ''
-            for cut_var in self.config['survey_cut']:
-                for cut in self.config['survey_cut'][cut_var]:
-                    query += f'{cut_var}{cut} &'
+        if "survey_cut" in self.config:
+            query = ""
+            for cut_var in self.config["survey_cut"]:
+                for cut in self.config["survey_cut"][cut_var]:
+                    query += f"{cut_var}{cut} &"
             query = query[:-2]
-            obs_dic.query(query,
-                          inplace=True)
+            obs_dic.query(query, inplace=True)
         return obs_dic
 
     def _extract_from_db(self, keys):
@@ -243,25 +246,25 @@ class SurveyObs:
         pandas.DataFrame
             The observations table.
         """
-        con = sqlite3.connect(self.config['survey_file'])
+        con = sqlite3.connect(self.config["survey_file"])
 
         # Create the SQL query
-        where = ''
-        if 'survey_cut' in self.config:
+        where = ""
+        if "survey_cut" in self.config:
             where = " WHERE "
-            for cut_var in self.config['survey_cut']:
+            for cut_var in self.config["survey_cut"]:
                 where += "("
-                for cut in self.config['survey_cut'][cut_var]:
+                for cut in self.config["survey_cut"][cut_var]:
                     cut_str = f"{cut}"
                     where += f"{cut_var}{cut_str} AND "
                 where = where[:-4]
                 where += ") AND "
             where = where[:-5]
-        query = 'SELECT '
+        query = "SELECT "
         for k in keys:
-            query += k + ','
+            query += k + ","
         query = query[:-1]
-        query += ' FROM Summary' + where + ';'
+        query += " FROM Summary" + where + ";"
         obs_dic = pd.read_sql_query(query, con)
         return obs_dic
 
@@ -276,16 +279,16 @@ class SurveyObs:
             The starting time and ending time of the survey.
         """
         # Extract extension
-        ext = os.path.splitext(self.config['survey_file'])[-1]
+        ext = os.path.splitext(self.config["survey_file"])[-1]
 
         # Init necessary keys
         keys = self._check_keys()
-        if ext == '.db':
+        if ext == ".db":
             obs_dic = self._extract_from_db(keys)
-        elif ext in ['.csv', '.parquet']:
+        elif ext in [".csv", ".parquet"]:
             obs_dic = self._extract_from_file(ext, keys)
         else:
-            raise ValueError('Accepted formats are .db, .csv or .parquet')
+            raise ValueError("Accepted formats are .db, .csv or .parquet")
 
         # Add noise key + avoid crash on errors by removing errors <= 0
         obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
@@ -294,48 +297,49 @@ class SurveyObs:
         obs_dic = obs_dic[keys].copy()
 
         # Add zp, sig_zp, PSF and gain if needed
-        if self.zp[0] != 'zp_in_obs':
-            obs_dic['zp'] = self.zp[0]
+        if self.zp[0] != "zp_in_obs":
+            obs_dic["zp"] = self.zp[0]
 
-        if self.zp[1] != 'sig_zp_in_obs':
-            obs_dic['sig_zp'] = self.zp[1]
+        if self.zp[1] != "sig_zp_in_obs":
+            obs_dic["sig_zp"] = self.zp[1]
 
-        if self.sig_psf != 'psf_in_obs':
-            obs_dic['sig_psf'] = self.sig_psf
+        if self.sig_psf != "psf_in_obs":
+            obs_dic["sig_psf"] = self.sig_psf
 
-        if self.gain != 'gain_in_obs':
-            obs_dic['gain'] = self.gain
+        if self.gain != "gain_in_obs":
+            obs_dic["gain"] = self.gain
 
         # Keep only epochs in the survey time
         start_day_input, end_day_input = self._read_start_end_days(obs_dic)
 
-        minMJDinObs = obs_dic['expMJD'].min()
-        maxMJDinObs = obs_dic['expMJD'].max()
+        minMJDinObs = obs_dic["expMJD"].min()
+        maxMJDinObs = obs_dic["expMJD"].max()
 
         if start_day_input.mjd < minMJDinObs:
-            raise ValueError('start_day before first day in survey file')
+            raise ValueError("start_day before first day in survey file")
         elif end_day_input.mjd > maxMJDinObs:
-            raise ValueError('end_day after last day in survey file')
+            raise ValueError("end_day after last day in survey file")
 
-        obs_dic.query(f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
-                      inplace=True)
+        obs_dic.query(
+            f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}", inplace=True
+        )
 
         if obs_dic.size == 0:
-            raise RuntimeError('No observation for the given survey start_day and duration.')
+            raise RuntimeError("No observation for the given survey start_day and duration.")
 
-        if not obs_dic['expMJD'].is_monotonic_increasing:
-            obs_dic.sort_values('expMJD', inplace=True)
+        if not obs_dic["expMJD"].is_monotonic_increasing:
+            obs_dic.sort_values("expMJD", inplace=True)
 
         # Reset index of the pandas DataFrame
         obs_dic.reset_index(drop=True, inplace=True)
-        minMJDinObs = obs_dic['expMJD'].min()
-        maxMJDinObs = obs_dic['expMJD'].max()
+        minMJDinObs = obs_dic["expMJD"].min()
+        maxMJDinObs = obs_dic["expMJD"].max()
 
         # Change band name to correpond with sncosmo bands
         if self.band_dic is not None:
-            obs_dic['filter'] = obs_dic['filter'].map(self.band_dic).astype('string')
+            obs_dic["filter"] = obs_dic["filter"].map(self.band_dic).astype("string")
         else:
-            obs_dic['filter'] = obs_dic['filter'].astype('string')
+            obs_dic["filter"] = obs_dic["filter"].astype("string")
 
         # Effective start and end days
         start_day = ut.init_astropy_time(minMJDinObs)
@@ -347,7 +351,7 @@ class SurveyObs:
 
         Parameters
         ----------
-        field_config : str 
+        field_config : str
             Shape or file that contains the sub-field description.
 
         Returns
@@ -356,12 +360,19 @@ class SurveyObs:
             sub-field corners postion.
 
         """
-        if field_config == 'rectangle':
-            sub_fields_corners = {0: np.array(
-                [[[-self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
-                  [ self.field_size_rad[0] / 2,  self.field_size_rad[1] / 2],
-                  [ self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
-                  [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2]]])}
+        if field_config == "rectangle":
+            sub_fields_corners = {
+                0: np.array(
+                    [
+                        [
+                            [-self.field_size_rad[0] / 2, self.field_size_rad[1] / 2],
+                            [self.field_size_rad[0] / 2, self.field_size_rad[1] / 2],
+                            [self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
+                            [-self.field_size_rad[0] / 2, -self.field_size_rad[1] / 2],
+                        ]
+                    ]
+                )
+            }
         else:
             sub_fields_corners = io_ut._read_sub_field_map(self.field_size_rad, field_config)
 
@@ -387,40 +398,47 @@ class SurveyObs:
         -----
         Inspired from  https://github.com/MickaelRigault/ztffields :
             ztffields.projection.spatialjoin_radec_to_fields
-        """ 
-        # -- Compute max and min of table section       
+        """
+        # -- Compute max and min of table section
         minMJD = df.expMJD.min()
         maxMJD = df.expMJD.max()
 
         ObjPoints = ObjPoints[(maxMJD >= ObjPoints.min_t) & (ObjPoints.max_t >= minMJD)]
-                            
-        # -- Map field and rcid corners to their coordinates
-        if 'sub_field' in config:
-            field_corners = np.stack(df[config['sub_field']].map(sub_fields_corners).values)
-        else:
-            field_corners = np.broadcast_to(sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)) 
 
-        corners = np.stack([nbf.new_coord_on_fields(
-            field_corners[:, :, i, :], 
-            np.array([df.fieldRA.values, df.fieldDec.values])) 
-                            for i in range(4)], axis=1)
+        # -- Map field and rcid corners to their coordinates
+        if "sub_field" in config:
+            field_corners = np.stack(df[config["sub_field"]].map(sub_fields_corners).values)
+        else:
+            field_corners = np.broadcast_to(
+                sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)
+            )
+
+        corners = np.stack(
+            [
+                nbf.new_coord_on_fields(
+                    field_corners[:, :, i, :], np.array([df.fieldRA.values, df.fieldDec.values])
+                )
+                for i in range(4)
+            ],
+            axis=1,
+        )
 
         corners = geo_ut._format_corner(corners, df.fieldRA.values)
-        
+
         # -- Create shapely polygon
         fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
 
-        GeoS = gpd.GeoDataFrame(data=df, 
-                                geometry=fgeo(np.arange(df.shape[0])))
+        GeoS = gpd.GeoDataFrame(data=df, geometry=fgeo(np.arange(df.shape[0])))
 
         join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
 
-        join['phase'] = (join['expMJD'] - join['t0']) / join['1_zobs']
+        join["phase"] = (join["expMJD"] - join["t0"]) / join["1_zobs"]
 
-        return join.drop(columns=['geometry', 'index_right', 'min_t', 'max_t', '1_zobs', 't0'])
+        return join.drop(columns=["geometry", "index_right", "min_t", "max_t", "1_zobs", "t0"])
 
-    def get_observations(self, params, phase_cut=None, nep_cut=None, IDmin=0, 
-                         use_dask=False, npartitions=None):
+    def get_observations(
+        self, params, phase_cut=None, nep_cut=None, IDmin=0, use_dask=False, npartitions=None
+    ):
         """Give the epochs of observations of a given SN.
 
         Parameters
@@ -447,26 +465,32 @@ class SurveyObs:
 
         """
         params = params.copy()
-        ObjPoints = gpd.GeoDataFrame(data=params[['t0', 'min_t', 'max_t', '1_zobs']], 
-                                     geometry=gpd.points_from_xy(params['ra'], params['dec']),
-                                     index=params.index)
-        
+        ObjPoints = gpd.GeoDataFrame(
+            data=params[["t0", "min_t", "max_t", "1_zobs"]],
+            geometry=gpd.points_from_xy(params["ra"], params["dec"]),
+            index=params.index,
+        )
+
         if use_dask:
-            if npartitions is None: 
+            if npartitions is None:
                 # -- Arbitrary should be change
                 npartitions = len(self.obs_table) // 10
             ddf = daskdf.from_pandas(self.obs_table, npartitions=npartitions)
-            meta = daskdf.utils.make_meta({**{k: t for k, t in zip(ddf.columns, ddf.dtypes)}, 
-                                           'phase': 'float64'})
-            ObsObj = ddf.map_partitions(self._match_radec_to_obs,
-                                        ObjPoints, self.config,
-                                        self._sub_field_corners,
-                                        align_dataframes=False,
-                                        meta=meta).compute()
+            meta = daskdf.utils.make_meta(
+                {**{k: t for k, t in zip(ddf.columns, ddf.dtypes)}, "phase": "float64"}
+            )
+            ObsObj = ddf.map_partitions(
+                self._match_radec_to_obs,
+                ObjPoints,
+                self.config,
+                self._sub_field_corners,
+                align_dataframes=False,
+                meta=meta,
+            ).compute()
         else:
             ObsObj = self._match_radec_to_obs(
-                self.obs_table, ObjPoints,
-                self.config, self._sub_field_corners)
+                self.obs_table, ObjPoints, self.config, self._sub_field_corners
+            )
         # -- Phase cut
         if phase_cut is not None:
             ObsObj = ObsObj[(ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])]
@@ -474,8 +498,8 @@ class SurveyObs:
         if nep_cut is not None:
             for cut in nep_cut:
                 test = (ObsObj.phase > cut[1]) & (ObsObj.phase < cut[2])
-                if cut[3] != 'any':
-                    test &= ObsObj['filter'] == cut[3]
+                if cut[3] != "any":
+                    test &= ObsObj["filter"] == cut[3]
                 test = test.groupby(level=0).sum() >= int(cut[0])
 
                 ObsObj = ObsObj[ObsObj.index.map(test)]
@@ -484,15 +508,15 @@ class SurveyObs:
 
         # -- Reset index
         new_idx = {k: IDmin + i for i, k in enumerate(ObsObj.index.unique())}
-        ObsObj['ID'] = ObsObj.index.map(new_idx)
-        params['ID'] = params.index.map(new_idx)
+        ObsObj["ID"] = ObsObj.index.map(new_idx)
+        params["ID"] = params.index.map(new_idx)
 
-        ObsObj.drop(columns='phase', inplace=True)
-        ObsObj.set_index('ID', drop=True, inplace=True)
-        params.set_index('ID', drop=True, inplace=True)
+        ObsObj.drop(columns="phase", inplace=True)
+        ObsObj.set_index("ID", drop=True, inplace=True)
+        params.set_index("ID", drop=True, inplace=True)
 
         # -- Sort the results
-        ObsObj.sort_values(['ID', 'expMJD'], inplace=True)
+        ObsObj.sort_values(["ID", "expMJD"], inplace=True)
         params.sort_index(inplace=True)
 
         if len(params) == 0:
@@ -513,33 +537,33 @@ class SurveyObs:
             The observations table that correspond to the selection.
 
         """
-        Obs.rename(columns={'expMJD': 'time', 'filter': 'band'}, inplace=True)
-        Obs.drop(labels=['fieldRA', 'fieldDec'], axis=1, inplace=True)
+        Obs.rename(columns={"expMJD": "time", "filter": "band"}, inplace=True)
+        Obs.drop(labels=["fieldRA", "fieldDec"], axis=1, inplace=True)
 
         # PSF selection
-        if self.sig_psf == 'psf_in_obs':
-            Obs['sig_psf'] = Obs['FWHMeff'] / (2 * np.sqrt(2 * np.log(2)))
-            Obs.drop(columns='FWHMeff', inplace=True)
+        if self.sig_psf == "psf_in_obs":
+            Obs["sig_psf"] = Obs["FWHMeff"] / (2 * np.sqrt(2 * np.log(2)))
+            Obs.drop(columns="FWHMeff", inplace=True)
 
         # Skynoise selection
-        if self.config['noise_key'][1] == 'mlim5':
+        if self.config["noise_key"][1] == "mlim5":
             # Convert maglim to flux noise (ADU)
-            mlim5 = Obs[self.config['noise_key'][0]]
-            skynoise = 10.**(0.4 * (Obs.zp - mlim5)) / 5
-        elif self.config['noise_key'][1] == 'skysigADU':
-            skynoise = Obs[self.config['noise_key'][0]].copy()
+            mlim5 = Obs[self.config["noise_key"][0]]
+            skynoise = 10.0 ** (0.4 * (Obs.zp - mlim5)) / 5
+        elif self.config["noise_key"][1] == "skysigADU":
+            skynoise = Obs[self.config["noise_key"][0]].copy()
         else:
-            raise ValueError('Noise type should be mlim5 or skysigADU')
+            raise ValueError("Noise type should be mlim5 or skysigADU")
 
         # Apply PSF
         psf_mask = Obs.sig_psf > 0
-        skynoise[psf_mask] *= np.sqrt(4 * np.pi * Obs['sig_psf'][psf_mask]**2)
+        skynoise[psf_mask] *= np.sqrt(4 * np.pi * Obs["sig_psf"][psf_mask] ** 2)
 
         # Skynoise column
-        Obs['skynoise'] = skynoise
+        Obs["skynoise"] = skynoise
 
         # Magnitude system
-        Obs['zpsys'] = 'ab'
+        Obs["zpsys"] = "ab"
 
         return Obs
 
@@ -549,19 +573,17 @@ class SurveyObs:
             fig, ax = plt.subplots()
         for k, corners in self._sub_field_corners.items():
             corners_deg = np.degrees(corners)
-            polist = [Polygon(cd, color='r', fill=False) for cd in corners_deg]
+            polist = [Polygon(cd, color="r", fill=False) for cd in corners_deg]
             for p in polist:
                 ax.add_patch(p)
                 x_text = 0.5 * (p.xy[0][0] + p.xy[1][0])
                 y_text = 0.5 * (p.xy[0][1] + p.xy[3][1])
-                ax.text(x_text, y_text, k, ha='center', va='center')
-        ax.set_xlabel('RA [deg]')
-        ax.set_ylabel('Dec [deg]')
-        ax.set_xlim(-self.config['ra_size'] / 2 - 0.5, 
-                    self.config['ra_size'] / 2 + 0.5)
-        ax.set_ylim(-self.config['dec_size'] / 2 - 0.5, 
-                    self.config['dec_size'] / 2 + 0.5)
-        ax.set_aspect('equal')
+                ax.text(x_text, y_text, k, ha="center", va="center")
+        ax.set_xlabel("RA [deg]")
+        ax.set_ylabel("Dec [deg]")
+        ax.set_xlim(-self.config["ra_size"] / 2 - 0.5, self.config["ra_size"] / 2 + 0.5)
+        ax.set_ylim(-self.config["dec_size"] / 2 - 0.5, self.config["dec_size"] / 2 + 0.5)
+        ax.set_aspect("equal")
         if ax is None:
             plt.show()
 
@@ -573,8 +595,8 @@ class SurveyObs:
     @property
     def band_dic(self):
         """Get the dic band_survey : band_sncosmo."""
-        if 'band_dic' in self.config:
-            return self.config['band_dic']
+        if "band_dic" in self.config:
+            return self.config["band_dic"]
         return None
 
     @property
@@ -585,32 +607,32 @@ class SurveyObs:
     @property
     def gain(self):
         """Get CCD gain in e-/ADU."""
-        if 'gain' in self._config:
-            gain = self._config['gain']
+        if "gain" in self._config:
+            gain = self._config["gain"]
         else:
-            gain = 'gain_in_obs'
+            gain = "gain_in_obs"
         return gain
 
     @property
     def zp(self):
         """Get zero point and it's uncertainty."""
-        if 'zp' in self._config:
-            zp = self._config['zp']
+        if "zp" in self._config:
+            zp = self._config["zp"]
         else:
-            zp = 'zp_in_obs'
-        if 'sig_zp' in self._config:
-            sig_zp = self._config['sig_zp']
+            zp = "zp_in_obs"
+        if "sig_zp" in self._config:
+            sig_zp = self._config["sig_zp"]
         else:
-            sig_zp = 'sig_zp_in_obs'
+            sig_zp = "sig_zp_in_obs"
         return (zp, sig_zp)
 
     @property
     def sig_psf(self):
         """Get PSF width."""
-        if 'sig_psf' in self._config:
-            sig_psf = self._config['sig_psf']
+        if "sig_psf" in self._config:
+            sig_psf = self._config["sig_psf"]
         else:
-            sig_psf = 'psf_in_obs'
+            sig_psf = "psf_in_obs"
         return sig_psf
 
     @property
@@ -623,11 +645,11 @@ class SurveyObs:
     def start_end_days(self):
         """Get the survey start and ending days."""
         return self._start_end_days[0], self._start_end_days[1]
-    
+
     @property
     def field_size_rad(self):
         """Get field size ra, dec in radians."""
-        return np.radians([self.config['ra_size'], self.config['dec_size']])
+        return np.radians([self.config["ra_size"], self.config["dec_size"]])
 
 
 class SnHost:
@@ -640,7 +662,8 @@ class SnHost:
     z_range : list(float), opt
         The redshift range.
     """
-    _dist_options = ['rate', 'random', 'mass', 'mass_sfr', 'sfr']
+
+    _dist_options = ["rate", "random", "mass", "mass_sfr", "sfr"]
 
     def __init__(self, config, z_range=None, geometry=None):
         """Initialize SnHost class."""
@@ -650,12 +673,14 @@ class SnHost:
         self._max_dz = None
 
         # Default parameter
-        if 'distrib' not in self.config:
-            self._config['distrib'] = 'rate'
-        elif self.config['distrib'].lower() not in self._dist_options:
-            raise ValueError(f"{self.config['distrib']} is not an available option," 
-                             f"distributions are {self._dist_options}")
-            
+        if "distrib" not in self.config:
+            self._config["distrib"] = "rate"
+        elif self.config["distrib"].lower() not in self._dist_options:
+            raise ValueError(
+                f"{self.config['distrib']} is not an available option,"
+                f"distributions are {self._dist_options}"
+            )
+
     @property
     def config(self):
         """Get the configuration dic of host."""
@@ -665,7 +690,7 @@ class SnHost:
     def max_dz(self):
         """Get the maximum redshift gap."""
         if self._max_dz is None:
-            redshift_copy = np.sort(np.copy(self.table['zcos']))
+            redshift_copy = np.sort(np.copy(self.table["zcos"]))
             diff = redshift_copy[1:] - redshift_copy[:-1]
             self._max_dz = np.max(diff)
         return self._max_dz
@@ -684,40 +709,41 @@ class SnHost:
             astropy Table containing host.
 
         """
-        ext = os.path.splitext(self.config['host_file'])[-1]
+        ext = os.path.splitext(self.config["host_file"])[-1]
 
-        if ext == '.fits':
-            with fits.open(self.config['host_file']) as hostf:
+        if ext == ".fits":
+            with fits.open(self.config["host_file"]) as hostf:
                 host_list = pd.DataFrame.from_records(hostf[1].data[:])
-        elif ext == '.csv':
-            host_list = pd.read_csv(self.config['host_file'])
-        elif ext == '.parquet':
-            host_list = pd.read_parquet(self.config['host_file'])
+        elif ext == ".csv":
+            host_list = pd.read_csv(self.config["host_file"])
+        elif ext == ".parquet":
+            host_list = pd.read_parquet(self.config["host_file"])
         else:
-            raise ValueError('Support .csv, .fits or .parquet files')
+            raise ValueError("Support .csv, .fits or .parquet files")
 
-        if 'key_dic' in self.config:
-            key_dic = self.config['key_dic']
+        if "key_dic" in self.config:
+            key_dic = self.config["key_dic"]
         else:
             key_dic = {}
 
-        host_list = host_list.astype('float64')
+        host_list = host_list.astype("float64")
         host_list.rename(columns=key_dic, inplace=True)
-        host_list['ra'] += 2 * np.pi * (host_list['ra'] < 0)
+        host_list["ra"] += 2 * np.pi * (host_list["ra"] < 0)
         if z_range is not None:
             z_min, z_max = z_range
-            if (z_max > host_list['zcos'].max()
-               or z_min < host_list['zcos'].min()):
-                warnings.warn('Simulation redshift range does not match host file redshift range',
-                              UserWarning)
-            host_list.query(f'zcos >= {z_min} & zcos <= {z_max}', inplace=True)
+            if z_max > host_list["zcos"].max() or z_min < host_list["zcos"].min():
+                warnings.warn(
+                    "Simulation redshift range does not match host file redshift range", UserWarning
+                )
+            host_list.query(f"zcos >= {z_min} & zcos <= {z_max}", inplace=True)
         else:
             # By default give z range as hsot z range
             z_range = host_list.zcos.min(), host_list.zcos.max()
         if self._geometry is not None:
             ra_min, dec_min, ra_max, dec_max = self._geometry.bounds
-            host_list.query(f'{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}',
-                            inplace=True)
+            host_list.query(
+                f"{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}", inplace=True
+            )
 
         host_list.reset_index(drop=True, inplace=True)
         return z_range, host_list
@@ -734,46 +760,54 @@ class SnHost:
         -------
         numpy.ndarray(float)
             weigths for the random draw.
-        """        
-        if self.config['distrib'].lower() == 'random':
+        """
+        if self.config["distrib"].lower() == "random":
             weights = None
-        elif self.config['distrib'].lower() == 'rate':
+        elif self.config["distrib"].lower() == "rate":
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights = rate(self.table['zcos']) / (1 + self.table['zcos'])  # X mass X 
+            weights = rate(self.table["zcos"]) / (1 + self.table["zcos"])  # X mass X
             # Normalize the weights
             weights /= weights.sum()
-        elif self.config['distrib'].lower() == 'mass':
+        elif self.config["distrib"].lower() == "mass":
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
-            #compute mass weight
-            weights_mass = ut.compute_weight_mass_for_type(mass=self.table['host_mass'], sn_type=sn_type, cosmology=cosmology)
+            weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
+            # compute mass weight
+            weights_mass = ut.compute_weight_mass_for_type(
+                mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
+            )
             weights = weights_rate * weights_mass
-            #normalize
+            # normalize
             weights /= weights.sum()
-        elif self.config['distrib'].lower() == 'sfr':
+        elif self.config["distrib"].lower() == "sfr":
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
-            #compute SFR weight
-            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_sfr'], sn_type=sn_type, cosmology=cosmology)
+            weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
+            # compute SFR weight
+            weights_SFR = ut.compute_weight_SFR_for_type(
+                SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
+            )
             weights = weights_rate * weights_SFR
-            #normalize
+            # normalize
             weights /= weights.sum()
-        elif self.config['distrib'].lower() == 'mass_sfr':
+        elif self.config["distrib"].lower() == "mass_sfr":
             if rate is None:
                 raise ValueError("rate should be set to use 'rate' distribution")
             # Take into account rate is divide by (1 + z)
-            weights_rate = rate(self.table['zcos']) / (1 + self.table['zcos'])
-            #compute SFR and mass weight
-            weights_mass = ut.compute_weight_mass_for_type(mass=self.table['host_mass'], sn_type=sn_type, cosmology=cosmology)
-            weights_SFR = ut.compute_weight_SFR_for_type(SFR=self.table['host_sfr'], sn_type=sn_type, cosmology=cosmology)
+            weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
+            # compute SFR and mass weight
+            weights_mass = ut.compute_weight_mass_for_type(
+                mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
+            )
+            weights_SFR = ut.compute_weight_SFR_for_type(
+                SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
+            )
             weights = weights_rate * (weights_mass + weights_SFR)
-            #normalize
+            # normalize
             weights /= weights.sum()
         return weights
 
@@ -800,7 +834,7 @@ class SnHost:
         rand_gen = np.random.default_rng(seed)
 
         weights = self.compute_weights(rate=rate, sn_type=sn_type, cosmology=cosmology)
-        
+
         if self._geometry is None:
             idx = rand_gen.choice(self.table.index, p=weights, size=n)
         else:
@@ -808,8 +842,9 @@ class SnHost:
             n_to_sim = n
             while len(idx) < n:
                 idx_tmp = np.random.choice(self.table.index, p=weights, size=n_to_sim)
-                multipoint = gpd.points_from_xy(self.table.loc[idx_tmp]['ra'], 
-                                                self.table.loc[idx_tmp]['dec'])
+                multipoint = gpd.points_from_xy(
+                    self.table.loc[idx_tmp]["ra"], self.table.loc[idx_tmp]["dec"]
+                )
                 idx.extend(idx_tmp[multipoint.intersects(self._geometry)])
                 n_to_sim = n - len(idx)
 
