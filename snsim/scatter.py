@@ -4,6 +4,7 @@ import numpy as np
 import sncosmo as snc
 from . import utils as ut
 from . import nb_fun as nbf
+import scipy.stats as stats
 
 
 def init_sn_sct_model(sct_mod, *args):
@@ -159,11 +160,12 @@ def gen_BS20_scatter(n_sn, seed=None):
     """
 
     rand_gen = np.random.default_rng(seed)
+    
 
     lower, upper = 0.5, 1000
     mu, sigma = 2, 1.4
     X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
-    Rv = X.rvs(n_sn, random_state=seed)
+    Rv = X.rvs(n_sn)
 
     E_dust = rand_gen.exponential(
         scale=0.1, size=n_sn

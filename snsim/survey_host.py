@@ -834,6 +834,7 @@ class SnHost:
         rand_gen = np.random.default_rng(seed)
 
         weights = self.compute_weights(rate=rate, sn_type=sn_type, cosmology=cosmology)
+        
 
         if self._geometry is None:
             idx = rand_gen.choice(self.table.index, p=weights, size=n)

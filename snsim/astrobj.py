@@ -7,6 +7,7 @@ import pandas as pd
 import sncosmo as snc
 from .constants import C_LIGHT_KMS
 from . import utils as ut
+from . import plasticc_model as plm
 
 
 class AstrObj(abc.ABC):
@@ -98,31 +99,49 @@ class AstrObj(abc.ABC):
             SN simulation model.
 
         """
-        if "model_version" not in self._sim_par:
-            version = None
+
+        if  self._type == 'snIax'  or self._type == 'snIa91bg':
+
+            if effects is not None:
+                eff = [eff["source"] for eff in effects]
+                eff_names = [eff["name"] for eff in effects]
+                eff_frames = [eff["frame"] for eff in effects]
+            else:
+                eff = None
+                eff_names = None
+                eff_frames = None
+
+            self._sim_par["model_version"] = 'plasticc'
+
+            model = plm.snc_model_from_sed(self._sim_par["model_name"],self._sim_par['sed_path'],eff,eff_names,eff_frames)
+
         else:
-            version = self._sim_par["model_version"]
+            if "model_version" not in self._sim_par:
+                version = None
+            else:
+                version = self._sim_par["model_version"]
 
-        snc_source = snc.get_source(name=self._sim_par["model_name"], version=version)
+            snc_source = snc.get_source(name=self._sim_par["model_name"], version=version)
 
-        if "model_version" not in self._sim_par:
-            self._sim_par["model_version"] = snc_source.version
+            if "model_version" not in self._sim_par:
+                self._sim_par["model_version"] = snc_source.version
 
-        if effects is not None:
-            eff = [eff["source"] for eff in effects]
-            eff_names = [eff["name"] for eff in effects]
-            eff_frames = [eff["frame"] for eff in effects]
-        else:
-            eff = None
-            eff_names = None
-            eff_frames = None
+            if effects is not None:
+                eff = [eff["source"] for eff in effects]
+                eff_names = [eff["name"] for eff in effects]
+                eff_frames = [eff["frame"] for eff in effects]
+            else:
+                eff = None
+                eff_names = None
+                eff_frames = None
 
-        model = snc.Model(
-            source=snc_source,
-            effects=eff,
-            effect_names=eff_names,
-            effect_frames=eff_frames,
-        )
+        
+            model = snc.Model(
+                source=snc_source,
+                effects=eff,
+                effect_names=eff_names,
+                effect_frames=eff_frames,
+            )
 
         effect_par = {}
         for eff, eff_name in zip(model.effects, model.effect_names):
@@ -305,7 +324,7 @@ class SNIa(AstrObj):
         ValueError
             Raises if you use mass-step without host logmass.
         """
-        M0 = self._sim_par["M0"] + self._sim_par["coh_sct"]
+        
 
         if self._relation is None:
             self._relation = "salttripp"
@@ -318,9 +337,22 @@ class SNIa(AstrObj):
 
             # Compute mB : { mu + M0 : the standard magnitude} + {-alpha*x1 +
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
-            self._sim_par["mb"] = (
+            mb = (
                 self.SALTTripp(
-                    M0,
+                    self._sim_par["M0"],
+                    self._sim_par["alpha"],
+                    self._sim_par["beta"],
+                    self._sim_par["x1"],
+                    self._sim_par["c"],
+                    self._sim_par["coh_sct"]
+                )
+                + self.mu
+            )
+
+        elif self._relation.lower() == "bs20":
+            mb = (
+                self.BS20(
+                    self._sim_par["M0"],
                     self._sim_par["alpha"],
                     self._sim_par["beta"],
                     self._sim_par["x1"],
@@ -328,17 +360,26 @@ class SNIa(AstrObj):
                 )
                 + self.mu
             )
-
+            
+            dust = snc.CCM89Dust()
+            model.add_effect(dust, frame='rest', name='host_')
+            model.set(**{
+                            'host_ebv': self._sim_par['E_dust'],
+                            'host_r_v': self._sim_par['RV']
+                        })
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError("Relation not available")
 
         if "mass_step" in self._sim_par:
             if "host_mass" in self._sim_par:
-                if self._sim_par["host_mass"] > 10.0:
+                if np.log10(self._sim_par["host_mass"]) > 10.0:
                     mb += self._sim_par["mass_step"]
             else:
                 raise ValueError("Provide SN host mass to account for the magnitude mass step")
+        
+        self._sim_par["mb"] = mb
+
 
         # Set x1 and c
         model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
@@ -349,7 +390,11 @@ class SNIa(AstrObj):
         return model
 
     @staticmethod
-    def SALTTripp(M0, alpha, beta, x1, c):
+    def SALTTripp(M0, alpha, beta, x1, c, coh_sct):
+        return M0 - alpha * x1 + beta * c + coh_sct
+
+    @staticmethod
+    def BS20(M0, alpha, beta, x1, c):
         return M0 - alpha * x1 + beta * c
 
 
@@ -437,3 +482,116 @@ class SNIc_BL(TimeSeries):
 
     _type = "snIc-BL"
     _available_models = ut.Templatelist_fromsncosmo("snic-bl")
+
+
+
+class SNIax(AstrObj):
+    """SNiax class.
+
+    Parameters
+    ----------
+    sn_par : dict
+        Parameters of the object.
+
+      | same as BasicAstrObj parameters
+      | └── mag_sct, coherent mag scattering.
+    sim_model : sncosmo.Model
+        sncosmo Model to use.
+    model_par : dict
+        General model parameters.
+
+      | same as BasicAstrObj model_par
+      | ├── M0,  absolute magnitude
+      | ├── sigM, sigma of coherent scattering
+      | └── used model parameters
+    """
+    _obj_attrs = ["M0", "amplitude", "mb"]
+    _type = 'snIax'
+    _available_models, _sed_path = plm.get_sed_listname('sniax')
+
+    def _set_model_par(self,model):
+        """Set sncosmo model parameters.
+
+        Parameters
+        ----------
+        model : sncosmo.Model
+            The sncosmo model.
+
+        Returns
+        -------
+        sncosmo.Model
+            The sncosmo model with parameters set.
+        """
+
+        M0 = model.source_peakmag('bessellv','ab') + 0.345 #correction to recalibrate to plasticc models
+        self._sim_par['M0'] = M0
+        
+        m_v= self.mu + M0
+    
+        # Compute the amplitude  parameter
+        model.set_source_peakmag(m_v, 'bessellv', 'ab')
+        self._sim_par["mb"] = model.source_peakmag( 'bessellb', 'ab')
+        self._sim_par["amplitude"] = model.get("amplitude")
+
+        dust = snc.CCM89Dust()
+        model.add_effect(dust, frame='rest', name='host_')
+        model.set(**{
+                        'host_ebv': self._sim_par['E_dust'],
+                        'host_r_v': self._sim_par['RV']
+                    })
+        
+        return model
+
+        
+   
+class SNIa91bg(AstrObj):
+    """SNia91bg class.
+
+    Parameters
+    ----------
+    sn_par : dict
+        Parameters of the object.
+
+      | same as BasicAstrObj parameters
+      | └── mag_sct, coherent mag scattering.
+    sim_model : sncosmo.Model
+        sncosmo Model to use.
+    model_par : dict
+        General model parameters.
+
+      | same as BasicAstrObj model_par
+      | ├── M0,  absolute magnitude
+      | ├── sigM, sigma of coherent scattering
+      | └── used model parameters
+    """
+    
+    _obj_attrs = ["M0", "amplitude", "mb"]
+    _type = 'snIa91bg'
+    _available_models, _sed_path = plm.get_sed_listname('snia91bg')
+
+
+    def _set_model_par(self, model):
+        """Set sncosmo model parameters.
+
+        Parameters
+        ----------
+        model : sncosmo.Model
+            The sncosmo model.
+
+        Returns
+        -------
+        sncosmo.Model
+            The sncosmo model with parameters set.
+        """
+
+        M0 = model.source_peakmag('bessellv','ab') 
+        self._sim_par['M0'] = M0
+        
+        m_v= self.mu + M0
+    
+        # Compute the amplitude  parameter
+        model.set_source_peakmag(m_v, 'bessellv', 'ab')
+        self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
+        self._sim_par["amplitude"] = model.get("amplitude")
+        return model
+    

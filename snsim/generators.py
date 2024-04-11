@@ -16,6 +16,7 @@ from . import scatter as sct
 from . import salt_utils as salt_ut
 from . import astrobj as astr
 from . import constants as cst
+from . import plasticc_model as plm
 
 
 __GEN_DIC__ = {
@@ -29,6 +30,9 @@ __GEN_DIC__ = {
     "snic_gen": "SNIcGen",
     "snib_gen": "SNIbGen",
     "snic-bl_gen": "SNIc_BLGen",
+    'snia_peculiar_gen': 'SNIa_peculiarGen',
+    'sniax_gen': 'SNIaxGen',
+    'snia_91bg_gen': 'SNIa_91bgGen'
 }
 
 
@@ -361,10 +365,14 @@ class BaseGen(abc.ABC):
             sources["model_version"] = [None] * len(sources["model_name"])
 
         # -- Compute max, min phase
-        snc_sources = [
-            snc.get_source(name=n, version=v)
-            for n, v in zip(sources["model_name"], sources["model_version"])
-        ]
+        if self._object_type.lower() == 'sniax' or self._object_type.lower() == 'snia91bg':
+            snc_sources = [plm.snc_source_from_sed(name,self._sed_path) for name in sources["model_name"]]
+
+        else:
+            snc_sources = [
+                snc.get_source(name=n, version=v)
+                for n, v in zip(sources["model_name"], sources["model_version"])
+            ]
 
         sources["model_version"] = [s.version for s in snc_sources]
         maxphase = np.max([s.maxphase() for s in snc_sources])
@@ -645,11 +653,17 @@ class BaseGen(abc.ABC):
             basic_par["max_t"] = basic_par["t0"] + self._sources_prange[1] * _1_zobs_
             basic_par["1_zobs"] = _1_zobs_
 
+
+        if 'mass_step' in self._params:
+            basic_par['mass_step'] = self._params['mass_step']
+
         # Save in basic_par all the column of the host_table that start with host, to save the data in final sim
         if self.host is not None:
+            basic_par['host_index'] = host.index
             for k in host.columns:
                 if k.startswith("host_"):
                     basic_par[k] = host[k].values
+        
 
         return pd.DataFrame(basic_par)
 
@@ -778,6 +792,7 @@ class SNIaGen(BaseGen):
                 )
             elif self._params["sct_model"] in ["C11_0", "C11_1", "C11_2"]:
                 effects.append({"source": sct.C11(), "frame": "rest", "name": "C11_"})
+
         return effects
 
     def _update_header(self):
@@ -841,13 +856,6 @@ class SNIaGen(BaseGen):
             "coh_sct": self.gen_coh_scatter(n_obj, seed=seeds[0]),
         }
 
-        # -- Spectra model parameters
-        model_name = self._params["model_name"]
-
-        if model_name in ("salt2", "salt3"):
-            sim_x1, sim_c, alpha, beta = self.gen_salt_par(n_obj, seeds[1], basic_par=basic_par)
-            params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
-
         # -- Non-coherent scattering effects
         if "sct_model" in self._params:
             randgen = np.random.default_rng(seeds[2])
@@ -855,6 +863,17 @@ class SNIaGen(BaseGen):
                 params["G10_RndS"] = randgen.integers(1e12, size=n_obj)
             elif self._params["sct_model"] == "C11":
                 params["C11_RndS"] = randgen.integers(1e12, size=n_obj)
+            elif self._params["sct_model"].lower() == "bs20":
+                _,params['RV'],params['E_dust'],_= sct.gen_BS20_scatter(n_obj,seeds[2])
+
+        # -- Spectra model parameters
+        model_name = self._params["model_name"]
+
+        if model_name in ("salt2", "salt3"):
+            sim_x1, sim_c, alpha, beta = self.gen_salt_par(n_obj, seeds[1], basic_par=basic_par)
+            params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
+
+
         return params
 
     def gen_coh_scatter(self, n_sn, seed=None):
@@ -915,7 +934,7 @@ class SNIaGen(BaseGen):
         # -- c dist
         if isinstance(self._params["dist_c"], str):
             if self._params["dist_c"].lower() == "bs20":
-                sim_c = basic_par["c_int"]
+                _,_,_,sim_c =  sct.gen_BS20_scatter(n_sn,seeds[1])
         else:
             sim_c = ut.asym_gauss(*self._params["dist_c"], seed=seeds[1], size=n_sn)
 
@@ -929,6 +948,9 @@ class SNIaGen(BaseGen):
             beta = np.ones(n_sn) * self._params["beta"]
         elif isinstance(self._params["alpha"], list):
             beta = ut.asym_gauss(*self._params["beta"], seed=seeds[3], size=n_sn)
+        elif isinstance(self._params["beta"], str):
+            if self._params["beta"].lower() == "bs20":
+                beta,_,_,_ =  sct.gen_BS20_scatter(n_sn,seeds[3])
         return sim_x1, sim_c, alpha, beta
 
 
@@ -1285,37 +1307,17 @@ class SNIc_BLGen(CCGen):
         "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
     }
 
+class SNIapeculiarGen(BaseGen):
+    """SNIa_peculiar class.
 
-class SNIa_peculiar(BaseGen):
-    """SNIa_peculiar class. Inherit from BaseGen.
-
-    Notes
-    -----
     Models form platicc challenge ask Rick
     need a directory to store model
 
-    """
+    Parameters
+    ----------
+   same as TimeSeriesGen class   """
 
-    _object_type = "SNIa_peculiar"
-    # _available_models =
-    # _available_rates =
-    # _sn_lumfunc= {
-
-    # }
-
-    # _sn_fraction={
-
-    # }
-
-    def _init_M0(self):
-        """Initialise absolute magnitude."""
-        if isinstance(self._params["M0"], (float, np.floating, int, np.integer)):
-            return self._params["M0"]
-
-        else:
-            return self.init_M0_for_type()
-
-    def _init_sim_model(self):
+    def _init_sources_list(self):
         """Initialise sncosmo model using the good source.
 
         Returns
@@ -1324,132 +1326,87 @@ class SNIa_peculiar(BaseGen):
             sncosmo.Model(source) object where source depends on the
             SN simulation model.
         """
+        
+        sources = self._sed_models
+        return sources
 
-        if isinstance(self._params["model_name"], str):
-            if self._params["model_name"].lower() == "all":
-                selected_models = self._available_models
-            elif self._params["model_name"].lower() == "vin19_nocorr":
-                selected_models = ut.select_Vincenzi_template(self._available_models, corr=False)
-            elif self._params["model_name"].lower() == "vin19_corr":
-                selected_models = ut.select_Vincenzi_template(self._available_models, corr=True)
-            else:
-                selected_models = [self._params["model_name"]]
 
-            model = [ut.init_sn_model(m) for m in selected_models]
-        else:
-            model = [ut.init_sn_model(m) for m in self._params["model_name"]]
+    def gen_par(self, n_obj, basic_par, seed=None):
 
-        model = {i: m for i, m in enumerate(model)}
+        params = {'sed_path': self._sed_path}
 
-        return model
+        if self._object_type.lower() == 'sniax' :
+            rv , e_dust = self._gen_dust_par(n_obj,seed)
 
-    def _update_general_par(self):
-        """Initialise the general parameters, depends on the SN simulation model.
+            params['E_dust'] = e_dust
+            params['RV'] = rv
 
-        Returns
-        -------
-        list
-            A dict containing all the usefull keys of the SN model.
-        """
-
-        self._general_par["M0"] = self._init_M0()
-        self._general_par["sigM"] = self._params["sigM"]
-
-        return
-
-    def _update_astrobj_par(self, n_obj, basic_par, seed=None):
-        # -- Generate coherent mag scattering
-        basic_par["coh_sct"] = self.gen_coh_scatter(n_obj, seed=seed)
-
-    def gen_coh_scatter(self, n_sn, seed=None):
-        """Generate n coherent mag scattering term.
-
-        Parameters
-        ----------
-        n : int
-            Number of mag scattering terms to generate.
-        seed : int, optional
-            Random seed.
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            numpy array containing scattering terms generated.
-
-        """
-        if seed is None:
-            seed = np.random.random_integers(1e3, 1e6)
-        rand_gen = np.random.default_rng(seed)
-
-        if isinstance(self._params["sigM"], (float, np.floating, int, np.integer)):
-            return rand_gen.normal(loc=0, scale=self._params["sigM"], size=n_sn)
-
-        elif isinstance(self._params["sigM"], list):
-            return ut.asym_gauss(
-                mu=0,
-                sig_low=self._params["sigM"][0],
-                sig_high=self._params["sigM"][1],
-                seed=seed,
-                size=n_sn,
-            )
-
-        else:
-            return self.gen_coh_scatter_for_type(n_sn, seed)
-
-    def gen_snc_par(self, n_obj, astrobj_par, seed=None):
-        """Generate sncosmo model dependant parameters (others than redshift and t0).
-        Parameters
-        ----------
-        n_obj : int
-            Number of parameters to generate.
-        seed : int, optional
-            Random seed
-            .
-        Returns
-        -------
-        dict
-            One dictionnary containing 'parameters names': numpy.ndarray(float).
-        """
-
-        return None
+        return params
+        
 
     def _add_print(self):
-        str = ""
+        str = ''
         return str
 
     def _update_header(self):
         header = {}
-        header["M0_band"] = "bessell_r"
-
+        header['M0_band']='bessell_v'
         return header
 
-    def _init_registered_rate(self):
-        """SNIa_peculiar rates registry."""
 
-    def init_M0_for_type(self):
-        """Initialise absolute magnitude using default values from past literature works based on the type."""
-
-    def gen_coh_scatter_for_type(self, n_sn, seed):
-        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
-
-
-class SNIax(SNIa_peculiar):
+  
+class SNIaxGen(SNIapeculiarGen):
     """SNIaxclass.
 
-     Models form platicc challenge ask Rick
-     need a directory to store model
+    Models form platicc challenge ask Rick
+    need a directory to store model
 
-     Parameters
-     ----------
-    same as TimeSeriesGen class"""
+    Parameters
+    ----------
+   same as TimeSeriesGen class   """
 
+    _object_type = 'SNIax' 
+    _available_models = 'plasticc'
+    _sed_models, _sed_path = plm.get_sed_listname('sniax')
+    _available_rates = ['ptf19','ptf19_pw']
 
-class SNIa_91bg(SNIa_peculiar):
+    _sn_fraction={
+                    'plasticc': 0.24,
+                    
+                 }
+
+    _available_rates = {
+       # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
+        "ptf19": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3",
+        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+        "ptf19_pw": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3  *((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
+    }
+ 
+    def _gen_dust_par(self,n_obj,seed):
+        return plm.generate_dust_sniax(n_obj,seed)
+   
+class SNIa_91bgGen(SNIapeculiarGen):
     """SNIa 91bg-like class.
 
-     Models form platicc challenge ask Rick
-     need a directory to store model
+    Models form platicc challenge ask Rick
+    need a directory to store model
 
-     Parameters
-     ----------
-    same as TimeSeriesGen class"""
+    Parameters
+    ----------
+   same as TimeSeriesGen class   """
+    _object_type = 'SNIa91bg'
+    _available_models = 'plasticc'
+    _sed_models, _sed_path = plm.get_sed_listname('snia91bg')
+    _available_rates = ['ptf19','ptf19_pw']
+   
+    _sn_fraction={
+                    'plasticc': 0.12,
+                    
+                 }
+
+    _available_rates = {
+       # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
+        "ptf19": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3",
+        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
+        "ptf19_pw": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
+    }
