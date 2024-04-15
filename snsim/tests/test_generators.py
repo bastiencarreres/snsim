@@ -2,12 +2,18 @@ import snsim
 import sncosmo as snc
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_allclose, assert_approx_equal, assert_array_almost_equal
+from numpy.testing import (
+    assert_allclose,
+    assert_approx_equal,
+    assert_array_almost_equal,
+)
 from snsim import generators as gen
 
 
 FlatSource = snc.TimeSeriesSource(
-    np.linspace(0.0, 100.0, 10), np.linspace(800.0, 20000.0, 100), np.ones((10, 100), dtype=float)
+    np.linspace(0.0, 100.0, 10),
+    np.linspace(800.0, 20000.0, 100),
+    np.ones((10, 100), dtype=float),
 )
 
 snc.register(FlatSource, name="flatsource")
@@ -64,7 +70,9 @@ class TestGenerators:
 
         assert_approx_equal(Gen_str_rate.rate(2), 1e-5 * 2)
         (Gen_lambda_rate.rate(2), 1e-5 * 2)
-        assert_approx_equal(Gen_register_rate.rate(2), 1e-5 * 2 * (self.cosmo.h / 0.70) ** 3)
+        assert_approx_equal(
+            Gen_register_rate.rate(2), 1e-5 * 2 * (self.cosmo.h / 0.70) ** 3
+        )
 
     def test_zcdf(self):
         Gen_str_rate = FakeGen(
