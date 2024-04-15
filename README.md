@@ -4,7 +4,7 @@
 <img src="docs/_static/snsimlogo.svg" width=350>
 
 # Code for simulation of transient surveys
-[![Documentation Status](https://readthedocs.org/projects/snsim/badge/?version=dev)](https://snsim.readthedocs.io/en/main/?badge=dev) ![Tests](https://github.com/bastiencarreres/snsim/actions/workflows/python-package.yml/badge.svg?branch=dev_2)
+[![Documentation Status](https://readthedocs.org/projects/snsim/badge/?version=dev)](https://snsim.readthedocs.io/en/main/?badge=dev) ![Tests](https://github.com/bastiencarreres/snsim/actions/workflows/python-package.yml/badge.svg?branch=main)
 ## Installation
 In the setup.py directory use:
 ```
