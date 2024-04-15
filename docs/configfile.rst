@@ -41,14 +41,13 @@ The input file is a .yml with the following structure:
        mag_sct: SN INTRINSIC COHERENT SCATTERING
        sct_model: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
        mod_fcov: True or False # Use the covariance of simulation model to scatter flux Optional, default = False
-       model_config:
-           model_name: 'THE MODEL NAME' #  Example : 'salt2'
-           model_dir: '/PATH/TO/SALT/MODEL'
-           # Model parameters : here example for salt
-           alpha: STRETCH CORRECTION = alpha*x1
-           beta: COLOR CORRECTION = -beta*c
-           dist_x1: [MEAN X1, SIGMA X1] or [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
-           dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
+       model_name: 'THE MODEL NAME' #  Example : 'salt2'
+       model_dir: '/PATH/TO/SALT/MODEL'
+       # Model parameters : here example for salt
+       alpha: STRETCH CORRECTION = alpha*x1
+       beta: COLOR CORRECTION = -beta*c
+       dist_x1: [MEAN X1, SIGMA X1] or [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
+       dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
    cosmology:  # Follow astropy formalism
        Om0: MATTER DENSITY  
        H0: HUBBLE CONSTANT
@@ -66,11 +65,6 @@ The input file is a .yml with the following structure:
         host_file: '/PATH/TO/HOSTFILE' 
         distrib: 'as_sn' or 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
         key_dic: {'column_name': 'new_column_name', ...}  # Optional, to change columns names
-   dipole:  # Experimental dipole, optional
-        coord: [RA, Dec]  # Direction of the dipole
-        # alpha dipole = A + B * cos theta
-        A: A_parameter  
-        B: B_parameter
 
 data
 ----
@@ -195,11 +189,8 @@ using :
                                          check_valid='ignore',
                                          method='eigh')
 
--  **model_config** contains parameters of the model used to simulated
-   SN Ia light curves.
-
-   -  **model_name** give the name of your model.
-   -  **model_dir** give the path to the model files. *type* : str.
+-  **model_name** give the name of your model.
+-  **model_dir** give the path to the model files. *type* : str.
       *Optional* : if not given, use **model_name** as *sncosmo*
       built-in source.
 
@@ -365,9 +356,5 @@ The host configuration to place SN in host, see `here <hostfile.md>`__.
 
    The possibilities are:
 
-   -  ‘as_sn’ : the simulation use the sn rate to generate redshifts
-      distribution
-   -  ‘as_host’ : the simulation use the host distribution to generate
+   -  ‘rate’ : the simulation use the host distribution to generate
       redshifts
-   -  ‘mass_weight’ : host mass weight the distribution to generate
-      redshifts as :math:`w_i = \frac{m_i}{\sum_i m_i}`
