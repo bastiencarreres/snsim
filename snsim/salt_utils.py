@@ -66,7 +66,7 @@ def x1_mass_model(host_mass, seed=None):
     host_mass = np.atleast_1d(host_mass)
 
     dist_mass = (
-        CustomRandom(
+        ut.CustomRandom(
             lambda x: prob_x1_mass(m, x), x1_bin.min(), x1_bin.max(), ndiv=10000
         )
         for m in host_mass
@@ -121,7 +121,7 @@ def n21_x1_mass_model(z, host_mass=None, seed=None):
     # Compute the distribution for old galaxies
     pdf_old = lambda x: a * ut.gauss(mu1, sig1, x) + (1 - a) * ut.gauss(mu2, sig2, x)
     dist_old = (
-        CustomRandom(
+        ut.CustomRandom(
             lambda x: pdf_old(x) * prob_x1_mass(m, x),
             mu2 - 10 * sig2,
             mu1 + 10 * sig1,
@@ -133,7 +133,7 @@ def n21_x1_mass_model(z, host_mass=None, seed=None):
     # compute distribution for young galaxies
     pdf_young = lambda x: ut.gauss(mu1, sig1, x)
     dist_young = (
-        CustomRandom(
+        ut.CustomRandom(
             lambda x: pdf_old(x) * prob_x1_mass(m, x),
             mu1 - 10 * sig1,
             mu1 + 10 * sig1,
