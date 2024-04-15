@@ -3,6 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+
+.. image:: _static/snsimlogo.svg
+    :width: 350px
+
 Welcome to snsim's documentation!
 =================================
 
@@ -13,6 +17,7 @@ Welcome to snsim's documentation!
    installation.rst
    basicusage.rst
    configfile.rst
+   astrobj.rst
    obsfile.rst
    hostfile.rst
    snsample.rst

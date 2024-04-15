@@ -10,9 +10,10 @@ Github repository : https://github.com/bcarreres/snsim
 """
 
 import os
+
 __snsim_dir_path__ = os.path.dirname(__file__)
 
-__version__ = "0.4.5"
+__version__ = "0.5.0+dev"
 
 from .simu import Simulator
 from .sample import SimSample
@@ -22,3 +23,4 @@ from . import generators
 from . import survey_host
 from . import utils
 from . import io_utils
+from . import scatter

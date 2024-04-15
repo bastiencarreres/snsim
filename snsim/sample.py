@@ -11,8 +11,6 @@ from . import plot_utils as plot_ut
 from . import dust_utils as dst_ut
 from . import io_utils as io_ut
 
-np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
-
 
 class SimSample:
     """Class to store simulated SN sample.
@@ -39,7 +37,7 @@ class SimSample:
         self._model_dir = model_dir
         self._dir_path = dir_path
 
-        self._sim_model = self._init_sim_model()
+       # self._sim_model = self._init_sim_model()
 
         self._fit_model = None
         self._fit_res = None
@@ -77,9 +75,8 @@ class SimSample:
             A SimSample class with the simulated lcs.
 
         """
-        lcs = pd.concat(sim_lcs)
-        lcs.set_index(['ID'], append=True, inplace=True)
-        lcs = lcs.swaplevel()
+        IDs = (sim_lcs[i].attrs['ID'] for i in range(len(sim_lcs)))
+        lcs = pd.concat(sim_lcs,  keys=IDs, names=['ID'])
         lcs.attrs = {lc.attrs['ID']: lc.attrs for lc in sim_lcs}
         return cls(sample_name, lcs, header, model_dir=model_dir,
                    dir_path=dir_path)
@@ -119,16 +116,21 @@ class SimSample:
             sncosmo sim model.
 
         """
-        model_name = self.header['model_name']
+        model_name = np.atleast_1d(self.header['model_name'])
+        model_sim=[]
+        for model in model_name:
+            sim_model = ut.init_sn_model(model, self._model_dir) 
 
-        sim_model = ut.init_sn_model(model_name, self._model_dir)
+            if 'sct_mod' in self.header:
+                sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
 
-        if 'sct_mod' in self.header:
-            sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
+            if 'mw_dust' in self.header:
+                dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
 
-        if 'mw_dust' in self.header:
-            dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
-        return sim_model
+            model_sim.extend([sim_model])
+        
+        simmod={model.source.name: model for model in model_sim}
+        return simmod
 
     def _set_obj_effects_model(self, model, ID):
         """Set the model parameters of one obj.
@@ -171,16 +173,20 @@ class SimSample:
             sncosmo sim model of the obj.
 
         """
-        simmod = copy.copy(self._sim_model)
+        model = self._sim_model[self.meta[obj_ID]['template']]
+        simmod = copy.copy(model)
         par = {'z': self.meta[obj_ID]['zobs'],
-               't0': self.meta[obj_ID]['sim_t0']}
+                't0': self.meta[obj_ID]['sim_t0']}
 
         if self.header['obj_type'].lower() == 'snia':
             par = {**par, **self._get_snia_simsncpar(obj_ID)}
 
+        else:
+            par= {**par,**self._get_sn_simsncpar(obj_ID)}
+
         simmod.set(**par)
         self._set_obj_effects_model(simmod, obj_ID)
-
+        simmod.set_source_peakmag(self.meta[obj_ID]['sim_mb'],'bessellb','ab')
         return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
@@ -313,7 +319,7 @@ class SimSample:
                         lcs_df=self.modified_lcs,
                         sufname='_modified')
 
-    def write_fit(self, write_path=None):
+    def write_fit(self, fit_model_name, write_path=None):
         """Write fits results in fits format.
 
         Returns
@@ -338,7 +344,7 @@ class SimSample:
                 if id not in self.fit_res:
                     self.fit_lc(id)
 
-        io_ut.write_fit(self.meta, self.fit_res, self.header, write_path)
+        io_ut.write_fit(self.meta, self.fit_res, fit_model_name, self.header, write_path)
 
     def plot_hist(self, key, ax=None, **kwargs):
         """Plot the histogram of the key metadata.
@@ -476,23 +482,35 @@ class SimSample:
 
     def _get_snia_simsncpar(self, ID):
         """Get sncosmo par of one obj for a SNIa model.
-
         Parameters
         ----------
         ID : int
             Obj ID.
-
         Returns
         -------
         dict
             Dict containing model parameters values.
-
         """
         dic_par = {}
-        if self._sim_model.source.name[:4] == 'salt':
-            dic_par['x0'] = self.meta[ID]['sim_x0']
-            dic_par['x1'] = self.meta[ID]['sim_x1']
-            dic_par['c'] = self.meta[ID]['sim_c']
+        dic_par['x0'] = self.meta[ID]['sim_x0']
+        dic_par['x1'] = self.meta[ID]['sim_x1']
+        dic_par['c'] = self.meta[ID]['sim_c']
+             
+        return dic_par
+
+    def _get_sn_simsncpar(self, ID):
+        """Get sncosmo par of one obj for a SN model.
+        Parameters
+        ----------
+        ID : int
+            Obj ID.
+        Returns
+        -------
+        dict
+            Dict containing model parameters values.
+        """
+        dic_par = {}
+        dic_par['amplitude'] = self.meta[ID]['sim_amplitude']             
         return dic_par
 
     def get(self, key, mod=False):
@@ -514,6 +532,27 @@ class SimSample:
         else:
             meta_list = self.sim_lcs.attrs.values()
         return np.array([meta[key] for meta in meta_list])
+        
+    def get_peakmags(self, band, magsys='ab'):
+        """Get peak apparent magnitude in any band.
+
+        Parameters
+        ----------
+        band: str
+            The band, the name has to be in sncosmo registry
+        magsys: str
+            The magnitude system, default: ab.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array of the peak apparent magnitude for all SN.
+
+        """
+        mag_list=[self.get_obj_sim_model(ID).source_peakmag(band, magsys) for ID in self.get('ID')]
+        return np.array(mag_list)
+
+    
 
     @property
     def name(self):

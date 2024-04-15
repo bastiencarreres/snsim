@@ -1,6 +1,7 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
+.vscode/
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -29,6 +30,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+docs/_static/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -188,3 +190,6 @@ Examples/.ipynb_checkpoints/GenSNIaParameters-checkpoint.ipynb
 Notebook_examples/.ipynb_checkpoints/SNSim_one_snia_simulation-checkpoint.ipynb
 docs/make.bat
 docs/Makefile
+Examples/Untitled.ipynb
+snsim/sample.py
+Examples/test.parquet
