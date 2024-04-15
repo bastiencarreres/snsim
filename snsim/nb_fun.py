@@ -130,7 +130,9 @@ def radec_to_cart_2d(ra, dec):
         Carthesian coordinates corresponding to RA Dec coordinates.
 
     """
-    cart_vec = np.vstack((np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec))).T
+    cart_vec = np.vstack(
+        (np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec))
+    ).T
     return cart_vec
 
 
@@ -151,5 +153,7 @@ def radec_to_cart(ra, dec):
         Carthesian coordinates corresponding to RA Dec coordinates.
 
     """
-    cart_vec = np.array([np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)])
+    cart_vec = np.array(
+        [np.cos(ra) * np.cos(dec), np.sin(ra) * np.cos(dec), np.sin(dec)]
+    )
     return cart_vec

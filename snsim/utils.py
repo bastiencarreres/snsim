@@ -129,7 +129,9 @@ def reshape_prob_data():
     prob_data = pd.read_csv(
         __snsim_dir_path__ + "data_probability/DES-SN5YR_DES_S3_x1.DAT", sep=","
     )
-    prob = np.zeros((len(np.unique(prob_data.x1.values)), len(np.unique(prob_data.logmass.values))))
+    prob = np.zeros(
+        (len(np.unique(prob_data.x1.values)), len(np.unique(prob_data.logmass.values)))
+    )
     for i, (name, group) in enumerate(prob_data.groupby("x1")):
         prob[i] = group.prob.values
 
@@ -283,7 +285,10 @@ def asym_gauss(mu, sig_low, sig_high=None, seed=None, size=1):
         return pdf / norm
 
     asym_dist = CustomRandom(
-        asym_pdf, mu - 10 * sig_low, mu + 10 * sig_high, dx=np.min([sig_low, sig_high]) / 100
+        asym_pdf,
+        mu - 10 * sig_low,
+        mu + 10 * sig_high,
+        dx=np.min([sig_low, sig_high]) / 100,
     )
     return asym_dist.draw(size, seed=seed)
 
@@ -311,7 +316,9 @@ def compute_zpcmb(ra, dec, cmb):
     v_cmb = cmb["v_cmb"]
 
     # use ra dec to simulate the effect of our motion
-    coordfk5 = SkyCoord(ra * astu.rad, dec * astu.rad, frame="fk5")  # coord in fk5 frame
+    coordfk5 = SkyCoord(
+        ra * astu.rad, dec * astu.rad, frame="fk5"
+    )  # coord in fk5 frame
 
     galac_coord = coordfk5.transform_to("galactic")
     l_gal = galac_coord.l.rad - 2 * np.pi * np.sign(galac_coord.l.rad) * (
@@ -320,7 +327,11 @@ def compute_zpcmb(ra, dec, cmb):
     b_gal = galac_coord.b.rad
 
     ss = np.sin(b_gal) * np.sin(b_cmb * np.pi / 180)
-    ccc = np.cos(b_gal) * np.cos(b_cmb * np.pi / 180) * np.cos(l_gal - l_cmb * np.pi / 180)
+    ccc = (
+        np.cos(b_gal)
+        * np.cos(b_cmb * np.pi / 180)
+        * np.cos(l_gal - l_cmb * np.pi / 180)
+    )
     return (1 - v_cmb * (ss + ccc) / C_LIGHT_KMS) - 1.0
 
 
@@ -440,7 +451,9 @@ def flux_to_Jansky(zp, band):
 
 
 def zobs_MinT_MaxT(par, model_t_range):
-    zobs = (1.0 + par["zcos"]) * (1.0 + par["zpcmb"]) * (1.0 + par["vpec"] / C_LIGHT_KMS) - 1.0
+    zobs = (1.0 + par["zcos"]) * (1.0 + par["zpcmb"]) * (
+        1.0 + par["vpec"] / C_LIGHT_KMS
+    ) - 1.0
     MinT = par["sim_t0"] + model_t_range[0] * (1.0 + zobs)
     MaxT = par["sim_t0"] + model_t_range[1] * (1.0 + zobs)
     return zobs, MinT, MaxT
@@ -466,7 +479,16 @@ def Templatelist_fromsncosmo(source_type=None):
     ----------
     list on names of sources with the given source_type from snscomo catalogue"""
 
-    type_list = ["snii", "sniipl", "sniib", "sniin", "snib/c", "snic", "snib", "snic-bl"]
+    type_list = [
+        "snii",
+        "sniipl",
+        "sniib",
+        "sniin",
+        "snib/c",
+        "snic",
+        "snib",
+        "snic-bl",
+    ]
 
     if source_type is None:
         raise ValueError("select the source type")
@@ -552,9 +574,15 @@ def select_Vincenzi_template(model_list, corr=None):
 
     else:
         if corr:
-            return [sn for sn in model_list if sn.startswith("v19") and sn.endswith("corr")]
+            return [
+                sn for sn in model_list if sn.startswith("v19") and sn.endswith("corr")
+            ]
         else:
-            return [sn for sn in model_list if sn.startswith("v19") and not sn.endswith("corr")]
+            return [
+                sn
+                for sn in model_list
+                if sn.startswith("v19") and not sn.endswith("corr")
+            ]
 
 
 def print_rate(use_rate, gen):
@@ -611,7 +639,9 @@ def compute_weight_mass_for_type(mass, sn_type, cosmology):
     """compute the mass dependent weights for HOST - SN matching"""
     if sn_type.lower() == "snia":
         weights_mass = (
-            cst.sullivan_para["mass"] * (cosmology.h / cst.h_article["sullivan06"]) * mass
+            cst.sullivan_para["mass"]
+            * (cosmology.h / cst.h_article["sullivan06"])
+            * mass
         )
     return weights_mass
 
@@ -619,5 +649,7 @@ def compute_weight_mass_for_type(mass, sn_type, cosmology):
 def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
     """compute the SFR dependent weights for HOST - SN matching"""
     if sn_type.lower() == "snia":
-        weights_SFR = cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * SFR
+        weights_SFR = (
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * SFR
+        )
     return weights_SFR

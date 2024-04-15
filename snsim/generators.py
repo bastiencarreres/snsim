@@ -1,16 +1,14 @@
 """This module contain generators class."""
 
 import abc
+import copy
+from inspect import getsource
 import numpy as np
 import pandas as pd
-import copy
-import time
 import geopandas as gpd
 import sncosmo as snc
-from inspect import getsource
 from .constants import C_LIGHT_KMS, VCMB, L_CMB, B_CMB
 from . import utils as ut
-from . import nb_fun as nbf
 from . import dust_utils as dst_ut
 from . import scatter as sct
 from . import salt_utils as salt_ut
@@ -30,9 +28,9 @@ __GEN_DIC__ = {
     "snic_gen": "SNIcGen",
     "snib_gen": "SNIbGen",
     "snic-bl_gen": "SNIc_BLGen",
-    'snia_peculiar_gen': 'SNIa_peculiarGen',
-    'sniax_gen': 'SNIaxGen',
-    'snia_91bg_gen': 'SNIa_91bgGen'
+    "snia_peculiar_gen": "SNIa_peculiarGen",
+    "sniax_gen": "SNIaxGen",
+    "snia_91bg_gen": "SNIa_91bgGen",
 }
 
 
@@ -187,7 +185,9 @@ class BaseGen(abc.ABC):
         else:
             dust_par = {}
 
-        par = pd.DataFrame({**random_models, **obj_par, **dust_par}, index=basic_par.index)
+        par = pd.DataFrame(
+            {**random_models, **obj_par, **dust_par}, index=basic_par.index
+        )
 
         par = pd.concat([basic_par, par], axis=1)
 
@@ -215,7 +215,9 @@ class BaseGen(abc.ABC):
 
         pstr += "OBJECT TYPE : " + self._object_type + "\n"
         pstr += "SIM MODEL(S) :\n"
-        for sn, snv in zip(self.sim_sources["model_name"], self.sim_sources["model_version"]):
+        for sn, snv in zip(
+            self.sim_sources["model_name"], self.sim_sources["model_version"]
+        ):
             pstr += f"- {sn}"
             pstr += f" v{snv}"
             pstr += model_dir_str + "\n"
@@ -311,7 +313,9 @@ class BaseGen(abc.ABC):
             The rate in params is not available.
         """
         if self._params["rate"].lower() in self._available_rates:
-            return self._available_rates[self._params["rate"].lower()].format(h=self.cosmology.h)
+            return self._available_rates[self._params["rate"].lower()].format(
+                h=self.cosmology.h
+            )
         else:
             raise ValueError(
                 f"{self._params['rate']} is not available! Available rate are {self._available_rates}"
@@ -365,8 +369,14 @@ class BaseGen(abc.ABC):
             sources["model_version"] = [None] * len(sources["model_name"])
 
         # -- Compute max, min phase
-        if self._object_type.lower() == 'sniax' or self._object_type.lower() == 'snia91bg':
-            snc_sources = [plm.snc_source_from_sed(name,self._sed_path) for name in sources["model_name"]]
+        if (
+            self._object_type.lower() == "sniax"
+            or self._object_type.lower() == "snia91bg"
+        ):
+            snc_sources = [
+                plm.snc_source_from_sed(name, self._sed_path)
+                for name in sources["model_name"]
+            ]
 
         else:
             snc_sources = [
@@ -389,9 +399,9 @@ class BaseGen(abc.ABC):
         if "rate" in self._params:
             if isinstance(self._params["rate"], type(lambda: 0)):
                 rate = self._params["rate"]
-                expr = "".join(getsource(self._params["rate"]).partition("lambda")[1:]).replace(
-                    ",", ""
-                )
+                expr = "".join(
+                    getsource(self._params["rate"]).partition("lambda")[1:]
+                ).replace(",", "")
             elif isinstance(self._params["rate"], str):
                 # Check for lambda function in str
                 if "lambda" in self._params["rate"].lower():
@@ -425,7 +435,9 @@ class BaseGen(abc.ABC):
 
         z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
         co_dist = self.cosmology.comoving_distance(z_shell).value
-        shell_vol = 4 * np.pi * co_dist**2 * C_LIGHT_KMS / self.cosmology.H(z_shell).value * dz
+        shell_vol = (
+            4 * np.pi * co_dist**2 * C_LIGHT_KMS / self.cosmology.H(z_shell).value * dz
+        )
 
         # -- Compute the sn time rate in each volume shell [( SN / year )(z)]
         shell_time_rate = self.rate(z_shell) * shell_vol / (1 + z_shell)
@@ -653,17 +665,15 @@ class BaseGen(abc.ABC):
             basic_par["max_t"] = basic_par["t0"] + self._sources_prange[1] * _1_zobs_
             basic_par["1_zobs"] = _1_zobs_
 
-
-        if 'mass_step' in self._params:
-            basic_par['mass_step'] = self._params['mass_step']
+        if "mass_step" in self._params:
+            basic_par["mass_step"] = self._params["mass_step"]
 
         # Save in basic_par all the column of the host_table that start with host, to save the data in final sim
         if self.host is not None:
-            basic_par['host_index'] = host.index
+            basic_par["host_index"] = host.index
             for k in host.columns:
                 if k.startswith("host_"):
                     basic_par[k] = host[k].values
-        
 
         return pd.DataFrame(basic_par)
 
@@ -684,7 +694,9 @@ class BaseGen(abc.ABC):
         """
         rand_gen = np.random.default_rng(seed)
 
-        idx = rand_gen.integers(low=0, high=len(self.sim_sources["model_name"]), size=n_obj)
+        idx = rand_gen.integers(
+            low=0, high=len(self.sim_sources["model_name"]), size=n_obj
+        )
         random_models = {
             "model_name": np.array(self.sim_sources["model_name"])[idx],
             "model_version": np.array(self.sim_sources["model_version"])[idx],
@@ -745,7 +757,9 @@ class SNIaGen(BaseGen):
         "ptf19_pw": "lambda z:  2.35e-5 * ({h}/0.70)**3 * (1 + z)**1.7",  # Rate from https://arxiv.org/abs/1903.08580
     }
 
-    SNIA_M0 = {"jla": -19.05}  # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
+    SNIA_M0 = {
+        "jla": -19.05
+    }  # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
 
     def _init_M0(self):
         """Initialise absolute magnitude."""
@@ -774,9 +788,9 @@ class SNIaGen(BaseGen):
         # Add scattering model if needed
         if "sct_model" in self._params:
             if self._params["sct_model"] == "G10":
-                if len(self.sim_sources["model_name"]) > 1 or self.sim_sources["model_name"][
-                    0
-                ] not in ["salt2", "salt3"]:
+                if len(self.sim_sources["model_name"]) > 1 or self.sim_sources[
+                    "model_name"
+                ][0] not in ["salt2", "salt3"]:
                     raise ValueError("G10 cannot be used")
                 effects.append(
                     {
@@ -864,15 +878,18 @@ class SNIaGen(BaseGen):
             elif self._params["sct_model"] == "C11":
                 params["C11_RndS"] = randgen.integers(1e12, size=n_obj)
             elif self._params["sct_model"].lower() == "bs20":
-                _,params['RV'],params['E_dust'],_= sct.gen_BS20_scatter(n_obj,seeds[2])
+                _, params["RV"], params["E_dust"], _ = sct.gen_BS20_scatter(
+                    n_obj, seeds[2]
+                )
 
         # -- Spectra model parameters
         model_name = self._params["model_name"]
 
         if model_name in ("salt2", "salt3"):
-            sim_x1, sim_c, alpha, beta = self.gen_salt_par(n_obj, seeds[1], basic_par=basic_par)
+            sim_x1, sim_c, alpha, beta = self.gen_salt_par(
+                n_obj, seeds[1], basic_par=basic_par
+            )
             params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
-
 
         return params
 
@@ -934,7 +951,7 @@ class SNIaGen(BaseGen):
         # -- c dist
         if isinstance(self._params["dist_c"], str):
             if self._params["dist_c"].lower() == "bs20":
-                _,_,_,sim_c =  sct.gen_BS20_scatter(n_sn,seeds[1])
+                _, _, _, sim_c = sct.gen_BS20_scatter(n_sn, seeds[1])
         else:
             sim_c = ut.asym_gauss(*self._params["dist_c"], seed=seeds[1], size=n_sn)
 
@@ -950,7 +967,7 @@ class SNIaGen(BaseGen):
             beta = ut.asym_gauss(*self._params["beta"], seed=seeds[3], size=n_sn)
         elif isinstance(self._params["beta"], str):
             if self._params["beta"].lower() == "bs20":
-                beta,_,_,_ =  sct.gen_BS20_scatter(n_sn,seeds[3])
+                beta, _, _, _ = sct.gen_BS20_scatter(n_sn, seeds[3])
         return sim_x1, sim_c, alpha, beta
 
 
@@ -1074,7 +1091,9 @@ class CCGen(BaseGen):
             if self._params["model_name"].lower() == "all":
                 sources = self._available_models
             elif self._params["model_name"].lower() == "vin19_nocorr":
-                sources = ut.select_Vincenzi_template(self._available_models, corr=False)
+                sources = ut.select_Vincenzi_template(
+                    self._available_models, corr=False
+                )
             elif self._params["model_name"].lower() == "vin19_corr":
                 sources = ut.select_Vincenzi_template(self._available_models, corr=True)
             else:
@@ -1130,7 +1149,9 @@ class SNIIGen(CCGen):
         raise ValueError("Default M0 for SNII not implemented yet, please provide M0")
 
     def gen_coh_scatter_for_type(self, n_sn, seed):
-        raise ValueError("Default scatterting for SNII not implemented yet, please provide SigM")
+        raise ValueError(
+            "Default scatterting for SNII not implemented yet, please provide SigM"
+        )
 
 
 class SNIIplGen(CCGen):
@@ -1231,7 +1252,9 @@ class SNIbcGen(CCGen):
         raise ValueError("Default M0 for SNII not implemented yet, please provide M0")
 
     def gen_coh_scatter_for_type(self, n_sn, seed):
-        raise ValueError("Default scatterting for SNII not implemented yet, please provide SigM")
+        raise ValueError(
+            "Default scatterting for SNII not implemented yet, please provide SigM"
+        )
 
 
 class SNIcGen(CCGen):
@@ -1307,15 +1330,16 @@ class SNIc_BLGen(CCGen):
         "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
     }
 
+
 class SNIapeculiarGen(BaseGen):
     """SNIa_peculiar class.
 
-    Models form platicc challenge ask Rick
-    need a directory to store model
+     Models form platicc challenge ask Rick
+     need a directory to store model
 
-    Parameters
-    ----------
-   same as TimeSeriesGen class   """
+     Parameters
+     ----------
+    same as TimeSeriesGen class"""
 
     def _init_sources_list(self):
         """Initialise sncosmo model using the good source.
@@ -1326,86 +1350,83 @@ class SNIapeculiarGen(BaseGen):
             sncosmo.Model(source) object where source depends on the
             SN simulation model.
         """
-        
+
         sources = self._sed_models
         return sources
 
-
     def gen_par(self, n_obj, basic_par, seed=None):
 
-        params = {'sed_path': self._sed_path}
+        params = {"sed_path": self._sed_path}
 
-        if self._object_type.lower() == 'sniax' :
-            rv , e_dust = self._gen_dust_par(n_obj,seed)
+        if self._object_type.lower() == "sniax":
+            rv, e_dust = self._gen_dust_par(n_obj, seed)
 
-            params['E_dust'] = e_dust
-            params['RV'] = rv
+            params["E_dust"] = e_dust
+            params["RV"] = rv
 
         return params
-        
 
     def _add_print(self):
-        str = ''
+        str = ""
         return str
 
     def _update_header(self):
         header = {}
-        header['M0_band']='bessell_v'
+        header["M0_band"] = "bessell_v"
         return header
 
 
-  
 class SNIaxGen(SNIapeculiarGen):
     """SNIaxclass.
 
-    Models form platicc challenge ask Rick
-    need a directory to store model
+     Models form platicc challenge ask Rick
+     need a directory to store model
 
-    Parameters
-    ----------
-   same as TimeSeriesGen class   """
+     Parameters
+     ----------
+    same as TimeSeriesGen class"""
 
-    _object_type = 'SNIax' 
-    _available_models = 'plasticc'
-    _sed_models, _sed_path = plm.get_sed_listname('sniax')
-    _available_rates = ['ptf19','ptf19_pw']
+    _object_type = "SNIax"
+    _available_models = "plasticc"
+    _sed_models, _sed_path = plm.get_sed_listname("sniax")
+    _available_rates = ["ptf19", "ptf19_pw"]
 
-    _sn_fraction={
-                    'plasticc': 0.24,
-                    
-                 }
+    _sn_fraction = {
+        "plasticc": 0.24,
+    }
 
     _available_rates = {
-       # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
+        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
         "ptf19": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         "ptf19_pw": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3  *((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
     }
- 
-    def _gen_dust_par(self,n_obj,seed):
-        return plm.generate_dust_sniax(n_obj,seed)
-   
+
+    def _gen_dust_par(self, n_obj, seed):
+        return plm.generate_dust_sniax(n_obj, seed)
+
+
 class SNIa_91bgGen(SNIapeculiarGen):
     """SNIa 91bg-like class.
 
-    Models form platicc challenge ask Rick
-    need a directory to store model
+     Models form platicc challenge ask Rick
+     need a directory to store model
 
-    Parameters
-    ----------
-   same as TimeSeriesGen class   """
-    _object_type = 'SNIa91bg'
-    _available_models = 'plasticc'
-    _sed_models, _sed_path = plm.get_sed_listname('snia91bg')
-    _available_rates = ['ptf19','ptf19_pw']
-   
-    _sn_fraction={
-                    'plasticc': 0.12,
-                    
-                 }
+     Parameters
+     ----------
+    same as TimeSeriesGen class"""
+
+    _object_type = "SNIa91bg"
+    _available_models = "plasticc"
+    _sed_models, _sed_path = plm.get_sed_listname("snia91bg")
+    _available_rates = ["ptf19", "ptf19_pw"]
+
+    _sn_fraction = {
+        "plasticc": 0.12,
+    }
 
     _available_rates = {
-       # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
+        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
         "ptf19": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3",
         # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
         "ptf19_pw": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",

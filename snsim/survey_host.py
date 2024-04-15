@@ -81,11 +81,15 @@ class SurveyObs:
         f_RA = np.array([minRA, maxRA, maxRA, minRA])
         f_Dec = np.array([maxDec, maxDec, minDec, minDec])
 
-        sub_fields_corners = np.broadcast_to(restfield_corners[0], (4, *restfield_corners[0].shape))
+        sub_fields_corners = np.broadcast_to(
+            restfield_corners[0], (4, *restfield_corners[0].shape)
+        )
 
         corners = np.stack(
             [
-                nbf.new_coord_on_fields(sub_fields_corners[:, :, i, :], np.stack([f_RA, f_Dec]))
+                nbf.new_coord_on_fields(
+                    sub_fields_corners[:, :, i, :], np.stack([f_RA, f_Dec])
+                )
                 for i in range(4)
             ],
             axis=1,
@@ -321,11 +325,14 @@ class SurveyObs:
             raise ValueError("end_day after last day in survey file")
 
         obs_dic.query(
-            f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}", inplace=True
+            f"expMJD >= {start_day_input.mjd} & expMJD <= {end_day_input.mjd}",
+            inplace=True,
         )
 
         if obs_dic.size == 0:
-            raise RuntimeError("No observation for the given survey start_day and duration.")
+            raise RuntimeError(
+                "No observation for the given survey start_day and duration."
+            )
 
         if not obs_dic["expMJD"].is_monotonic_increasing:
             obs_dic.sort_values("expMJD", inplace=True)
@@ -374,7 +381,9 @@ class SurveyObs:
                 )
             }
         else:
-            sub_fields_corners = io_ut._read_sub_field_map(self.field_size_rad, field_config)
+            sub_fields_corners = io_ut._read_sub_field_map(
+                self.field_size_rad, field_config
+            )
 
         return sub_fields_corners
 
@@ -407,7 +416,9 @@ class SurveyObs:
 
         # -- Map field and rcid corners to their coordinates
         if "sub_field" in config:
-            field_corners = np.stack(df[config["sub_field"]].map(sub_fields_corners).values)
+            field_corners = np.stack(
+                df[config["sub_field"]].map(sub_fields_corners).values
+            )
         else:
             field_corners = np.broadcast_to(
                 sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)
@@ -416,7 +427,8 @@ class SurveyObs:
         corners = np.stack(
             [
                 nbf.new_coord_on_fields(
-                    field_corners[:, :, i, :], np.array([df.fieldRA.values, df.fieldDec.values])
+                    field_corners[:, :, i, :],
+                    np.array([df.fieldRA.values, df.fieldDec.values]),
                 )
                 for i in range(4)
             ],
@@ -434,10 +446,18 @@ class SurveyObs:
 
         join["phase"] = (join["expMJD"] - join["t0"]) / join["1_zobs"]
 
-        return join.drop(columns=["geometry", "index_right", "min_t", "max_t", "1_zobs", "t0"])
+        return join.drop(
+            columns=["geometry", "index_right", "min_t", "max_t", "1_zobs", "t0"]
+        )
 
     def get_observations(
-        self, params, phase_cut=None, nep_cut=None, IDmin=0, use_dask=False, npartitions=None
+        self,
+        params,
+        phase_cut=None,
+        nep_cut=None,
+        IDmin=0,
+        use_dask=False,
+        npartitions=None,
     ):
         """Give the epochs of observations of a given SN.
 
@@ -493,7 +513,9 @@ class SurveyObs:
             )
         # -- Phase cut
         if phase_cut is not None:
-            ObsObj = ObsObj[(ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])]
+            ObsObj = ObsObj[
+                (ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])
+            ]
 
         if nep_cut is not None:
             for cut in nep_cut:
@@ -582,7 +604,9 @@ class SurveyObs:
         ax.set_xlabel("RA [deg]")
         ax.set_ylabel("Dec [deg]")
         ax.set_xlim(-self.config["ra_size"] / 2 - 0.5, self.config["ra_size"] / 2 + 0.5)
-        ax.set_ylim(-self.config["dec_size"] / 2 - 0.5, self.config["dec_size"] / 2 + 0.5)
+        ax.set_ylim(
+            -self.config["dec_size"] / 2 - 0.5, self.config["dec_size"] / 2 + 0.5
+        )
         ax.set_aspect("equal")
         if ax is None:
             plt.show()
@@ -733,7 +757,8 @@ class SnHost:
             z_min, z_max = z_range
             if z_max > host_list["zcos"].max() or z_min < host_list["zcos"].min():
                 warnings.warn(
-                    "Simulation redshift range does not match host file redshift range", UserWarning
+                    "Simulation redshift range does not match host file redshift range",
+                    UserWarning,
                 )
             host_list.query(f"zcos >= {z_min} & zcos <= {z_max}", inplace=True)
         else:
@@ -742,7 +767,8 @@ class SnHost:
         if self._geometry is not None:
             ra_min, dec_min, ra_max, dec_max = self._geometry.bounds
             host_list.query(
-                f"{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}", inplace=True
+                f"{ra_min} <= ra <= {ra_max} & {dec_min} <= dec <= {dec_max}",
+                inplace=True,
             )
 
         host_list.reset_index(drop=True, inplace=True)
@@ -818,7 +844,6 @@ class SnHost:
         rand_gen = np.random.default_rng(seed)
 
         weights = self.compute_weights(rate=rate, sn_type=sn_type, cosmology=cosmology)
-        
 
         if self._geometry is None:
             idx = rand_gen.choice(self.table.index, p=weights, size=n)

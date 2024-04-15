@@ -67,7 +67,12 @@ def write_sim(wpath, name, formats, header, data):
     # Export lcs as pickle
     if "pkl" in formats:
         with open(wpath + name + ".pkl", "wb") as file:
-            pkl_dic = {"name": name, "lcs": data.to_dict(), "meta": data.attrs, "header": header}
+            pkl_dic = {
+                "name": name,
+                "lcs": data.to_dict(),
+                "meta": data.attrs,
+                "header": header,
+            }
 
             pickle.dump(pkl_dic, file)
 
@@ -86,7 +91,9 @@ def write_sim(wpath, name, formats, header, data):
         pq.write_table(lcs, wpath + name + ".parquet")
 
     elif "parquet" in formats and not imp_pyarrow and not imp_json:
-        warnings.warn("You need pyarrow and json modules to use .parquet format", UserWarning)
+        warnings.warn(
+            "You need pyarrow and json modules to use .parquet format", UserWarning
+        )
 
 
 def read_sim_file(file_path, engine="pyarrow"):
@@ -309,14 +316,19 @@ def _read_sub_field_map(field_size_rad, field_config):
                         [
                             [ra_metric, dec_metric],
                             [ra_metric + subfield_ra_size, dec_metric],
-                            [ra_metric + subfield_ra_size, dec_metric - subfield_dec_size],
+                            [
+                                ra_metric + subfield_ra_size,
+                                dec_metric - subfield_dec_size,
+                            ],
                             [ra_metric, dec_metric - subfield_dec_size],
                         ]
                     )
                     if int(elmt) not in corner_dic:
                         corner_dic[int(elmt)] = np.array([field])
                     else:
-                        corner_dic[int(elmt)] = np.vstack([corner_dic[int(elmt)], [field]])
+                        corner_dic[int(elmt)] = np.vstack(
+                            [corner_dic[int(elmt)], [field]]
+                        )
 
                     ra_metric += subfield_ra_size
             dec_metric -= subfield_dec_size

@@ -45,7 +45,9 @@ def n21_x1_model(z, seed=None):
     is_young = young_or_old < delta_z
     X1 = np.zeros(len(z))
     X1[is_young] = rand_gen.normal(loc=mu1, scale=sig1, size=np.sum(is_young))
-    X1[~is_young] = dist_old.draw(np.sum(~is_young), seed=rand_gen.integers(low=1e3, high=1e6))
+    X1[~is_young] = dist_old.draw(
+        np.sum(~is_young), seed=rand_gen.integers(low=1e3, high=1e6)
+    )
     return X1
 
 
@@ -64,12 +66,17 @@ def x1_mass_model(host_mass, seed=None):
     host_mass = np.atleast_1d(host_mass)
 
     dist_mass = (
-        CustomRandom(lambda x: prob_x1_mass(m, x), x1_bin.min(), x1_bin.max(), ndiv=10000)
+        CustomRandom(
+            lambda x: prob_x1_mass(m, x), x1_bin.min(), x1_bin.max(), ndiv=10000
+        )
         for m in host_mass
     )
 
     return np.asarray(
-        [dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_mass]
+        [
+            dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0]
+            for dist in dist_mass
+        ]
     )
 
 
@@ -115,7 +122,10 @@ def n21_x1_mass_model(z, host_mass=None, seed=None):
     pdf_old = lambda x: a * ut.gauss(mu1, sig1, x) + (1 - a) * ut.gauss(mu2, sig2, x)
     dist_old = (
         CustomRandom(
-            lambda x: pdf_old(x) * prob_x1_mass(m, x), mu2 - 10 * sig2, mu1 + 10 * sig1, ndiv=10000
+            lambda x: pdf_old(x) * prob_x1_mass(m, x),
+            mu2 - 10 * sig2,
+            mu1 + 10 * sig1,
+            ndiv=10000,
         )
         for m in host_mass[~is_young]
     )
@@ -124,16 +134,25 @@ def n21_x1_mass_model(z, host_mass=None, seed=None):
     pdf_young = lambda x: ut.gauss(mu1, sig1, x)
     dist_young = (
         CustomRandom(
-            lambda x: pdf_old(x) * prob_x1_mass(m, x), mu1 - 10 * sig1, mu1 + 10 * sig1, ndiv=10000
+            lambda x: pdf_old(x) * prob_x1_mass(m, x),
+            mu1 - 10 * sig1,
+            mu1 + 10 * sig1,
+            ndiv=10000,
         )
         for m in host_mass[is_young]
     )
 
     X1[is_young] = np.asarray(
-        [dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_young]
+        [
+            dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0]
+            for dist in dist_young
+        ]
     )
     X1[~is_young] = np.asarray(
-        [dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0] for dist in dist_old]
+        [
+            dist.draw(1, seed=rand_gen.integers(low=1e3, high=1e6))[0]
+            for dist in dist_old
+        ]
     )
     return X1
 

@@ -135,7 +135,9 @@ class Simulator:
         # -- Init host object
         if "host" in self.config:
             self._host = sh.SnHost(
-                self.config["host"], z_range=self.z_range, geometry=self.survey._envelope
+                self.config["host"],
+                z_range=self.z_range,
+                geometry=self.survey._envelope,
             )
         else:
             self._host = None
@@ -155,7 +157,10 @@ class Simulator:
         self._use_rate = []
         self._generators = []
 
-        time_range = (self.survey.start_end_days[0].mjd, self.survey.start_end_days[1].mjd)
+        time_range = (
+            self.survey.start_end_days[0].mjd,
+            self.survey.start_end_days[1].mjd,
+        )
 
         for object_name, object_genclass in __GEN_DIC__.items():
             if object_name in self.config:
@@ -220,7 +225,12 @@ class Simulator:
                         cut_list.append((cut[0], cut[1], cut[2], cut[3]))
         else:
             cut_list = [(1, snc_mintime, snc_maxtime, "any")]
-        dt = [("nep", np.int8), ("mintime", np.int16), ("maxtime", np.int16), ("band", np.str_, 8)]
+        dt = [
+            ("nep", np.int8),
+            ("mintime", np.int16),
+            ("maxtime", np.int16),
+            ("band", np.str_, 8),
+        ]
         return np.asarray(cut_list, dtype=dt)
 
     @staticmethod
@@ -471,7 +481,10 @@ class Simulator:
             duration = generator.time_range[1] - generator.time_range[0]
 
         n_obj = self._gen_n_sn(
-            generator._z_time_rate[1], duration, seed=seeds[0], area=self.survey._envelope_area
+            generator._z_time_rate[1],
+            duration,
+            seed=seeds[0],
+            area=self.survey._envelope_area,
         )
 
         lcs = self._sim_lcs(seeds[1], generator, n_obj, Obj_ID=Obj_ID)

@@ -14,7 +14,16 @@ class AstrObj(abc.ABC):
     """Basic class for transients."""
 
     _type = ""
-    _base_attrs = ["ID", "ra", "dec", "zcos", "vpec", "zpcmb", "como_dist", "model_name"]
+    _base_attrs = [
+        "ID",
+        "ra",
+        "dec",
+        "zcos",
+        "vpec",
+        "zpcmb",
+        "como_dist",
+        "model_name",
+    ]
 
     _obj_attrs = [""]
     _available_models = [""]
@@ -100,7 +109,7 @@ class AstrObj(abc.ABC):
 
         """
 
-        if  self._type == 'snIax'  or self._type == 'snIa91bg':
+        if self._type == "snIax" or self._type == "snIa91bg":
 
             if effects is not None:
                 eff = [eff["source"] for eff in effects]
@@ -111,9 +120,15 @@ class AstrObj(abc.ABC):
                 eff_names = None
                 eff_frames = None
 
-            self._sim_par["model_version"] = 'plasticc'
+            self._sim_par["model_version"] = "plasticc"
 
-            model = plm.snc_model_from_sed(self._sim_par["model_name"],self._sim_par['sed_path'],eff,eff_names,eff_frames)
+            model = plm.snc_model_from_sed(
+                self._sim_par["model_name"],
+                self._sim_par["sed_path"],
+                eff,
+                eff_names,
+                eff_frames,
+            )
 
         else:
             if "model_version" not in self._sim_par:
@@ -121,7 +136,9 @@ class AstrObj(abc.ABC):
             else:
                 version = self._sim_par["model_version"]
 
-            snc_source = snc.get_source(name=self._sim_par["model_name"], version=version)
+            snc_source = snc.get_source(
+                name=self._sim_par["model_name"], version=version
+            )
 
             if "model_version" not in self._sim_par:
                 self._sim_par["model_version"] = snc_source.version
@@ -135,7 +152,6 @@ class AstrObj(abc.ABC):
                 eff_names = None
                 eff_frames = None
 
-        
             model = snc.Model(
                 source=snc_source,
                 effects=eff,
@@ -188,7 +204,8 @@ class AstrObj(abc.ABC):
 
         # mask to delete observed points outside time range of the model
         obs = obs[
-            (obs["time"] > self.sim_model.mintime()) & (obs["time"] < self.sim_model.maxtime())
+            (obs["time"] > self.sim_model.mintime())
+            & (obs["time"] < self.sim_model.maxtime())
         ]
 
         if mod_fcov:
@@ -217,7 +234,9 @@ class AstrObj(abc.ABC):
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0.0, scale=fluxerrtrue)
         fluxerr = np.sqrt(
-            np.abs(flux) / obs.gain + obs.skynoise**2 + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2
+            np.abs(flux) / obs.gain
+            + obs.skynoise**2
+            + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2
         )
 
         # -- Set magnitude
@@ -229,7 +248,9 @@ class AstrObj(abc.ABC):
 
         mag[positive_fmask] = -2.5 * np.log10(flux_pos) + obs["zp"][positive_fmask]
 
-        magerr[positive_fmask] = 2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
+        magerr[positive_fmask] = (
+            2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
+        )
 
         mag[~positive_fmask] = np.nan
         magerr[~positive_fmask] = np.nan
@@ -256,7 +277,12 @@ class AstrObj(abc.ABC):
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
 
-        sim_lc.attrs = {"mu": self.mu, "zobs": self.zobs, "zCMB": self.zCMB, **self._sim_par}
+        sim_lc.attrs = {
+            "mu": self.mu,
+            "zobs": self.zobs,
+            "zCMB": self.zCMB,
+            **self._sim_par,
+        }
 
         sim_lc.reset_index(inplace=True, drop=True)
         sim_lc.index.set_names("epochs", inplace=True)
@@ -281,7 +307,13 @@ class AstrObj(abc.ABC):
     def mu(self):
         """Get distance moduli."""
         return (
-            5 * np.log10((1 + self.zcos) * (1 + self.zpcmb) * (1 + self.zpec) ** 2 * self.como_dist)
+            5
+            * np.log10(
+                (1 + self.zcos)
+                * (1 + self.zpcmb)
+                * (1 + self.zpec) ** 2
+                * self.como_dist
+            )
             + 25
         )
 
@@ -324,7 +356,6 @@ class SNIa(AstrObj):
         ValueError
             Raises if you use mass-step without host logmass.
         """
-        
 
         if self._relation is None:
             self._relation = "salttripp"
@@ -344,7 +375,7 @@ class SNIa(AstrObj):
                     self._sim_par["beta"],
                     self._sim_par["x1"],
                     self._sim_par["c"],
-                    self._sim_par["coh_sct"]
+                    self._sim_par["coh_sct"],
                 )
                 + self.mu
             )
@@ -360,13 +391,12 @@ class SNIa(AstrObj):
                 )
                 + self.mu
             )
-            
+
             dust = snc.CCM89Dust()
-            model.add_effect(dust, frame='rest', name='host_')
-            model.set(**{
-                            'host_ebv': self._sim_par['E_dust'],
-                            'host_r_v': self._sim_par['RV']
-                        })
+            model.add_effect(dust, frame="rest", name="host_")
+            model.set(
+                **{"host_ebv": self._sim_par["E_dust"], "host_r_v": self._sim_par["RV"]}
+            )
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError("Relation not available")
@@ -376,10 +406,11 @@ class SNIa(AstrObj):
                 if np.log10(self._sim_par["host_mass"]) > 10.0:
                     mb += self._sim_par["mass_step"]
             else:
-                raise ValueError("Provide SN host mass to account for the magnitude mass step")
-        
-        self._sim_par["mb"] = mb
+                raise ValueError(
+                    "Provide SN host mass to account for the magnitude mass step"
+                )
 
+        self._sim_par["mb"] = mb
 
         # Set x1 and c
         model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
@@ -484,7 +515,6 @@ class SNIc_BL(TimeSeries):
     _available_models = ut.Templatelist_fromsncosmo("snic-bl")
 
 
-
 class SNIax(AstrObj):
     """SNiax class.
 
@@ -505,11 +535,12 @@ class SNIax(AstrObj):
       | ├── sigM, sigma of coherent scattering
       | └── used model parameters
     """
-    _obj_attrs = ["M0", "amplitude", "mb"]
-    _type = 'snIax'
-    _available_models, _sed_path = plm.get_sed_listname('sniax')
 
-    def _set_model_par(self,model):
+    _obj_attrs = ["M0", "amplitude", "mb"]
+    _type = "snIax"
+    _available_models, _sed_path = plm.get_sed_listname("sniax")
+
+    def _set_model_par(self, model):
         """Set sncosmo model parameters.
 
         Parameters
@@ -523,27 +554,27 @@ class SNIax(AstrObj):
             The sncosmo model with parameters set.
         """
 
-        M0 = model.source_peakmag('bessellv','ab') + 0.345 #correction to recalibrate to plasticc models
-        self._sim_par['M0'] = M0
-        
-        m_v= self.mu + M0
-    
+        M0 = (
+            model.source_peakmag("bessellv", "ab") + 0.345
+        )  # correction to recalibrate to plasticc models
+        self._sim_par["M0"] = M0
+
+        m_v = self.mu + M0
+
         # Compute the amplitude  parameter
-        model.set_source_peakmag(m_v, 'bessellv', 'ab')
-        self._sim_par["mb"] = model.source_peakmag( 'bessellb', 'ab')
+        model.set_source_peakmag(m_v, "bessellv", "ab")
+        self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
         self._sim_par["amplitude"] = model.get("amplitude")
 
         dust = snc.CCM89Dust()
-        model.add_effect(dust, frame='rest', name='host_')
-        model.set(**{
-                        'host_ebv': self._sim_par['E_dust'],
-                        'host_r_v': self._sim_par['RV']
-                    })
-        
+        model.add_effect(dust, frame="rest", name="host_")
+        model.set(
+            **{"host_ebv": self._sim_par["E_dust"], "host_r_v": self._sim_par["RV"]}
+        )
+
         return model
 
-        
-   
+
 class SNIa91bg(AstrObj):
     """SNia91bg class.
 
@@ -564,11 +595,10 @@ class SNIa91bg(AstrObj):
       | ├── sigM, sigma of coherent scattering
       | └── used model parameters
     """
-    
-    _obj_attrs = ["M0", "amplitude", "mb"]
-    _type = 'snIa91bg'
-    _available_models, _sed_path = plm.get_sed_listname('snia91bg')
 
+    _obj_attrs = ["M0", "amplitude", "mb"]
+    _type = "snIa91bg"
+    _available_models, _sed_path = plm.get_sed_listname("snia91bg")
 
     def _set_model_par(self, model):
         """Set sncosmo model parameters.
@@ -584,14 +614,13 @@ class SNIa91bg(AstrObj):
             The sncosmo model with parameters set.
         """
 
-        M0 = model.source_peakmag('bessellv','ab') 
-        self._sim_par['M0'] = M0
-        
-        m_v= self.mu + M0
-    
+        M0 = model.source_peakmag("bessellv", "ab")
+        self._sim_par["M0"] = M0
+
+        m_v = self.mu + M0
+
         # Compute the amplitude  parameter
-        model.set_source_peakmag(m_v, 'bessellv', 'ab')
+        model.set_source_peakmag(m_v, "bessellv", "ab")
         self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
         self._sim_par["amplitude"] = model.get("amplitude")
         return model
-    

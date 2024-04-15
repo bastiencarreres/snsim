@@ -70,7 +70,9 @@ def param_text_box(text_ax, model_name, sim_par=None, fit_par=None, pos=[0.01, 0
 
     prop = dict(boxstyle="round,pad=1", facecolor="navajowhite", alpha=0.3)
     text_ax.axis("off")
-    text_ax.text(pos[0], pos[1], str, transform=text_ax.transAxes, fontsize=10, bbox=prop)
+    text_ax.text(
+        pos[0], pos[1], str, transform=text_ax.transAxes, fontsize=10, bbox=prop
+    )
 
 
 def plot_lc(
@@ -147,7 +149,9 @@ def plot_lc(
     z = meta["zobs"]
 
     time_th = np.linspace(
-        t0 + ((phase_limit[0] + 1.2) * (1 + z)), t0 + ((phase_limit[1] - 1.2) * (1 + z)), 200
+        t0 + ((phase_limit[0] + 1.2) * (1 + z)),
+        t0 + ((phase_limit[1] - 1.2) * (1 + z)),
+        200,
     )
     with plt.style.context(mtpstyle):
 
@@ -158,7 +162,9 @@ def plot_lc(
         ###################
 
         if residuals:
-            gs = gridspec.GridSpec(3, 1, height_ratios=np.array([0.5, 2, 1]), figure=fig)
+            gs = gridspec.GridSpec(
+                3, 1, height_ratios=np.array([0.5, 2, 1]), figure=fig
+            )
             text_ax = fig.add_subplot(gs[0])
             ax0 = fig.add_subplot(gs[1])
             ax1 = fig.add_subplot(gs[2], sharex=ax0)
@@ -183,7 +189,8 @@ def plot_lc(
             set_res = {}
 
         fig.suptitle(
-            f"SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD", fontsize="xx-large"
+            f"SN at redshift z : {z:.5f} and peak at time t$_0$ : {t0:.2f} MJD",
+            fontsize="xx-large",
         )
 
         plt.xlim(phase_limit[0] * (1 + z), phase_limit[1] * (1 + z))
@@ -232,7 +239,11 @@ def plot_lc(
                             err_th = salt_ut.compute_salt_fit_error(
                                 snc_fit_model, fit_cov[1:, 1:], b, time_th, zp
                             )
-                            err_th = 2.5 / (np.log(10) * 10 ** (-0.4 * (plot_fit - zp))) * err_th
+                            err_th = (
+                                2.5
+                                / (np.log(10) * 10 ** (-0.4 * (plot_fit - zp)))
+                                * err_th
+                            )
                     if residuals:
                         fit_pts = snc_fit_model.bandmag(b, "ab", time_b)
                         rsd = plot - fit_pts
@@ -250,10 +261,14 @@ def plot_lc(
                 err = fluxerr_b * norm
 
                 if snc_sim_model is not None:
-                    plot_th = snc_sim_model.bandflux(b, time_th, zp=zp, zpsys="ab") * norm
+                    plot_th = (
+                        snc_sim_model.bandflux(b, time_th, zp=zp, zpsys="ab") * norm
+                    )
 
                 if snc_fit_model is not None:
-                    plot_fit = snc_fit_model.bandflux(b, time_th, zp=zp, zpsys="ab") * norm
+                    plot_fit = (
+                        snc_fit_model.bandflux(b, time_th, zp=zp, zpsys="ab") * norm
+                    )
                     if fit_cov is not None:
                         if snc_fit_model.source.name in ("salt2", "salt3"):
                             err_th = (
@@ -264,11 +279,20 @@ def plot_lc(
                             )
 
                     if residuals:
-                        fit_pts = snc_fit_model.bandflux(b, time_b, zp=zp, zpsys="ab") * norm
+                        fit_pts = (
+                            snc_fit_model.bandflux(b, time_b, zp=zp, zpsys="ab") * norm
+                        )
                         rsd = plot - fit_pts
 
             ax0.errorbar(
-                time_b - t0, plot, yerr=err, label=b, fmt="o", ms=5, lw=1.5, color=bandcol[b]
+                time_b - t0,
+                plot,
+                yerr=err,
+                label=b,
+                fmt="o",
+                ms=5,
+                lw=1.5,
+                color=bandcol[b],
             )
 
             handles, labels = ax0.get_legend_handles_labels()
@@ -299,7 +323,9 @@ def plot_lc(
 
                 if residuals:
                     ax1.set_ylabel("Data - Model", fontsize="x-large")
-                    ax1.errorbar(time_b - t0, rsd, yerr=err, fmt="o", color=bandcol[b], ms=5)
+                    ax1.errorbar(
+                        time_b - t0, rsd, yerr=err, fmt="o", color=bandcol[b], ms=5
+                    )
                     ax1.axhline(0, ls="dashdot", c="black", lw=1.5)
                     ax1_y_lim.append(3 * np.std(rsd))
                     ax1.plot(time_th - t0, err_th, ls="--", color=bandcol[b])
@@ -348,7 +374,9 @@ def plot_lc(
                 fit_par["mb"] = (
                     snc_fit_model.source_peakmag("bessellb", "ab"),
                     np.sqrt(
-                        salt_ut.cov_x0_to_mb(snc_fit_model.parameters[2], fit_cov[1:, 1:])[0, 0]
+                        salt_ut.cov_x0_to_mb(
+                            snc_fit_model.parameters[2], fit_cov[1:, 1:]
+                        )[0, 0]
                     ),
                 )
 
@@ -356,7 +384,9 @@ def plot_lc(
                 model_name.append("mw_")
 
         if model_name != []:
-            param_text_box(text_ax, model_name=model_name, sim_par=sim_par, fit_par=fit_par)
+            param_text_box(
+                text_ax, model_name=model_name, sim_par=sim_par, fit_par=fit_par
+            )
 
         plt.subplots_adjust(hspace=0.08)
         ax0.set(**set_main)
@@ -367,7 +397,9 @@ def plot_lc(
         plt.show()
 
 
-def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg):
+def plot_ra_dec(
+    ra, dec, vpec=None, field_list=None, field_dic=None, field_size=None, **kwarg
+):
     """Plot a mollweide map of ra, dec.
 
     Parameters
@@ -400,11 +432,21 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
 
     if field_list is not None and field_dic is not None and field_size is not None:
         ra_edges = np.array(
-            [field_size[0] / 2, field_size[0] / 2, -field_size[0] / 2, -field_size[0] / 2]
+            [
+                field_size[0] / 2,
+                field_size[0] / 2,
+                -field_size[0] / 2,
+                -field_size[0] / 2,
+            ]
         )
 
         dec_edges = np.array(
-            [field_size[1] / 2, -field_size[1] / 2, -field_size[1] / 2, field_size[1] / 2]
+            [
+                field_size[1] / 2,
+                -field_size[1] / 2,
+                -field_size[1] / 2,
+                field_size[1] / 2,
+            ]
         )
 
         vec = np.array(
@@ -425,20 +467,39 @@ def plot_ra_dec(ra, dec, vpec=None, field_list=None, field_dic=None, field_size=
             if new_radec[3][0] > new_radec[0][0]:
                 if new_radec[3][0] * new_radec[2][0] > 0:
                     x1 = [-np.pi, new_radec[0][0], new_radec[0][0], -np.pi]
-                    y1 = [new_radec[0][1], new_radec[0][1], new_radec[1][1], new_radec[1][1]]
+                    y1 = [
+                        new_radec[0][1],
+                        new_radec[0][1],
+                        new_radec[1][1],
+                        new_radec[1][1],
+                    ]
                     x2 = [np.pi, new_radec[2][0], new_radec[2][0], np.pi]
-                    y2 = [new_radec[2][1], new_radec[2][1], new_radec[3][1], new_radec[3][1]]
+                    y2 = [
+                        new_radec[2][1],
+                        new_radec[2][1],
+                        new_radec[3][1],
+                        new_radec[3][1],
+                    ]
                     ax.plot(x1, y1, ls="--", color="blue", lw=1, zorder=2)
                     ax.plot(x2, y2, ls="--", color="blue", lw=1, zorder=2)
                 else:
                     if new_radec[2][0] < 0:
                         new_radec[3][0] = -np.pi
                         plt.gca().add_patch(
-                            Polygon(new_radec, fill=False, ls="--", color="blue", lw=1, zorder=2)
+                            Polygon(
+                                new_radec,
+                                fill=False,
+                                ls="--",
+                                color="blue",
+                                lw=1,
+                                zorder=2,
+                            )
                         )
 
             else:
                 plt.gca().add_patch(
-                    Polygon(new_radec, fill=False, ls="--", color="blue", lw=1, zorder=2)
+                    Polygon(
+                        new_radec, fill=False, ls="--", color="blue", lw=1, zorder=2
+                    )
                 )
     plt.show()

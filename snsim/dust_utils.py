@@ -39,9 +39,13 @@ def check_files_and_download():
             response = requests.get(url, stream=True)
             file = tarfile.open(fileobj=response.raw, mode="r|gz")
             file.extractall(path=__snsim_dir_path__ + "/dust_data")
-            new_file = glob.glob(__snsim_dir_path__ + "/dust_data/sfddata-master/*.fits")
+            new_file = glob.glob(
+                __snsim_dir_path__ + "/dust_data/sfddata-master/*.fits"
+            )
             for nfile in new_file:
-                os.replace(nfile, __snsim_dir_path__ + "/dust_data/" + os.path.basename(nfile))
+                os.replace(
+                    nfile, __snsim_dir_path__ + "/dust_data/" + os.path.basename(nfile)
+                )
             other_files = glob.glob(__snsim_dir_path__ + "/dust_data/sfddata-master/*")
             for ofile in other_files:
                 os.remove(ofile)

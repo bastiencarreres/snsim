@@ -56,13 +56,17 @@ def _compute_polygon(corners):
     """
 
     # Create polygons
-    polygons = gpd.GeoSeries([shp_geo.Polygon(corners[:, j, :]) for j in range(corners.shape[1])])
+    polygons = gpd.GeoSeries(
+        [shp_geo.Polygon(corners[:, j, :]) for j in range(corners.shape[1])]
+    )
 
     # Check if they intersect the 2pi edge line
     int_mask = polygons.intersects(_SPHERE_LIMIT_)
 
     # If they do cut divide them in 2 and translate the one that is beyond the edge at -2pi
-    polydiv = gpd.GeoSeries(shp_ops.polygonize(polygons[int_mask].boundary.union(_SPHERE_LIMIT_)))
+    polydiv = gpd.GeoSeries(
+        shp_ops.polygonize(polygons[int_mask].boundary.union(_SPHERE_LIMIT_))
+    )
     transl_mask = polydiv.boundary.bounds["maxx"] > 2 * np.pi
     polydiv[transl_mask] = polydiv[transl_mask].translate(-2 * np.pi)
 

@@ -36,7 +36,9 @@ class G10(snc.PropagationEffect):
 
     def __init__(self, SALTsource):
         """Initialize G10 class."""
-        self._parameters = np.array([2157.3, 0.0, 1.08e-4, 800, np.random.randint(1e11)])
+        self._parameters = np.array(
+            [2157.3, 0.0, 1.08e-4, 800, np.random.randint(1e11)]
+        )
         self._colordisp = SALTsource._colordisp
         self._minwave = SALTsource.minwave()
         self._maxwave = SALTsource.maxwave()
@@ -96,7 +98,9 @@ class C11(snc.PropagationEffect):
         )
 
         # vUBVRI sigma
-        self._variance = np.array([0.5900, 0.06001, 0.040034, 0.050014, 0.040017, 0.080007])
+        self._variance = np.array(
+            [0.5900, 0.06001, 0.040034, 0.050014, 0.040017, 0.080007]
+        )
 
         # self._seed = np.random.SeedSequence()
 
@@ -122,9 +126,9 @@ class C11(snc.PropagationEffect):
         cov_matrix = self.build_cov()
 
         # Draw the scattering
-        siglam_values = np.random.default_rng(int(self._parameters[-1])).multivariate_normal(
-            np.zeros(len(self._lam_nodes)), cov_matrix
-        )
+        siglam_values = np.random.default_rng(
+            int(self._parameters[-1])
+        ).multivariate_normal(np.zeros(len(self._lam_nodes)), cov_matrix)
 
         inf_mask = wave <= self._lam_nodes[0]
         sup_mask = wave >= self._lam_nodes[-1]
@@ -160,7 +164,6 @@ def gen_BS20_scatter(n_sn, seed=None):
     """
 
     rand_gen = np.random.default_rng(seed)
-    
 
     lower, upper = 0.5, 1000
     mu, sigma = 2, 1.4

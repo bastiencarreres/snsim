@@ -37,7 +37,11 @@ def SNR_pdet(SNR, SNR_mean, SNRp, p):
 
 
 def SNR_select(
-    selec_function, lcs, SNR_mean=5, SNR_limit=[15, 0.99], randseed=np.random.randint(1000, 100000)
+    selec_function,
+    lcs,
+    SNR_mean=5,
+    SNR_limit=[15, 0.99],
+    randseed=np.random.randint(1000, 100000),
 ):
     r"""Run a SNR efficiency detection on all lcs.
 
@@ -78,7 +82,9 @@ def SNR_select(
             SNR_mean, (int, np.integer, float, np.floating)
         ):
             for b in bands:
-                SNR_proba[b] = lambda SNR: SNR_pdet(SNR, SNR_mean, SNR_limit[0], SNR_limit[1])
+                SNR_proba[b] = lambda SNR: SNR_pdet(
+                    SNR, SNR_mean, SNR_limit[0], SNR_limit[1]
+                )
         else:
             for b in bands:
                 SNR_proba[b] = lambda SNR: SNR_pdet(
