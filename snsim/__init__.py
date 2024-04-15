@@ -13,7 +13,7 @@ import os
 
 __snsim_dir_path__ = os.path.dirname(__file__)
 
-__version__ = "0.4.5+dev"
+__version__ = "0.5.0+dev"
 
 from .simu import Simulator
 from .sample import SimSample
