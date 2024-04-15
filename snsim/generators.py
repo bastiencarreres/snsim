@@ -70,6 +70,7 @@ class BaseGen(abc.ABC):
             no need to be defined if there is host, by default None
         vpec_dist : dic, optional
             PV distrib parameters, by default None
+
             | vpec_dist
             | ├── mean_vpec, by default 0.
             | └── sig_vpec, by default 0.
@@ -79,6 +80,7 @@ class BaseGen(abc.ABC):
             Milky Way dust, by default None
         cmb : dic, optional
             CMB dipole parameters, by default None
+            
             | cmb
             | ├── v_cmb, by default 369.82 km/s
             | ├── l_cmb, by default 264.021 deg
