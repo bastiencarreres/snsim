@@ -763,52 +763,36 @@ class SnHost:
         """
         if self.config["distrib"].lower() == "random":
             weights = None
-        elif self.config["distrib"].lower() == "rate":
-            if rate is None:
-                raise ValueError("rate should be set to use 'rate' distribution")
-            # Take into account rate is divide by (1 + z)
-            weights = rate(self.table["zcos"]) / (1 + self.table["zcos"])  # X mass X
-            # Normalize the weights
-            weights /= weights.sum()
-        elif self.config["distrib"].lower() == "mass":
-            if rate is None:
-                raise ValueError("rate should be set to use 'rate' distribution")
+        elif rate is not None:
             # Take into account rate is divide by (1 + z)
             weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
-            # compute mass weight
-            weights_mass = ut.compute_weight_mass_for_type(
-                mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
-            )
-            weights = weights_rate * weights_mass
-            # normalize
+            if self.config["distrib"].lower() == "rate":
+                weights = weights_rate
+            elif self.config["distrib"].lower() == "mass":
+                # compute mass weight
+                weights_mass = ut.compute_weight_mass_for_type(
+                    mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
+                )
+                weights = weights_rate * weights_mass
+            elif self.config["distrib"].lower() == "sfr":
+                # compute SFR weight
+                weights_SFR = ut.compute_weight_SFR_for_type(
+                    SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
+                )
+                weights = weights_rate * weights_SFR
+            elif self.config["distrib"].lower() == "mass_sfr":
+                # compute SFR and mass weight
+                weights_mass = ut.compute_weight_mass_for_type(
+                    mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
+                )
+                weights_SFR = ut.compute_weight_SFR_for_type(
+                    SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
+                )
+                weights = weights_rate * (weights_mass + weights_SFR)
+            # Normalize
             weights /= weights.sum()
-        elif self.config["distrib"].lower() == "sfr":
-            if rate is None:
-                raise ValueError("rate should be set to use 'rate' distribution")
-            # Take into account rate is divide by (1 + z)
-            weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
-            # compute SFR weight
-            weights_SFR = ut.compute_weight_SFR_for_type(
-                SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
-            )
-            weights = weights_rate * weights_SFR
-            # normalize
-            weights /= weights.sum()
-        elif self.config["distrib"].lower() == "mass_sfr":
-            if rate is None:
-                raise ValueError("rate should be set to use 'rate' distribution")
-            # Take into account rate is divide by (1 + z)
-            weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
-            # compute SFR and mass weight
-            weights_mass = ut.compute_weight_mass_for_type(
-                mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
-            )
-            weights_SFR = ut.compute_weight_SFR_for_type(
-                SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
-            )
-            weights = weights_rate * (weights_mass + weights_SFR)
-            # normalize
-            weights /= weights.sum()
+        else:
+            raise ValueError("rate should be set to use host distribution")
         return weights
 
         # elif self.config['distrib'].lower() == 'gal_prop':
