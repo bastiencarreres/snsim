@@ -17,7 +17,7 @@ PlasticcDir._redirects = {
     }
 
 def load_plasticc_timeseries(relpath, fname, zero_before=False, time_spline_degree=3,
-                            name=None, version=None):
+                             name=None, version=None):
     abspath = PlasticcDir.abspath(relpath, isdir=True)
     fpath = abspath + '/' + fname
     if os.path.isfile(fpath + '.gz'):
@@ -30,30 +30,26 @@ def load_plasticc_timeseries(relpath, fname, zero_before=False, time_spline_degr
         os.remove(fpath + '.gz')
 
     phase, wave, flux = snc.io.read_griddata_ascii(fpath)
-    return snc.models.TimeSeriesSource(phase, wave, flux, name=name, version=version,
+    return snc.models.TimeSeriesSource(phase, wave, flux, 
+                            name=name, version=version,
                             zero_before=zero_before,
                             time_spline_degree=time_spline_degree)
 
 # Add to sncosmo registry
-plasticc_SN91bg = plasticc_SN91bg = [
-    (f'plasticc_snia_91bg_ST{i}_C{j}', 'SN Ia-91bg', f'91BG_ST{i}_C{j}.SED')
+plasticc_SN91bg = [
+    (f'plasticc-snia-91bg-ST{i}_C{j}', 'SN Ia-91bg', f'91BG_ST{i}_C{j}.SED')
     for i in range(6) for j in range(5)]
 
 ref = ('TBD', 'TBD', 'TBD')
-url = 'https://zenodo.org/records/6672739/files/'
 for name, sntype, fn in plasticc_SN91bg:
     relpath = 'models/plasticc/SIMSED.SNIa-91bg'
-    meta = {'dataurl': url, 'subclass': '`~sncosmo.TimeSeriesSource`', 'type': sntype,
+    meta = {'dataurl': plasticc_repo, 
+            'subclass': '`~sncosmo.TimeSeriesSource`', 
+            'type': sntype,
             'ref': ref}
     snc.models._SOURCES.register_loader(
         name, load_plasticc_timeseries,
         args=(relpath, fn), version=None, meta=meta, force=True)
-
-model_repo = {
-    "slsn": plasticc_repo + "SIMSED.SLSN-I-MOSFIT.tar.gz",
-    "sniax": plasticc_repo + "SIMSED.SNIax.tar.gz",
-    "snia91bg": plasticc_repo + "SIMSED.SNIa-91bg.tar.gz",
-}
 
 def generate_dust_sniax(n_sn, seed=None):
 
@@ -90,6 +86,12 @@ def get_sed_listname(model_name):
     return file_list, path
 
 # TO DO: Remove
+model_repo = {
+    "slsn": plasticc_repo + "SIMSED.SLSN-I-MOSFIT.tar.gz",
+    "sniax": plasticc_repo + "SIMSED.SNIax.tar.gz",
+    "snia91bg": plasticc_repo + "SIMSED.SNIa-91bg.tar.gz",
+}
+
 def snc_source_from_sed(path, name=None):
     phase_sed, wave_sed, flux_sed = np.genfromtxt(path, unpack=True)
     phase = np.unique(phase_sed)
