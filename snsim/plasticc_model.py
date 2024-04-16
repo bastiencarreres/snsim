@@ -37,31 +37,38 @@ def load_plasticc_timeseries(relpath, fname, zero_before=False, time_spline_degr
 
 # Add to sncosmo registry
 plasticc_SN91bg = [
-    (f'plasticc-snia-91bg-ST{i}_C{j}', 'SN Ia-91bg', f'91BG_ST{i}_C{j}.SED')
+    (f'plasticc-snia-91bg-st{i}_c{j}', 'SN Ia-91bg', 
+    f'91BG_ST{i}_C{j}.SED', 'models/plasticc/SIMSED.SNIa-91bg')
     for i in range(6) for j in range(5)]
 
+plasticc_SNIax = [
+    (f'plasticc-sniax-{i:04d}', 'SN Iax', 
+    f'SED-Iax-{i:04d}.dat', 'models/plasticc/SIMSED.SNIax') 
+    for i in range(1001)
+]
+
+plasticc = plasticc_SN91bg + plasticc_SNIax
+
 ref = ('TBD', 'TBD', 'TBD')
-for name, sntype, fn in plasticc_SN91bg:
-    relpath = 'models/plasticc/SIMSED.SNIa-91bg'
-    meta = {'dataurl': plasticc_repo, 
-            'subclass': '`~sncosmo.TimeSeriesSource`', 
-            'type': sntype,
-            'ref': ref}
+for name, sntype, fn, relpath in plasticc:
+    meta = {
+        'dataurl': plasticc_repo, 
+        'subclass': '`~sncosmo.TimeSeriesSource`',
+        'type': sntype,
+        'ref': ref}
+
     snc.models._SOURCES.register_loader(
         name, load_plasticc_timeseries,
-        args=(relpath, fn), version=None, meta=meta, force=True)
+        args=(relpath, fn), version=None, meta=meta)
+
 
 def generate_dust_sniax(n_sn, seed=None):
-
     rand_gen = np.random.default_rng(seed)
-
     lower, upper = 0.5, 10000
     mu, sigma = 2, 1.4
     X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
     Rv = X.rvs(n_sn)
-
     E_dust = rand_gen.exponential(scale=0.1, size=n_sn)
-
     return Rv, E_dust
 
 def get_sed_listname(model_name):
