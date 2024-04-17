@@ -455,11 +455,9 @@ class BaseGen(abc.ABC):
         dust_par = {"mw_ebv": dst_ut.compute_ebv(ra, dec)}
 
         if mod_name.lower() in ["ccm89", "od94"]:
-            if "rv" in self.mw_dust:
-                rv_val = self.mw_dust["rv"]
-            else:
-                rv_val = 3.1
-            dust_par["mw_r_v"] = np.ones(len(ra)) * rv_val
+            if "rv" not in self.mw_dust:
+                self.mw_dust["rv"] = 3.1
+            dust_par["mw_r_v"] = np.ones(len(ra)) * self.mw_dust["rv"]
         return dust_par
 
     def _get_header(self):
