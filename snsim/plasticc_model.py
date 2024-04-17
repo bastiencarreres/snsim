@@ -16,7 +16,7 @@ PlasticcDir._redirects = {
     'models/plasticc/SIMSED.SLSN-I-MOSFIT.tar.gz': plasticc_repo + 'SIMSED.SLSN-I-MOSFIT.tar.gz'
     }
 
-def load_plasticc_timeseries(relpath, fname, zero_before=False, time_spline_degree=3,
+def load_plasticc_timeseries(relpath, fname, zero_before=True, time_spline_degree=3,
                              name=None, version=None):
     abspath = PlasticcDir.abspath(relpath, isdir=True)
     fpath = abspath + '/' + fname
@@ -47,7 +47,15 @@ plasticc_SNIax = [
     for i in range(1001)
 ]
 
-plasticc = plasticc_SN91bg + plasticc_SNIax
+
+# TO TEST
+#plasticc_SLSN = [
+   ## (f'plasticc-slsn-{i}', 'SLSN', 
+    #f'slsn{i}.dat', 'models/plasticc/SIMSED.SLSN-I-MOSFIT') 
+    #for i in range(1000)
+#]
+
+plasticc = plasticc_SN91bg + plasticc_SNIax 
 
 ref = ('TBD', 'TBD', 'TBD')
 for name, sntype, fn, relpath in plasticc:
@@ -73,24 +81,16 @@ def generate_dust_sniax(n_sn, seed=None):
 
 def get_sed_listname(model_name):
 
+    sources = snc.builtins._SOURCES.get_loaders_metadata()
+
     if model_name == "sniax":
-        end_dir = "SIMSED.SNIax/"
+        return list(s["name"] for s in sources if "sn iax" in s["type"].lower())
 
     if model_name == "snia91bg":
-        end_dir = "SIMSED.SNIa-91bg/"
+         return list(s["name"] for s in sources if "sn ia-91bg" in s["type"].lower())
 
     if model_name == "slsn":
-        end_dir = "SIMSED.SLSN-I-MOSFIT/"
-
-    check_files_and_download(model_name)
-    data_dir_name = "sed_data/" + model_name.lower() + "_data/"
-
-    file_list = []
-    for file in os.listdir(__snsim_dir_path__ + "/" + data_dir_name + end_dir):
-        if file.endswith(".gz"):
-            file_list.append(file)
-    path = __snsim_dir_path__ + "/" + data_dir_name + end_dir
-    return file_list, path
+        return list(s["name"] for s in sources if "slsn" in s["type"].lower())
 
 # TO DO: Remove
 model_repo = {

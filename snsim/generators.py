@@ -371,20 +371,11 @@ class BaseGen(abc.ABC):
             sources["model_version"] = [None] * len(sources["model_name"])
 
         # -- Compute max, min phase
-        if (
-            self._object_type.lower() == "sniax"
-            or self._object_type.lower() == "snia91bg"
-        ):
-            snc_sources = [
-                plm.snc_source_from_sed(name, self._sed_path)
-                for name in sources["model_name"]
-            ]
-
-        else:
-            snc_sources = [
-                snc.get_source(name=n, version=v)
-                for n, v in zip(sources["model_name"], sources["model_version"])
-            ]
+        
+        snc_sources = [
+            snc.get_source(name=n, version=v)
+            for n, v in zip(sources["model_name"], sources["model_version"])
+        ]
 
         sources["model_version"] = [s.version for s in snc_sources]
         maxphase = np.max([s.maxphase() for s in snc_sources])
@@ -1343,6 +1334,8 @@ class SNIapeculiarGen(BaseGen):
      ----------
     same as TimeSeriesGen class"""
 
+    _available_models = ["plasticc"]
+
     def _init_sources_list(self):
         """Initialise sncosmo model using the good source.
 
@@ -1352,13 +1345,20 @@ class SNIapeculiarGen(BaseGen):
             sncosmo.Model(source) object where source depends on the
             SN simulation model.
         """
+        if isinstance(self._params["model_name"], str):
+            if self._params["model_name"].lower() == "plasticc":
+                sources = plm.get_sed_listname(self._object_type.lower())
+            else:
+                sources = [self._params["model_name"]]
+        else:
+            sources = self._params["model_name"]
 
-        sources = self._sed_models
         return sources
+
 
     def gen_par(self, n_obj, basic_par, seed=None):
 
-        params = {"sed_path": self._sed_path}
+        params = {}
 
         if self._object_type.lower() == "sniax":
             rv, e_dust = self._gen_dust_par(n_obj, seed)
@@ -1389,8 +1389,7 @@ class SNIaxGen(SNIapeculiarGen):
     same as TimeSeriesGen class"""
 
     _object_type = "SNIax"
-    _available_models = "plasticc"
-    _sed_models, _sed_path = plm.get_sed_listname("sniax")
+    _available_models =   plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
     _available_rates = ["ptf19", "ptf19_pw"]
 
     _sn_fraction = {
@@ -1419,8 +1418,7 @@ class SNIa_91bgGen(SNIapeculiarGen):
     same as TimeSeriesGen class"""
 
     _object_type = "SNIa91bg"
-    _available_models = "plasticc"
-    _sed_models, _sed_path = plm.get_sed_listname("snia91bg")
+    _available_models =   plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
     _available_rates = ["ptf19", "ptf19_pw"]
 
     _sn_fraction = {
