@@ -455,8 +455,8 @@ class BaseGen(abc.ABC):
         dust_par = {"mw_ebv": dst_ut.compute_ebv(ra, dec)}
 
         if mod_name.lower() in ["ccm89", "od94"]:
-            if "r_v" in self.mw_dust:
-                rv_val = self.mw_dust["r_v"]
+            if "rv" in self.mw_dust:
+                rv_val = self.mw_dust["rv"]
             else:
                 rv_val = 3.1
             dust_par["mw_r_v"] = np.ones(len(ra)) * rv_val
@@ -476,7 +476,7 @@ class BaseGen(abc.ABC):
 
         if self.mw_dust is not None:
             header['mw_dust_model'] = self.mw_dust["model"]
-            header['mw_dust_r_v'] = self.mw_dust["r_v"]
+            header['mw_dust_rv'] = self.mw_dust["rv"]
 
         header = {**header, **self._update_header()}
         return header
