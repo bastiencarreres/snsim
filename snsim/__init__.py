@@ -24,3 +24,4 @@ from . import survey_host
 from . import utils
 from . import io_utils
 from . import scatter
+from .plasticc_model import *

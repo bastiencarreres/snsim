@@ -109,55 +109,34 @@ class AstrObj(abc.ABC):
 
         """
 
-        if self._type == "snIax" or self._type == "snIa91bg":
-
-            if effects is not None:
-                eff = [eff["source"] for eff in effects]
-                eff_names = [eff["name"] for eff in effects]
-                eff_frames = [eff["frame"] for eff in effects]
-            else:
-                eff = None
-                eff_names = None
-                eff_frames = None
-
-            self._sim_par["model_version"] = "plasticc"
-
-            model = plm.snc_model_from_sed(
-                self._sim_par["model_name"],
-                self._sim_par["sed_path"],
-                eff,
-                eff_names,
-                eff_frames,
-            )
-
+       
+        if "model_version" not in self._sim_par:
+            version = None
         else:
-            if "model_version" not in self._sim_par:
-                version = None
-            else:
-                version = self._sim_par["model_version"]
+            version = self._sim_par["model_version"]
 
-            snc_source = snc.get_source(
-                name=self._sim_par["model_name"], version=version
-            )
+        snc_source = snc.get_source(
+            name=self._sim_par["model_name"], version=version
+        )
 
-            if "model_version" not in self._sim_par:
-                self._sim_par["model_version"] = snc_source.version
+        if "model_version" not in self._sim_par:
+            self._sim_par["model_version"] = snc_source.version
 
-            if effects is not None:
-                eff = [eff["source"] for eff in effects]
-                eff_names = [eff["name"] for eff in effects]
-                eff_frames = [eff["frame"] for eff in effects]
-            else:
-                eff = None
-                eff_names = None
-                eff_frames = None
+        if effects is not None:
+            eff = [eff["source"] for eff in effects]
+            eff_names = [eff["name"] for eff in effects]
+            eff_frames = [eff["frame"] for eff in effects]
+        else:
+            eff = None
+            eff_names = None
+            eff_frames = None
 
-            model = snc.Model(
-                source=snc_source,
-                effects=eff,
-                effect_names=eff_names,
-                effect_frames=eff_frames,
-            )
+        model = snc.Model(
+            source=snc_source,
+            effects=eff,
+            effect_names=eff_names,
+            effect_frames=eff_frames,
+        )
 
         effect_par = {}
         for eff, eff_name in zip(model.effects, model.effect_names):
@@ -538,7 +517,7 @@ class SNIax(AstrObj):
 
     _obj_attrs = ["M0", "amplitude", "mb"]
     _type = "snIax"
-    _available_models, _sed_path = plm.get_sed_listname("sniax")
+    _available_models = plm.get_sed_listname("sniax")
 
     def _set_model_par(self, model):
         """Set sncosmo model parameters.
@@ -598,7 +577,7 @@ class SNIa91bg(AstrObj):
 
     _obj_attrs = ["M0", "amplitude", "mb"]
     _type = "snIa91bg"
-    _available_models, _sed_path = plm.get_sed_listname("snia91bg")
+    _available_models = plm.get_sed_listname("snia91bg")
 
     def _set_model_par(self, model):
         """Set sncosmo model parameters.
