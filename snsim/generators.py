@@ -80,7 +80,7 @@ class BaseGen(abc.ABC):
             Milky Way dust, by default None
         cmb : dic, optional
             CMB dipole parameters, by default None
-            
+
             | cmb
             | ├── v_cmb, by default 369.82 km/s
             | ├── l_cmb, by default 264.021 deg
@@ -371,7 +371,6 @@ class BaseGen(abc.ABC):
             sources["model_version"] = [None] * len(sources["model_name"])
 
         # -- Compute max, min phase
-        
         snc_sources = [
             snc.get_source(name=n, version=v)
             for n, v in zip(sources["model_name"], sources["model_version"])
@@ -474,6 +473,10 @@ class BaseGen(abc.ABC):
         if self.vpec_dist is not None:
             header["m_vp"] = self.vpec_dist["mean_vpec"]
             header["s_vp"] = self.vpec_dist["sig_vpec"]
+
+        if self.mw_dust is not None:
+            header['mw_dust_model'] = self.mw_dust["model"]
+            header['mw_dust_r_v'] = self.mw_dust["r_v"]
 
         header = {**header, **self._update_header()}
         return header
@@ -1355,7 +1358,6 @@ class SNIapeculiarGen(BaseGen):
 
         return sources
 
-
     def gen_par(self, n_obj, basic_par, seed=None):
 
         params = {}
@@ -1389,7 +1391,9 @@ class SNIaxGen(SNIapeculiarGen):
     same as TimeSeriesGen class"""
 
     _object_type = "SNIax"
-    _available_models =   plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
+    _available_models = (
+        plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
+    )
     _available_rates = ["ptf19", "ptf19_pw"]
 
     _sn_fraction = {
@@ -1418,7 +1422,9 @@ class SNIa_91bgGen(SNIapeculiarGen):
     same as TimeSeriesGen class"""
 
     _object_type = "SNIa91bg"
-    _available_models =   plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
+    _available_models = (
+        plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
+    )
     _available_rates = ["ptf19", "ptf19_pw"]
 
     _sn_fraction = {
