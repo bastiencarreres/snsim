@@ -37,8 +37,6 @@ class SimSample:
         self._model_dir = model_dir
         self._dir_path = dir_path
 
-       # self._sim_model = self._init_sim_model()
-
         self._fit_model = None
         self._fit_res = None
 
@@ -107,6 +105,7 @@ class SimSample:
         return cls(name, lcs, header,
                    model_dir=model_dir, dir_path=os.path.dirname(sim_file) + '/')
 
+    # TO-DO: repair init_sim_model
     def _init_sim_model(self):
         """Initialize sim model.
 
@@ -118,17 +117,21 @@ class SimSample:
         """
         model_name = np.atleast_1d(self.header['model_name'])
         model_sim=[]
+        effect = []
         for model in model_name:
-            sim_model = ut.init_sn_model(model, self._model_dir) 
-
-            if 'sct_mod' in self.header:
-                sct.init_sn_sct_model(sim_model, self.header['sct_mod'])
-
-            if 'mw_dust' in self.header:
-                dst_ut.init_mw_dust(sim_model, self.header['mw_dust'])
-
+            sim_model = ut.init_sn_model(model, self._model_dir)
             model_sim.extend([sim_model])
-        
+
+        if 'sct_mod' in self.header:
+            effect.append(sct.init_sn_sct_model(self.header['sct_mod']))
+
+        if 'mw_dust_model' in self.header:
+            mw_dust = {
+                'model':  self.header['mw_dust_model'],
+                'rv': self.header['mw_dust_rv']
+                }
+            effect.append(dst_ut.init_mw_dust(mw_dust))
+
         simmod={model.source.name: model for model in model_sim}
         return simmod
 
