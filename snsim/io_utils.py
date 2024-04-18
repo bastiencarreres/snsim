@@ -261,7 +261,7 @@ def _read_sub_field_map(field_size_rad, field_config):
         A dict containing the corner postion of the field.
 
     """
-    file = open(field_config)
+    file = open(field_config, encoding="utf-8")
     # Header symbol
     dic_symbol = {}
     nbr_id = -2
