@@ -190,7 +190,6 @@ def write_fit(sim_lcs_meta, fit_res, fit_model_name, sim_header, directory):
     for obj_ID in fit_res:
         snc_out = fit_res[obj_ID]["snc_out"]
         data[obj_ID] = {**sim_lcs_meta[obj_ID]}
-        data[obj_ID].pop("type")
         if snc_out != "NaN":
             data[obj_ID] = {**data[obj_ID], **fit_res[obj_ID]["params"]}
             data[obj_ID].pop("z")
