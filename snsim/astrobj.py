@@ -109,7 +109,6 @@ class AstrObj(abc.ABC):
 
         """
 
-       
         if "model_version" not in self._sim_par:
             version = None
         else:
@@ -358,24 +357,6 @@ class SNIa(AstrObj):
                 )
                 + self.mu
             )
-
-        elif self._relation.lower() == "bs20":
-            mb = (
-                self.BS20(
-                    self._sim_par["M0"],
-                    self._sim_par["alpha"],
-                    self._sim_par["beta"],
-                    self._sim_par["x1"],
-                    self._sim_par["c"],
-                )
-                + self.mu
-            )
-
-            dust = snc.CCM89Dust()
-            model.add_effect(dust, frame="rest", name="host_")
-            model.set(
-                **{"host_ebv": self._sim_par["E_dust"], "host_r_v": self._sim_par["RV"]}
-            )
         else:
             # TODO - BC : Find a way to use lambda function for relation
             raise ValueError("Relation not available")
@@ -402,10 +383,6 @@ class SNIa(AstrObj):
     @staticmethod
     def SALTTripp(M0, alpha, beta, x1, c, coh_sct):
         return M0 - alpha * x1 + beta * c + coh_sct
-
-    @staticmethod
-    def BS20(M0, alpha, beta, x1, c):
-        return M0 - alpha * x1 + beta * c
 
 
 class TimeSeries(AstrObj):

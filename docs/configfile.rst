@@ -218,12 +218,12 @@ This section concern the type Ia supernovae properties.
 
    -  Give ‘ptf19’ : use the
       `PTF19 <https://arxiv.org/abs/1903.08580>`__ SN Ia rate
-      :math:`r_v = 2.43 \times10^{-5} \ SN.Mpc^{-3}.year^{-1}` for
+      :math:`r_v = 2.43 \times 10^{-5} \ SN.Mpc^{-3}.year^{-1}` for
       :math:`H_0 = 70` km/s/Mpc. :math:`r_v` is rescale in function of
       the :math:`H_0` set in cosmology.
    - Give ‘ztf20’ : use the
      `PTF20 <https://arxiv.org/abs/2009.012420>`__ SN Ia rate
-     :math:`r_v = 2.35 \times10^{-5} \ SN.Mpc^{-3}.year^{-1}` for
+     :math:`r_v = 2.35 \times 10^{-5} \ SN.Mpc^{-3}.year^{-1}` for
      :math:`H_0 = 70` km/s/Mpc. :math:`r_v` is rescale in function of
      the :math:`H_0` set in cosmology.
    Note that the rate is used to generate the redshift distribution.

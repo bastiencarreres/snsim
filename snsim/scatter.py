@@ -2,9 +2,8 @@
 
 import numpy as np
 import sncosmo as snc
-from . import utils as ut
-from . import nb_fun as nbf
 import scipy.stats as stats
+from . import utils as ut
 
 
 def init_sn_sct_model(sct_mod, *args):
@@ -146,7 +145,7 @@ class C11(snc.PropagationEffect):
 ##########################################
 # GENERATE terms for BS20 scattering model#
 ##########################################
-def gen_BS20_scatter(n_sn, seed=None):
+def gen_BS20_scatter(n_sn, par_names=['beta_sn', 'Rv', 'E_dust', 'c_int'], seed=None):
     """Generate n coherent mag scattering term.
 
     Parameters
@@ -162,24 +161,26 @@ def gen_BS20_scatter(n_sn, seed=None):
         numpy array containing scattering terms generated.
 
     """
-
+    par_names = np.atleast_1d(par_names)
     rand_gen = np.random.default_rng(seed)
 
     lower, upper = 0.5, 1000
     mu, sigma = 2, 1.4
-    X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
-    Rv = X.rvs(n_sn)
+    Rvdist = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
+    Rvdist.random_state = rand_gen
 
-    E_dust = rand_gen.exponential(
-        scale=0.1, size=n_sn
-    )  # value fitted in Brout and Scolnic 2020 shown in table 1
-
-    beta_sn = rand_gen.normal(
-        loc=1.98, scale=0.35, size=n_sn
-    )  # value of mean and sigma are fitted in Brout and Scolnic 2020
-
-    c_int = rand_gen.normal(
-        loc=-0.084, scale=0.042, size=n_sn
-    )  # value of mean and sigma are fitted in Brout and Scolnic 2020
-
-    return beta_sn, Rv, E_dust, c_int
+    randdist = {'Rv': lambda n: Rvdist.rvs(n),
+                'beta_sn': lambda n: rand_gen.normal(
+                                    loc=1.98, scale=0.35, # value of mean and sigma are fitted in Brout and Scolnic 2020
+                                    size=n
+                                    ), 
+                'E_dust': lambda n: rand_gen.exponential(
+                                    scale=0.1, # value fitted in Brout and Scolnic 2020 shown in table 1
+                                    size=n 
+                                    ),
+                'c_int': lambda n: rand_gen.normal(
+                                    loc=-0.084, scale=0.042, # value of mean and sigma are fitted in Brout and Scolnic 2020
+                                    size=n
+                                    ),
+                }
+    return [randdist[p](n_sn) for p in par_names]

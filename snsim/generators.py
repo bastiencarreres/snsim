@@ -799,8 +799,13 @@ class SNIaGen(BaseGen):
                     }
                 )
             elif self._params["sct_model"] in ["C11_0", "C11_1", "C11_2"]:
-                effects.append({"source": sct.C11(), "frame": "rest", "name": "C11_"})
-
+                effects.append({"source": sct.C11(),
+                                "frame": "rest",
+                                "name": "C11_"})
+            elif self._params["sct_model"].lower() == "bs20":
+                effects.append({"source": snc.CCM89Dust(),
+                                "frame": "rest", 
+                                "name": "BS20_"})
         return effects
 
     def _update_header(self):
@@ -863,6 +868,13 @@ class SNIaGen(BaseGen):
             "M0": np.ones(n_obj) * self._init_M0(),
             "coh_sct": self.gen_coh_scatter(n_obj, seed=seeds[0]),
         }
+        
+        # -- Spectra model parameters
+        if self._params["model_name"] in ("salt2", "salt3"):
+            sim_x1, sim_c, alpha, beta = self.gen_salt_par(
+                n_obj, seeds[1], basic_par=basic_par
+            )
+            params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
 
         # -- Non-coherent scattering effects
         if "sct_model" in self._params:
@@ -872,18 +884,9 @@ class SNIaGen(BaseGen):
             elif self._params["sct_model"] == "C11":
                 params["C11_RndS"] = randgen.integers(1e12, size=n_obj)
             elif self._params["sct_model"].lower() == "bs20":
-                _, params["RV"], params["E_dust"], _ = sct.gen_BS20_scatter(
-                    n_obj, seeds[2]
+                params["BS20_r_v"], params["BS20_ebv"], _ = sct.gen_BS20_scatter(
+                    n_obj, par_names=['Rv', 'E_dust'], seed=seeds[2]
                 )
-
-        # -- Spectra model parameters
-        model_name = self._params["model_name"]
-
-        if model_name in ("salt2", "salt3"):
-            sim_x1, sim_c, alpha, beta = self.gen_salt_par(
-                n_obj, seeds[1], basic_par=basic_par
-            )
-            params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
 
         return params
 
@@ -945,7 +948,7 @@ class SNIaGen(BaseGen):
         # -- c dist
         if isinstance(self._params["dist_c"], str):
             if self._params["dist_c"].lower() == "bs20":
-                _, _, _, sim_c = sct.gen_BS20_scatter(n_sn, seeds[1])
+                sim_c = sct.gen_BS20_scatter(n_sn, par_names='c_int', seed=seeds[1])[0]
         else:
             sim_c = ut.asym_gauss(*self._params["dist_c"], seed=seeds[1], size=n_sn)
 
@@ -961,7 +964,7 @@ class SNIaGen(BaseGen):
             beta = ut.asym_gauss(*self._params["beta"], seed=seeds[3], size=n_sn)
         elif isinstance(self._params["beta"], str):
             if self._params["beta"].lower() == "bs20":
-                beta, _, _, _ = sct.gen_BS20_scatter(n_sn, seeds[3])
+                beta = sct.gen_BS20_scatter(n_sn, par_names='beta_sn', seed=seeds[3])[0]
         return sim_x1, sim_c, alpha, beta
 
 
