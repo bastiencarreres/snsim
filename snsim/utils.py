@@ -474,7 +474,7 @@ def Templatelist_fromsncosmo(source_type=None):
     Parameters
     -----------
     source_type : str
-                 type of sources could be snii,sniipl,sniib,sniin,snib/c,snic,snib or snic-bl
+        type of sources could be snii,sniipl,sniib,sniin,snib/c,snic,snib or snic-bl
     Return
     ----------
     list on names of sources with the given source_type from snscomo catalogue"""
@@ -608,6 +608,29 @@ def print_rate(use_rate, gen):
 
 
 def sine_interp(x_new, fun_x, fun_y):
+    """Make a sinus interpolation of a function.
+
+    Parameters
+    ----------
+    x_new : numpy.ndarray(float)
+        Points where interpolate.
+    fun_x : numpy.ndarray(float)
+        x values of the function
+    fun_y : numpy.ndarray(float)
+        values of the function evaluate at fun_x
+
+    Returns
+    -------
+    numpy.ndarray(float)
+        Values of the function at x_new.
+
+    Raises
+    ------
+    ValueError
+        fun_x and fun_y don't have the same length
+    ValueError
+        x_new is out of range
+    """    
     if len(fun_x) != len(fun_y):
         raise ValueError("x and y must have the same len")
     if (x_new > fun_x[-1]).any() or (x_new < fun_x[0]).any():
@@ -629,6 +652,21 @@ def sine_interp(x_new, fun_x, fun_y):
 
 
 def gen_rndchilds(seed, size=1):
+    """
+    Create child random seeds.
+
+    Parameters
+    ----------
+    seed : numpy.random.SeedSequence or int
+        A random seed.
+    size : int, optional
+        number of child random seed to generate, by default 1
+
+    Returns
+    -------
+    tuple(numpy.random.SeedSequence)
+        The desired number of child random seeds
+    """    
     if isinstance(seed, np.random.SeedSequence):
         return seed.spawn(size)
     else:
