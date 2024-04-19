@@ -62,13 +62,12 @@ class Simulator:
     |     M0: SN ABSOLUT MAGNITUDE
     |     sigM: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
-    |     model_config:
-    |         model_name: 'THE MODEL NAME'  Example : 'salt2'
-    |         model_dir: '/PATH/TO/SALT/MODEL'
-    |         alpha: STRETCH CORRECTION = alpha*x1
-    |         beta: COLOR CORRECTION = -beta*c
-    |         dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
-    |         dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
+    |     model_name: 'THE MODEL NAME'  Example : 'salt2'
+    |     model_dir: '/PATH/TO/SALT/MODEL'
+    |     alpha: STRETCH CORRECTION = alpha*x1
+    |     beta: COLOR CORRECTION = -beta*c
+    |     dist_x1: [MEAN X1, SIGMA X1], [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
+    |     dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
     | cosmology:
     |     Om0: MATTER DENSITY
     |     H0: HUBBLE CONSTANT
