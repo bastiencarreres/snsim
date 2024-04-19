@@ -6,65 +6,68 @@ The input file is a .yml with the following structure:
 .. code:: yaml
 
    data:
-       write_path: '/PATH/TO/OUTPUT'
-       sim_name: 'NAME OF SIMULATION'
-       write_format: 'format' or ['format1','format2']  # Optional default pkl, parquet
+      write_path: '/PATH/TO/OUTPUT'
+      sim_name: 'NAME OF SIMULATION'
+      write_format: 'format' or ['format1','format2']  # Opt, default pkl, parquet
    survey_config:
-       survey_file: '/PATH/TO/FILE'
-       band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in the database doesn't correpond to those in sncosmo registery
-       add_data: ['keys1', 'keys2', ...]  # Optional add survey file keys to metadata
-       survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...}  # Optional SQL conditions on key
-       key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
-       zp: INSTRUMENTAL ZEROPOINT  # Optional, default given by survey file)
-       sig_zp: UNCERTAINTY ON ZEROPOINT  # Optional, default given by survey file)
-       sig_psf: GAUSSIAN PSF SIGMA  # Optional, default given by survey file as FWHMeff
-       noise_key: [key, type] type can be 'mlim5' or 'skysigADU'                      
-       ra_size: RA FIELD SIZE in DEG
-       dec_size: DEC FIELD SIZE in DEG
-       gain: CCD GAIN e-/ADU  # Optional, default given by survey file
-       start_day: MJD NUMBER or 'YYYY-MM-DD'  # Optional, default given by survey file
-       end_day: MJD NUMBER or 'YYYY-MM-DD'  # Optional, default given by survey file
-       duration: SURVEY DURATION (DAYS)  # Optional, default given by survey file
-       field_map: FIELD MAP FILE  # Optional, default is rectangle field
-       fake_skynoise: [VALUE, 'add' or 'replace']  # Optional, default is no fake_skynoise
-       sub_field: 'sub_field_key' # Used to divided observation in CCD quadrant for example
+      survey_file: '/PATH/TO/FILE'
+      band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Opt, use if bandname in the database doesn't correpond to those in sncosmo registery
+      add_data: ['keys1', 'keys2', ...] COLUMNS TO KEEP IN FINAL SIMUALTED DATA # Opt
+      survey_cut: {'key1': ["conditon1","conditon2",...], 'key2':["conditon1"],...}  # Optional SQL conditions on key
+      key_dic: {'column_name': 'new_column_name', etc}  # Opt, to change columns names
+      zp: INSTRUMENTAL ZEROPOINT  # Opt, default given by survey file)
+      sig_zp: UNCERTAINTY ON ZEROPOINT  # Opt, default given by survey file)
+      sig_psf: GAUSSIAN PSF SIGMA  # Opt, default given by survey file as FWHMeff
+      noise_key: [key, type] type can be 'mlim5' or 'skysigADU'                      
+      ra_size: RA FIELD SIZE in DEG
+      dec_size: DEC FIELD SIZE in DEG
+      gain: CCD GAIN e-/ADU  # Optional, default given by survey file
+      start_day: MJD NUMBER or 'YYYY-MM-DD'  # Opt, default given by survey file
+      end_day: MJD NUMBER or 'YYYY-MM-DD'  # Opt, default given by survey file
+      duration: SURVEY DURATION (DAYS)  # Opt, default given by survey file
+      field_map: FIELD MAP FILE  # Opt, default is rectangle field
+      fake_skynoise: [VALUE, 'add' or 'replace'] # Opt, default is no fake_skynoise
+      sub_field: 'sub_field_key' # Used to divided observation in CCD quadrant for example
    sim_par:
-       z_range: [ZMIN, ZMAX]
-       randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
-       nep_cut: [[nep_min1,Tmin,Tmax], [nep_min2,Tmin2,Tmax2,'filter1'], ...] EP CUTS # Optional
-       duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Optional
+      z_range: [ZMIN, ZMAX] REDSHIFT RANGE
+      randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
+      nep_cut: [[nep_min1,Tmin,Tmax], [nep_min2,Tmin2,Tmax2,'filter1'], ...] EP CUTS # Opt
+      duration_for_rate: FAKE DURATION ONLY USE TO GENERATE N OBJ  # Opt
    snia_gen:
-       force_n: NUMBER OF OBJ TO GENERATE  # Optional
-       sn_rate: rate of SN/Mpc^3/year or registered rate  # Optional, default=3e-5
-       rate_pw: rate = sn_rate*(1+z)^rate_pw  # Optional, default=0
-       M0: SN ABSOLUT MAGNITUDE
-       mag_sct: SN INTRINSIC COHERENT SCATTERING
-       sct_model: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
-       mod_fcov: True or False # Use the covariance of simulation model to scatter flux Optional, default = False
-       model_name: 'THE MODEL NAME' #  Example : 'salt2'
-       model_dir: '/PATH/TO/SALT/MODEL'
-       # Model parameters : here example for salt
-       alpha: STRETCH CORRECTION = alpha*x1
-       beta: COLOR CORRECTION = -beta*c
-       dist_x1: [MEAN X1, SIGMA X1] or [MEAN X1, SIGMA_X1_LOW, SIGMA_X1_HIGH] or 'N21'
-       dist_c: [MEAN C, SIGMA C] or [SIGMA_C_LOW, SIGMA_C_HIGH]
+      force_n: NUMBER OF OBJ TO GENERATE  # Opt
+      sn_rate: SN RATE in SN/Mpc^3/year # Opt, default=3e-5
+      M0: SN ABSOLUT MAGNITUDE
+      mag_sct: SN INTRINSIC COHERENT SCATTERING 
+      sct_model: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
+      mod_fcov: True or False, Use the covariance of simulation model to scatter flux # Opt, default = False
+      model_name: MODEL NAME
+      model_version: VERSION OF THE SNCOSMO MODEL # Opt, default = None
+      model_dir: PATH TO THE MODEL # Opt, default = None
+      # Model parameters : here example for salt
+      alpha: STRETCH CORRECTION = alpha*x1
+      beta: COLOR CORRECTION = -beta*c
+      dist_x1: SALT Strectch parameter distribution
+      dist_c: SALT color parameter distribution
    cosmology:  # Follow astropy formalism
-       Om0: MATTER DENSITY  
-       H0: HUBBLE CONSTANT
+      Om0: MATTER DENSITY  
+      H0: HUBBLE CONSTANT
    cmb:
-       v_cmb: OUR PECULIAR VELOCITY  # Optional, default = 369.82 km/s
-       l_cmb: GAL L OF CMB DIPOLE  # Optional, default = 264.021            
-       b_cmb: GAL B OF CMB DIPOLE  # Optional, default = 48.253   
-   mw_dust: # Optional
-       model: MOD_NAME
-       rv: Rv # Optional, default Rv = 3.1
-   vpec_dist: # Optional
-        mean_vpec: MEAN SN PECULIAR VEL
-        sig_vpec: SIGMA VPEC
-   host: # Optional 
-        host_file: '/PATH/TO/HOSTFILE' 
-        distrib: 'as_sn' or 'as_host' or 'mass_weight' # Optional, default = 'as_sn'
-        key_dic: {'column_name': 'new_column_name', ...}  # Optional, to change columns names
+      v_cmb: OUR PECULIAR VELOCITY  # Opt, default = 369.82 km/s
+      l_cmb: GAL L OF CMB DIPOLE  # Opt, default = 264.021            
+      b_cmb: GAL B OF CMB DIPOLE  # Opt, default = 48.253   
+   mw_dust: # Opt, default no mw dust
+      model: MOD_NAME
+      rv: RV Value # Optional, default = 3.1
+   vpec_dist: # Opt
+      mean_vpec: MEAN SN PECULIAR VEL
+      sig_vpec: SIGMA VPEC
+   host: # Opt 
+      host_file: '/PATH/TO/HOSTFILE' 
+      distrib: DISTRIBUTION TO USE TO DRAW HOST # Opt, default = 'rate'
+      key_dic: {'column_name': 'new_column_name', ...}  # Opt, to change columns names
+   dask: # Opt, to use dask parallelization
+      use: True or False
+      nworkers: NUMBER OF WORKERS # used to adjust work distribution
 
 data
 ----
@@ -161,7 +164,6 @@ astrobj_gen
 
 Here we present how to generate different astrobj : each astrobj
 configuration us represented by a yaml section named astrobj_gen.
-Available astrobj are : \* SNIa (Future implementaiton for new astrobj)
 
 Common properties
 ~~~~~~~~~~~~~~~~~
@@ -173,9 +175,6 @@ Common properties to all astro obj
 -  **rate** is the rate of SN in units of SN/Mpc\ :math:`^3`/year.
    *type* : float or str. *Optional* : default value is
    :math:`3 \times 10^{-5}\ SN.Mpc^{-3}.year^{-1}` .
--  **rate_pw** give an evolution of the rate with redshift as
-   :math:`r_v(z) = (1+z)^{rate_pw} r_v(0)`. *type* float. *Optional* :
-   default is 0.
 -  **mod_fcov** use or not the simulation model covariance to scatter
    flux. *type* : boolean. *Optional* : default is False.
 
