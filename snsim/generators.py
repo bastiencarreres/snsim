@@ -884,7 +884,7 @@ class SNIaGen(BaseGen):
             elif self._params["sct_model"] == "C11":
                 params["C11_RndS"] = randgen.integers(1e12, size=n_obj)
             elif self._params["sct_model"].lower() == "bs20":
-                params["BS20_r_v"], params["BS20_ebv"], _ = sct.gen_BS20_scatter(
+                params["BS20_r_v"], params["BS20_ebv"] = sct.gen_BS20_scatter(
                     n_obj, par_names=['Rv', 'E_dust'], seed=seeds[2]
                 )
 
