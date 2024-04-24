@@ -426,6 +426,8 @@ class BaseGen(abc.ABC):
         dz = 1e-5
 
         z_shell = np.linspace(z_min, z_max, int((z_max - z_min) / dz))
+        dz = z_shell[1] - z_shell[0]
+
         co_dist = self.cosmology.comoving_distance(z_shell).value
         shell_vol = (
             4 * np.pi * co_dist**2 * C_LIGHT_KMS / self.cosmology.H(z_shell).value * dz
