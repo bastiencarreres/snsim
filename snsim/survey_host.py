@@ -683,6 +683,13 @@ class SnHost:
     ----------
     config : str
         Configuration of host.
+
+        | vpec_dist
+        | ├── host_file, 'PATH/TO/HOSTFILE'
+        | ├── distrib, str, Optional, default = 'rate', options given by self._dist_options
+        | ├── unweight, bool, Optional, default = False, unweight input host distrib
+        | └── key_dic: {'column_name': 'new_column_name', etc}, Optional, only use to change columns names
+
     z_range : list(float), opt
         The redshift range.
     """
@@ -704,6 +711,8 @@ class SnHost:
                 f"{self.config['distrib']} is not an available option,"
                 f"distributions are {self._dist_options}"
             )
+        if "unweight" not in self.config:
+            self._config["unweight"] = False
 
     @property
     def config(self):
@@ -762,7 +771,7 @@ class SnHost:
                 )
             host_list.query(f"zcos >= {z_min} & zcos <= {z_max}", inplace=True)
         else:
-            # By default give z range as hsot z range
+            # By default give z range as host z range
             z_range = host_list.zcos.min(), host_list.zcos.max()
         if self._geometry is not None:
             ra_min, dec_min, ra_max, dec_max = self._geometry.bounds
@@ -787,7 +796,12 @@ class SnHost:
         numpy.ndarray(float)
             weigths for the random draw.
         """
-        if self.config["distrib"].lower() == "random":
+        if self.config["unweight"]:
+            count, egdes = np.histogram(self.table["zcos"], bins='rice')
+            count = count / np.sum(count)
+            zcenter = (egdes[:-1] + egdes[1:]) * 0.5
+            unweight = 1 / np.interp(self.table["zcos"], zcenter, count)
+        if self.config["distrib"].lower() == "random" and not self.config["unweight"]:
             weights = None
         elif rate is not None:
             # Take into account rate is divide by (1 + z)
@@ -815,10 +829,12 @@ class SnHost:
                     SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
                 )
                 weights = weights_rate * (weights_mass + weights_SFR)
-            # Normalize
-            weights /= weights.sum()
         else:
             raise ValueError("rate should be set to use host distribution")
+
+        if weights is not None:
+            # Normalize
+            weights /= weights.sum()
         return weights
 
         # elif self.config['distrib'].lower() == 'gal_prop':
