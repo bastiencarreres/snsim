@@ -684,7 +684,7 @@ class SnHost:
     config : str
         Configuration of host.
 
-        | vpec_dist
+        | config
         | ├── host_file, 'PATH/TO/HOSTFILE'
         | ├── distrib, str, Optional, default = 'rate', options given by self._dist_options
         | ├── unweight, bool, Optional, default = False, unweight input host distrib
@@ -829,7 +829,7 @@ class SnHost:
         else:
             raise ValueError("rate should be set to use host distribution")
 
-        # Unweights currents data if asked
+        # Unweights currents distribution if asked
         if self.config["unweight"]:
             count, egdes = np.histogram(self.table["zcos"], bins='rice')
             count = count / np.sum(count)
