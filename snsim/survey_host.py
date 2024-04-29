@@ -796,12 +796,9 @@ class SnHost:
         numpy.ndarray(float)
             weigths for the random draw.
         """
-        if self.config["unweight"]:
-            count, egdes = np.histogram(self.table["zcos"], bins='rice')
-            count = count / np.sum(count)
-            zcenter = (egdes[:-1] + egdes[1:]) * 0.5
-            unweight = 1 / np.interp(self.table["zcos"], zcenter, count)
-        if self.config["distrib"].lower() == "random" and not self.config["unweight"]:
+
+        # Weights options
+        if self.config["distrib"].lower() == "random":
             weights = None
         elif rate is not None:
             # Take into account rate is divide by (1 + z)
@@ -832,8 +829,19 @@ class SnHost:
         else:
             raise ValueError("rate should be set to use host distribution")
 
+        # Unweights currents data if asked
+        if self.config["unweight"]:
+            count, egdes = np.histogram(self.table["zcos"], bins='rice')
+            count = count / np.sum(count)
+            zcenter = (egdes[:-1] + egdes[1:]) * 0.5
+            unweights = 1 / np.interp(self.table["zcos"], zcenter, count)
+            if weights is not None:
+                weights *= unweights
+            else:
+                weights = unweights
+
+        # Normalize
         if weights is not None:
-            # Normalize
             weights /= weights.sum()
         return weights
 
