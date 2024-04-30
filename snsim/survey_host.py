@@ -687,7 +687,7 @@ class SnHost:
         | config
         | ├── host_file, 'PATH/TO/HOSTFILE'
         | ├── distrib, str, Optional, default = 'rate', options given by self._dist_options
-        | ├── unweight, bool, Optional, default = False, unweight input host distrib
+        | ├── reweight_vol, bool, Optional, default = False, reweight input host distrib to volumetric
         | └── key_dic: {'column_name': 'new_column_name', etc}, Optional, only use to change columns names
 
     z_range : list(float), opt
@@ -711,8 +711,8 @@ class SnHost:
                 f"{self.config['distrib']} is not an available option,"
                 f"distributions are {self._dist_options}"
             )
-        if "unweight" not in self.config:
-            self._config["unweight"] = False
+        if "reweight_vol" not in self.config:
+            self._config["reweight_vol"] = False
 
     @property
     def config(self):
@@ -783,6 +783,14 @@ class SnHost:
         host_list.reset_index(drop=True, inplace=True)
         return z_range, host_list
 
+    def _reweight_volumetric(self, cosmology):
+        count, egdes = np.histogram(self.table["zcos"], bins='rice')
+        count = count / np.sum(count)
+        zcenter = (egdes[:-1] + egdes[1:]) * 0.5
+        V = cosmology.comoving_distance(self.table["zcos"])**3
+        weights =  V / np.interp(self.table["zcos"], zcenter, count)
+        return weights
+        
     def compute_weights(self, rate=None, sn_type=None, cosmology=None):
         """Compute the weights for random choice.
 
@@ -829,16 +837,14 @@ class SnHost:
         else:
             raise ValueError("rate should be set to use host distribution")
 
-        # Unweights currents distribution if asked
-        if self.config["unweight"]:
-            count, egdes = np.histogram(self.table["zcos"], bins='rice')
-            count = count / np.sum(count)
-            zcenter = (egdes[:-1] + egdes[1:]) * 0.5
-            unweights = 1 / np.interp(self.table["zcos"], zcenter, count)
+        # Reweight currents distribution if asked
+        if self.config["reweight_vol"]:
+            vol_weights = self._reweight_volumetric(cosmology)
             if weights is not None:
-                weights *= unweights
+                print('slt')
+                weights *= vol_weights
             else:
-                weights = unweights
+                weights = vol_weights
 
         # Normalize
         if weights is not None:
