@@ -784,11 +784,11 @@ class SnHost:
         return z_range, host_list
 
     def _reweight_volumetric(self, cosmology):
-        count, egdes = np.histogram(self.table["zcos"], bins='rice')
+        count, zedges = np.histogram(self.table["zcos"], bins='rice')
+        zcenter = (zedges[:-1] + zedges[1:]) * 0.5
+        dV = cosmology.comoving_volume(zedges[1:]).value - cosmology.comoving_volume(zedges[:-1]).value
         count = count / np.sum(count)
-        zcenter = (egdes[:-1] + egdes[1:]) * 0.5
-        V = cosmology.comoving_distance(self.table["zcos"])**3
-        weights =  V / np.interp(self.table["zcos"], zcenter, count)
+        weights = np.interp(self.table["zcos"], zcenter, dV / count)
         return weights
         
     def compute_weights(self, rate=None, sn_type=None, cosmology=None):
@@ -841,7 +841,6 @@ class SnHost:
         if self.config["reweight_vol"]:
             vol_weights = self._reweight_volumetric(cosmology)
             if weights is not None:
-                print('slt')
                 weights *= vol_weights
             else:
                 weights = vol_weights
