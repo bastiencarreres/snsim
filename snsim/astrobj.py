@@ -110,15 +110,6 @@ class AstrObj(abc.ABC):
         """
 
         if "model_version" not in self._sim_par:
-            version = None
-        else:
-            version = self._sim_par["model_version"]
-
-        snc_source = snc.get_source(
-            name=self._sim_par["model_name"], version=version
-        )
-
-        if "model_version" not in self._sim_par:
             self._sim_par["model_version"] = snc_source.version
 
         if effects is not None:
@@ -131,7 +122,7 @@ class AstrObj(abc.ABC):
             eff_frames = None
 
         model = snc.Model(
-            source=snc_source,
+            source=self.source,
             effects=eff,
             effect_names=eff_names,
             effect_frames=eff_frames,
@@ -266,6 +257,23 @@ class AstrObj(abc.ABC):
         sim_lc.index.set_names("epochs", inplace=True)
         return sim_lc
 
+    def mag_restframeband_to_amp(self, mag, band, magsys, amp_param_name='x0'):
+        source = self.source
+        m_current = source.peakmag(band, magsys)
+        return 10.**(0.4 * (m_current - mag)) * source.get(amp_param_name)
+        
+    @property
+    def source(self):
+        if "model_version" not in self._sim_par:
+            version = None
+        else:
+            version = self._sim_par["model_version"]
+
+        snc_source = snc.get_source(
+            name=self._sim_par["model_name"], version=version
+        )
+        return snc_source
+        
     @property
     def zpec(self):
         """Get peculiar velocity redshift."""
@@ -373,11 +381,10 @@ class SNIa(AstrObj):
         self._sim_par["mb"] = mb
 
         # Compute the x0 parameter
-        model.set_source_peakmag(self._sim_par["mb"], "bessellb", "ab")
-        self._sim_par["x0"] = model.get("x0")
+        self._sim_par["x0"] = self.mag_restframeband_to_amp(self._sim_par["mb"], 'bessellb', 'ab')
         
         # Set x1 and c
-        model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
+        model.set(x0=self._sim_par["x0"], x1=self._sim_par["x1"], c=self._sim_par["c"])
         return model
 
     @staticmethod
