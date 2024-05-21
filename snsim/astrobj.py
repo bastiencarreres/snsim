@@ -372,12 +372,12 @@ class SNIa(AstrObj):
 
         self._sim_par["mb"] = mb
 
-        # Set x1 and c
-        model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
-
         # Compute the x0 parameter
         model.set_source_peakmag(self._sim_par["mb"], "bessellb", "ab")
         self._sim_par["x0"] = model.get("x0")
+        
+        # Set x1 and c
+        model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
         return model
 
     @staticmethod
