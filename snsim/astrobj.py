@@ -269,10 +269,7 @@ class AstrObj(abc.ABC):
         else:
             version = self._sim_par["model_version"]
 
-        snc_source = snc.get_source(
-            name=self._sim_par["model_name"], version=version
-        )
-        return snc_source
+        return snc.get_source(name=self._sim_par["model_name"], version=version)
         
     @property
     def zpec(self):
