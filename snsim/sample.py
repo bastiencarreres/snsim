@@ -29,23 +29,16 @@ class SimSample:
         Path of the sample.
     """
 
-    def __init__(self, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
+    def __init__(self, sample_name, sim_lcs, header, dir_path=None):
         """Initialize SimSample class."""
         self._name = sample_name
         self._header = header
         self._sim_lcs = copy.copy(sim_lcs)
-        self._model_dir = model_dir
         self._dir_path = dir_path
-
-        self._fit_model = None
-        self._fit_res = None
-
-        self.modified_lcs = copy.copy(sim_lcs)
-
         self._bands = self.sim_lcs['band'].unique()
 
     @classmethod
-    def fromDFlist(cls, sample_name, sim_lcs, header, model_dir=None, dir_path=None):
+    def fromDFlist(cls, sample_name, sim_lcs, header, dir_path=None):
         """Initialize the class from a list of pandas.DataFrame.
 
         Parameters
@@ -62,10 +55,6 @@ class SimSample:
             The sim lightcurves.
         header : dict
             Simulation header.
-        model_dir : str, optional default is None
-            Simulation model directory.
-        dir_path : str, optional default is None
-            Path to the output directory.
 
         Returns
         -------
@@ -76,11 +65,10 @@ class SimSample:
         IDs = (sim_lcs[i].attrs['ID'] for i in range(len(sim_lcs)))
         lcs = pd.concat(sim_lcs,  keys=IDs, names=['ID'])
         lcs.attrs = {lc.attrs['ID']: lc.attrs for lc in sim_lcs}
-        return cls(sample_name, lcs, header, model_dir=model_dir,
-                   dir_path=dir_path)
+        return cls(sample_name, lcs, header, dir_path=dir_path)
 
     @classmethod
-    def fromFile(cls, sim_file, model_dir=None, engine='pyarrow'):
+    def fromFile(cls, sim_file, engine='pyarrow'):
         """Initialize the class from a fits or pickle file.
 
         Parameters
@@ -102,65 +90,8 @@ class SimSample:
         """
         name, header, lcs = io_ut.read_sim_file(sim_file, engine=engine)
 
-        return cls(name, lcs, header,
-                   model_dir=model_dir, dir_path=os.path.dirname(sim_file) + '/')
+        return cls(name, lcs, header, dir_path=os.path.dirname(sim_file) + '/')
 
-    # TO-DO: repair init_sim_model
-    def _init_sim_model(self):
-        """Initialize sim model.
-
-        Returns
-        -------
-        sncosmo.Model
-            sncosmo sim model.
-
-        """
-        model_name = np.atleast_1d(self.header['model_name'])
-        model_sim=[]
-        effect = []
-        for model in model_name:
-            sim_model = ut.init_sn_model(model, self._model_dir)
-            model_sim.extend([sim_model])
-
-        if 'sct_mod' in self.header:
-            effect.append(sct.init_sn_sct_model(self.header['sct_mod']))
-
-        if 'mw_dust_model' in self.header:
-            mw_dust = {
-                'model':  self.header['mw_dust_model'],
-                'rv': self.header['mw_dust_rv']
-                }
-            effect.append(dst_ut.init_mw_dust(mw_dust))
-
-        simmod={model.source.name: model for model in model_sim}
-        return simmod
-
-    def _set_obj_effects_model(self, model, ID):
-        """Set the model parameters of one obj.
-
-        Parameters
-        ----------
-        model : sncosmo.Model
-            The model to use.
-        ID : int
-            obj ID.
-
-        Returns
-        -------
-        None
-            Directly set model parameters.
-
-        """
-        for effect, eff_name in zip(model.effects,
-                                    model.effect_names):
-            for par in effect.param_names:
-                pname = eff_name + par
-                if pname in self.sim_lcs.attrs[ID]:
-                    model.set(**{pname: self.sim_lcs.attrs[ID][pname]})
-                elif pname in self.header:
-                    model.set(**{pname: self.header[pname]})
-                else:
-                    raise AttributeError(f'{pname} not found')
 
     def get_obj_sim_model(self, obj_ID):
         """Get th sim model of one obj.
@@ -176,10 +107,18 @@ class SimSample:
             sncosmo sim model of the obj.
 
         """
-        model = self._sim_model[self.meta[obj_ID]['template']]
-        simmod = copy.copy(model)
-        par = {'z': self.meta[obj_ID]['zobs'],
-                't0': self.meta[obj_ID]['sim_t0']}
+        source = snc.get_source(self.meta[obj_ID]['model_name'], 
+                                version=self.meta[obj_ID]['model_version'])
+        
+        # for eff in self.meta[obj_ID]['effects']:
+        #     if eff.lower() == 'mw_':
+        #         cst.effect_dic['mw_'](self.header['mw_dust_model'], 
+        #                               self.header['mw_dust_rv'])
+        
+        sim_model = snc.Model(source)
+        par = {
+            'z': self.meta[obj_ID]['zobs'],
+            't0': self.meta[obj_ID]['sim_t0']}
 
         if self.header['obj_type'].lower() == 'snia':
             par = {**par, **self._get_snia_simsncpar(obj_ID)}
@@ -187,9 +126,8 @@ class SimSample:
         else:
             par= {**par,**self._get_sn_simsncpar(obj_ID)}
 
-        simmod.set(**par)
-        self._set_obj_effects_model(simmod, obj_ID)
-        simmod.set_source_peakmag(self.meta[obj_ID]['sim_mb'],'bessellb','ab')
+        sim_model.set(**par)
+        #self._set_obj_effects_model(simmod, obj_ID)
         return simmod
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):

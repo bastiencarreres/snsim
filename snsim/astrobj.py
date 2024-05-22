@@ -251,7 +251,9 @@ class AstrObj(abc.ABC):
             "mu": self.mu,
             "zobs": self.zobs,
             "zCMB": self.zCMB,
+            "effects": self.sim_model.effect_names,
             **self._sim_par,
+        
         }
 
         sim_lc.reset_index(inplace=True, drop=True)
@@ -523,6 +525,7 @@ class SNIax(AstrObj):
         m_v = self.mu + M0
 
         # Compute the amplitude  parameter
+        
         model.set_source_peakmag(m_v, "bessellv", "ab")
         self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
         self._sim_par["amplitude"] = model.get("amplitude")
