@@ -108,6 +108,7 @@ class AstrObj(abc.ABC):
             SN simulation model.
 
         """
+        snc_source = self.source
 
         if "model_version" not in self._sim_par:
             self._sim_par["model_version"] = snc_source.version
@@ -122,7 +123,7 @@ class AstrObj(abc.ABC):
             eff_frames = None
 
         model = snc.Model(
-            source=self.source,
+            source=snc_source,
             effects=eff,
             effect_names=eff_names,
             effect_frames=eff_frames,
