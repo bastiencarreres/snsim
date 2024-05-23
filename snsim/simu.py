@@ -523,31 +523,6 @@ class Simulator:
 
         return lcs
 
-    def plot_ra_dec(self, idx, plot_vpec=False, plot_fields=False, **kwarg):
-        """Plot a mollweide map of ra, dec.
-
-        Parameters
-        ----------
-        plot_vpec : boolean
-            If True plot a vpec colormap.
-
-        Returns
-        -------
-        None
-            Just plot the map.
-
-        """
-        if plot_fields:
-            field_dic = self.survey.fields._dic
-            field_size = self.survey.fields.size
-        else:
-            field_dic = None
-            field_size = None
-
-        self.samples[idx].plot_ra_dec(
-            plot_vpec=plot_vpec, field_dic=field_dic, field_size=field_size, **kwarg
-        )
-
     @property
     def config(self):
         """Get the whole configuration dic."""
