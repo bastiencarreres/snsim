@@ -428,14 +428,14 @@ class SurveyObs:
             [
                 nbf.new_coord_on_fields(
                     field_corners[:, :, i, :],
-                    np.array([df.fieldRA.values, df.fieldDec.values]),
+                    np.array([df['fieldRA'].values, df['fieldDec'].values]),
                 )
                 for i in range(4)
             ],
             axis=1,
         )
 
-        corners = geo_ut._format_corner(corners, df.fieldRA.values)
+        corners = geo_ut._format_corner(corners, df['fieldRA'].values)
 
         # -- Create shapely polygon
         fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
@@ -514,7 +514,7 @@ class SurveyObs:
         # -- Phase cut
         if phase_cut is not None:
             ObsObj = ObsObj[
-                (ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])
+                (ObsObj['phase'] >= phase_cut[0]) & (ObsObj['phase'] <= phase_cut[1])
             ]
 
         if nep_cut is not None:
@@ -571,14 +571,14 @@ class SurveyObs:
         if self.config["noise_key"][1] == "mlim5":
             # Convert maglim to flux noise (ADU)
             mlim5 = Obs[self.config["noise_key"][0]]
-            skynoise = 10.0 ** (0.4 * (Obs.zp - mlim5)) / 5
+            skynoise = 10.0 ** (0.4 * (Obs['zp'] - mlim5)) / 5
         elif self.config["noise_key"][1] == "skysigADU":
             skynoise = Obs[self.config["noise_key"][0]].copy()
         else:
             raise ValueError("Noise type should be mlim5 or skysigADU")
 
         # Apply PSF
-        psf_mask = Obs.sig_psf > 0
+        psf_mask = Obs['sig_psf'] > 0
         skynoise[psf_mask] *= np.sqrt(4 * np.pi * Obs["sig_psf"][psf_mask] ** 2)
 
         # Skynoise column

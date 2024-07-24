@@ -196,17 +196,17 @@ class AstrObj(abc.ABC):
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise
         fluxerrtrue = np.sqrt(
-            np.abs(fluxtrue) / obs.gain
-            + obs.skynoise**2
-            + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp) ** 2
+            np.abs(fluxtrue) / obs['gain']
+            + obs['skynoise']**2
+            + (np.log(10) / 2.5 * fluxtrue * obs['sig_zp']) ** 2
         )
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0.0, scale=fluxerrtrue)
         fluxerr = np.sqrt(
-            np.abs(flux) / obs.gain
-            + obs.skynoise**2
-            + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2
+            np.abs(flux) / obs['gain']
+            + obs['skynoise']**2
+            + (np.log(10) / 2.5 * flux * obs['sig_zp']) ** 2
         )
 
         # -- Set magnitude
