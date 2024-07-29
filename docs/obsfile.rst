@@ -1,7 +1,7 @@
 Observation database file
 =========================
 
-It’s a **SQL DataBase** (.db) or a **Comma-separated values** (.csv)
+It’s a **Comma-separated values** (.csv) or **parquet** (.parquet)
 file which contain observations informations. It’s used to find obs
 epoch and their noise.
 
@@ -43,11 +43,11 @@ setting the two additional columns:
 +-----------------------------------+-----------------------------------+
 
 In addition you can take into account the variation of the PSF as the
-**F**\ ull **W**\ idth at **H**\ alf **M**\ aximum
-:math:`FWHM = 2 \sqrt{2 \log(2)} \sigma_{skynoise}`
+**F**\ ull **W**\ idth at **H**\ alf **M**\ aximum 
+:math:`FWHM = 2 \sqrt{2 \log(2)} \sigma_\mathrm{psf}`
 
 +-------------------------------------------+
-| FWHMeff                                   |
+| fwhm_psf                                  |
 +===========================================+
 | The Full Width at Half Maximum of the PSF |
 +-------------------------------------------+
@@ -56,7 +56,7 @@ And you can set a different gain for each observation by giving the
 **gain** column :
 
 +------------------------+
-| **gain**               |
+| gain                   |
 +========================+
 | The CCD gain in e-/ADU |
 +------------------------+
@@ -79,11 +79,20 @@ a 4 x 4 grid, you have to put something like that in your .dat file :
 If a sub field is not observed you should set the ID value to -1.
 
 In addition, you can add space between subfield by adding a header
-(begin line with %) that defines some “space-symbols”: \```pseudocode %
-#:ra:0.13 % @:dec:0.13
+(begin line with %) that defines some “space-symbols”: 
 
-ID01:ID02:#:ID03:ID04 ID05:ID06:#:ID07:ID08 @ ID09:ID10:#:ID11:ID12
-ID13:ID14:#:ID15:ID16 \``\` In the previous example the symbol # is used
+.. code:: pseudocode 
+
+   % #:ra:0.13 
+   % @:dec:0.13
+
+   ID01:ID02:#:ID03:ID04 
+   ID05:ID06:#:ID07:ID08 
+   @ 
+   ID09:ID10:#:ID11:ID12
+   ID13:ID14:#:ID15:ID16 
+
+In the previous example the symbol # is used
 has a ra space of 0.13 degrees and the @ is used has a dec space of 0.13
 degrees.
 
@@ -91,7 +100,7 @@ You can show the sub filed map by :
 
 .. code:: python
 
-   sim.survey.fields.show_map()
+   sim.survey.show_map()
 
 .. figure:: _static/show_map.png
    :alt: show_map
