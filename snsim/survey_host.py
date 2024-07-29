@@ -540,7 +540,9 @@ class SurveyObs:
             Obs["skynoise"] = Obs[self.config["noise_key"][0]]
         else:
             raise ValueError("Noise type should be mlim5 or skysigADU")
-
+        if "ccd_noise" in self.config:
+            Obs["skynoise"] = np.sqrt(Obs["skynoise"]**2 + self.config["ccd_noise"]**2)
+            
         # Apply PSF
         Obs["skynoise"] *= np.sqrt(4 * np.pi) * Obs["fwhm_psf"] / (2 * np.sqrt(2 * np.log(2)))
 

@@ -47,7 +47,7 @@ class Simulator:
     |     dec_size: DEC FIELD SIZE
     |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
     |     sub_field: ['sub_field_file', 'sub_field_key']
-    |     fake_skynoise: [SIGMA_VALUE, 'add' or 'replace']  # Optional, default is 0
+    |     cdd_noise : sig_ccd_noise # Optional, default is 0 ADU
     | sim_par:
     |     randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
     |     z_range: [ZMIN, ZMAX]
