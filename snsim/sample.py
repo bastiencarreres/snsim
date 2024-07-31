@@ -124,11 +124,11 @@ class SimSample:
             par = {**par, **self._get_snia_simsncpar(obj_ID)}
 
         else:
-            par= {**par,**self._get_sn_simsncpar(obj_ID)}
+            par = {**par,**self._get_sn_simsncpar(obj_ID)}
 
         sim_model.set(**par)
-        #self._set_obj_effects_model(simmod, obj_ID)
-        return simmod
+
+        return sim_model
 
     def set_fit_model(self, model, model_dir=None, mw_dust=None):
         """Set the fit with a given SNCosmo Model.
