@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import sncosmo as snc
 from . import utils as ut
 from . import scatter as sct
 from . import plot_utils as plot_ut
@@ -91,7 +92,6 @@ class SimSample:
         name, header, lcs = io_ut.read_sim_file(sim_file, engine=engine)
 
         return cls(name, lcs, header, dir_path=os.path.dirname(sim_file) + '/')
-
 
     def get_obj_sim_model(self, obj_ID):
         """Get th sim model of one obj.
