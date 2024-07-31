@@ -534,12 +534,12 @@ class SurveyObs:
         # Skynoise selection
         if self.config["noise_key"][1] == "mlim5":
             # Convert maglim to flux noise (ADU)
-            mlim5 = Obs[self.config["noise_key"][0]]
-            Obs["skynoise"] = 10.0 ** (0.4 * (Obs['zp'] - mlim5)) / 5
+            Obs["skynoise"] = 10.0 ** (0.4 * (Obs['zp'] - Obs[self.config["noise_key"][0]])) / 5
         elif self.config["noise_key"][1] == "skysigADU":
             Obs["skynoise"] = Obs[self.config["noise_key"][0]]
         else:
             raise ValueError("Noise type should be mlim5 or skysigADU")
+    
         if "ccd_noise" in self.config:
             Obs["skynoise"] = np.sqrt(Obs["skynoise"]**2 + self.config["ccd_noise"]**2)
             
