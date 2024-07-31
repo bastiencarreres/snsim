@@ -114,17 +114,17 @@ class AstrObj(abc.ABC):
             self._sim_par["model_version"] = snc_source.version
 
         if effects is not None:
-            eff = [eff["source"] for eff in effects]
+            eff_sources = [eff["source"] for eff in effects]
             eff_names = [eff["name"] for eff in effects]
             eff_frames = [eff["frame"] for eff in effects]
         else:
-            eff = None
+            eff_sources = None
             eff_names = None
             eff_frames = None
 
         model = snc.Model(
             source=snc_source,
-            effects=eff,
+            effects=eff_sources,
             effect_names=eff_names,
             effect_frames=eff_frames,
         )
@@ -247,13 +247,14 @@ class AstrObj(abc.ABC):
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
 
+        snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k!= 'z'}
         sim_lc.attrs = {
             "mu": self.mu,
             "zobs": self.zobs,
             "zCMB": self.zCMB,
             "effects": self.sim_model.effect_names,
-            **self._sim_par,
-        
+            **snc_par,
+            **self._sim_par
         }
 
         sim_lc.reset_index(inplace=True, drop=True)
@@ -525,7 +526,6 @@ class SNIax(AstrObj):
         m_v = self.mu + M0
 
         # Compute the amplitude  parameter
-        
         model.set_source_peakmag(m_v, "bessellv", "ab")
         self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
         self._sim_par["amplitude"] = model.get("amplitude")
