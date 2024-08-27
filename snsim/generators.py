@@ -783,6 +783,7 @@ class SNIaGen(BaseGen):
 
     def _add_effects(self):
         effects = []
+        args = []
         # Add scattering model if needed
         if "sct_model" in self._params:
             if self._params["sct_model"] == "G10":
@@ -790,26 +791,13 @@ class SNIaGen(BaseGen):
                     "model_name"
                 ][0] not in ["salt2", "salt3"]:
                     raise ValueError("G10 cannot be used")
-                effects.append(
-                    {
-                        "source": sct.G10(
-                            snc.get_source(
+                args = [
+                    snc.get_source(
                                 name=self.sim_sources["model_name"][0],
                                 version=self.sim_sources["model_version"][0],
                             )
-                        ),
-                        "frame": "rest",
-                        "name": "G10_",
-                    }
-                )
-            elif self._params["sct_model"] in ["C11_0", "C11_1", "C11_2"]:
-                effects.append({"source": sct.C11(),
-                                "frame": "rest",
-                                "name": "C11_"})
-            elif self._params["sct_model"].lower() == "bs20":
-                effects.append({"source": snc.CCM89Dust(),
-                                "frame": "rest", 
-                                "name": "BS20_"})
+                        ]
+        effects.append(sct.init_sn_sct_model(self._params["sct_model"], *args))
         return effects
 
     def _update_header(self):

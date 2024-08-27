@@ -47,7 +47,7 @@ class Simulator:
     |     dec_size: DEC FIELD SIZE
     |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
     |     sub_field: ['sub_field_file', 'sub_field_key']
-    |     fake_skynoise: [SIGMA_VALUE, 'add' or 'replace']  # Optional, default is 0
+    |     cdd_noise : sig_ccd_noise # Optional, default is 0 ADU
     | sim_par:
     |     randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
     |     z_range: [ZMIN, ZMAX]
@@ -354,7 +354,6 @@ class Simulator:
                         **gen._get_header(),
                         "cosmo": self._get_cosmo_header(),
                     },
-                    model_dir=None,
                     dir_path=self.config["data"]["write_path"],
                 )
             )
@@ -523,31 +522,6 @@ class Simulator:
             n_to_sim = generator._params["force_n"] - len(lcs)
 
         return lcs
-
-    def plot_ra_dec(self, idx, plot_vpec=False, plot_fields=False, **kwarg):
-        """Plot a mollweide map of ra, dec.
-
-        Parameters
-        ----------
-        plot_vpec : boolean
-            If True plot a vpec colormap.
-
-        Returns
-        -------
-        None
-            Just plot the map.
-
-        """
-        if plot_fields:
-            field_dic = self.survey.fields._dic
-            field_size = self.survey.fields.size
-        else:
-            field_dic = None
-            field_size = None
-
-        self.samples[idx].plot_ra_dec(
-            plot_vpec=plot_vpec, field_dic=field_dic, field_size=field_size, **kwarg
-        )
 
     @property
     def config(self):

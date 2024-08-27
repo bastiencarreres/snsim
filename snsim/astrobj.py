@@ -108,31 +108,23 @@ class AstrObj(abc.ABC):
             SN simulation model.
 
         """
-
-        if "model_version" not in self._sim_par:
-            version = None
-        else:
-            version = self._sim_par["model_version"]
-
-        snc_source = snc.get_source(
-            name=self._sim_par["model_name"], version=version
-        )
+        snc_source = self.source
 
         if "model_version" not in self._sim_par:
             self._sim_par["model_version"] = snc_source.version
 
         if effects is not None:
-            eff = [eff["source"] for eff in effects]
+            eff_sources = [eff["source"] for eff in effects]
             eff_names = [eff["name"] for eff in effects]
             eff_frames = [eff["frame"] for eff in effects]
         else:
-            eff = None
+            eff_sources = None
             eff_names = None
             eff_frames = None
 
         model = snc.Model(
             source=snc_source,
-            effects=eff,
+            effects=eff_sources,
             effect_names=eff_names,
             effect_frames=eff_frames,
         )
@@ -266,17 +258,34 @@ class AstrObj(abc.ABC):
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
 
+        snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k!= 'z'}
         sim_lc.attrs = {
             "mu": self.mu,
             "zobs": self.zobs,
             "zCMB": self.zCMB,
-            **self._sim_par,
+            "effects": self.sim_model.effect_names,
+            **snc_par,
+            **self._sim_par
         }
 
         sim_lc.reset_index(inplace=True, drop=True)
         sim_lc.index.set_names("epochs", inplace=True)
         return sim_lc
 
+    def mag_restframeband_to_amp(self, mag, band, magsys, amp_param_name='x0'):
+        source = self.source
+        m_current = source.peakmag(band, magsys)
+        return 10.**(0.4 * (m_current - mag)) * source.get(amp_param_name)
+        
+    @property
+    def source(self):
+        if "model_version" not in self._sim_par:
+            version = None
+        else:
+            version = self._sim_par["model_version"]
+
+        return snc.get_source(name=self._sim_par["model_name"], version=version)
+        
     @property
     def zpec(self):
         """Get peculiar velocity redshift."""
@@ -383,12 +392,11 @@ class SNIa(AstrObj):
 
         self._sim_par["mb"] = mb
 
-        # Set x1 and c
-        model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
-
         # Compute the x0 parameter
-        model.set_source_peakmag(self._sim_par["mb"], "bessellb", "ab")
-        self._sim_par["x0"] = model.get("x0")
+        self._sim_par["x0"] = self.mag_restframeband_to_amp(self._sim_par["mb"], 'bessellb', 'ab')
+        
+        # Set x1 and c
+        model.set(x0=self._sim_par["x0"], x1=self._sim_par["x1"], c=self._sim_par["c"])
         return model
 
     @staticmethod

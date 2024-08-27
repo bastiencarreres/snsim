@@ -5,6 +5,8 @@ from pathlib import Path
 from astropy import constants as cst
 import numpy as np
 import shapely.geometry as shp_geo
+from . import dust_utils as dst_ut
+from . import scatter as sct
 
 path_location = Path(__file__).absolute().parent
 init_location = path_location / "__init__.py"

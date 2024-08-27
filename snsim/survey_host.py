@@ -35,7 +35,7 @@ class SurveyObs:
     | ├── end_day ENDING DAY -> float or str, opt
     | ├── duration SURVEY DURATION -> float, opt
     | ├── zp FIXED ZEROPOINT -> float, opt
-    | ├── survey_cut, CUT ON DB FILE -> dict, opt
+    | ├── survey_cut, CUT ON OBS FILE -> dict, opt
     | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
     | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
     | └── sub_field, SUBFIELD KEY -> str, opt
@@ -198,8 +198,8 @@ class SurveyObs:
         if "sig_zp" not in self.config:
             keys += ["sig_zp"]
 
-        if "sig_psf" not in self.config:
-            keys += ["FWHMeff"]
+        if "fwhm_psf" not in self.config:
+            keys += ["fwhm_psf"]
 
         if "gain" not in self.config:
             keys += ["gain"]
@@ -242,36 +242,6 @@ class SurveyObs:
             obs_dic.query(query, inplace=True)
         return obs_dic
 
-    def _extract_from_db(self, keys):
-        """Extract the observations table from SQL data base.
-
-        Returns
-        -------
-        pandas.DataFrame
-            The observations table.
-        """
-        con = sqlite3.connect(self.config["survey_file"])
-
-        # Create the SQL query
-        where = ""
-        if "survey_cut" in self.config:
-            where = " WHERE "
-            for cut_var in self.config["survey_cut"]:
-                where += "("
-                for cut in self.config["survey_cut"][cut_var]:
-                    cut_str = f"{cut}"
-                    where += f"{cut_var}{cut_str} AND "
-                where = where[:-4]
-                where += ") AND "
-            where = where[:-5]
-        query = "SELECT "
-        for k in keys:
-            query += k + ","
-        query = query[:-1]
-        query += " FROM Summary" + where + ";"
-        obs_dic = pd.read_sql_query(query, con)
-        return obs_dic
-
     def _init_data(self):
         """Initialize observations table.
 
@@ -287,12 +257,11 @@ class SurveyObs:
 
         # Init necessary keys
         keys = self._check_keys()
-        if ext == ".db":
-            obs_dic = self._extract_from_db(keys)
-        elif ext in [".csv", ".parquet"]:
+
+        if ext in [".csv", ".parquet"]:
             obs_dic = self._extract_from_file(ext, keys)
         else:
-            raise ValueError("Accepted formats are .db, .csv or .parquet")
+            raise ValueError("Accepted formats are .csv or .parquet")
 
         # Add noise key + avoid crash on errors by removing errors <= 0
         obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
@@ -307,8 +276,8 @@ class SurveyObs:
         if self.zp[1] != "sig_zp_in_obs":
             obs_dic["sig_zp"] = self.zp[1]
 
-        if self.sig_psf != "psf_in_obs":
-            obs_dic["sig_psf"] = self.sig_psf
+        if self.fwhm_psf != "psf_in_obs":
+            obs_dic["fwhm_psf"] = self.fwhm_psf
 
         if self.gain != "gain_in_obs":
             obs_dic["gain"] = self.gain
@@ -428,14 +397,14 @@ class SurveyObs:
             [
                 nbf.new_coord_on_fields(
                     field_corners[:, :, i, :],
-                    np.array([df.fieldRA.values, df.fieldDec.values]),
+                    np.array([df['fieldRA'].values, df['fieldDec'].values]),
                 )
                 for i in range(4)
             ],
             axis=1,
         )
 
-        corners = geo_ut._format_corner(corners, df.fieldRA.values)
+        corners = geo_ut._format_corner(corners, df['fieldRA'].values)
 
         # -- Create shapely polygon
         fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
@@ -514,12 +483,12 @@ class SurveyObs:
         # -- Phase cut
         if phase_cut is not None:
             ObsObj = ObsObj[
-                (ObsObj.phase >= phase_cut[0]) & (ObsObj.phase <= phase_cut[1])
+                (ObsObj['phase'] >= phase_cut[0]) & (ObsObj['phase'] <= phase_cut[1])
             ]
 
         if nep_cut is not None:
             for cut in nep_cut:
-                test = (ObsObj.phase > cut[1]) & (ObsObj.phase < cut[2])
+                test = (ObsObj['phase'] > cut[1]) & (ObsObj['phase'] < cut[2])
                 if cut[3] != "any":
                     test &= ObsObj["filter"] == cut[3]
                 test = test.groupby(level=0).sum() >= int(cut[0])
@@ -562,27 +531,20 @@ class SurveyObs:
         Obs.rename(columns={"expMJD": "time", "filter": "band"}, inplace=True)
         Obs.drop(labels=["fieldRA", "fieldDec"], axis=1, inplace=True)
 
-        # PSF selection
-        if self.sig_psf == "psf_in_obs":
-            Obs["sig_psf"] = Obs["FWHMeff"] / (2 * np.sqrt(2 * np.log(2)))
-            Obs.drop(columns="FWHMeff", inplace=True)
-
         # Skynoise selection
         if self.config["noise_key"][1] == "mlim5":
             # Convert maglim to flux noise (ADU)
-            mlim5 = Obs[self.config["noise_key"][0]]
-            skynoise = 10.0 ** (0.4 * (Obs.zp - mlim5)) / 5
+            Obs["skynoise"] = 10.0 ** (0.4 * (Obs['zp'] - Obs[self.config["noise_key"][0]])) / 5
         elif self.config["noise_key"][1] == "skysigADU":
-            skynoise = Obs[self.config["noise_key"][0]].copy()
+            Obs["skynoise"] = Obs[self.config["noise_key"][0]]
         else:
             raise ValueError("Noise type should be mlim5 or skysigADU")
-
+    
+        if "ccd_noise" in self.config:
+            Obs["skynoise"] = np.sqrt(Obs["skynoise"]**2 + self.config["ccd_noise"]**2)
+            
         # Apply PSF
-        psf_mask = Obs.sig_psf > 0
-        skynoise[psf_mask] *= np.sqrt(4 * np.pi * Obs["sig_psf"][psf_mask] ** 2)
-
-        # Skynoise column
-        Obs["skynoise"] = skynoise
+        Obs["skynoise"] *= np.sqrt(4 * np.pi) * Obs["fwhm_psf"] / (2 * np.sqrt(2 * np.log(2)))
 
         # Magnitude system
         Obs["zpsys"] = "ab"
@@ -651,13 +613,13 @@ class SurveyObs:
         return (zp, sig_zp)
 
     @property
-    def sig_psf(self):
+    def fwhm_psf(self):
         """Get PSF width."""
-        if "sig_psf" in self._config:
-            sig_psf = self._config["sig_psf"]
+        if "fwhm_psf" in self._config:
+            fwhm_psf = self._config["fwhm_psf"]
         else:
-            sig_psf = "psf_in_obs"
-        return sig_psf
+            fwhm_psf = "psf_in_obs"
+        return fwhm_psf
 
     @property
     def duration(self):
@@ -683,6 +645,13 @@ class SnHost:
     ----------
     config : str
         Configuration of host.
+
+        | config
+        | ├── host_file, 'PATH/TO/HOSTFILE'
+        | ├── distrib, str, Optional, default = 'rate', options given by self._dist_options
+        | ├── reweight_vol, bool, Optional, default = False, reweight input host distrib to volumetric
+        | └── key_dic: {'column_name': 'new_column_name', etc}, Optional, only use to change columns names
+
     z_range : list(float), opt
         The redshift range.
     """
@@ -704,6 +673,8 @@ class SnHost:
                 f"{self.config['distrib']} is not an available option,"
                 f"distributions are {self._dist_options}"
             )
+        if "reweight_vol" not in self.config:
+            self._config["reweight_vol"] = False
 
     @property
     def config(self):
@@ -762,7 +733,7 @@ class SnHost:
                 )
             host_list.query(f"zcos >= {z_min} & zcos <= {z_max}", inplace=True)
         else:
-            # By default give z range as hsot z range
+            # By default give z range as host z range
             z_range = host_list.zcos.min(), host_list.zcos.max()
         if self._geometry is not None:
             ra_min, dec_min, ra_max, dec_max = self._geometry.bounds
@@ -774,6 +745,14 @@ class SnHost:
         host_list.reset_index(drop=True, inplace=True)
         return z_range, host_list
 
+    def _reweight_volumetric(self, cosmology):
+        count, zedges = np.histogram(self.table["zcos"], bins='rice')
+        zcenter = (zedges[:-1] + zedges[1:]) * 0.5
+        dV = cosmology.comoving_volume(zedges[1:]).value - cosmology.comoving_volume(zedges[:-1]).value
+        count = count / np.sum(count)
+        weights = np.interp(self.table["zcos"], zcenter, dV / count)
+        return weights
+        
     def compute_weights(self, rate=None, sn_type=None, cosmology=None):
         """Compute the weights for random choice.
 
@@ -787,6 +766,8 @@ class SnHost:
         numpy.ndarray(float)
             weigths for the random draw.
         """
+
+        # Weights options
         if self.config["distrib"].lower() == "random":
             weights = None
         elif rate is not None:
@@ -816,6 +797,18 @@ class SnHost:
             weights /= weights.sum()
         else:
             raise ValueError("rate should be set to use host distribution")
+
+        # Reweight currents distribution if asked
+        if self.config["reweight_vol"]:
+            vol_weights = self._reweight_volumetric(cosmology)
+            if weights is not None:
+                weights *= vol_weights
+            else:
+                weights = vol_weights
+
+        # Normalize
+        if weights is not None:
+            weights /= weights.sum()
         return weights
 
         #TO DO: maybe generalize the distribution and add SFH dependence
