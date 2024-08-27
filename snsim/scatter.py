@@ -144,9 +144,9 @@ class C11(snc.PropagationEffect):
         return flux * 10 ** (-0.4 * magscat)
 
 
-##########################################
+###########################################
 # GENERATE terms for BS20 scattering model#
-##########################################
+###########################################
 def gen_BS20_scatter(n_sn, par_names=['beta_sn', 'Rv', 'E_dust', 'c_int'], seed=None):
     """Generate n coherent mag scattering term.
 

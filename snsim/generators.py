@@ -142,11 +142,6 @@ class BaseGen(abc.ABC):
         # -- Get the astrobj class
         self._astrobj_class = getattr(astr, self._object_type)
 
-        # if peak_out_trange:
-        #     t0 = self.time_range[0] - self.snc_model_time[1] * (1 + self.z_range[1])
-        #     t1 = self.time_range[1] - self.snc_model_time[0] * (1 + self.z_range[1])
-        #     self._time_range = (t0, t1)
-
     def __call__(self, n_obj=None, seed=None, basic_par=None):
         """Launch the simulation of obj.
 
@@ -182,25 +177,23 @@ class BaseGen(abc.ABC):
         random_models = self.random_models(n_obj, seed=seeds[2])
 
         # -- Check if there is dust
+        dust_par = {}
         if self.mw_dust is not None:
             dust_par = self._compute_dust_par(basic_par["ra"], basic_par["dec"])
-        else:
-            dust_par = {}
 
         par = pd.DataFrame(
             {**random_models, **obj_par, **dust_par}, index=basic_par.index
-        )
+            )
 
         par = pd.concat([basic_par, par], axis=1)
 
-        if "relation" not in self._params:
-            relation = None
-        else:
-            relation = self._params["relation"]
+        mag_fun = None
+        if "mag_fun" in self._params :
+            mag_fun = self._params["mag_fun"]
 
         # TODO - BC: Dask that part or vectorize it for more efficiency
         return [
-            self._astrobj_class(par_dic, effects=self.sim_effects, relation=relation)
+            self._astrobj_class(par_dic, effects=self.sim_effects, mag_fun=mag_fun)
             for par_dic in par.reset_index().to_dict(orient="records")
         ]
 

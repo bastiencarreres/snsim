@@ -277,7 +277,7 @@ class SurveyObs:
             obs_dic["sig_zp"] = self.zp[1]
 
         if self.fwhm_psf != "psf_in_obs":
-            obs_dic["fwhm_psf"] = self.fwhm_psf
+            obs_dic["fwhm_psf"] = self.fwhm_psf 
 
         if self.gain != "gain_in_obs":
             obs_dic["gain"] = self.gain
@@ -539,12 +539,14 @@ class SurveyObs:
             Obs["skynoise"] = Obs[self.config["noise_key"][0]]
         else:
             raise ValueError("Noise type should be mlim5 or skysigADU")
-    
+
+        # Add CCD noise
         if "ccd_noise" in self.config:
             Obs["skynoise"] = np.sqrt(Obs["skynoise"]**2 + self.config["ccd_noise"]**2)
-            
+
         # Apply PSF
-        Obs["skynoise"] *= np.sqrt(4 * np.pi) * Obs["fwhm_psf"] / (2 * np.sqrt(2 * np.log(2)))
+        if self.fwhm_psf != 0:
+            Obs["skynoise"] *= np.sqrt(4 * np.pi) * Obs["fwhm_psf"] / (2 * np.sqrt(2 * np.log(2)))
 
         # Magnitude system
         Obs["zpsys"] = "ab"
@@ -773,6 +775,7 @@ class SnHost:
         elif rate is not None:
             # Take into account rate is divide by (1 + z)
             weights_rate = rate(self.table["zcos"]) / (1 + self.table["zcos"])
+            
             if self.config["distrib"].lower() == "rate":
                 weights = weights_rate
             elif self.config["distrib"].lower() == "mass":

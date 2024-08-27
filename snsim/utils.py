@@ -704,25 +704,27 @@ def compute_weight_mass_sfr_for_type(mass,sfr, sn_type, cosmology):
     return weights
 
 
+def model_galaxy_noise(sim_par, obs):
+    """Compute noise coming from host galaxy in photoelectron units (approximation)"""
 
-def model_galaxy_noise(sim_par,obs):
-    """ compute noise coming from host galaxy in photoelectron units (approximation)"""
-
-    bands = ["host_"+ b for b in obs['band']]
-    mag_host = np.asarray([sim_par[bb] for bb in bands])
+    bands = ["host_" + b for b in obs['band']]
+    mag_host = np.asarray([sim_par[b] for b in bands])
 
     #compute mean surface brightness of the galaxy
     if sim_par.keys() & {"host_a_sersic", 'host_b_sersic'}:
-        if not isinstance(sim_par["host_a_sersic"], float ):
+        if not isinstance(sim_par["host_a_sersic"], float):
             if "host_w_sersic" not in sim_par.keys():
                 raise ValueError('if you have 2 or more sersic profile for each galaxy, Provide the weights')
             else:
-                s = np.asarray([mag_host  / (w* a * b ) for w,a,b 
-                in zip(sim_par['host_w_sersic'],sim_par['host_a_sersic'],sim_par['host_b_sersic'])])
+                s = np.asarray([mag_host  / (w * a * b) for w, a, b 
+                in zip(sim_par['host_w_sersic'],
+                       sim_par['host_a_sersic'],
+                       sim_par['host_b_sersic'])])
+                
                 surf_bright = np.sum(s,axis=0)
 
         elif isinstance(sim_par["host_a_sersic"], float):
-            surf_bright = mag_host  / (  sim_par['host_a_sersic'] * sim_par['host_b_sersic'] )
+            surf_bright = mag_host  / (sim_par['host_a_sersic'] * sim_par['host_b_sersic'])
     
         else:
             raise ValueError('for sersic parameters provide list or float for each host galaxies')
@@ -731,7 +733,7 @@ def model_galaxy_noise(sim_par,obs):
         raise ValueError('provide sersic ellipse parameters as host_a_sersic & host_b_sersic')
         
     # compute galaxy flux at SN position
-    mm = surf_bright * np.pi * 4 * obs.sig_psf **2
-    F = 10.**(0.4 * (obs.zp - mm))
+    mm = surf_bright * np.pi * 4 * obs['sig_psf'] **2
+    F = 10.**(0.4 * (obs['zp'] - mm))
 
-    return np.abs(F) / obs.gain
+    return np.abs(F) / obs['gain']

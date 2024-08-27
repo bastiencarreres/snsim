@@ -28,7 +28,7 @@ class AstrObj(abc.ABC):
     _obj_attrs = [""]
     _available_models = [""]
 
-    def __init__(self, sim_par, relation=None, effects=None):
+    def __init__(self, sim_par, mag_fun=None, effects=None):
         """Init AstrObj class.
 
         Parameters
@@ -45,8 +45,8 @@ class AstrObj(abc.ABC):
             | ├── dec, obj Declinaison
             | ├── t0, obj peak time
             | └── sncosmo par
-        relation : str, optional
-            _description_, by default None
+        mag_fun : str, optional
+            The function used to compute the abs mag, by default None
         effects : list, optional
             sncosmo effects dic, by default None
 
@@ -63,7 +63,7 @@ class AstrObj(abc.ABC):
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
 
-        self._relation = relation
+        self._mag_fun = mag_fun
 
         if "ID" not in self._sim_par:
             self._sim_par["ID"] = 0
@@ -194,31 +194,23 @@ class AstrObj(abc.ABC):
                 obs["band"], obs["time"], zp=obs["zp"], zpsys=obs["zpsys"]
             )
 
-            #compute the noise from the host galaxy if required
-            if "host_galaxy_noise" in self._sim_par:
-                if self._sim_par["host_galaxy_noise"]:
-                    sig_host = ut.model_galaxy_noise(self._sim_par,obs)
-                else:
-                    sig_host = np.zeros(len(fluxtrue))
-            else:
-                sig_host = np.zeros(len(fluxtrue))
+        sig_host = 0
+        #compute the Noise from the host galaxy if required
+        if "host_galaxy_noise" in self._sim_par:
+            if self._sim_par["host_galaxy_noise"]:
+                sig_host = ut.model_galaxy_noise(self._sim_par, obs)
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise + Host gal Noise
         fluxerrtrue = np.sqrt(
-            np.abs(fluxtrue) / obs.gain
-            + obs.skynoise**2
-            + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp) ** 2 
+            np.abs(fluxtrue) / obs['gain']
+            + obs['skynoise']**2
+            + (np.log(10) / 2.5 * fluxtrue * obs['sig_zp']) ** 2 
             + sig_host**2
         )
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0.0, scale=fluxerrtrue)
-        fluxerr = np.sqrt(
-            np.abs(flux) / obs.gain
-            + obs.skynoise**2
-            + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2 
-            + sig_host**2
-        )
+        fluxerr = np.sqrt(fluxerrtrue**2 + (np.abs(flux) - np.abs(fluxtrue)) / obs['gain'])
 
         # -- Set magnitude
         mag = np.zeros_like(flux)
@@ -230,7 +222,7 @@ class AstrObj(abc.ABC):
         mag[positive_fmask] = -2.5 * np.log10(flux_pos) + obs["zp"][positive_fmask]
 
         magerr[positive_fmask] = (
-            2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
+            2.5 / np.log(10) * fluxerr[positive_fmask] / flux_pos
         )
 
         mag[~positive_fmask] = np.nan
@@ -348,17 +340,17 @@ class SNIa(AstrObj):
         Raises
         ------
         ValueError
-            Raises if you use relation 'salttripp' for a non salt model.
+            Raises if you use mag_fun 'salttripp' for a non salt model.
         ValueError
-            Raises if you use a non-implemented relation.
+            Raises if you use a non-implemented mag_fun.
         ValueError
             Raises if you use mass-step without host logmass.
         """
 
-        if self._relation is None:
-            self._relation = "salttripp"
+        if self._mag_fun is None:
+            self._mag_fun = "salttripp"
 
-        if self._relation.lower() == "salttripp":
+        if self._mag_fun.lower() == "salttripp":
             if model.source.name not in ["salt2", "salt3"]:
                 raise ValueError("SALTTripp only available for salt2 & salt3 models")
 
@@ -378,8 +370,8 @@ class SNIa(AstrObj):
                 + self.mu
             )
         else:
-            # TODO - BC : Find a way to use lambda function for relation
-            raise ValueError("Relation not available")
+            # TODO - BC : Find a way to use lambda function for mag_fun
+            raise ValueError("mag_fun not available")
 
         if "mass_step" in self._sim_par:
             if "host_mass" in self._sim_par:
