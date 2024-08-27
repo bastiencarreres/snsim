@@ -202,11 +202,21 @@ class AstrObj(abc.ABC):
                 obs["band"], obs["time"], zp=obs["zp"], zpsys=obs["zpsys"]
             )
 
-        # -- Noise computation : Poisson Noise + Skynoise + ZP noise
+            #compute the noise from the host galaxy if required
+            if "host_galaxy_noise" in self._sim_par:
+                if self._sim_par["host_galaxy_noise"]:
+                    sig_host = ut.model_galaxy_noise(self._sim_par,obs)
+                else:
+                    sig_host = np.zeros(len(fluxtrue))
+            else:
+                sig_host = np.zeros(len(fluxtrue))
+
+        # -- Noise computation : Poisson Noise + Skynoise + ZP noise + Host gal Noise
         fluxerrtrue = np.sqrt(
             np.abs(fluxtrue) / obs.gain
             + obs.skynoise**2
-            + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp) ** 2
+            + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp) ** 2 
+            + sig_host**2
         )
 
         gen = np.random.default_rng(random_seeds[1])
@@ -214,7 +224,8 @@ class AstrObj(abc.ABC):
         fluxerr = np.sqrt(
             np.abs(flux) / obs.gain
             + obs.skynoise**2
-            + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2
+            + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2 
+            + sig_host**2
         )
 
         # -- Set magnitude

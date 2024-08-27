@@ -663,6 +663,8 @@ class BaseGen(abc.ABC):
 
         if "mass_step" in self._params:
             basic_par["mass_step"] = self._params["mass_step"]
+        if "host_galaxy_noise" in self._params:
+            basic_par['host_galaxy_noise'] = self._params["host_galaxy_noise"]
 
         # Save in basic_par all the column of the host_table that start with host, to save the data in final sim
         if self.host is not None:

@@ -672,17 +672,22 @@ def gen_rndchilds(seed, size=1):
     else:
         return np.random.SeedSequence(seed).spawn(size)
 
-
 def compute_weight_mass_for_type(mass, sn_type, cosmology):
     """compute the mass dependent weights for HOST - SN matching"""
-    if sn_type.lower() == "snia":
+    if sn_type.lower() in ["sniax",'snia91bg',"snia"]:
         weights_mass = (
             cst.sullivan_para["mass"]
             * (cosmology.h / cst.h_article["sullivan06"])
             * mass
         )
-    return weights_mass
+    elif sn_type.lower() in ['sniin','sniib','sniipl','snii']:
+        C = 0.16  # 0.16 for SNeII from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights_mass = mass**C
 
+    elif sn_type.lower() in ["snic",'snib','snic_bl','snib/c']:
+        C = 0.36  #  0.36 for SNIb/c from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights_mass = mass**C
+    return weights_mass
 
 def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
     """compute the SFR dependent weights for HOST - SN matching"""
@@ -690,4 +695,81 @@ def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
         weights_SFR = (
             cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * SFR
         )
+    else:
+        raise ValueError('HOST-SN match using SFR only is valid only for SNIa')
+        
     return weights_SFR
+
+def compute_weight_mass_sfr_for_type(mass,sfr, sn_type, cosmology):
+    """compute the SFR dependent weights for HOST - SN matching"""
+    if sn_type.lower() == "snia":
+        weights_SFR = (
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
+        )
+        weights_mass = (
+            cst.sullivan_para["mass"]
+            * (cosmology.h / cst.h_article["sullivan06"])
+            * mass
+        )
+        weights = weights_SFR + weights_mass
+        
+    elif sn_type.lower() in ["sniax",'snia91bg']:
+         weights_SFR = (
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
+        )
+         weights_mass = (
+            cst.sullivan_para["mass"]
+            * (cosmology.h / cst.h_article["sullivan06"])
+            * mass
+        )
+         
+         weights = np.zeros(len(sfr))
+         mask = np.log10(sfr/mass) >  -11.5 # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+         weights[mask] =  weights_SFR[mask] + weights_mass[mask]
+
+    elif sn_type.lower() in ['sniin','sniib','sniipl','snii']:
+        C = 0.16  # 0.16 for SNeII from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights = np.zeros(len(mass))
+        mask = np.log10(sfr/mass) > -11.5  # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights[mask] = mass[mask] **C
+
+    elif sn_type.lower() in ["snic",'snib','snic_bl','snib/c']:
+        C = 0.36  #  0.36 for SNIb/c from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights = np.zeros(len(mass))
+        mask = np.log10(sfr/mass) > -11.5  # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights[mask] = mass[mask] **C
+        
+    return weights
+
+
+
+def model_galaxy_noise(sim_par,obs):
+    """ compute noise coming from host galaxy in photoelectron units (approximation)"""
+
+    bands = ["host_"+ b for b in obs['band']]
+    mag_host = np.asarray([sim_par[bb] for bb in bands])
+
+    #compute mean surface brightness of the galaxy
+    if sim_par.keys() & {"host_a_sersic", 'host_b_sersic'}:
+        if not isinstance(sim_par["host_a_sersic"], float ):
+            if "host_w_sersic" not in sim_par.keys():
+                raise ValueError('if you have 2 or more sersic profile for each galaxy, Provide the weights')
+            else:
+                s = np.asarray([mag_host  / (w* a * b ) for w,a,b 
+                in zip(sim_par['host_w_sersic'],sim_par['host_a_sersic'],sim_par['host_b_sersic'])])
+                surf_bright = np.sum(s,axis=0)
+
+        elif isinstance(sim_par["host_a_sersic"], float):
+            surf_bright = mag_host  / (  sim_par['host_a_sersic'] * sim_par['host_b_sersic'] )
+    
+        else:
+            raise ValueError('for sersic parameters provide list or float for each host galaxies')
+
+    else:
+        raise ValueError('provide sersic ellipse parameters as host_a_sersic & host_b_sersic')
+        
+    # compute galaxy flux at SN position
+    mm = surf_bright * np.pi * 4 * obs.sig_psf **2
+    F = 10.**(0.4 * (obs.zp - mm))
+
+    return np.abs(F) / obs.gain

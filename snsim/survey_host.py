@@ -750,7 +750,7 @@ class SnHost:
         else:
             key_dic = {}
 
-        host_list = host_list.astype("float64")
+        #host_list = host_list.astype("float64")
         host_list.rename(columns=key_dic, inplace=True)
         host_list["ra"] += 2 * np.pi * (host_list["ra"] < 0)
         if z_range is not None:
@@ -808,22 +808,17 @@ class SnHost:
                 weights = weights_rate * weights_SFR
             elif self.config["distrib"].lower() == "mass_sfr":
                 # compute SFR and mass weight
-                weights_mass = ut.compute_weight_mass_for_type(
-                    mass=self.table["host_mass"], sn_type=sn_type, cosmology=cosmology
+                weights_mass_sfr = ut.compute_weight_mass_sfr_for_type(
+                    mass=self.table["host_mass"],sfr=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
                 )
-                weights_SFR = ut.compute_weight_SFR_for_type(
-                    SFR=self.table["host_sfr"], sn_type=sn_type, cosmology=cosmology
-                )
-                weights = weights_rate * (weights_mass + weights_SFR)
+                weights = weights_rate * weights_mass_sfr
             # Normalize
             weights /= weights.sum()
         else:
             raise ValueError("rate should be set to use host distribution")
         return weights
 
-        # elif self.config['distrib'].lower() == 'gal_prop':
-        # weights that depends on galaxy properties, it will depend on the SN type, to figure out implementation
-        # see vincenzi et al, and ask alex kim fo his model
+        #TO DO: maybe generalize the distribution and add SFH dependence
 
     def random_choice(self, n, seed=None, rate=None, sn_type=None, cosmology=None):
         """Randomly select hosts.
