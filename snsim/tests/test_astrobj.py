@@ -37,7 +37,7 @@ class TestSNIa:
             "model_version": "2.4",
         }
 
-        self.SNIa_Tripp = sn_astrobj.SNIa(sim_par, relation="SALTTripp")
+        self.SNIa_Tripp = sn_astrobj.SNIa(sim_par, mag_fun="SALTTripp")
 
         self.obs = pd.DataFrame(
             {
