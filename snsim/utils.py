@@ -676,18 +676,18 @@ def compute_weight_mass_sfr_for_type(mass,sfr, sn_type, cosmology):
         weights = weights_SFR + weights_mass
         
     elif sn_type.lower() in ["sniax",'snia91bg']:
-         weights_SFR = (
+        weights_SFR = (
             cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
         )
-         weights_mass = (
+        weights_mass = (
             cst.sullivan_para["mass"]
             * (cosmology.h / cst.h_article["sullivan06"])
             * mass
         )
-         
-         weights = np.zeros(len(sfr))
-         mask = np.log10(sfr/mass) >  -11.5 # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
-         weights[mask] =  weights_SFR[mask] + weights_mass[mask]
+    
+        weights = np.zeros(len(sfr))
+        mask = np.log10(sfr/mass) >  -11.5 # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights[mask] =  weights_SFR[mask] + weights_mass[mask]
 
     elif sn_type.lower() in ['sniin','sniib','sniipl','snii']:
         C = 0.16  # 0.16 for SNeII from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
@@ -704,36 +704,3 @@ def compute_weight_mass_sfr_for_type(mass,sfr, sn_type, cosmology):
     return weights
 
 
-def model_galaxy_noise(sim_par, obs):
-    """Compute noise coming from host galaxy in photoelectron units (approximation)"""
-
-    bands = ["host_" + b for b in obs['band']]
-    mag_host = np.asarray([sim_par[b] for b in bands])
-    flux_host = 10.**(0.4 * (obs['zp'] - mag_host))
-
-    #compute mean surface brightness of the galaxy
-    if sim_par.keys() & {"host_a_sersic", 'host_b_sersic'}:
-        if not isinstance(sim_par["host_a_sersic"], float):
-            if "host_w_sersic" not in sim_par.keys():
-                raise ValueError('if you have 2 or more sersic profile for each galaxy, Provide the weights')
-            else:
-                s = np.asarray([mag_host  / (w * a * b) for w, a, b 
-                in zip(sim_par['host_w_sersic'],
-                       sim_par['host_a_sersic'],
-                       sim_par['host_b_sersic'])])
-                
-                surf_bright = np.sum(s, axis=0)
-
-        elif isinstance(sim_par["host_a_sersic"], float):
-            surf_bright = mag_host  / (sim_par['host_a_sersic'] * sim_par['host_b_sersic'])
-    
-        else:
-            raise ValueError('for sersic parameters provide list or float for each host galaxies')
-
-    else:
-        raise ValueError('provide sersic ellipse parameters as host_a_sersic & host_b_sersic')
-        
-    # compute galaxy flux at SN position
-    fpsf = surf_bright * np.pi * 4 * obs['fwhm_psf'] **2
-
-    return np.sqrt(np.abs(fpsf) / obs['gain'])

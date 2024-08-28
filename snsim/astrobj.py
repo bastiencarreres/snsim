@@ -7,6 +7,7 @@ import pandas as pd
 import sncosmo as snc
 from .constants import C_LIGHT_KMS
 from . import utils as ut
+from . import hosts as hst
 from . import plasticc_model as plm
 
 
@@ -23,6 +24,7 @@ class AstrObj(abc.ABC):
         "zpcmb",
         "como_dist",
         "model_name",
+        "host_noise",
     ]
 
     _obj_attrs = [""]
@@ -65,8 +67,11 @@ class AstrObj(abc.ABC):
 
         self._mag_fun = mag_fun
 
+        # -- Set some default values
         if "ID" not in self._sim_par:
             self._sim_par["ID"] = 0
+        if "host_noise" not in self._sim_par:
+            self._sim_par["host_noise"] = False
 
         # -- Check model name
         if self.sim_par["model_name"] not in self._available_models:
@@ -196,9 +201,8 @@ class AstrObj(abc.ABC):
 
         sig_host = 0
         #compute the Noise from the host galaxy if required
-        if "host_galaxy_noise" in self._sim_par:
-            if self._sim_par["host_galaxy_noise"]:
-                sig_host = ut.model_galaxy_noise(self._sim_par, obs)
+        if self._sim_par["host_noise"]:
+            sig_host = hst.model_host_noise(self._sim_par, obs)
 
 
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise + Host gal Noise
@@ -250,9 +254,9 @@ class AstrObj(abc.ABC):
         for k in obs.columns:
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
-        if "host_galaxy_noise" in self._sim_par:
-            if self._sim_par["host_galaxy_noise"]:
-                sim_lc['galaxy_noise'] = sig_host
+        
+        if self._sim_par["host_noise"]:
+            sim_lc['host_noise'] = sig_host
 
         snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k!= 'z'}
         sim_lc.attrs = {
@@ -376,15 +380,10 @@ class SNIa(AstrObj):
         else:
             # TODO - BC : Find a way to use lambda function for mag_fun
             raise ValueError("mag_fun not available")
-
-        if "mass_step" in self._sim_par:
-            if "host_mass" in self._sim_par:
-                if np.log10(self._sim_par["host_mass"]) > 10.0:
-                    mb += self._sim_par["mass_step"]
-            else:
-                raise ValueError(
-                    "Provide SN host mass to account for the magnitude mass step"
-                )
+        
+        # Add mass step
+        self._obj_attrs.extend(['mass_step'])
+        mb += self._sim_par["mass_step"]
 
         self._sim_par["mb"] = mb
 

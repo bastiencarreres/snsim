@@ -20,7 +20,8 @@ from .sample import SimSample
 from . import post_sim_tools
 from . import astrobj
 from . import generators
-from . import survey_host
+from .survey import SurveyObs
+from .hosts import SnHosts
 from . import utils
 from . import io_utils
 from . import scatter

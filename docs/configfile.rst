@@ -38,6 +38,7 @@ The input file is a .yml with the following structure:
       sn_rate: SN RATE in SN/Mpc^3/year # Opt, default=3e-5
       M0: SN ABSOLUT MAGNITUDE
       mag_sct: SN INTRINSIC COHERENT SCATTERING 
+      mass_step: ['threshold', 'value'] # Opt, default=[0, 0]
       sct_model: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
       mod_fcov: True or False, Use the covariance of simulation model to scatter flux # Opt, default = False
       model_name: MODEL NAME
@@ -63,6 +64,8 @@ The input file is a .yml with the following structure:
       sig_vpec: SIGMA VPEC
    host: # Opt 
       host_file: '/PATH/TO/HOSTFILE' 
+      reweight_vol: True or False # To remove the volume dist of the host when draw
+      keep_cols: ['key1', 'key2', ...] # Opt, column keys to keep at the end
       distrib: DISTRIBUTION TO USE TO DRAW HOST # Opt, default = 'rate'
       key_dic: {'column_name': 'new_column_name', ...}  # Opt, to change columns names
    dask: # Opt, to use dask parallelization

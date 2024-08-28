@@ -3,11 +3,10 @@
 import time
 import yaml
 import numpy as np
-import dask
-import astropy.units as aunits
 from . import utils as ut
 from . import generators
-from . import survey_host as sh
+from . import survey as srv
+from . import hosts as hst
 from .constants import SN_SIM_PRINT, VCMB, L_CMB, B_CMB
 from . import dust_utils as dst_ut
 from .generators import __GEN_DIC__
@@ -78,7 +77,7 @@ class Simulator:
     | vpec_dist:
     |     mean_vpec: MEAN SN PECULIAR VELOCITY
     |     sig_vpec: SIGMA VPEC
-    | host: (Optional)
+    | hosts: (Optional)
     |     host_file: 'PATH/TO/HOSTFILE'
     |     distrib: 'rate' or 'random'  # Optional, default = 'rate'
     |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
@@ -123,7 +122,7 @@ class Simulator:
         self._cosmology = ut.set_cosmo(self.config["cosmology"])
 
         # -- Init SurveyObs object
-        self._survey = sh.SurveyObs(self.config["survey_config"])
+        self._survey = srv.SurveyObs(self.config["survey_config"])
 
         # -- Init vpec_dist
         if "vpec_dist" in self.config:
@@ -132,14 +131,14 @@ class Simulator:
             self._vpec_dist = None
 
         # -- Init host object
-        if "host" in self.config:
-            self._host = sh.SnHost(
-                self.config["host"],
+        if "hosts" in self.config:
+            self._hosts = hst.SnHosts(
+                self.config["hosts"],
                 z_range=self.z_range,
                 geometry=self.survey._envelope,
             )
         else:
-            self._host = None
+            self._hosts = None
 
         # -- Init mw dust
         if "mw_dust" in self.config:
@@ -173,7 +172,7 @@ class Simulator:
                         cmb=self.cmb,
                         z_range=self.z_range,
                         vpec_dist=self.vpec_dist,
-                        host=self.host,
+                        hosts=self.hosts,
                         mw_dust=mw_dust,
                         geometry=self.survey._envelope,
                     )
@@ -271,7 +270,7 @@ class Simulator:
         Simulation routine :
         1- Use either _cadence_sim() or _gen_n_sn()
         to run the simulation
-        2- Gen all SN parameters inside SNGen class or/and SnHost class
+        2- Gen all SN parameters inside SNGen class or/and SnHosts class
         3- Check if SN pass cuts and then generate the lightcurves.
         4- Write LCs to parquet/pkl file(s)
 
@@ -572,9 +571,9 @@ class Simulator:
         return self._generators
 
     @property
-    def host(self):
-        """Get the SnHost object of the simulation."""
-        return self._host
+    def hosts(self):
+        """Get the SnHosts object of the simulation."""
+        return self._hosts
 
     @property
     def randseed(self):

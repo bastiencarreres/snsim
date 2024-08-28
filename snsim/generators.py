@@ -49,7 +49,7 @@ class BaseGen(abc.ABC):
         time_range,
         z_range=None,
         vpec_dist=None,
-        host=None,
+        hosts=None,
         mw_dust=None,
         cmb=None,
         geometry=None,
@@ -67,15 +67,15 @@ class BaseGen(abc.ABC):
             (tmin, tmax) time range.
         z_range : tuple, optional
             (zmin, zmax) redshift range,
-            no need to be defined if there is host, by default None
+            no need to be defined if there is hosts, by default None
         vpec_dist : dic, optional
             PV distrib parameters, by default None
 
             | vpec_dist
             | ├── mean_vpec, by default 0.
             | └── sig_vpec, by default 0.
-        host : snsim.SnHost, optional
-            host for simulated SN, by default None
+        hosts : snsim.SnHost, optional
+            hosts for simulated SN, by default None
         mw_dust : dic, optional
             Milky Way dust, by default None
         cmb : dic, optional
@@ -91,11 +91,11 @@ class BaseGen(abc.ABC):
         Raises
         ------
         ValueError
-            If you set PV dist and host at the same time.
+            If you set PV dist and hosts at the same time.
         ValueError
-            If you neither set PV or host.
+            If you neither set PV or hosts.
         ValueError
-            If no host and no z_range.
+            If no hosts and no z_range.
         """
 
         # -- Mandatory parameters
@@ -104,24 +104,24 @@ class BaseGen(abc.ABC):
         self._time_range = time_range
 
         # -- At least one mandatory
-        if vpec_dist is not None and host is not None:
-            raise ValueError("You can't set vpec_dist and host at the same time")
-        elif vpec_dist is not None and host is None:
+        if vpec_dist is not None and hosts is not None:
+            raise ValueError("You can't set vpec_dist and hosts at the same time")
+        elif vpec_dist is not None and hosts is None:
             self._vpec_dist = vpec_dist
-            self._host = None
-        elif host is not None and vpec_dist is None:
-            self._host = host
+            self._hosts = None
+        elif hosts is not None and vpec_dist is None:
+            self._hosts = hosts
             self._vpec_dist = None
         else:
-            raise ValueError("Set vpec_dist xor host")
+            raise ValueError("Set vpec_dist xor hosts")
 
-        # -- If no host need to define a z_range
-        if host is None:
+        # -- If no hosts need to define a z_range
+        if hosts is None:
             self._z_range = z_range
-        elif host is not None:
-            self._z_range = self.host._z_range
+        elif hosts is not None:
+            self._z_range = self.hosts._z_range
         else:
-            raise ValueError("Set zrange xor host")
+            raise ValueError("Set zrange xor hosts")
 
         if cmb is None:
             self._cmb = {"v_cmb": VCMB, "l_cmb": L_CMB, "b_cmb": B_CMB}
@@ -187,6 +187,20 @@ class BaseGen(abc.ABC):
 
         par = pd.concat([basic_par, par], axis=1)
 
+        if self.hosts is not None:
+            hosts = self.hosts.df.loc[basic_par['host_idx']]
+            # -- Check for column to keep
+            if 'keep_cols' in self.hosts.config:
+                for k in self.hosts.config['keep_cols']:
+                    par['host_' + k] = hosts[k].values
+
+            # --- Check for host noise columns
+            if self.hosts.config['host_noise']:
+                par['host_noise'] = True
+                for k in hosts.columns:
+                    if k.startswith('mag_') or  k.startswith('sersic_'):
+                        par['host_' + k] = hosts[k].values
+        
         mag_fun = None
         if "mag_fun" in self._params :
             mag_fun = self._params["mag_fun"]
@@ -227,10 +241,10 @@ class BaseGen(abc.ABC):
 
         pstr += "Redshift distribution computed"
 
-        if self.host is not None:
-            if self.host.config["distrib"] == "random":
+        if self.hosts is not None:
+            if self.hosts.config["distrib"] == "random":
                 pstr += " using host redshift distribution\n"
-            elif self.host.config["distrib"] == "survey_rate":
+            elif self.hosts.config["distrib"] == "survey_rate":
                 pstr += " using rate\n\n"
         else:
             pstr += " using rate\n"
@@ -608,33 +622,32 @@ class BaseGen(abc.ABC):
         # -- Generate peak time
         t0 = self.gen_peak_time(n_obj, seed=seeds[0])
 
-        # -- Generate cosmological redshifts
-        if self.host is None:
+        if self.hosts is None:
+            # -- Generate cosmological redshifts
             zcos = self.gen_zcos(n_obj, seed=seeds[1])
+            
+            # -- Generate ra, dec
+            ra, dec = self.gen_coord(n_obj, seed=seeds[2])
+            
+            # -- Generate vpec
+            if self.vpec_dist is not None:
+                vpec = self.gen_vpec(n_obj, seed=seeds[3])
+            else:
+                vpec = np.zeros(len(ra))
         else:
-            host = self.host.random_choice(
+            # -- Draw hosts
+            hosts = self.hosts.random_choice(
                 n_obj,
                 seed=seeds[1],
                 rate=self.rate,
                 sn_type=self._object_type,
                 cosmology=self.cosmology,
             )
-            zcos = host["zcos"].values
-
-        # -- Generate ra, dec
-        if self.host is not None:
-            ra = host["ra"].values
-            dec = host["dec"].values
-        else:
-            ra, dec = self.gen_coord(n_obj, seed=seeds[2])
-
-        # -- Generate vpec
-        if self.vpec_dist is not None:
-            vpec = self.gen_vpec(n_obj, seed=seeds[3])
-        elif self.host is not None:
-            vpec = host["vpec"].values
-        else:
-            vpec = np.zeros(len(ra))
+            
+            zcos = hosts["zcos"].values
+            ra = hosts["ra"].values
+            dec = hosts["dec"].values
+            vpec = hosts["vpec"].values
 
         basic_par = {
             "zcos": zcos,
@@ -654,17 +667,8 @@ class BaseGen(abc.ABC):
             basic_par["max_t"] = basic_par["t0"] + self._sources_prange[1] * _1_zobs_
             basic_par["1_zobs"] = _1_zobs_
 
-        if 'mass_step' in self._params:
-            basic_par['mass_step'] = self._params['mass_step']
-        if 'host_galaxy_noise' in self._params:
-            basic_par['host_galaxy_noise'] = self._params['host_galaxy_noise']
-        
-        # Save in basic_par all the column of the host_table that start with host, to save the data in final sim
-        if self.host is not None:
-            basic_par["host_index"] = host.index
-            for k in host.columns:
-                if k.startswith("host_"):
-                    basic_par[k] = host[k].values
+        if self.hosts is not None:
+            basic_par['host_idx'] = hosts.index
 
         return pd.DataFrame(basic_par)
 
@@ -695,9 +699,9 @@ class BaseGen(abc.ABC):
         return random_models
 
     @property
-    def host(self):
+    def hosts(self):
         """Get the host class."""
-        return self._host
+        return self._hosts
 
     @property
     def vpec_dist(self):
@@ -790,7 +794,7 @@ class SNIaGen(BaseGen):
                                 version=self.sim_sources["model_version"][0],
                             )
                         ]
-        effects.append(sct.init_sn_sct_model(self._params["sct_model"], *args))
+            effects.append(sct.init_sn_sct_model(self._params["sct_model"], *args))
         return effects
 
     def _update_header(self):
@@ -861,6 +865,15 @@ class SNIaGen(BaseGen):
             )
             params = {**params, "x1": sim_x1, "c": sim_c, "alpha": alpha, "beta": beta}
 
+        # -- Mass step
+        mass_step = np.zeros(n_obj)
+        if "mass_step" in self._params:
+            mask = np.log10(self.hosts.df.loc[basic_par['host_idx']]['sm']) >  self._params["mass_step"][0]
+            mass_step[mask] = self._params["mass_step"][1] / 2 
+            mass_step[~mask] = -self._params["mass_step"][1] / 2 
+        
+        params["mass_step"] = mass_step
+
         # -- Non-coherent scattering effects
         if "sct_model" in self._params:
             randgen = np.random.default_rng(seeds[2])
@@ -922,10 +935,10 @@ class SNIaGen(BaseGen):
                 sim_x1 = salt_ut.n21_x1_model(basic_par["zcos"], seed=seeds[0])
             elif self._params["dist_x1"].lower() == "n21+mass":
                 sim_x1 = salt_ut.n21_x1_mass_model(
-                    basic_par["zcos"], basic_par["host_mass"], seed=seeds[0]
+                    basic_par["zcos"], self.hosts.loc[basic_par["host_index"]]['sm'].values, seed=seeds[0]
                 )
             elif self._params["dist_x1"].lower() == "mass":
-                sim_x1 = salt_ut.x1_mass_model(basic_par["host_mass"], seed=seeds[0])
+                sim_x1 = salt_ut.x1_mass_model(self.hosts.df.loc[basic_par["host_index"]]['sm'].values, seed=seeds[0])
 
         elif isinstance(self._params["dist_x1"], list):
             sim_x1 = ut.asym_gauss(*self._params["dist_x1"], seed=seeds[0], size=n_sn)

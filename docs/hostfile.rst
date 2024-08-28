@@ -15,11 +15,15 @@ SN, the needed keys are given in the next table
 Note that you can used the redshift distribution of your host to
 generate SN redshift distribution.
 
-+----------------------------------+
-| mass                             |
-+==================================+
-| The host mass in arbitrary units |
-+----------------------------------+
+Extra columns are necessary if you want to use the `distrib` configuration key to draw hosts.
 
-Additionally you can use a **mass** columns to weight the distribution
-with host masses : :math:`w_i = \frac{m_i}{\sum_i m_i}`
+As example,
+
++------------------------------------------+------------------------------------------+
+| sm                                       | sfr                                      |
++==========================================+==========================================+
+| The host stellar mass in arbitrary units | The host sfr in arbitrary units          |
++------------------------------------------+------------------------------------------+
+
+can be used for `"mass"`, `"mass_sfr"` or `"sfr"` `distrib` options.
+
