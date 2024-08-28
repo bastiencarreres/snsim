@@ -1,2 +1,2 @@
 import snsim
-from snsim.survey_host import SurveyObs
+from snsim.survey import SurveyObs

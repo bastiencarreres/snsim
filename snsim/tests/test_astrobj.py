@@ -35,6 +35,7 @@ class TestSNIa:
             "beta": 3.1,
             "model_name": "salt2",
             "model_version": "2.4",
+            "mass_step": 0.0
         }
 
         self.SNIa_Tripp = sn_astrobj.SNIa(sim_par, mag_fun="SALTTripp")
