@@ -721,7 +721,7 @@ def model_galaxy_noise(sim_par, obs):
                        sim_par['host_a_sersic'],
                        sim_par['host_b_sersic'])])
                 
-                surf_bright = np.sum(s,axis=0)
+                surf_bright = np.sum(s, axis=0)
 
         elif isinstance(sim_par["host_a_sersic"], float):
             surf_bright = mag_host  / (sim_par['host_a_sersic'] * sim_par['host_b_sersic'])
@@ -733,7 +733,8 @@ def model_galaxy_noise(sim_par, obs):
         raise ValueError('provide sersic ellipse parameters as host_a_sersic & host_b_sersic')
         
     # compute galaxy flux at SN position
-    mm = surf_bright * np.pi * 4 * obs['sig_psf'] **2
+    if 'fwhm_psf' in obs:
+        mm = surf_bright * 4 * np.pi * Obs["fwhm_psf"] / (2 * np.sqrt(2 * np.log(2)))
     F = 10.**(0.4 * (obs['zp'] - mm))
 
-    return np.abs(F) / obs['gain']
+    return np.sqrt(np.abs(F) / obs['gain'])
