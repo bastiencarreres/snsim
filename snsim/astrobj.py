@@ -200,6 +200,7 @@ class AstrObj(abc.ABC):
             if self._sim_par["host_galaxy_noise"]:
                 sig_host = ut.model_galaxy_noise(self._sim_par, obs)
 
+
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise + Host gal Noise
         fluxerrtrue = np.sqrt(
             np.abs(fluxtrue) / obs['gain']
@@ -249,6 +250,9 @@ class AstrObj(abc.ABC):
         for k in obs.columns:
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
+        if "host_galaxy_noise" in self._sim_par:
+            if self._sim_par["host_galaxy_noise"]:
+                sim_lc['galaxy_noise'] = sig_host
 
         snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k!= 'z'}
         sim_lc.attrs = {
