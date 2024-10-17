@@ -35,9 +35,10 @@ class TestSNIa:
             "beta": 3.1,
             "model_name": "salt2",
             "model_version": "2.4",
+            "mass_step": 0.0
         }
 
-        self.SNIa_Tripp = sn_astrobj.SNIa(sim_par, relation="SALTTripp")
+        self.SNIa_Tripp = sn_astrobj.SNIa(sim_par, mag_fun="SALTTripp")
 
         self.obs = pd.DataFrame(
             {
@@ -59,19 +60,18 @@ class TestSNIa:
 
     def test_genflux(self):
         lcs = self.SNIa_Tripp.gen_flux(self.obs, seed=1234, mod_fcov=False)
-        print(lcs)
         test = {
             "flux": np.array(
-                [11362.46468601, 20694.48688965, 11352.90808572, 3578.52509832]
+                [11376.79321902, 20720.80689151, 11367.26163442, 3583.09890719]
             ),
             "fluxerr": np.array(
-                [106.59486238, 143.85578504, 106.55002621, 59.82077481]
+                [106.66205145, 143.94723648, 106.61736085, 59.85899187]
             ),
             "fluxtrue": np.array(
-                [11278.10909259, 20893.74397037, 11327.17449755, 3648.53840526]
+                [11292.38425633, 20920.19003627, 11341.51176538, 3653.15650948]
             ),
             "fluxerrtrue": np.array(
-                [106.19844204, 144.5466844, 106.42919946, 60.40313241]
+                [106.26563064, 144.63813479, 106.49653405,  60.44134768]
             ),
         }
 

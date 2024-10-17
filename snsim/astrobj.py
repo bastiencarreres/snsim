@@ -7,6 +7,7 @@ import pandas as pd
 import sncosmo as snc
 from .constants import C_LIGHT_KMS
 from . import utils as ut
+from . import hosts as hst
 from . import plasticc_model as plm
 
 
@@ -23,12 +24,13 @@ class AstrObj(abc.ABC):
         "zpcmb",
         "como_dist",
         "model_name",
+        "host_noise",
     ]
 
     _obj_attrs = [""]
     _available_models = [""]
 
-    def __init__(self, sim_par, relation=None, effects=None):
+    def __init__(self, sim_par, mag_fun=None, effects=None):
         """Init AstrObj class.
 
         Parameters
@@ -45,8 +47,8 @@ class AstrObj(abc.ABC):
             | ├── dec, obj Declinaison
             | ├── t0, obj peak time
             | └── sncosmo par
-        relation : str, optional
-            _description_, by default None
+        mag_fun : str, optional
+            The function used to compute the abs mag, by default None
         effects : list, optional
             sncosmo effects dic, by default None
 
@@ -63,10 +65,13 @@ class AstrObj(abc.ABC):
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
 
-        self._relation = relation
+        self._mag_fun = mag_fun
 
+        # -- Set some default values
         if "ID" not in self._sim_par:
             self._sim_par["ID"] = 0
+        if "host_noise" not in self._sim_par:
+            self._sim_par["host_noise"] = False
 
         # -- Check model name
         if self.sim_par["model_name"] not in self._available_models:
@@ -108,31 +113,23 @@ class AstrObj(abc.ABC):
             SN simulation model.
 
         """
-
-        if "model_version" not in self._sim_par:
-            version = None
-        else:
-            version = self._sim_par["model_version"]
-
-        snc_source = snc.get_source(
-            name=self._sim_par["model_name"], version=version
-        )
+        snc_source = self.source
 
         if "model_version" not in self._sim_par:
             self._sim_par["model_version"] = snc_source.version
 
         if effects is not None:
-            eff = [eff["source"] for eff in effects]
+            eff_sources = [eff["source"] for eff in effects]
             eff_names = [eff["name"] for eff in effects]
             eff_frames = [eff["frame"] for eff in effects]
         else:
-            eff = None
+            eff_sources = None
             eff_names = None
             eff_frames = None
 
         model = snc.Model(
             source=snc_source,
-            effects=eff,
+            effects=eff_sources,
             effect_names=eff_names,
             effect_frames=eff_frames,
         )
@@ -202,20 +199,23 @@ class AstrObj(abc.ABC):
                 obs["band"], obs["time"], zp=obs["zp"], zpsys=obs["zpsys"]
             )
 
-        # -- Noise computation : Poisson Noise + Skynoise + ZP noise
+        sig_host = 0
+        #compute the Noise from the host galaxy if required
+        if self._sim_par["host_noise"]:
+            sig_host = hst.model_host_noise(self._sim_par, obs)
+
+
+        # -- Noise computation : Poisson Noise + Skynoise + ZP noise + Host gal Noise
         fluxerrtrue = np.sqrt(
-            np.abs(fluxtrue) / obs.gain
-            + obs.skynoise**2
-            + (np.log(10) / 2.5 * fluxtrue * obs.sig_zp) ** 2
+            np.abs(fluxtrue) / obs['gain']
+            + obs['skynoise']**2
+            + (np.log(10) / 2.5 * fluxtrue * obs['sig_zp']) ** 2 
+            + sig_host**2
         )
 
         gen = np.random.default_rng(random_seeds[1])
         flux = fluxtrue + gen.normal(loc=0.0, scale=fluxerrtrue)
-        fluxerr = np.sqrt(
-            np.abs(flux) / obs.gain
-            + obs.skynoise**2
-            + (np.log(10) / 2.5 * flux * obs.sig_zp) ** 2
-        )
+        fluxerr = np.sqrt(fluxerrtrue**2 + (np.abs(flux) - np.abs(fluxtrue)) / obs['gain'])
 
         # -- Set magnitude
         mag = np.zeros_like(flux)
@@ -227,7 +227,7 @@ class AstrObj(abc.ABC):
         mag[positive_fmask] = -2.5 * np.log10(flux_pos) + obs["zp"][positive_fmask]
 
         magerr[positive_fmask] = (
-            2.5 / np.log(10) * 1 / flux_pos * fluxerr[positive_fmask]
+            2.5 / np.log(10) * fluxerr[positive_fmask] / flux_pos
         )
 
         mag[~positive_fmask] = np.nan
@@ -254,18 +254,38 @@ class AstrObj(abc.ABC):
         for k in obs.columns:
             if k not in sim_lc.columns:
                 sim_lc[k] = obs[k].values
+        
+        if self._sim_par["host_noise"]:
+            sim_lc['host_noise'] = sig_host
 
+        snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k!= 'z'}
         sim_lc.attrs = {
             "mu": self.mu,
             "zobs": self.zobs,
             "zCMB": self.zCMB,
-            **self._sim_par,
+            "effects": self.sim_model.effect_names,
+            **snc_par,
+            **self._sim_par
         }
 
         sim_lc.reset_index(inplace=True, drop=True)
         sim_lc.index.set_names("epochs", inplace=True)
         return sim_lc
 
+    def mag_restframeband_to_amp(self, mag, band, magsys, amp_param_name='x0'):
+        source = self.source
+        m_current = source.peakmag(band, magsys)
+        return 10.**(0.4 * (m_current - mag)) * source.get(amp_param_name)
+        
+    @property
+    def source(self):
+        if "model_version" not in self._sim_par:
+            version = None
+        else:
+            version = self._sim_par["model_version"]
+
+        return snc.get_source(name=self._sim_par["model_name"], version=version)
+        
     @property
     def zpec(self):
         """Get peculiar velocity redshift."""
@@ -328,17 +348,17 @@ class SNIa(AstrObj):
         Raises
         ------
         ValueError
-            Raises if you use relation 'salttripp' for a non salt model.
+            Raises if you use mag_fun 'salttripp' for a non salt model.
         ValueError
-            Raises if you use a non-implemented relation.
+            Raises if you use a non-implemented mag_fun.
         ValueError
             Raises if you use mass-step without host logmass.
         """
 
-        if self._relation is None:
-            self._relation = "salttripp"
+        if self._mag_fun is None:
+            self._mag_fun = "salttripp"
 
-        if self._relation.lower() == "salttripp":
+        if self._mag_fun.lower() == "salttripp":
             if model.source.name not in ["salt2", "salt3"]:
                 raise ValueError("SALTTripp only available for salt2 & salt3 models")
 
@@ -358,26 +378,20 @@ class SNIa(AstrObj):
                 + self.mu
             )
         else:
-            # TODO - BC : Find a way to use lambda function for relation
-            raise ValueError("Relation not available")
-
-        if "mass_step" in self._sim_par:
-            if "host_mass" in self._sim_par:
-                if np.log10(self._sim_par["host_mass"]) > 10.0:
-                    mb += self._sim_par["mass_step"]
-            else:
-                raise ValueError(
-                    "Provide SN host mass to account for the magnitude mass step"
-                )
+            # TODO - BC : Find a way to use lambda function for mag_fun
+            raise ValueError("mag_fun not available")
+        
+        # Add mass step
+        self._obj_attrs.extend(['mass_step'])
+        mb += self._sim_par["mass_step"]
 
         self._sim_par["mb"] = mb
 
-        # Set x1 and c
-        model.set(x1=self._sim_par["x1"], c=self._sim_par["c"])
-
         # Compute the x0 parameter
-        model.set_source_peakmag(self._sim_par["mb"], "bessellb", "ab")
-        self._sim_par["x0"] = model.get("x0")
+        self._sim_par["x0"] = self.mag_restframeband_to_amp(self._sim_par["mb"], 'bessellb', 'ab')
+        
+        # Set x1 and c
+        model.set(x0=self._sim_par["x0"], x1=self._sim_par["x1"], c=self._sim_par["c"])
         return model
 
     @staticmethod

@@ -360,44 +360,6 @@ def init_snia_source(name, model_dir=None, version=None):
     return None
 
 
-def snc_fitter(lc, fit_model, fit_par, **kwargs):
-    """Fit a given lightcurve with sncosmo.
-
-    Parameters
-    ----------
-    lc : astropy.Table
-        The SN lightcurve.
-    fit_model : sncosmo.Model
-        Model used to fit the ligthcurve.
-    fit_par : list(str)
-        The parameters to fit.
-
-    Returns
-    -------
-    sncosmo.utils.Result (numpy.nan if no result)
-        sncosmo dict of fit results.
-
-    """
-    try:
-        res = snc.fit_lc(data=lc, model=fit_model, vparam_names=fit_par, **kwargs)
-        if res[0]["covariance"] is None:
-            res[0]["covariance"] = np.empty(
-                (len(res[0]["vparam_names"]), len(res[0]["vparam_names"]))
-            )
-            res[0]["covariance"][:] = np.nan
-
-        res[0]["param_names"] = np.append(res[0]["param_names"], "mb")
-        res[0]["parameters"] = np.append(
-            res[0]["parameters"], res[1].source_peakmag("bessellb", "ab")
-        )
-
-        res_dic = {k: v for k, v in zip(res[0]["param_names"], res[0]["parameters"])}
-        res = np.append(res, res_dic)
-    except (RuntimeError, snc.fitting.DataQualityError):
-        res = ["NaN", "NaN", "NaN"]
-    return res
-
-
 def norm_flux(flux_table, zp):
     """Rescale the flux to a given zeropoint.
 
@@ -672,17 +634,22 @@ def gen_rndchilds(seed, size=1):
     else:
         return np.random.SeedSequence(seed).spawn(size)
 
-
 def compute_weight_mass_for_type(mass, sn_type, cosmology):
     """compute the mass dependent weights for HOST - SN matching"""
-    if sn_type.lower() == "snia":
+    if sn_type.lower() in ["sniax",'snia91bg',"snia"]:
         weights_mass = (
             cst.sullivan_para["mass"]
             * (cosmology.h / cst.h_article["sullivan06"])
             * mass
         )
-    return weights_mass
+    elif sn_type.lower() in ['sniin','sniib','sniipl','snii']:
+        C = 0.16  # 0.16 for SNeII from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights_mass = mass**C
 
+    elif sn_type.lower() in ["snic",'snib','snic_bl','snib/c']:
+        C = 0.36  #  0.36 for SNIb/c from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights_mass = mass**C
+    return weights_mass
 
 def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
     """compute the SFR dependent weights for HOST - SN matching"""
@@ -690,4 +657,50 @@ def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
         weights_SFR = (
             cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * SFR
         )
+    else:
+        raise ValueError('HOST-SN match using SFR only is valid only for SNIa')
+        
     return weights_SFR
+
+def compute_weight_mass_sfr_for_type(mass,sfr, sn_type, cosmology):
+    """compute the SFR dependent weights for HOST - SN matching"""
+    if sn_type.lower() == "snia":
+        weights_SFR = (
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
+        )
+        weights_mass = (
+            cst.sullivan_para["mass"]
+            * (cosmology.h / cst.h_article["sullivan06"])
+            * mass
+        )
+        weights = weights_SFR + weights_mass
+        
+    elif sn_type.lower() in ["sniax",'snia91bg']:
+        weights_SFR = (
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
+        )
+        weights_mass = (
+            cst.sullivan_para["mass"]
+            * (cosmology.h / cst.h_article["sullivan06"])
+            * mass
+        )
+    
+        weights = np.zeros(len(sfr))
+        mask = np.log10(sfr/mass) >  -11.5 # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights[mask] =  weights_SFR[mask] + weights_mass[mask]
+
+    elif sn_type.lower() in ['sniin','sniib','sniipl','snii']:
+        C = 0.16  # 0.16 for SNeII from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights = np.zeros(len(mass))
+        mask = np.log10(sfr/mass) > -11.5  # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights[mask] = mass[mask] **C
+
+    elif sn_type.lower() in ["snic",'snib','snic_bl','snib/c']:
+        C = 0.36  #  0.36 for SNIb/c from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights = np.zeros(len(mass))
+        mask = np.log10(sfr/mass) > -11.5  # -11.5 from Vincenxi et al. 2020 https://academic.oup.com/mnras/article/505/2/2819/6284776
+        weights[mask] = mass[mask] **C
+        
+    return weights
+
+

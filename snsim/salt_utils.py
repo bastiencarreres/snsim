@@ -6,6 +6,11 @@ from . import utils as ut
 from scipy.interpolate import RectBivariateSpline as spline2d
 
 
+def x0_to_mb(x0, source_name, source_version):
+    source = snc.get_source(source_name, version=source_version)
+    mb = -2.5 * np.log10(x0 / source.get('x0')) + source.peakmag('bessellb', 'ab')
+    return mb
+    
 def n21_x1_model(z, seed=None):
     """X1 distribution redshift dependant model from  Nicolas et al. 2021.
 
@@ -263,3 +268,42 @@ def compute_salt_fit_error(fit_model, cov, band, time_th, zp, magsys="ab"):
     J = np.asarray([[d1, d2, d3] for d1, d2, d3 in zip(dfdx0, dfdx1, dfdc)])
     err_th = np.sqrt(np.einsum("ki,ki->k", J, np.einsum("ij,kj->ki", cov, J)))
     return err_th
+
+
+def salt_fitter(lc, fit_model, fit_par, **kwargs):
+    """Fit a given lightcurve with sncosmo salt model.
+
+    Parameters
+    ----------
+    lc : astropy.Table
+        The SN lightcurve.
+    fit_model : sncosmo.Model
+        Model used to fit the ligthcurve.
+    fit_par : list(str)
+        The parameters to fit.
+
+    Returns
+    -------
+    sncosmo.utils.Result (numpy.nan if no result)
+        sncosmo dict of fit results.
+
+    """
+    try:
+        res = snc.fit_lc(data=lc, model=fit_model, vparam_names=fit_par, **kwargs)
+        if res[0]["covariance"] is None:
+            res[0]["covariance"] = np.empty(
+                (len(res[0]["vparam_names"]), len(res[0]["vparam_names"]))
+            )
+            res[0]["covariance"][:] = np.nan
+
+        res[0]["param_names"] = np.append(res[0]["param_names"], "mb")
+        
+        res[0]["parameters"] = np.append(
+            res[0]["parameters"], x0_to_mb(res[0]['parameters'][2], res[1].source.name, res[1].source.name)
+        )
+
+        res_dic = {k: v for k, v in zip(res[0]["param_names"], res[0]["parameters"])}
+        res = np.append(res, res_dic)
+    except (RuntimeError, snc.fitting.DataQualityError):
+        res = ["NaN", "NaN", "NaN"]
+    return res

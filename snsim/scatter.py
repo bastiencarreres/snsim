@@ -18,10 +18,12 @@ def init_sn_sct_model(sct_mod, *args):
     None
 
     """
-    if sct_mod == "G10":
+    if sct_mod.lower() == "g10":
         eff_dic = {"source": G10(*args), "name": "G10_", "frame": "rest"}
-    elif sct_mod[:3] == "C11":
-        eff_dic = {"source": C11, "name": "C11_", "frame": "rest"}
+    elif sct_mod[:3].lower() == "c11":
+        eff_dic = {"source": C11(), "name": "C11_", "frame": "rest"}
+    elif sct_mod.lower() == 'bs20':
+        eff_dic = {"source": snc.CCM89Dust(), "frame": "rest", "name": "BS20_"}
     return eff_dic
 
 
@@ -142,9 +144,9 @@ class C11(snc.PropagationEffect):
         return flux * 10 ** (-0.4 * magscat)
 
 
-##########################################
+###########################################
 # GENERATE terms for BS20 scattering model#
-##########################################
+###########################################
 def gen_BS20_scatter(n_sn, par_names=['beta_sn', 'Rv', 'E_dust', 'c_int'], seed=None):
     """Generate n coherent mag scattering term.
 

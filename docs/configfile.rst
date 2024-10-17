@@ -26,8 +26,8 @@ The input file is a .yml with the following structure:
       end_day: MJD NUMBER or 'YYYY-MM-DD'  # Opt, default given by survey file
       duration: SURVEY DURATION (DAYS)  # Opt, default given by survey file
       field_map: FIELD MAP FILE  # Opt, default is rectangle field
-      fake_skynoise: [VALUE, 'add' or 'replace'] # Opt, default is no fake_skynoise
       sub_field: 'sub_field_key' # Used to divided observation in CCD quadrant for example
+      cdd_noise : sig_ccd_noise # Optional, default is 0 ADU
    sim_par:
       z_range: [ZMIN, ZMAX] REDSHIFT RANGE
       randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
@@ -38,6 +38,7 @@ The input file is a .yml with the following structure:
       sn_rate: SN RATE in SN/Mpc^3/year # Opt, default=3e-5
       M0: SN ABSOLUT MAGNITUDE
       mag_sct: SN INTRINSIC COHERENT SCATTERING 
+      mass_step: ['threshold', 'value'] # Opt, default=[0, 0]
       sct_model: 'SCATTERING_MODEL_NAME' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
       mod_fcov: True or False, Use the covariance of simulation model to scatter flux # Opt, default = False
       model_name: MODEL NAME
@@ -63,6 +64,8 @@ The input file is a .yml with the following structure:
       sig_vpec: SIGMA VPEC
    host: # Opt 
       host_file: '/PATH/TO/HOSTFILE' 
+      reweight_vol: True or False # To remove the volume dist of the host when draw
+      keep_cols: ['key1', 'key2', ...] # Opt, column keys to keep at the end
       distrib: DISTRIBUTION TO USE TO DRAW HOST # Opt, default = 'rate'
       key_dic: {'column_name': 'new_column_name', ...}  # Opt, to change columns names
    dask: # Opt, to use dask parallelization
@@ -114,7 +117,7 @@ This section contains informations about the survey configuration :
    first day of the SQL database.
 -  **end_day** same as **start_day** but for the end of the survey.
    *type* : float or str. *Optional* : default is the last day of the
-   SQL database.
+   observations.
 -  **duration** : instead of setting an **end_day** you can specify a
    duration in **days**. *type* : float. *Optional* : the **duration**
    is ignored if an **end_day** is configured.
@@ -135,15 +138,7 @@ This section contains informations about the survey configuration :
    *Optional*
 -  **add_data** is a list of database key that you want to retrieve in
    lightcurves tables. *type* : list(str). *Optional*
--  **fake_skynoise** allow to add or replace the skynoise term. The fake
-   skynoise is multiply by the **PSF** if there is one given. This is a
-   list : [VALUE, ‘add’ or ‘replace’] the VALUE is the skynoise value in
-   ADU, if you use ‘add’ the fake_skynoise is added to skynoise from the
-   SQL database, else, if you use ‘replace’ the skynoise from SQL
-   database is just ignored. Note that if you set **fake_skynoise** with
-   ‘replace’ option and **sig_psf** = 0, the skynoise is exactly the
-   **fake_skynoise** value. *type* : list(float, str). *Optional*
-   default is no **fake_skynoise**
+-  **ccd_noise** is the noise from instrument in ADU / pixels. *Optional* : default is 0
 
 sim_par
 -------
