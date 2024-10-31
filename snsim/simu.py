@@ -297,14 +297,18 @@ class Simulator:
 
         # -- Compute time range, rate and zcdf for each of the selected obj.
         for use_rate, gen in zip(self._use_rate, self.generators):
+            
+            print('\n#############\n')
 
-            rate_str = f"\nRate {gen._rate_expr} /Mpc^3/year "
             print(gen)
-
+            
+            rate_str = f"Rate {gen._rate_expr} /Mpc^3/year "
             if not use_rate:
                 rate_str += " (only for redshifts simulation)\n"
 
             print(rate_str)
+            
+            print('\n#############\n')
 
         print("\n-----------------------------------------------------------\n")
 

@@ -188,7 +188,7 @@ def init_snc_source(name, version=None):
     return snc.get_source(name=name, version=version)
 
 
-def scale_M0_cosmology(h, M0_art, h_art):
+def scale_Mabs_cosmology(h, Mabs_to_scale, h_ref):
     """Compute a value of M0 corresponding the cosmology used in the simulation.
 
     Parameters
@@ -206,7 +206,7 @@ def scale_M0_cosmology(h, M0_art, h_art):
         Scaled SN Absolute Magnitude.
 
     """
-    return M0_art + 5 * np.log10(h / h_art)
+    return Mabs_to_scale + 5 * np.log10(h / h_ref)
 
 
 def init_astropy_time(date):
@@ -546,29 +546,6 @@ def select_Vincenzi_template(model_list, corr=None):
                 if sn.startswith("v19") and not sn.endswith("corr")
             ]
 
-
-def print_rate(use_rate, gen):
-    """Print simulation rate in a fancy format
-    Parameters
-    ---------------
-    use_rate: bool
-            True if in the simulation the object are created with a specific rate in /Mpc^3/year
-    gen: Generator Object
-    Returns
-    ---------------
-    print the rate"""
-
-    rate_str = "\nRate r = {0:.2e} * (1 + z)^{1} /Mpc^3/year "
-
-    if use_rate:
-        rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
-    else:
-        rate_str = rate_str.format(gen.rate_law[0], gen.rate_law[1])
-        rate_str += " (only for redshifts simulation)\n"
-
-    print(rate_str)
-
-
 def sine_interp(x_new, fun_x, fun_y):
     """Make a sinus interpolation of a function.
 
@@ -639,7 +616,7 @@ def compute_weight_mass_for_type(mass, sn_type, cosmology):
     if sn_type.lower() in ["sniax",'snia91bg',"snia"]:
         weights_mass = (
             cst.sullivan_para["mass"]
-            * (cosmology.h / cst.h_article["sullivan06"])
+            * (cosmology.h / cst.h_registry["sullivan06"])
             * mass
         )
     elif sn_type.lower() in ['sniin','sniib','sniipl','snii']:
@@ -655,7 +632,7 @@ def compute_weight_SFR_for_type(SFR, sn_type, cosmology):
     """compute the SFR dependent weights for HOST - SN matching"""
     if sn_type.lower() == "snia":
         weights_SFR = (
-            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * SFR
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_registry["sullivan06"]) * SFR
         )
     else:
         raise ValueError('HOST-SN match using SFR only is valid only for SNIa')
@@ -666,22 +643,22 @@ def compute_weight_mass_sfr_for_type(mass,sfr, sn_type, cosmology):
     """compute the SFR dependent weights for HOST - SN matching"""
     if sn_type.lower() == "snia":
         weights_SFR = (
-            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_registry["sullivan06"]) * sfr
         )
         weights_mass = (
             cst.sullivan_para["mass"]
-            * (cosmology.h / cst.h_article["sullivan06"])
+            * (cosmology.h / cst.h_registry["sullivan06"])
             * mass
         )
         weights = weights_SFR + weights_mass
         
     elif sn_type.lower() in ["sniax",'snia91bg']:
         weights_SFR = (
-            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_article["sullivan06"]) * sfr
+            cst.sullivan_para["SFR"] * (cosmology.h / cst.h_registry["sullivan06"]) * sfr
         )
         weights_mass = (
             cst.sullivan_para["mass"]
-            * (cosmology.h / cst.h_article["sullivan06"])
+            * (cosmology.h / cst.h_registry["sullivan06"])
             * mass
         )
     
