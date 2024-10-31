@@ -232,7 +232,7 @@ def model_host_noise(sim_par, obs):
     
     sersic_dic = {key: val for key, val in sim_par.items() if key.startswith('host_sersic')}
     n_sersic = len([k for k in sersic_dic.keys() if k.startswith('host_sersic_a')])    
-    print(n_sersic)
+
     if n_sersic == 1:
         for k in sersic_dic.keys():
             if k[-1] != '0':

@@ -40,7 +40,6 @@ class BaseGen(abc.ABC):
     # General attributes
     _object_type = ""
     _available_models = []  # Flux models
-    _available_rates = {}  # Rate models
 
     def __init__(
         self,
@@ -131,7 +130,12 @@ class BaseGen(abc.ABC):
         self._mw_dust = mw_dust
         self._geometry = geometry
         self.rate, self._rate_expr = self._init_rate()
-
+        
+        # -- Init absolute magnitude
+        self._params['Mabs'], self._params['Mabs_band'], self._params['Mabs_str'] = self._init_absolute_mag()
+        if "sigM" in self._params:
+            self._params['sigM'], self._params["sigM_str"] = self._init_sigM()
+            
         # -- Init sncosmo model & effects
         self.sim_sources, self._sources_prange = self._init_snc_sources()
         self.sim_effects = self._init_snc_effects()
@@ -161,7 +165,7 @@ class BaseGen(abc.ABC):
         """
 
         # -- Initialise 3 seeds for differents generation calls
-        seeds = ut.gen_rndchilds(seed, 3)
+        seeds = ut.gen_rndchilds(seed, 4)
 
         if basic_par is not None:
             n_obj = len(basic_par["zcos"])
@@ -169,12 +173,24 @@ class BaseGen(abc.ABC):
             basic_par = self.gen_basic_par(n_obj, seed=seeds[0])
         else:
             raise ValueError("n_obj and astrobj_par cannot be None at the same time")
+        
+        # -- Add absolute magnitude parameters
+        mag_par = {}
+        mag_par["Mabs"] = np.empty(n_obj, dtype=float)
+        mag_par["Mabs"].fill(self._params["Mabs"])
+        mag_par["Mabs_band"] = np.empty(n_obj, dtype='U20')
+        mag_par["Mabs_band"].fill(self._params["Mabs_band"])
+        
+        if "sigM" in self._params:
+            mag_par["coh_sct"] = self.gen_coh_scatter(n_obj, seed=seeds[1])
+        else:
+            mag_par["coh_sct"] = np.zeros(len(n_obj))
 
         # -- Add parameters specific to the generated obj
-        obj_par = self.gen_par(n_obj, basic_par, seed=seeds[1])
+        obj_par = self.gen_par(n_obj, basic_par, seed=seeds[2])
 
         # -- randomly chose the number of object for each model
-        random_models = self.random_models(n_obj, seed=seeds[2])
+        random_models = self.random_models(n_obj, seed=seeds[3])
 
         # -- Check if there is dust
         dust_par = {}
@@ -182,7 +198,7 @@ class BaseGen(abc.ABC):
             dust_par = self._compute_dust_par(basic_par["ra"], basic_par["dec"])
 
         par = pd.DataFrame(
-            {**random_models, **obj_par, **dust_par}, index=basic_par.index
+            {**random_models, **mag_par, **obj_par, **dust_par}, index=basic_par.index
             )
 
         par = pd.concat([basic_par, par], axis=1)
@@ -222,7 +238,7 @@ class BaseGen(abc.ABC):
             model_dir = None
             model_dir_str = " from sncosmo"
 
-        pstr += "OBJECT TYPE : " + self._object_type + "\n"
+        pstr += "OBJECT TYPE : " + self._object_type + "\n\n"
         pstr += "SIM MODEL(S) :\n"
         for sn, snv in zip(
             self.sim_sources["model_name"], self.sim_sources["model_version"]
@@ -248,8 +264,8 @@ class BaseGen(abc.ABC):
                 pstr += " using rate\n\n"
         else:
             pstr += " using rate\n"
-
-        pstr += self._add_print() + "\n\n"
+    
+        pstr += self._add_print() + "\n"
         return pstr
 
     ##################################################
@@ -269,7 +285,8 @@ class BaseGen(abc.ABC):
             Random seed.
         """
         pass
-
+    
+    @abc.abstractmethod
     def _update_header(self):
         """Method to add information in header,
         called in _get_header
@@ -307,7 +324,58 @@ class BaseGen(abc.ABC):
     ####################
 
     # -- INIT FUNCTIONS -- #
+    def _init_absolute_mag(self):
+        """Init absolute magnitude.
 
+        Returns
+        -------
+        float, str, str
+            Mabs values, Mabs band, Mabs input string
+        """        
+        if isinstance(self._params["Mabs"], (int, float)):
+            Mabs = self._params["Mabs"]
+            Mabs_str = None
+            if "Mabs_band" in self._params:
+                Mabs_band = self._params["Mabs_band"]
+            else:
+                if hasattr(self, '_default_Mabs_band'):
+                    Mabs_band = self._default_Mabs_band
+                else:
+                    raise ValueError("Please provide Mabs_band parameter")
+            
+        elif isinstance(self._params["Mabs"], str):
+            if self._object_type not in cst.Mabs_registry:
+                raise ValueError(f"No default Mabs for {self._object_type} implemented yet, please provide Mabs")
+            elif self._params["Mabs"].lower() not in cst.Mabs_registry[self._object_type]:
+                raise ValueError(
+                f"{self._params['Mabs']} is not available! Available Mabs are: {cst.Mabs_registry.keys()}"
+                )
+            Mabs, Mabs_band = cst.Mabs_registry[self._object_type][self._params["Mabs"].lower()]
+            Mabs = ut.scale_Mabs_cosmology(
+                self.cosmology.h,
+                Mabs,
+                cst.h_registry[self._params["Mabs"].lower().split('@')[0]],
+                )
+            Mabs_str = self._params["Mabs"].lower()
+        else: 
+            raise ValueError(f"{self._params['Mabs']} should be a float, int or str!")
+        return Mabs, Mabs_band, Mabs_str
+    
+    def _init_sigM(self):
+        if isinstance(self._params["sigM"], str):
+            if self._object_type in cst.sigMabs_registery:
+                if self._params["sigM"] in cst.sigMabs_registery[self._object_type]:
+                    sigM = cst.sigMabs_registery[self._object_type][self._params["sigM"]]
+                    sigM_str = self._params["sigM"]
+                else:
+                    raise ValueError(f"{self._params['sigM']} not in registery for {self._object_type}")
+            else:
+                raise ValueError(f"No sigM registered for {self._object_type}")
+        else:
+            sigM = self._params["sigM"]
+            sigM_str = None
+        return sigM, sigM_str
+    
     def _init_registered_rate(self):
         """Rates registry.
 
@@ -321,15 +389,16 @@ class BaseGen(abc.ABC):
         ValueError
             The rate in params is not available.
         """
-        if self._params["rate"].lower() in self._available_rates:
-            return self._available_rates[self._params["rate"].lower()].format(
-                h=self.cosmology.h
-            )
+        if self._params["rate"].lower() in cst.rates_registry[self._object_type]:
+            expr = cst.rates_registry[self._object_type][self._params["rate"].lower()]
+            registery_keys = self._params["rate"].lower().split('@')[0]
+            expr += f" * ({self.cosmology.h} / {cst.h_registry[registery_keys]})**3"
         else:
             raise ValueError(
-                f"{self._params['rate']} is not available! Available rate are {self._available_rates}"
+                f"{self._params['rate']} is not available! Available rate are {cst.rates_registry[self._object_type]}"
             )
-
+        return expr
+    
     def _init_snc_effects(self):
         """Init sncosmo effects.
 
@@ -406,7 +475,7 @@ class BaseGen(abc.ABC):
                 if "lambda" in self._params["rate"].lower():
                     expr = self._params["rate"]
                 # Check registered rate
-                elif self._params["rate"].lower() in self._available_rates:
+                elif self._params["rate"].lower() in cst.rates_registry[self._object_type]:
                     expr = self._init_registered_rate()
                 # Check for yaml bad conversion of '1e-5'
                 else:
@@ -474,16 +543,15 @@ class BaseGen(abc.ABC):
         header = {
             "obj_type": self._object_type,
             "rate": self._rate_expr,
+            "params": self._params,
             **self.sim_sources,
         }
 
         if self.vpec_dist is not None:
-            header["m_vp"] = self.vpec_dist["mean_vpec"]
-            header["s_vp"] = self.vpec_dist["sig_vpec"]
+            header["vpec_dist"] = self.vpec_dist
 
         if self.mw_dust is not None:
-            header['mw_dust_model'] = self.mw_dust["model"]
-            header['mw_dust_rv'] = self.mw_dust["rv"]
+            header['mw_dust'] = self.mw_dust
 
         header = {**header, **self._update_header()}
         return header
@@ -671,7 +739,22 @@ class BaseGen(abc.ABC):
             basic_par['host_idx'] = hosts.index
 
         return pd.DataFrame(basic_par)
+    
+    def gen_coh_scatter(self, n_obj, seed=None):
+        rand_gen = np.random.default_rng(seed)
+        
+        if isinstance(self._params["sigM"], (float, int)):
+            return rand_gen.normal(loc=0, scale=self._params["sigM"], size=n_obj)
 
+        elif isinstance(self._params["sigM"], list):
+            return ut.asym_gauss(
+                mu=0,
+                sig_low=self._params["sigM"][0],
+                sig_high=self._params["sigM"][1],
+                seed=seed,
+                size=n_obj,
+            )
+        
     def random_models(self, n_obj, seed=None):
         """Draw n random models for a given source.
 
@@ -745,32 +828,9 @@ class SNIaGen(BaseGen):
     """SNIa parameters generator. Inherit from BaseGen"""
 
     _object_type = "SNIa"
+    _default_Mabs_band = ['bessellb']
     _available_models = ["salt2", "salt3"]
-    _available_rates = {
-        "ptf19": "lambda z:  2.43e-5 * ({h}/0.70)**3",  # Rate from https://arxiv.org/abs/1903.08580
-        "ztf20": "lambda z:  2.35e-5 * ({h}/0.70)**3",  # Rate from https://arxiv.org/abs/2009.01242
-        "ptf19_pw": "lambda z:  2.35e-5 * ({h}/0.70)**3 * (1 + z)**1.7",  # Rate from https://arxiv.org/abs/1903.08580
-    }
-
-    SNIA_M0 = {
-        "jla": -19.05
-    }  # M0 SNIA from JLA paper (https://arxiv.org/abs/1401.4064)
-
-    def _init_M0(self):
-        """Initialise absolute magnitude."""
-        if isinstance(self._params["M0"], (float, np.floating, int, np.integer)):
-            return self._params["M0"]
-        elif self._params["M0"].lower() in self.SNIA_M0:
-            return ut.scale_M0_cosmology(
-                self.cosmology.h,
-                self.SNIA_M0[self._params["M0"].lower()],
-                cst.h_article[self._params["M0"].lower()],
-            )
-        else:
-            raise ValueError(
-                f"{self._params['M0']} is not available! Available M0 are {self.SNIA_M0.keys()}"
-            )
-
+    
     def _add_print(self):
         """Add print statement."""
         str = ""
@@ -801,7 +861,6 @@ class SNIaGen(BaseGen):
         model_name = self._params["model_name"]
 
         header = {}
-        header["M0_band"] = "bessell_b"
         if model_name.lower()[:4] == "salt":
             if isinstance(self._params["dist_x1"], str):
                 header["dist_x1"] = self._params["dist_x1"]
@@ -852,11 +911,7 @@ class SNIaGen(BaseGen):
 
         """
         seeds = ut.gen_rndchilds(seed=seed, size=3)
-
-        params = {
-            "M0": np.ones(n_obj) * self._init_M0(),
-            "coh_sct": self.gen_coh_scatter(n_obj, seed=seeds[0]),
-        }
+        params = {}
         
         # -- Spectra model parameters
         if self._params["model_name"] in ("salt2", "salt3"):
@@ -887,27 +942,6 @@ class SNIaGen(BaseGen):
                 )
 
         return params
-
-    def gen_coh_scatter(self, n_sn, seed=None):
-        """Generate n coherent mag scattering term.
-
-        Parameters
-        ----------
-        n_sn : int
-            Number of mag scattering terms to generate.
-        seed : int or numpy.random.SeedSequence, optional
-            Random seed, by default None
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            numpy array containing scattering terms generated.
-
-        """
-        rand_gen = np.random.default_rng(seed)
-
-        mag_sct = rand_gen.normal(loc=0, scale=self._params["sigM"], size=n_sn)
-        return mag_sct
 
     def gen_salt_par(self, n_sn, seed=None, basic_par=None):
         """Generate SALT parameters.
@@ -978,49 +1012,10 @@ class CCGen(BaseGen):
         * SNCC shiver17 fraction from https://arxiv.org/abs/1609.02922 Table 3
 
     For Luminosity Functions:
-        * SNCC M0 mean and scattering of luminosity function values from Vincenzi et al. 2021 Table 5 (https://arxiv.org/abs/2111.10382)
+        * SNCC Mabs mean and scattering of luminosity function values from Vincenzi et al. 2021 Table 5 (https://arxiv.org/abs/2111.10382)
     """
 
     _available_models = ["vin19_corr", "vin19_nocorr"]
-
-    def _init_M0(self):
-        """Initialise absolute magnitude."""
-        if isinstance(self._params["M0"], (float, np.floating, int, np.integer)):
-            return self._params["M0"]
-        else:
-            return self.init_M0_for_type()
-
-    def gen_coh_scatter(self, n_sn, seed=None):
-        """Generate n coherent mag scattering term.
-
-        Parameters
-        ----------
-        n : int
-            Number of mag scattering terms to generate.
-        seed : int or numpy.random.SeedSequence, optional
-            Random seed, by default None
-
-        Returns
-        -------
-        numpy.ndarray(float)
-            numpy array containing scattering terms generated.
-
-        """
-        rand_gen = np.random.default_rng(seed)
-
-        if isinstance(self._params["sigM"], (float, np.floating, int, np.integer)):
-            return rand_gen.normal(loc=0, scale=self._params["sigM"], size=n_sn)
-
-        elif isinstance(self._params["sigM"], list):
-            return ut.asym_gauss(
-                mu=0,
-                sig_low=self._params["sigM"][0],
-                sig_high=self._params["sigM"][1],
-                seed=seed,
-                size=n_sn,
-            )
-        else:
-            return self.gen_coh_scatter_for_type(n_sn, seed)
 
     def gen_par(self, n_obj, basic_par, seed=None):
         """Generate sncosmo model dependant parameters (others than redshift and t0).
@@ -1038,40 +1033,14 @@ class CCGen(BaseGen):
         dict
             One dictionnary containing 'parameters names': numpy.ndarray(float).
         """
-        params = {
-            "M0": np.ones(n_obj) * self._init_M0(),
-            "coh_sct": self.gen_coh_scatter(n_obj, seed=seed),
-        }
-        return params
+        return {}
 
     def _add_print(self):
         str = ""
         return str
 
     def _update_header(self):
-        header = {}
-        header["M0_band"] = "bessell_r"
-        return header
-
-    def init_M0_for_type(self):
-        """Initialise absolute magnitude using default values from past literature works based on the type."""
-        if self._params["M0"].lower() == "li11_gaussian":
-            return ut.scale_M0_cosmology(
-                self.cosmology.h,
-                self._sn_lumfunc["M0"]["li11_gaussian"],
-                cst.h_article["li11"],
-            )
-
-        elif self._params["M0"].lower() == "li11_skewed":
-            return ut.scale_M0_cosmology(
-                self.cosmology.h,
-                self._sn_lumfunc["M0"]["li11_skewed"],
-                cst.h_article["li11"],
-            )
-        else:
-            raise ValueError(
-                f"{self._params['M0']} is not available! Available M0 are {self._sn_lumfunc['M0'].keys()} "
-            )
+        return {}
 
     def _init_sources_list(self):
         """Initialise sncosmo model using the good source.
@@ -1095,32 +1064,7 @@ class CCGen(BaseGen):
                 sources = [self._params["model_name"]]
         else:
             sources = self._params["model_name"]
-
         return sources
-
-    def gen_coh_scatter_for_type(self, n_sn, seed):
-        """Generate n coherent mag scattering term using default values from past literature works based on the type."""
-        if self._params["sigM"].lower() == "li11_gaussian":
-            return ut.asym_gauss(
-                mu=0,
-                sig_low=self._sn_lumfunc["coh_sct"]["li11_gaussian"][0],
-                sig_high=self._sn_lumfunc["coh_sct"]["li11_gaussian"][1],
-                seed=seed,
-                size=n_sn,
-            )
-
-        elif self._params["sigM"].lower() == "li11_skewed":
-            return ut.asym_gauss(
-                mu=0,
-                sig_low=self._sn_lumfunc["coh_sct"]["li11_skewed"][0],
-                sig_high=self._sn_lumfunc["coh_sct"]["li11_skewed"][1],
-                seed=seed,
-                size=n_sn,
-            )
-        else:
-            raise ValueError(
-                f"{self._params['sigM']} is not available! Available sigM are {self._sn_lumfunc['coh_scatter'].keys()} "
-            )
 
 
 class SNIIGen(CCGen):
@@ -1129,25 +1073,6 @@ class SNIIGen(CCGen):
     _object_type = "SNII"
     _available_models = ut.Templatelist_fromsncosmo("snii") + CCGen._available_models
 
-    _sn_fraction = {"ztf20": 0.776208, "shivers17": 0.69673}
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6",
-    }
-
-    def init_M0_for_type(self):
-        raise ValueError("Default M0 for SNII not implemented yet, please provide M0")
-
-    def gen_coh_scatter_for_type(self, n_sn, seed):
-        raise ValueError(
-            "Default scatterting for SNII not implemented yet, please provide SigM"
-        )
-
 
 class SNIIplGen(CCGen):
     """SNIIPL parameters generator. Inherit from CCGen."""
@@ -1155,50 +1080,12 @@ class SNIIplGen(CCGen):
     _object_type = "SNIIpl"
     _available_models = ut.Templatelist_fromsncosmo("sniipl") + CCGen._available_models
 
-    _sn_lumfunc = {
-        "M0": {"li11_gaussian": -15.97, "li11_skewed": -17.51},
-        "coh_sct": {"li11_gaussian": [1.31, 1.31], "li11_skewed": [2.01, 3.18]},
-    }
-
-    _sn_fraction = {
-        "shivers17": 0.620136,
-        "ztf20": 0.546554,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
-
 
 class SNIIbGen(CCGen):
     """SNIIb parameters generator. Inherit from CCGen."""
 
     _object_type = "SNIIb"
     _available_models = ut.Templatelist_fromsncosmo("sniib") + CCGen._available_models
-    _available_rates = ["ptf19", "ztf20", "ptf19_pw"]
-    _sn_lumfunc = {
-        "M0": {"li11_gaussian": -16.69, "li11_skewed": -18.30},
-        "coh_sct": {"li11_gaussian": [1.38, 1.38], "li11_skewed": [2.03, 7.40]},
-    }
-
-    _sn_fraction = {
-        "shivers17": 0.10944,
-        "ztf20": 0.047652,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
 
 
 class SNIInGen(CCGen):
@@ -1207,49 +1094,12 @@ class SNIInGen(CCGen):
     _object_type = "SNIIn"
     _available_models = ut.Templatelist_fromsncosmo("sniin") + CCGen._available_models
 
-    _sn_lumfunc = {
-        "M0": {"li11_gaussian": -17.90, "li11_skewed": -19.13},
-        "coh_sct": {"li11_gaussian": [0.95, 0.95], "li11_skewed": [1.53, 6.83]},
-    }
-
-    _sn_fraction = {
-        "shivers17": 0.046632,
-        "ztf20": 0.102524,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
-
 
 class SNIbcGen(CCGen):
     """SNIb/c parameters generator. Inherit from CCGen."""
 
     _object_type = "SNIb/c"
     _available_models = ut.Templatelist_fromsncosmo("snib/c") + CCGen._available_models
-    _sn_fraction = {"ztf20": 0.217118, "shivers17": 0.19456}
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
-
-    def init_M0_for_type(self):
-        raise ValueError("Default M0 for SNII not implemented yet, please provide M0")
-
-    def gen_coh_scatter_for_type(self, n_sn, seed):
-        raise ValueError(
-            "Default scatterting for SNII not implemented yet, please provide SigM"
-        )
 
 
 class SNIcGen(CCGen):
@@ -1257,23 +1107,6 @@ class SNIcGen(CCGen):
 
     _object_type = "SNIc"
     _available_models = ut.Templatelist_fromsncosmo("snic") + CCGen._available_models
-    _sn_lumfunc = {
-        "M0": {"li11_gaussian": -16.75, "li11_skewed": -17.51},
-        "coh_sct": {"li11_gaussian": [0.97, 0.97], "li11_skewed": [1.24, 1.22]},
-    }
-
-    _sn_fraction = {
-        "shivers17": 0.075088,
-        "ztf20": 0.110357,
-    }
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
 
 
 class SNIbGen(CCGen):
@@ -1281,49 +1114,13 @@ class SNIbGen(CCGen):
 
     _object_type = "SNIb"
     _available_models = ut.Templatelist_fromsncosmo("snib") + CCGen._available_models
-    _sn_lumfunc = {
-        "M0": {"li11_gaussian": -16.07, "li11_skewed": -17.71},
-        "coh_sct": {"li11_gaussian": [1.34, 1.34], "li11_skewed": [2.11, 7.15]},
-    }
-
-    _sn_fraction = {
-        "shivers17": 0.108224,
-        "ztf20": 0.052551,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
-
+    
 
 class SNIc_BLGen(CCGen):
     """SNIc_BL class. Inherit from CCGen."""
 
     _object_type = "SNIc_BL"
     _available_models = ut.Templatelist_fromsncosmo("snic-bl") + CCGen._available_models
-    _sn_lumfunc = {
-        "M0": {"li11_gaussian": -16.79, "li11_skewed": -17.74},
-        "coh_sct": {"li11_gaussian": [0.95, 0.95], "li11_skewed": [1.35, 2.06]},
-    }
-
-    _sn_fraction = {
-        "shivers17": 0.011248,
-        "ztf20": 0.05421,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z: 1.01e-4 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3",
-        # Rate from  https://arxiv.org/abs/2010.15270
-        "ztf20": f"lambda z: 9.10e-5 * {_sn_fraction['ztf20']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z: 9.10e-5 * {_sn_fraction['shivers17']} * ({{h}}/0.70)**3 * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
 
 
 class SNIapeculiarGen(BaseGen):
@@ -1370,13 +1167,10 @@ class SNIapeculiarGen(BaseGen):
         return params
 
     def _add_print(self):
-        str = ""
-        return str
+        return ""
 
     def _update_header(self):
-        header = {}
-        header["M0_band"] = "bessell_v"
-        return header
+        return {}
 
 
 class SNIaxGen(SNIapeculiarGen):
@@ -1393,19 +1187,7 @@ class SNIaxGen(SNIapeculiarGen):
     _available_models = (
         plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
     )
-    _available_rates = ["ptf19", "ptf19_pw"]
-
-    _sn_fraction = {
-        "plasticc": 0.24,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3  *((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }
-
+    
     def _gen_dust_par(self, n_obj, seed):
         return plm.generate_dust_sniax(n_obj, seed)
 
@@ -1424,15 +1206,3 @@ class SNIa_91bgGen(SNIapeculiarGen):
     _available_models = (
         plm.get_sed_listname("snia91bg") + SNIapeculiarGen._available_models
     )
-    _available_rates = ["ptf19", "ptf19_pw"]
-
-    _sn_fraction = {
-        "plasticc": 0.12,
-    }
-
-    _available_rates = {
-        # Rate from https://arxiv.org/abs/2009.01242, rates of subtype from figure 6
-        "ptf19": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3",
-        # Rate from https://arxiv.org/abs/2010.15270, pw from https://arxiv.org/pdf/1403.0007.pdf
-        "ptf19_pw": f"lambda z:  2.43e-5 * {_sn_fraction['plasticc']} * ({{h}}/0.70)**3  * ((1 + z)**2.7/(1 + ((1 + z) / 2.9))**5.6)",
-    }

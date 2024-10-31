@@ -25,4 +25,5 @@ from .hosts import SnHosts
 from . import utils
 from . import io_utils
 from . import scatter
+from . import dust_utils
 from .plasticc_model import *

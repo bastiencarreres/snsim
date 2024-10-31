@@ -25,9 +25,11 @@ class AstrObj(abc.ABC):
         "como_dist",
         "model_name",
         "host_noise",
+        "Mabs",
+        "Mabs_band"
     ]
 
-    _obj_attrs = [""]
+    _obj_attrs = ["mb"]
     _available_models = [""]
 
     def __init__(self, sim_par, mag_fun=None, effects=None):
@@ -56,11 +58,6 @@ class AstrObj(abc.ABC):
             | ├── source: sncosmo.effect, sncosmo effect obj
             | ├── frame: str 'obs' or 'rest'
             | └── name: str, effect name
-
-        Raises
-        ------
-        ValueError
-            If simpar['model_name'] is not available
         """
         # -- Copy input parameters dic
         self._sim_par = copy.copy(sim_par)
@@ -329,7 +326,7 @@ class SNIa(AstrObj):
 
     _type = "snIa"
     _available_models = ["salt2", "salt3"]
-    _obj_attrs = ["M0", "mb", "coh_sct"]
+    _obj_attrs = ["mb"]
 
     def _set_model_par(self, model):
         """
@@ -368,7 +365,7 @@ class SNIa(AstrObj):
             # beta*c : scattering due to color and stretch} + {coherent intrinsic scattering}
             mb = (
                 self.SALTTripp(
-                    self._sim_par["M0"],
+                    self._sim_par["Mabs"],
                     self._sim_par["alpha"],
                     self._sim_par["beta"],
                     self._sim_par["x1"],
@@ -388,7 +385,7 @@ class SNIa(AstrObj):
         self._sim_par["mb"] = mb
 
         # Compute the x0 parameter
-        self._sim_par["x0"] = self.mag_restframeband_to_amp(self._sim_par["mb"], 'bessellb', 'ab')
+        self._sim_par["x0"] = self.mag_restframeband_to_amp(self._sim_par["mb"], self._sim_par["Mabs_band"], 'ab')
         
         # Set x1 and c
         model.set(x0=self._sim_par["x0"], x1=self._sim_par["x1"], c=self._sim_par["c"])
@@ -402,7 +399,7 @@ class SNIa(AstrObj):
 class TimeSeries(AstrObj):
     """TimeSeries class."""
 
-    _obj_attrs = ["M0", "amplitude", "mb", "coh_sct"]
+    _obj_attrs = ["mb"]
 
     def _set_model_par(self, model):
         """Set sncosmo model parameters.
@@ -418,14 +415,16 @@ class TimeSeries(AstrObj):
             The sncosmo model with parameters set.
         """
 
-        M0 = self._sim_par["M0"] + self._sim_par["coh_sct"]
-
-        m_r = self.mu + M0
-
+        mag = self._sim_par["Mabs"] + self._sim_par["coh_sct"] + self.mu
+        self._sim_par["amplitude"] = self.mag_restframeband_to_amp(
+            mag, 
+            self._sim_par["Mabs_band"], 
+            'ab', 
+            amp_param_name='amplitude')
+        
         # Compute the amplitude  parameter
-        model.set_source_peakmag(m_r, "bessellr", "ab")
+        model.set(amplitude=self._sim_par["amplitude"])
         self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
-        self._sim_par["amplitude"] = model.get("amplitude")
         return model
 
 
@@ -506,7 +505,7 @@ class SNIax(AstrObj):
       | └── used model parameters
     """
 
-    _obj_attrs = ["M0", "amplitude", "mb"]
+    _obj_attrs = ["mb"]
     _type = "snIax"
     _available_models = plm.get_sed_listname("sniax")
 
@@ -566,7 +565,7 @@ class SNIa91bg(AstrObj):
       | └── used model parameters
     """
 
-    _obj_attrs = ["M0", "amplitude", "mb"]
+    _obj_attrs = ["mb"]
     _type = "snIa91bg"
     _available_models = plm.get_sed_listname("snia91bg")
 
