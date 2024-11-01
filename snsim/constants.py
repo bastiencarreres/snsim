@@ -79,6 +79,13 @@ Mabs_registry = {
         "li11@gaussian": [-16.79, "bessellr"],
         "li11@skewed": [-17.74, "besseellr"]
     },
+    "SNIax": {
+        "plasticc": [0.345, "bessellv"]
+    },
+    "SNIa91bg":
+        {
+            "plasticc": [0, "bessellv"]
+        }
 }
 
 sigMabs_registery = {
@@ -102,6 +109,7 @@ sigMabs_registery = {
         "li11@gaussian": 0.95,
         "li11@skewed": [1.35, 2.06]
     },
+
 }
 
 rates_registry = {

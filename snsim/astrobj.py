@@ -196,8 +196,8 @@ class AstrObj(abc.ABC):
                 obs["band"], obs["time"], zp=obs["zp"], zpsys=obs["zpsys"]
             )
 
+        # -- Compute the Noise from the host galaxy if required
         sig_host = 0
-        #compute the Noise from the host galaxy if required
         if self._sim_par["host_noise"]:
             sig_host = hst.model_host_noise(self._sim_par, obs)
 
@@ -205,9 +205,9 @@ class AstrObj(abc.ABC):
         # -- Noise computation : Poisson Noise + Skynoise + ZP noise + Host gal Noise
         fluxerrtrue = np.sqrt(
             np.abs(fluxtrue) / obs['gain']
-            + obs['skynoise']**2
+            + obs['skynoise'] ** 2
             + (np.log(10) / 2.5 * fluxtrue * obs['sig_zp']) ** 2 
-            + sig_host**2
+            + sig_host ** 2
         )
 
         gen = np.random.default_rng(random_seeds[1])
@@ -255,7 +255,7 @@ class AstrObj(abc.ABC):
         if self._sim_par["host_noise"]:
             sim_lc['host_noise'] = sig_host
 
-        snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k!= 'z'}
+        snc_par = {k: v for k, v in zip(self.sim_model.param_names, self.sim_model.parameters) if k != 'z'}
         sim_lc.attrs = {
             "mu": self.mu,
             "zobs": self.zobs,
@@ -270,9 +270,26 @@ class AstrObj(abc.ABC):
         return sim_lc
 
     def mag_restframeband_to_amp(self, mag, band, magsys, amp_param_name='x0'):
-        source = self.source
-        m_current = source.peakmag(band, magsys)
-        return 10.**(0.4 * (m_current - mag)) * source.get(amp_param_name)
+        """Get the amplitude correcponding to a rest-frame band magnitude.
+
+        Parameters
+        ----------
+        mag : float
+            magnitude
+        band : str
+            band used to get the magnitude
+        magsys : str
+            magnitude system used
+        amp_param_name : str, optional
+            the name of the amplitude parameter for the model, by default 'x0'
+
+        Returns
+        -------
+        float
+            The amplitude prameter corresponding to the given mag.
+        """        
+        m_current = self.source.peakmag(band, magsys)
+        return 10.**(0.4 * (m_current - mag)) * self.source.get(amp_param_name)
         
     @property
     def source(self):
@@ -482,7 +499,7 @@ class SNIc_BL(TimeSeries):
 
     _type = "snIc-BL"
     _available_models = ut.Templatelist_fromsncosmo("snic-bl")
-
+    
 
 class SNIax(AstrObj):
     """SNiax class.
@@ -498,10 +515,8 @@ class SNIax(AstrObj):
         sncosmo Model to use.
     model_par : dict
         General model parameters.
-
+        
       | same as BasicAstrObj model_par
-      | ├── M0,  absolute magnitude
-      | ├── sigM, sigma of coherent scattering
       | └── used model parameters
     """
 
@@ -523,24 +538,24 @@ class SNIax(AstrObj):
             The sncosmo model with parameters set.
         """
 
-        M0 = (
-            model.source_peakmag("bessellv", "ab") + 0.345
-        )  # correction to recalibrate to plasticc models
-        self._sim_par["M0"] = M0
-
-        m_v = self.mu + M0
+        mag = model.source_peakmag(self._sim_par["Mabs_band"], "ab") + self._sim_par["Mabs"] + self.mu
 
         # Compute the amplitude  parameter
-        model.set_source_peakmag(m_v, "bessellv", "ab")
+        self._sim_par["amplitude"] = self.mag_restframeband_to_amp(
+            mag, 
+            self._sim_par["Mabs_band"], 
+            'ab', 
+            amp_param_name='amplitude')
+        
+        model.set(amplitude=self._sim_par["amplitude"])
+        
         self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
-        self._sim_par["amplitude"] = model.get("amplitude")
 
         dust = snc.CCM89Dust()
         model.add_effect(dust, frame="rest", name="host_")
         model.set(
             **{"host_ebv": self._sim_par["E_dust"], "host_r_v": self._sim_par["RV"]}
         )
-
         return model
 
 
@@ -583,13 +598,16 @@ class SNIa91bg(AstrObj):
             The sncosmo model with parameters set.
         """
 
-        M0 = model.source_peakmag("bessellv", "ab")
-        self._sim_par["M0"] = M0
-
-        m_v = self.mu + M0
+        mag = model.source_peakmag(self._sim_par["Mabs_band"], "ab") + self._sim_par["Mabs"] + self.mu
 
         # Compute the amplitude  parameter
-        model.set_source_peakmag(m_v, "bessellv", "ab")
+        self._sim_par["amplitude"] = self.mag_restframeband_to_amp(
+            mag, 
+            self._sim_par["Mabs_band"], 
+            'ab', 
+            amp_param_name='amplitude')
+        
+        model.set(amplitude=self._sim_par["amplitude"])
+        
         self._sim_par["mb"] = model.source_peakmag("bessellb", "ab")
-        self._sim_par["amplitude"] = model.get("amplitude")
         return model

@@ -31,6 +31,7 @@ __GEN_DIC__ = {
     "snia_peculiar_gen": "SNIa_peculiarGen",
     "sniax_gen": "SNIaxGen",
     "snia_91bg_gen": "SNIa_91bgGen",
+    "lensed_time_series": "LensedTimeSeriesGen"
 }
 
 
@@ -184,7 +185,7 @@ class BaseGen(abc.ABC):
         if "sigM" in self._params:
             mag_par["coh_sct"] = self.gen_coh_scatter(n_obj, seed=seeds[1])
         else:
-            mag_par["coh_sct"] = np.zeros(len(n_obj))
+            mag_par["coh_sct"] = np.zeros(n_obj)
 
         # -- Add parameters specific to the generated obj
         obj_par = self.gen_par(n_obj, basic_par, seed=seeds[2])
@@ -204,7 +205,14 @@ class BaseGen(abc.ABC):
         par = pd.concat([basic_par, par], axis=1)
 
         if self.hosts is not None:
-            hosts = self.hosts.df.loc[basic_par['host_idx']]
+            hosts = self.hosts.df.loc[basic_par['host_index']]
+            
+            # -- Check for host' dust
+            if "ebv" in hosts.columns:
+                par["hostdust_ebv"] = hosts["ebv"].values
+                if "r_v" in hosts.columns:
+                    par["hostdust_r_v"] = hosts["r_v"].values
+            
             # -- Check for column to keep
             if 'keep_cols' in self.hosts.config:
                 for k in self.hosts.config['keep_cols']:
@@ -411,6 +419,14 @@ class BaseGen(abc.ABC):
         # -- MW dust
         if self.mw_dust is not None:
             effects.append(dst_ut.init_mw_dust(self.mw_dust))
+        if "ebv" in self.hosts.df.columns:
+            effects.append(
+                {
+                    'source': snc.CCM89Dust(),
+                    'name': 'hostdust_',
+                    'frame': 'rest'
+                }
+            )
         effects += self._add_effects()
         return effects
 
@@ -736,7 +752,7 @@ class BaseGen(abc.ABC):
             basic_par["1_zobs"] = _1_zobs_
 
         if self.hosts is not None:
-            basic_par['host_idx'] = hosts.index
+            basic_par['host_index'] = hosts.index
 
         return pd.DataFrame(basic_par)
     
@@ -923,7 +939,7 @@ class SNIaGen(BaseGen):
         # -- Mass step
         mass_step = np.zeros(n_obj)
         if "mass_step" in self._params:
-            mask = np.log10(self.hosts.df.loc[basic_par['host_idx']]['sm']) >  self._params["mass_step"][0]
+            mask = np.log10(self.hosts.df.loc[basic_par['host_index']]['sm']) >  self._params["mass_step"][0]
             mass_step[mask] = self._params["mass_step"][1] / 2 
             mass_step[~mask] = -self._params["mass_step"][1] / 2 
         
