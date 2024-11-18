@@ -62,9 +62,9 @@ The input file is a .yml with the following structure:
    vpec_dist: # Opt
       mean_vpec: MEAN SN PECULIAR VEL
       sig_vpec: SIGMA VPEC
-   host: # Opt 
+   hosts: # Opt 
       host_file: '/PATH/TO/HOSTFILE' 
-      reweight_vol: True or False # To remove the volume dist of the host when draw
+      reweight_vol: True or False # Opt, default = False To remove the volume dist of the host when draw
       keep_cols: ['key1', 'key2', ...] # Opt, column keys to keep at the end
       distrib: DISTRIBUTION TO USE TO DRAW HOST # Opt, default = 'rate'
       key_dic: {'column_name': 'new_column_name', ...}  # Opt, to change columns names
