@@ -465,9 +465,6 @@ class SurveyObs:
         Inspired from  https://github.com/MickaelRigault/ztffields :
             ztffields.projection.spatialjoin_radec_to_fields
         """
-        columns_order = ['expMJD', 'filter', 'fieldID', 'fieldRA', 'fieldDec', 
-                         'maglimcat', 'zp', 'gain', 'rcid', 'infobits', 'sig_zp', 
-                         'fwhm_psf', 'phase']
         
         # -- Compute max and min of table section
         minMJD = df.expMJD.min()

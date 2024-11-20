@@ -419,7 +419,7 @@ class BaseGen(abc.ABC):
         # -- MW dust
         if self.mw_dust is not None:
             effects.append(dst_ut.init_mw_dust(self.mw_dust))
-        if "ebv" in self.hosts.df.columns:
+        if self.hosts is not None and "ebv" in self.hosts.df.columns:
             effects.append(
                 {
                     'source': snc.CCM89Dust(),
