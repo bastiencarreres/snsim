@@ -90,14 +90,17 @@ class SurveyObs:
             GeoDataFrame
         """        
         stime = time.time()
-        fields_df = self.obs_table.drop_duplicates(subset=['fieldID'])
         
         keep_keys = ['fieldID', 'fieldRA', 'fieldDec']
+
+        fields_df = self.obs_table.drop_duplicates(subset=['fieldID'])[keep_keys]
         
         if self._sub_field_key is not None:
-            keep_keys.append(self._sub_field_key)
+            subfields = pd.DataFrame(
+                data=[(f, sf) for sf in self._field_shape_corners.keys() for f in fields_df.fieldID],
+                columns=['fieldID', self._sub_field_key])
             
-        fields_df = fields_df[keep_keys]
+            fields_df = fields_df.merge(subfields, on='fieldID')
         
         GeoFieldMap = self._define_sub_field_polygons(
             fields_df, 
