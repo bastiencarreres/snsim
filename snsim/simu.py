@@ -362,10 +362,10 @@ class Simulator:
                     dir_path=self.config["data"]["write_path"],
                 )
             )
-
+            duration = time.time() - sim_time
             print(
                 f"{len(lcs_list)} {gen._object_type} lcs generated"
-                f" in {time.time() - sim_time:.1f} seconds"
+                f" in {duration//60}min{duration%60:.2f}sec"
             )
             write_time = time.time()
 
