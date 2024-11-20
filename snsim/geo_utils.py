@@ -1,9 +1,10 @@
 """This module contains usefull function for the survey and field geometry."""
 
 import numpy as np
-import geopandas as gpd
+import shapely.affinity as shp_aff
 from shapely import geometry as shp_geo
 from shapely import ops as shp_ops
+from shapely import polygons as shp_poly
 from .constants import _SPHERE_LIMIT_
 
 
@@ -56,18 +57,11 @@ def _compute_polygon(corners):
     """
 
     # Create polygons
-    polygons = gpd.GeoSeries(
-        [shp_geo.Polygon(corners[:, j, :]) for j in range(corners.shape[1])]
-    )
+    polygons = shp_geo.MultiPolygon(shp_poly(corners.transpose((1, 0, 2))).tolist())
 
     # Check if they intersect the 2pi edge line
-    int_mask = polygons.intersects(_SPHERE_LIMIT_)
-
-    # If they do cut divide them in 2 and translate the one that is beyond the edge at -2pi
-    polydiv = gpd.GeoSeries(
-        shp_ops.polygonize(polygons[int_mask].boundary.union(_SPHERE_LIMIT_))
-    )
-    transl_mask = polydiv.boundary.bounds["maxx"] > 2 * np.pi
-    polydiv[transl_mask] = polydiv[transl_mask].translate(-2 * np.pi)
-
-    return shp_geo.MultiPolygon([*polygons[~int_mask].values, *polydiv.values])
+    if polygons.intersects(_SPHERE_LIMIT_):
+        # If they do cut divide them in 2 and translate the one that is beyond the edge at -2pi
+        polydiv = shp_ops.polygonize(polygons.boundary.union(_SPHERE_LIMIT_))
+        polygons = shp_geo.MultiPolygon([shp_aff.translate(p, -2 * np.pi) if p.boundary.bounds[2] > 2 * np.pi else p for p in polydiv])
+    return polygons

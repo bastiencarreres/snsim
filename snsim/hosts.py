@@ -214,7 +214,7 @@ class SnHosts:
             idx = []
             n_to_sim = n
             while len(idx) < n:
-                idx_tmp = np.random.choice(self.df.index, p=weights, size=n_to_sim)
+                idx_tmp = rand_gen.choice(self.df.index, p=weights, size=n_to_sim)
                 multipoint = gpd.points_from_xy(
                     self.df.loc[idx_tmp]["ra"], self.df.loc[idx_tmp]["dec"]
                 )

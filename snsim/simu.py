@@ -33,6 +33,9 @@ class Simulator:
     |     survey_file: '/PATH/TO/FILE'
     |     band_dic: {'r':'ztfr','g':'ztfg','i':'ztfi'}  # Optional -> if bandname in
     |  survey_file doesn't match sncosmo name
+    |     gain: CCD GAIN e-/ADU # Optional, default given by survey file
+    |     sub_field: 'sub_field_key' # Optional
+    |     cdd_noise : sig_ccd_noise # Optional, default is 0 ADU
     |     key_dic: {'column_name': 'new_column_name', etc}  # Optional, to change columns names
     |     add_data: ['keys1', 'keys2', ...] add db file keys to metadata
     |     survey_cut: {'key1': ['conditon1','conditon2',...], 'key2': ['conditon1']}
@@ -40,13 +43,12 @@ class Simulator:
     |     duration: SURVEY DURATION (DAYS)  # Optional, default given by survey file
     |     zp: INSTRUMENTAL ZEROPOINT  # Optional, default given by survey file
     |     sig_zp: ZEROPOINT ERROR  # Optional, default given by survey file
-    |     sig_psf: GAUSSIAN PSF SIGMA  # Otional, default given by survey file as FWHMeff
+    |     fwhm_psf: GAUSSIAN PSF FWHM  # Otional, default given by survey file as FWHMeff
     |     noise_key: [key, type] type can be 'mlim5' or 'skysigADU'
-    |     ra_size: RA FIELD SIZE
-    |     dec_size: DEC FIELD SIZE
-    |     gain: CCD GAIN e-/ADU (Optional, default given by survey file)
-    |     sub_field: ['sub_field_file', 'sub_field_key']
-    |     cdd_noise : sig_ccd_noise # Optional, default is 0 ADU
+    |     ra_size: RA FIELD SIZE # Optional if there is geo_field_map
+    |     dec_size: DEC FIELD SIZE # Optional if there is geo_field_map
+    |     field_shape: '/PATH/TO/FIELD_SHAPE_FILE' # Optional if there is geo_field_map
+    |     geo_field_map:  '/PATH/TO/GEO_FIELD_MAP_FILE' # Optional
     | sim_par:
     |     randseed: RANDSEED TO REPRODUCE SIMULATION  # Optional
     |     z_range: [ZMIN, ZMAX]
@@ -58,7 +60,7 @@ class Simulator:
     | snia_gen:
     |     n_sn: NUMBER OF SN TO GENERATE  # Optional
     |     rate: rate of SN/Mpc^3/year # Optional, default=3e-5
-    |     M0: SN ABSOLUT MAGNITUDE
+    |     Mabs: SN ABSOLUT MAGNITUDE
     |     sigM: SN INTRINSIC COHERENT SCATTERING
     |     sct_model: 'G10','C11_i' USE WAVELENGHT DEP MODEL FOR SN INT SCATTERING
     |     model_name: 'THE MODEL NAME'  Example : 'salt2'
@@ -480,14 +482,12 @@ class Simulator:
             duration = self.config["sim_par"]["duration_for_rate"]
         else:
             duration = generator.time_range[1] - generator.time_range[0]
-
         n_obj = self._gen_n_sn(
             generator._z_time_rate[1],
             duration,
             seed=seeds[0],
             area=self.survey._envelope_area,
         )
-
         lcs = self._sim_lcs(seeds[1], generator, n_obj, Obj_ID=Obj_ID)
 
         return lcs

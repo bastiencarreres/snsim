@@ -3,12 +3,14 @@
 import warnings
 import copy
 import os
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import pandas as pd
 import geopandas as gpd
 from shapely import ops as shp_ops
+from pathlib import Path
 import dask.dataframe as daskdf
 from . import utils as ut
 from . import geo_utils as geo_ut
@@ -26,8 +28,6 @@ class SurveyObs:
 
     | survey_config
     | ├── survey_file PATH TO SURVEY FILE
-    | ├── ra_size RA FIELD SIZE IN DEG -> float
-    | ├── dec_size DEC FIELD SIZE IN DEG -> float
     | ├── gain CCD GAIN e-/ADU -> float
     | ├── start_day STARTING DAY -> float or str, opt
     | ├── end_day ENDING DAY -> float or str, opt
@@ -35,8 +35,11 @@ class SurveyObs:
     | ├── zp FIXED ZEROPOINT -> float, opt
     | ├── survey_cut, CUT ON OBS FILE -> dict, opt
     | ├── add_data, LIST OF KEY TO ADD METADATA -> list(str), opt
+    | ├── ra_size RA FIELD SIZE IN DEG -> float, opt if geo_field_map
+    | ├── dec_size DEC FIELD SIZE IN DEG -> float, opt if geo_field_map
+    | ├── geo_field_map PATH TO GEOGFIELDMAP file -> str, opt
     | ├── field_map, PATH TO SUBFIELD MAP FILE -> str, opt
-    | └── sub_field, SUBFIELD KEY -> str, opt
+    | └── sub_field_key, SUBFIELD KEY -> str, opt
     """
 
     # -- Basic keys needed in survey file (+ noise)
@@ -51,14 +54,68 @@ class SurveyObs:
         self._obs_table, self._start_end_days = self._init_data()
 
         # -- Init fields
-        if "field_map" in self.config:
-            field_map = self.config["field_map"]
+        if "sub_field_key" in self.config:
+            self._sub_field_key = self.config["sub_field_key"]
         else:
-            field_map = "rectangle"
+            self._sub_field_key = None
+            
+        if 'geo_field_map' in self.config:
+            # -- Open GeoPandas Field map
+            self.GeoFieldMap = gpd.read_parquet(self.config['geo_field_map'])
+            self._field_shape_corners = None
+        else:
+            self.GeoFieldMap = None
+            if "field_shape" in self.config:
+                field_shape = self.config["field_shape"]
+            else:
+                field_shape = "rectangle"
 
-        self._sub_field_corners = self._init_fields_map(field_map)
+            self._field_shape_corners = self._init_field_shape(field_shape)
+            
+            if 'fieldID' in self.obs_table:
+                field_unique = self.obs_table.fieldID.unique()
+                N_unique = len(field_unique)
+                if N_unique <= 0.1 * len(self.obs_table):
+                    print('Generating a field_map file')
+                    self.GeoFieldMap = self.compute_geo_field_map()
+                
         self._envelope, self._envelope_area = self._compute_envelope()
 
+    def compute_geo_field_map(self):
+        """Compute the GeoFieldMap and writte it for future use
+
+        Returns
+        -------
+        GeoFieldMap
+            GeoDataFrame
+        """        
+        stime = time.time()
+        fields_df = self.obs_table.drop_duplicates(subset=['fieldID'])
+        
+        keep_keys = ['fieldID', 'fieldRA', 'fieldDec']
+        
+        if self._sub_field_key is not None:
+            keep_keys.append(self._sub_field_key)
+            
+        fields_df = fields_df[keep_keys]
+        
+        GeoFieldMap = self._define_sub_field_polygons(
+            fields_df, 
+            self._field_shape_corners, 
+            sub_field_key=self._sub_field_key
+            )
+        
+        dtime = time.time() - stime
+        print(f"GeoFieldMap computed in {dtime // 60}min{dtime%60:.2f}sec")
+        
+        sfname = Path(self.config['survey_file'])
+        fname = sfname.parent / sfname.with_stem(sfname.stem + '_GeoFieldMap').with_suffix('.parquet')
+        GeoFieldMap.to_parquet(fname)
+        
+        print(f"GeoFieldMap written in {fname}, next time use the 'geo_field_map' key in survey_config")
+
+        return GeoFieldMap
+        
     def _compute_envelope(self):
         """Compute envelope of survey geometry and it's area.
 
@@ -67,37 +124,40 @@ class SurveyObs:
         shapely.Polygon, float
             envelope of the survey, it's area
         """
-        # Compute min and max positons
-        minDec = self.obs_table.fieldDec.min()
-        maxDec = self.obs_table.fieldDec.max()
-        minRA = self.obs_table.fieldRA.min()
-        maxRA = self.obs_table.fieldRA.max()
+        if self.GeoFieldMap is not None:
+            envelope = self.GeoFieldMap.unary_union.envelope
+        else:
+            # Compute min and max positons
+            minDec = self.obs_table.fieldDec.min()
+            maxDec = self.obs_table.fieldDec.max()
+            minRA = self.obs_table.fieldRA.min()
+            maxRA = self.obs_table.fieldRA.max()
 
-        # Represent them as rectangle
-        restfield_corners = self._init_fields_map("rectangle")
+            # Represent them as rectangle
+            restfield_corners = self._init_field_shape("rectangle")
 
-        f_RA = np.array([minRA, maxRA, maxRA, minRA])
-        f_Dec = np.array([maxDec, maxDec, minDec, minDec])
+            f_RA = np.array([minRA, maxRA, maxRA, minRA])
+            f_Dec = np.array([maxDec, maxDec, minDec, minDec])
 
-        sub_fields_corners = np.broadcast_to(
-            restfield_corners[0], (4, *restfield_corners[0].shape)
-        )
+            sub_fields_corners = np.broadcast_to(
+                restfield_corners[0], (4, *restfield_corners[0].shape)
+            )
 
-        corners = np.stack(
-            [
-                nbf.new_coord_on_fields(
-                    sub_fields_corners[:, :, i, :], np.stack([f_RA, f_Dec])
-                )
-                for i in range(4)
-            ],
-            axis=1,
-        )
+            corners = np.stack(
+                [
+                    nbf.new_coord_on_fields(
+                        sub_fields_corners[:, :, i, :], np.stack([f_RA, f_Dec])
+                    )
+                    for i in range(4)
+                ],
+                axis=1,
+            )
 
-        corners = geo_ut._format_corner(corners, f_RA)
+            corners = geo_ut._format_corner(corners, f_RA)
 
-        envelope = shp_ops.unary_union(
-            [geo_ut._compute_polygon(corners[i]) for i in range(4)]
-        ).envelope
+            envelope = shp_ops.unary_union(
+                [geo_ut._compute_polygon(corners[i]) for i in range(4)]
+            ).envelope
         envelope_area = geo_ut._compute_area(envelope)
         return envelope, envelope_area
 
@@ -202,8 +262,8 @@ class SurveyObs:
         if "gain" not in self.config:
             keys += ["gain"]
 
-        if "sub_field" in self.config:
-            keys += [self.config["sub_field"]]
+        if "sub_field_key" in self.config:
+            keys += [self.config["sub_field_key"]]
 
         if "add_data" in self.config:
             add_k = (k for k in self.config["add_data"] if k not in keys)
@@ -320,8 +380,8 @@ class SurveyObs:
         end_day = ut.init_astropy_time(maxMJDinObs)
         return obs_dic, (start_day, end_day)
 
-    def _init_fields_map(self, field_config):
-        """Init the subfield map parameters.
+    def _init_field_shape(self, field_config):
+        """Init the sub-field shape parameters.
 
         Parameters
         ----------
@@ -331,11 +391,11 @@ class SurveyObs:
         Returns
         -------
         dict
-            sub-field corners postion.
+            field shape corners postion.
 
         """
         if field_config == "rectangle":
-            sub_fields_corners = {
+            field_shape_corners = {
                 0: np.array(
                     [
                         [
@@ -348,14 +408,44 @@ class SurveyObs:
                 )
             }
         else:
-            sub_fields_corners = io_ut._read_sub_field_map(
+            field_shape_corners = io_ut._read_sub_field_map(
                 self.field_size_rad, field_config
             )
-
-        return sub_fields_corners
-
+        return field_shape_corners
+    
     @staticmethod
-    def _match_radec_to_obs(df, ObjPoints, config, sub_fields_corners):
+    def _define_sub_field_polygons(df, field_shape_corners, sub_field_key=None):
+        
+        # -- Map field and rcid corners to their coordinates
+        if sub_field_key is not None:
+            field_corners = np.stack(
+                df[sub_field_key].map(field_shape_corners).values
+            )
+        else:
+            field_corners = np.broadcast_to(
+                field_shape_corners[0], (len(df), *field_shape_corners[0].shape)
+            )
+
+        corners = np.stack(
+            [
+                nbf.new_coord_on_fields(
+                    field_corners[:, :, i, :],
+                    np.array([df['fieldRA'].values, df['fieldDec'].values]),
+                )
+                for i in range(4)
+            ],
+            axis=1,
+        )
+        corners = geo_ut._format_corner(corners, df['fieldRA'].values)
+
+        # -- Create shapely polygon
+        fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
+
+        GeoFields = gpd.GeoDataFrame(data=df, geometry=fgeo(np.arange(df.shape[0])))
+        return GeoFields
+    
+    @staticmethod
+    def _match_radec_to_obs(df, ObjPoints, field_shape_corners, sub_field_key=None, GeoFieldMap=None, columns_order=None):
         """Return observation of ObjPoints.
 
         Parameters
@@ -375,47 +465,35 @@ class SurveyObs:
         Inspired from  https://github.com/MickaelRigault/ztffields :
             ztffields.projection.spatialjoin_radec_to_fields
         """
+        columns_order = ['expMJD', 'filter', 'fieldID', 'fieldRA', 'fieldDec', 
+                         'maglimcat', 'zp', 'gain', 'rcid', 'infobits', 'sig_zp', 
+                         'fwhm_psf', 'phase']
+        
         # -- Compute max and min of table section
         minMJD = df.expMJD.min()
         maxMJD = df.expMJD.max()
 
         ObjPoints = ObjPoints[(maxMJD >= ObjPoints.min_t) & (ObjPoints.max_t >= minMJD)]
 
-        # -- Map field and rcid corners to their coordinates
-        if "sub_field" in config:
-            field_corners = np.stack(
-                df[config["sub_field"]].map(sub_fields_corners).values
-            )
+        if GeoFieldMap is None:
+            GeoFields = SurveyObs._define_sub_field_polygons(df, field_shape_corners, sub_field_key=sub_field_key)
+            join = ObjPoints.sjoin(GeoFields, how="inner", predicate="intersects")
         else:
-            field_corners = np.broadcast_to(
-                sub_fields_corners[0], (len(df), *sub_fields_corners[0].shape)
-            )
-
-        corners = np.stack(
-            [
-                nbf.new_coord_on_fields(
-                    field_corners[:, :, i, :],
-                    np.array([df['fieldRA'].values, df['fieldDec'].values]),
-                )
-                for i in range(4)
-            ],
-            axis=1,
-        )
-
-        corners = geo_ut._format_corner(corners, df['fieldRA'].values)
-
-        # -- Create shapely polygon
-        fgeo = np.vectorize(lambda i: geo_ut._compute_polygon(corners[i]))
-
-        GeoS = gpd.GeoDataFrame(data=df, geometry=fgeo(np.arange(df.shape[0])))
-
-        join = ObjPoints.sjoin(GeoS, how="inner", predicate="intersects")
-
+            join = ObjPoints.sjoin(GeoFieldMap, how="inner", predicate="intersects" )
+            join.drop(columns=["fieldRA", "fieldDec"], inplace=True)
+            join_on = ['fieldID']
+            if sub_field_key is not None:
+                join_on.append(sub_field_key)
+            join = join.merge(df.set_index(join_on), how='inner', left_on=join_on, right_index=True)
+            
         join["phase"] = (join["expMJD"] - join["t0"]) / join["1_zobs"]
-
-        return join.drop(
-            columns=["geometry", "index_right", "min_t", "max_t", "1_zobs", "t0"]
+        join.drop(
+            columns=["geometry", "index_right", "min_t", "max_t", "1_zobs", "t0"], 
+            inplace=True
         )
+        if columns_order is not None:
+            join = join[columns_order]
+        return join
 
     def get_observations(
         self,
@@ -469,14 +547,20 @@ class SurveyObs:
             ObsObj = ddf.map_partitions(
                 self._match_radec_to_obs,
                 ObjPoints,
-                self.config,
-                self._sub_field_corners,
+                self._field_shape_corners,
+                sub_field_key=self._sub_field_key,
+                GeoFieldMap=self.GeoFieldMap,
+                columns_order=meta.columns,
                 align_dataframes=False,
                 meta=meta,
             ).compute()
         else:
             ObsObj = self._match_radec_to_obs(
-                self.obs_table, ObjPoints, self.config, self._sub_field_corners
+                self.obs_table, 
+                ObjPoints, 
+                self._field_shape_corners,  
+                sub_field_key=self._sub_field_key,
+                GeoFieldMap=self.GeoFieldMap,
             )
         # -- Phase cut
         if phase_cut is not None:
@@ -554,10 +638,10 @@ class SurveyObs:
         return Obs
 
     def show_map(self, ax=None):
-        """Plot a representation of subfields."""
+        """Plot a representation of sub-fields."""
         if ax is None:
             fig, ax = plt.subplots()
-        for k, corners in self._sub_field_corners.items():
+        for k, corners in self._field_shape_corners.items():
             corners_deg = np.degrees(corners)
             polist = [Polygon(cd, color="r", fill=False) for cd in corners_deg]
             for p in polist:
