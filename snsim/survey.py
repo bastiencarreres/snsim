@@ -62,7 +62,10 @@ class SurveyObs:
         if 'geo_field_map' in self.config:
             # -- Open GeoPandas Field map
             self.GeoFieldMap = gpd.read_parquet(self.config['geo_field_map'])
+            if len(GeoFieldMap.unique('fieldID')) != len(self._obs_table.unique('fieldID')):
+                raise ValueError("GeoFieldMap field number doesn't match obs fiel field number please recompute GeoFieldMap")
             self._field_shape_corners = None
+            
         else:
             self.GeoFieldMap = None
             if "field_shape" in self.config:
@@ -630,8 +633,6 @@ class SurveyObs:
         if self.fwhm_psf != 0:
             Obs["skynoise"] *= np.sqrt(4 * np.pi) * Obs["fwhm_psf"] / (2 * np.sqrt(2 * np.log(2)))
         
-        
-
         # Magnitude system
         Obs["zpsys"] = "ab"
 
