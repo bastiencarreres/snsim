@@ -75,15 +75,13 @@ class AstrObj(abc.ABC):
             raise ValueError(f"{self.sim_par['model_name']} not available.")
 
         # -- Update attrs
-        for k in self._base_attrs:
-            setattr(self, k, self._sim_par[k])
-
+        self.__dict__.update({k: self._sim_par[k] for k in self._base_attrs})
+        
         # -- sncosmo model
         self._sim_model = self._init_model(effects)
 
         # -- Update attr of astrobj class
-        for k in [*self._obj_attrs, "model_version"]:
-            setattr(self, k, self._sim_par[k])
+        self.__dict__.update({k: self._sim_par[k] for k in [*self._obj_attrs, "model_version"]})
 
     @abc.abstractmethod
     def _set_model_par(self, model):
