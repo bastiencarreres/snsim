@@ -51,7 +51,7 @@ class SurveyObs:
         self._config = survey_config
 
         # -- Init obs table
-        self._obs_table, self._start_end_days = self._init_data()
+        self._obs_table, self._start_end_days, fields_df = self._init_data()
 
         # -- Init fields
         if "sub_field_key" in self.config:
@@ -62,7 +62,7 @@ class SurveyObs:
         if 'geo_field_map' in self.config:
             # -- Open GeoPandas Field map
             self.GeoFieldMap = gpd.read_parquet(self.config['geo_field_map'])
-            if len(GeoFieldMap.unique('fieldID')) != len(self._obs_table.unique('fieldID')):
+            if set(GeoFieldMap['fieldID']) != set(self._obs_table.['fieldID']):
                 raise ValueError("GeoFieldMap field number doesn't match obs fiel field number please recompute GeoFieldMap")
             self._field_shape_corners = None
             
@@ -76,15 +76,13 @@ class SurveyObs:
             self._field_shape_corners = self._init_field_shape(field_shape)
             
             if 'fieldID' in self.obs_table:
-                field_unique = self.obs_table.fieldID.unique()
-                N_unique = len(field_unique)
-                if N_unique <= 0.1 * len(self.obs_table):
+                if len(fields_df) <= 0.1 * len(self.obs_table):
                     print('Generating a field_map file')
-                    self.GeoFieldMap = self.compute_geo_field_map()
+                    self.GeoFieldMap = self.compute_geo_field_map(fields_df)
                 
         self._envelope, self._envelope_area = self._compute_envelope()
 
-    def compute_geo_field_map(self):
+    def compute_geo_field_map(self, fields_df):
         """Compute the GeoFieldMap and writte it for future use
 
         Returns
@@ -94,13 +92,9 @@ class SurveyObs:
         """        
         stime = time.time()
         
-        keep_keys = ['fieldID', 'fieldRA', 'fieldDec']
-
-        fields_df = self.obs_table.drop_duplicates(subset=['fieldID'])[keep_keys]
-        
         if self._sub_field_key is not None:
             subfields = pd.DataFrame(
-                data=[(f, sf) for sf in self._field_shape_corners.keys() for f in fields_df.fieldID],
+                data=[(f, sf) for sf in self._field_shape_corners.keys() for f in fields_df["fieldID"]],
                 columns=['fieldID', self._sub_field_key])
             
             fields_df = fields_df.merge(subfields, on='fieldID')
@@ -288,7 +282,11 @@ class SurveyObs:
             obs_dic = pd.read_csv(self.config["survey_file"])
         elif ext == ".parquet":
             obs_dic = pd.read_parquet(self.config["survey_file"])
-
+            
+        fields_df = None
+        if 'fieldID' in obs_dic.columns:
+            fields_df = obs_dic.drop_duplicates(subset=['fieldID'])[['fieldID', 'fieldRA', 'fieldDec']]
+        
         # Optionnaly rename columns
         if "key_dic" in self.config:
             obs_dic.rename(columns=self.config["key_dic"], inplace=True)
@@ -304,7 +302,7 @@ class SurveyObs:
                     query += f"{cut_var}{cut} &"
             query = query[:-2]
             obs_dic.query(query, inplace=True)
-        return obs_dic
+        return obs_dic, fields_df
 
     def _init_data(self):
         """Initialize observations table.
@@ -322,10 +320,10 @@ class SurveyObs:
         # Init necessary keys
         keys = self._check_keys()
 
-        if ext in [".csv", ".parquet"]:
-            obs_dic = self._extract_from_file(ext, keys)
-        else:
+        if ext not in [".csv", ".parquet"]:
             raise ValueError("Accepted formats are .csv or .parquet")
+
+        obs_dic, fields_df = self._extract_from_file(ext, keys)
 
         # Add noise key + avoid crash on errors by removing errors <= 0
         obs_dic.query(f"{self.config['noise_key'][0]} > 0", inplace=True)
@@ -384,7 +382,7 @@ class SurveyObs:
         # Effective start and end days
         start_day = ut.init_astropy_time(minMJDinObs)
         end_day = ut.init_astropy_time(maxMJDinObs)
-        return obs_dic, (start_day, end_day)
+        return obs_dic, (start_day, end_day), fields_df
 
     def _init_field_shape(self, field_config):
         """Init the sub-field shape parameters.

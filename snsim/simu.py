@@ -365,7 +365,7 @@ class Simulator:
             duration = time.time() - sim_time
             print(
                 f"{len(lcs_list)} {gen._object_type} lcs generated"
-                f" in {duration//60}min{duration%60:.2f}sec"
+                f" in {int(duration//60):d}min{duration%60:.2f}sec"
             )
             write_time = time.time()
 
